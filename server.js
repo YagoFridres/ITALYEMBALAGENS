@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901417001';
-const SW_RUNTIME_VERSION = '20260901417001';
+const PATCH_RUNTIME_VERSION = '20260901418001';
+const SW_RUNTIME_VERSION = '20260901418001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2822,39 +2822,42 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     console.log('[COM] buscando', range.inicio, 'ate', range.fim_exclusivo, 'empId=', empresaIdRaw || '(todas)');
 
-    let query = supabase
-      .from('vw_comissoes')
-      .select('*')
-      .ilike('status', '%conclu%');
-    if (todasEmpCom) {
-      const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom, true, true);
-      if (filtroEmpCom) query = query.or(filtroEmpCom);
-    }
-    const { data: ofs, error } = await query;
-
-    if (error) { 
-      console.error('[COM] erro view:', error.message); 
-      return res.json({ ok: false, error: error.message }); 
-    } 
-
-    console.log('[COM] OFs da view:', ofs?.length, 'criterio_data=COALESCE(data_faturamento,data_conclusao,dia,created_at)');
-    let todasOFs = await _comissoesEnriquecerLista(ofs);
-    todasOFs = _filtrarOfsNaoTesteGlobal(todasOFs);
-    if (!todasEmpCom && empresaIdRaw) {
-      todasOFs = _jj3FiltrarListaPorEmpresa(todasOFs, empresaIdRaw);
-    }
-    todasOFs = todasOFs.filter(function (of) {
+    // Fonte OFICIAL COMPLETA (mesma do card resumo, 117 OFs set/26)
+    const ofsBrutas = await _listarOfsVendasOficiais(range, '');
+    let ofsFiltradasOficiais = todasEmpCom ? ofsBrutas : _jj3FiltrarListaPorEmpresa(ofsBrutas, empresaIdRaw);
+    ofsFiltradasOficiais = _filtrarOfsNaoTesteGlobal(ofsFiltradasOficiais);
+    ofsFiltradasOficiais = ofsFiltradasOficiais.filter(function (of) {
       return _vendasOficialDentroDoPeriodo(of, range);
     });
-    const payload = _comissoesMontarPayload(todasOFs, {
+    // Enriquecer com vendedor_nome/comissao_pct da view vw_comissoes e tabelas relacionadas
+    // (o enriquecimento é INCREMENTAL — se dado ja existe no OF mantem, senao busca em fontes relacionadas)
+    let todasOFsCompletas;
+    try { todasOFsCompletas = await _comissoesEnriquecerLista(ofsFiltradasOficiais); } catch (eErr) { console.warn('[COM] enriquecerLista fallback direto:', String(eErr?.message || eErr)); todasOFsCompletas = ofsFiltradasOficiais; }
+
+    // Fallback view vw_comissoes (mantida para compatibilidade, NAO mais usada para detalhamento)
+    try {
+      let query = supabase
+        .from('vw_comissoes')
+        .select('*')
+        .ilike('status', '%conclu%');
+      if (todasEmpCom) {
+        const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom, true, true);
+        if (filtroEmpCom) query = query.or(filtroEmpCom);
+      }
+      const { data: ofs, error } = await query;
+      if (!error && Array.isArray(ofs) && ofs.length) {
+        console.log('[COM] view vw_comissoes retornou', ofs.length, 'linhas (usamos apenas para cross-check, detalhamento=OFICIAL', ofsFiltradasOficiais.length, ')');
+      }
+    } catch (eView) { console.warn('[COM] view vw_comissoes pulada (cross-check):', String(eView?.message || eView).slice(0,180)); }
+
+    console.log('[COM] OFs OFICIAIS (detalhamento):', todasOFsCompletas.length, 'criterio_data=COALESCE(data_faturamento,data_conclusao,dia,created_at)');
+    const payload = _comissoesMontarPayload(todasOFsCompletas, {
       mes: String(range.inicio || '').slice(0, 7),
       data_inicio: range.inicio,
       data_fim: range.fim
     });
-    const ofsBrutas = await _listarOfsVendasOficiais(range, '');
-    const ofsFiltradas = todasEmpCom ? ofsBrutas : _jj3FiltrarListaPorEmpresa(ofsBrutas, empresaIdRaw);
-    const resumoTotalOfs = ofsFiltradas.length;
-    const resumoTotalVendido = ofsFiltradas.reduce((s, o) => s + _vendasOficialValor(o), 0);
+    const resumoTotalOfs = ofsFiltradasOficiais.length;
+    const resumoTotalVendido = ofsFiltradasOficiais.reduce((s, o) => s + _vendasOficialValor(o), 0);
     payload.total_ofs = resumoTotalOfs;
     payload.total_vendido = resumoTotalVendido;
     payload.total_ofs_oficial = resumoTotalOfs;
@@ -2863,7 +2866,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     payload.criterio_total_vendido = 'SUM(valor_total) com status Concluído e COALESCE(data_faturamento, data_conclusao, dia, created_at)';
     payload.perdas_descontam_total_vendido = false;
     payload.filtro_empresa_aplicado_jj3 = todasEmpCom ? false : (empresaIdRaw || null);
-    console.log('[COM] FINAL ofs:', todasOFs.length, 'resumoTotalOfs:', resumoTotalOfs, 'total:', resumoTotalVendido);
+    console.log('[COM] FINAL ofs:', todasOFsCompletas.length, 'resumoTotalOfs:', resumoTotalOfs, 'total:', resumoTotalVendido, 'vendedores:', payload.vendedores?.length);
     return res.json(payload); 
   } catch(e) { 
     console.error('[COM] erro:', e.message); 
@@ -9776,13 +9779,16 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     const upd = await ofsUpdateWithRetry(id, updatePayload);
     if (upd.error) throw upd.error;
 
+    let passagemUpsertOk = false;
+    let passagemUpsertErr = null;
     try {
       const qtd = Number(of?.qtd_produzida || of?.caixas_boas || of?.quantidade || of?.qtd || of?.qtd_pedida || 0) || 0;
       const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
       const cliente = String(of?.cliente || of?.cliente_nome || of?.cliNome || of?.clinome || '').trim() || null;
       const produto = String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null;
       const operador = String(req.usuario?.nome || (typeof req.usuario?.email === 'string' ? req.usuario.email.split('@')[0] : '') || 'Sistema').trim();
-      await _upsertPassagemMaquinaRegistro({
+      const empresaIdUuid = String(of?.empresa_id || of?.emp_id || of?.empId || 'df5f7672-0a6b-402d-ae65-296554236c31').trim() || 'df5f7672-0a6b-402d-ae65-296554236c31';
+      const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: id,
         of_numero: ofNumero,
         cliente,
@@ -9796,13 +9802,24 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         hora_passagem: nowIso,
         status: 'Passou pela máquina',
         empresa: String(of?.empresa || of?.empNome || 'Italy Embalagens'),
+        empresa_id: empresaIdUuid,
+        emp_id: String(of?.emp_id || of?.empId || '').trim() || null,
       }, { status: 'Passou pela máquina' });
+      passagemUpsertOk = !!(upsertResult && upsertResult.ok);
+      if (!passagemUpsertOk) {
+        passagemUpsertErr = String(upsertResult?.lastError || upsertResult?.motivo || 'falha_desconhecida');
+        try { console.error('[PASSOU-MAQUINA] upsert retornou ok=false:', JSON.stringify(upsertResult || {}).slice(0, 300)); } catch (_) {}
+      }
     } catch (eUpsert) {
-      console.warn('[PASSOU-MAQUINA] upsert passagem falhou (OF atualizada mesmo assim):', String(eUpsert?.message || eUpsert));
+      passagemUpsertErr = String(eUpsert?.message || eUpsert);
+      console.warn('[PASSOU-MAQUINA] upsert passagem falhou (OF atualizada mesmo assim):', passagemUpsertErr);
+    }
+    if (!passagemUpsertOk) {
+      try { console.error('[PASSOU-MAQUINA] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(passagemUpsertErr || '?')); } catch (_) {}
     }
 
     _clearOfsCaches();
-    return res.json({ ok: true, data: upd.data || updatePayload, passagem_registrada: true });
+    return res.json({ ok: true, data: upd.data || updatePayload, passagem_registrada: !!passagemUpsertOk, passagem_erro: passagemUpsertErr || null });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -10697,6 +10714,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
   }
 });
 
+/* [DEPRECATED 20260901418001 — DUPLICATA DEAD CODE. Rota /api/ofs/:id/passou-maquina ATIVA agora é L9658. Mantenho bloco apenas para referência histórica, NÃO executar.]
 app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
@@ -10837,6 +10855,7 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+*/
 
 app.post('/api/of-passagens', authMiddleware, async (req, res) => {
   try {
@@ -14625,13 +14644,51 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
     rows.push(...chunk);
     if (chunk.length < pageSize) break;
   }
-  return rows.filter((row) => {
+  const JJ3_BUCKET_TO_UUID = { U1: _JJ3_U1, U2: _JJ3_U2, U3: _JJ3_U3 };
+  let contadorFallbackEmpresa = 0;
+  let contadorOriginal = 0;
+  let contadorOutra = 0;
+  const filtrada = rows.filter((row) => {
     if (row?.deleted_at) return false;
     if (!_vendasOficialStatusConcluido(row?.status)) return false;
     if (!_vendasOficialDentroDoPeriodo(row, range)) return false;
-    if (!companyIds.length) return true;
-    return companyIds.includes(_relatoriosPickEmpresaId(row));
+    if (!companyIds.length) { contadorOriginal += 1; return true; }
+    const uuidDireto = _relatoriosPickEmpresaId(row);
+    if (uuidDireto && companyIds.includes(uuidDireto)) { contadorOriginal += 1; return true; }
+    const bucket = _jj3ClassificaEmpresa(row);
+    if (bucket === 'SEM') {
+      const temNull = companyIds.some((c) => !c || c === 'null' || c === 'SEM' || c === '__sem_empresa__');
+      if (temNull) { contadorFallbackEmpresa += 1; return true; }
+    }
+    if (bucket === 'OUTRA') {
+      contadorOutra += 1;
+      return true;
+    }
+    const uuidFallback = JJ3_BUCKET_TO_UUID[bucket] || '';
+    if (uuidFallback && companyIds.includes(uuidFallback)) {
+      contadorFallbackEmpresa += 1;
+      return true;
+    }
+    try {
+      console.warn('[RELATORIOS] OF descartada por empresa:', {
+        id: String(row?.id || '').slice(0, 8),
+        numero: row?.numero || row?.of || null,
+        status: row?.status || null,
+        empresa_id: row?.empresa_id || null,
+        emp_id: row?.emp_id || null,
+        empresa_nome: row?.empresa || row?.empresa_nome || null,
+        uuidDireto,
+        bucket
+      });
+    } catch (_) {}
+    return false;
   });
+  try {
+    if (contadorFallbackEmpresa || contadorOutra) {
+      console.log('[RELATORIOS] empresa filter: total=' + filtrada.length + ' original=' + contadorOriginal + ' fallback=' + contadorFallbackEmpresa + ' OUTRA_mantida=' + contadorOutra);
+    }
+  } catch (_) {}
+  return filtrada;
 }
 
 async function _relatoriosFetchOfsCriadas(range, opts = {}) {
@@ -17284,7 +17341,24 @@ app.patch('/api/orcamentos/:id/pasta', authMiddleware, async (req, res) => {
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const pastaId = req.body?.pasta_id ? String(req.body.pasta_id).trim() : null;
+    const raw = (req.body && typeof req.body === 'object') ? req.body : {};
+    const pastaIdRaw = String(
+      raw.pasta_id ??
+      raw.pastaId ??
+      raw.folder_id ??
+      raw.folderId ??
+      raw.pasta ??
+      raw.folder ??
+      ''
+    ).trim();
+    const pastaId = pastaIdRaw ? pastaIdRaw : null;
+    try {
+      if (pastaIdRaw === '' || pastaIdRaw === '__sem_pasta__' || pastaIdRaw === 'null' || pastaIdRaw === 'undefined') {
+        console.log('[ORC-PASTA] mover para sem pasta (interpretado como NULL):', JSON.stringify(raw).slice(0, 200));
+      } else if (pastaId) {
+        console.log('[ORC-PASTA] mover para pasta id=' + pastaId + ' raw=' + JSON.stringify(raw).slice(0, 200));
+      }
+    } catch (_) {}
 
     if (pastaId) {
       const pasta = await supabase.from('orcamentos_pastas').select('id').eq('id', pastaId).maybeSingle();
@@ -26321,22 +26395,29 @@ app.get('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
 });
 
 app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
+  const idCompra = _comprasChapasStr(req.params.id);
+  let etapa = 'inicio';
   try {
     try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
-    const id = _comprasChapasStr(req.params.id);
+    const id = idCompra;
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    etapa = 'load_atual';
     const atual = await _comprasChapasLoadById(id);
     if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
     const body = req.body || {};
+    try { console.log('[CMP-SAVE] id=' + id + ' numero=' + String(atual.numero_compra || atual.numero || '?') + ' etapa=' + etapa + ' body_keys=' + Object.keys(body).join(',')); } catch (_) {}
+    etapa = 'resolve_emp';
     const empInfo = await _comprasChapasResolveEmpId(req, body);
     const empId = _comprasChapasStr(atual.emp_id || empInfo.empId);
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || body.emp_id || body.empId) });
     const hasPasta = Object.prototype.hasOwnProperty.call(body, 'pasta_id');
     const pastaId = hasPasta ? (body.pasta_id ? _comprasChapasStr(body.pasta_id) : null) : (_comprasChapasStr(atual.pasta_id) || null);
     if (pastaId) {
+      etapa = 'valida_pasta';
       const pastaOk = await _comprasChapasValidarPasta(pastaId, empId);
       if (!pastaOk.ok) return res.status(404).json({ ok: false, error: String(pastaOk.error?.message || pastaOk.error) });
     }
+    etapa = 'build_header';
     const headerPayload = _comprasChapasBuildHeaderPayload({
       ...atual,
       ...body,
@@ -26348,19 +26429,42 @@ app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
       empId,
     });
     delete headerPayload.numero_compra;
+    try { console.log('[CMP-SAVE] id=' + id + ' etapa=' + etapa + ' header_keys=' + Object.keys(headerPayload).join(',') + ' atualizado_em=' + String(headerPayload.atualizado_em || '').slice(0, 19)); } catch (_) {}
+    etapa = 'update_header';
     const upd = await _comprasChapasUpdateCompat('compras_chapas', id, headerPayload, '*');
-    if (upd.error) return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
-    const delItens = await supabase.from('compras_chapas_itens').delete().eq('compra_id', id);
-    if (delItens.error) return res.status(500).json({ ok: false, error: delItens.error.message });
-    const itens = Array.isArray(body.itens) ? body.itens : [];
-    if (itens.length) {
-      const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, id, idx + 1));
-      const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
-      if (insItens.error) return res.status(500).json({ ok: false, error: String(insItens.error.message || insItens.error) });
+    if (upd.error) {
+      try { console.error('[CMP-SAVE] id=' + id + ' FALHOU etapa=' + etapa + ' erro=' + String(upd.error?.message || upd.error).slice(0, 300)); } catch (_) {}
+      return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
     }
+    try { console.log('[CMP-SAVE] id=' + id + ' header ATUALIZADO com sucesso. agora apagando itens...'); } catch (_) {}
+    etapa = 'delete_itens';
+    const delItens = await supabase.from('compras_chapas_itens').delete().eq('compra_id', id);
+    if (delItens.error) {
+      try { console.error('[CMP-SAVE] id=' + id + ' FALHOU etapa=' + etapa + ' erro=' + String(delItens.error?.message || delItens.error).slice(0, 300)); } catch (_) {}
+      return res.status(500).json({ ok: false, error: delItens.error.message });
+    }
+    const itens = Array.isArray(body.itens) ? body.itens : [];
+    try { console.log('[CMP-SAVE] id=' + id + ' itens antigos apagados. qtd novos itens=' + itens.length); } catch (_) {}
+    if (itens.length) {
+      etapa = 'insert_itens';
+      const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, id, idx + 1));
+      try { console.log('[CMP-SAVE] id=' + id + ' build ' + itensPayload.length + ' itens. 1o item vincos=' + String(itensPayload[0]?.vincos || '?').slice(0, 60)); } catch (_) {}
+      const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
+      if (insItens.error) {
+        try { console.error('[CMP-SAVE] id=' + id + ' FALHOU etapa=' + etapa + ' erro=' + String(insItens.error?.message || insItens.error).slice(0, 300)); } catch (_) {}
+        return res.status(500).json({ ok: false, error: String(insItens.error.message || insItens.error) });
+      }
+    }
+    etapa = 'load_full';
     const full = await _comprasChapasLoadById(id);
+    try {
+      const itensCount = Array.isArray(full?.itens) ? full.itens.length : 0;
+      const primeiroVincos = itensCount ? String(full.itens[0]?.vincos || '?').slice(0, 60) : '';
+      console.log('[CMP-SAVE] id=' + id + ' SUCESSO COMPLETO. atualizado_em=' + String(full?.atualizado_em || '').slice(0, 19) + ' itens=' + itensCount + ' 1o_vincos=' + primeiroVincos);
+    } catch (_) {}
     return ok(res, full);
   } catch (e) {
+    try { console.error('[CMP-SAVE] id=' + idCompra + ' FALHA GERAL etapa=' + etapa + ' erro=' + String(e?.message || e).slice(0, 400), e?.stack ? String(e.stack).slice(0, 400) : ''); } catch (_) {}
     _comprasChapasLog('PUT /api/compras-chapas/:id', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

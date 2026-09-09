@@ -4313,7 +4313,7 @@ try {
     try {
       if (patch && typeof patch === 'object' && ('sem_papel' in patch)) {
         var novo = !!patch.sem_papel;
-        var targets = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + sid + '"], .kb-card-ofmaq[data-id="' + sid + '"], .patch-ofmaq-v2-row[data-of-id="' + sid + '"], tr.patch-ofmaq-row[data-of-id="' + sid + '"], #ofmaq-tbody-zero tr[data-of-id="' + sid + '"]');
+        var targets = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + sid + '"], .kb-card-ofmaq[data-id="' + sid + '"], .patch-ofmaq-v2-row[data-of-id="' + sid + '"], tr.patch-ofmaq-row[data-of-id="' + sid + '"], #ofmaq-tbody-zero tr[data-of-id="' + sid + '"], table.ofmaq-final-table tr[data-of-id="' + sid + '"], table.rtbl tr[data-of-id="' + sid + '"], tbody tr[data-of-id="' + sid + '"], div[data-of-id="' + sid + '"]');
         targets.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
         targets.forEach(function(el) {
           try {
@@ -4324,6 +4324,25 @@ try {
             });
           } catch (_) {}
         });
+        try {
+          var btnTxtNovoGlobal = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
+          var ofNumMatch = String((patch && (patch.numero || patch.of_numero || patch.of)) || '').trim();
+          document.querySelectorAll('.patch-ofmaq-sem-papel-btn').forEach(function(b) {
+            try {
+              var txt = String(b.textContent || '').trim();
+              if (!/Sem Papelão/i.test(txt) && !/Remover Sem Papelão/i.test(txt)) return;
+              if (ofNumMatch) {
+                var modalWrap = b.closest('[role="dialog"], [data-modal-of-id], .modal, section, div, article');
+                if (modalWrap) {
+                  var htmlSnippet = String(modalWrap.textContent || '').replace(/\s+/g, ' ');
+                  if (htmlSnippet.indexOf('OF #' + ofNumMatch) < 0 && htmlSnippet.indexOf(' ' + ofNumMatch + ' ') < 0) return;
+                }
+              }
+              b.setAttribute('data-active', novo ? '1' : '0');
+              b.textContent = btnTxtNovoGlobal;
+            } catch (_ebt) {}
+          });
+        } catch (_glob) {}
       }
     } catch (_) {}
   }
@@ -4757,14 +4776,14 @@ try {
       var payload = { sem_papel: novo };
       var row = await persistPatch(id, payload);
       mergeOfLocal(id, Object.assign({}, payload, row || {}));
-      var cards = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + id + '"], .kb-card-ofmaq[data-id="' + id + '"], .patch-ofmaq-v2-row[data-of-id="' + id + '"], tr.patch-ofmaq-row[data-of-id="' + id + '"]');
+      var cards = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + id + '"], .kb-card-ofmaq[data-id="' + id + '"], .patch-ofmaq-v2-row[data-of-id="' + id + '"], tr.patch-ofmaq-row[data-of-id="' + id + '"], table.ofmaq-final-table tr[data-of-id="' + id + '"], table.rtbl tr[data-of-id="' + id + '"], tbody tr[data-of-id="' + id + '"], div[data-of-id="' + id + '"]');
       cards.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
       try {
         var rowZero = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
         if (rowZero) rowZero.setAttribute('data-sem-papel', novo ? '1' : '0');
       } catch (_) {}
       try {
-        var rowsFinal = document.querySelectorAll('.ofmaq-final-table-wrap tr[data-of-id="' + id + '"], .ofmaq-final-row[data-of-id="' + id + '"], .ofmaq-row[data-of-id="' + id + '"]');
+        var rowsFinal = document.querySelectorAll('.ofmaq-final-table-wrap tr[data-of-id="' + id + '"], .ofmaq-final-row[data-of-id="' + id + '"], .ofmaq-row[data-of-id="' + id + '"], table.ofmaq-final-table tr[data-of-id="' + id + '"], table.rtbl tr[data-of-id="' + id + '"], tbody tr[data-of-id="' + id + '"], div[data-of-id="' + id + '"]');
         rowsFinal.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
       } catch (_) {}
       try {
@@ -4781,6 +4800,9 @@ try {
           '.ofmaq-final-table-wrap tr[data-of-id="' + id + '"] button',
           '.ofmaq-final-row[data-of-id="' + id + '"] button',
           '.ofmaq-row[data-of-id="' + id + '"] button',
+          'table.ofmaq-final-table tr[data-of-id="' + id + '"] button',
+          'table.rtbl tr[data-of-id="' + id + '"] button',
+          'tbody tr[data-of-id="' + id + '"] button',
           'button[data-sem-papel-btn][data-of-id="' + id + '"]',
           'button#semPapelBtn'
         ].join(',');
@@ -4793,6 +4815,25 @@ try {
             }
           } catch (_eb) {}
         });
+        try {
+          var numeroDaOf = String(ofNum || of.numero || of.of || (of && (of.numero || of.of_numero)) || '').trim();
+          document.querySelectorAll('.patch-ofmaq-sem-papel-btn').forEach(function(b) {
+            try {
+              var txtG = String(b.textContent || '').trim();
+              if (!/Sem Papelão/i.test(txtG) && !/Remover Sem Papelão/i.test(txtG)) return;
+              if (numeroDaOf) {
+                var p = b.closest('[role="dialog"], [data-modal-of-id], .modal, section, div, article, li, td, tr');
+                if (p) {
+                  var pedaco = String(p.textContent || '').replace(/\s+/g, ' ');
+                  var marcador = 'OF #' + numeroDaOf;
+                  if (pedaco.indexOf(marcador) < 0 && pedaco.indexOf(' ' + numeroDaOf + ' ') < 0) return;
+                }
+              }
+              b.setAttribute('data-active', novo ? '1' : '0');
+              b.textContent = btnTxtNovo;
+            } catch (_eg) {}
+          });
+        } catch (_globBtn) {}
         var badges = document.querySelectorAll('.patch-sempapel-q-status');
         badges.forEach(function(bd) {
           try {
@@ -8219,11 +8260,14 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         console.log('[COMPRA-PAPELAO] salvar compra:', compraId ? 'edicao' : 'nova', window._compraPapelaoNumeroLabel(payload.numero_compra), 'itens:', payload.itens.length);
         if (compraId) await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
         else await window._compraPapelaoApi('/api/compras-chapas', { method: 'POST', body: payload });
+        try { if (typeof window.toast === 'function') window.toast(compraId ? 'Compra de papelão atualizada com sucesso ✓' : 'Compra de papelão criada com sucesso ✓', 'var(--green)'); } catch (_) {}
         window._compraPapelaoCloseCompraModal();
         await window._compraPapelaoRenderPage();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
-        alert('Erro ao salvar compra: ' + String(e && e.message || e));
+        var msg = 'Erro ao salvar compra: ' + String(e && e.message || e);
+        try { if (typeof window.toast === 'function') window.toast(msg, 'var(--red)'); } catch (_) {}
+        alert(msg);
       } finally {
         saveBtn.disabled = false;
       }
