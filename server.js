@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901418001';
-const SW_RUNTIME_VERSION = '20260901418001';
+const PATCH_RUNTIME_VERSION = '20260901419001';
+const SW_RUNTIME_VERSION = '20260901419001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11590,7 +11590,33 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
       const upd = await supabase.from('passagens_maquina').update(toUpdate).eq('id', existente.id);
       if (!upd?.error) return { ok: true, mode: 'update', id: existente.id, payload: toUpdate };
       lastUpdateErr = String(upd.error?.message || upd.error || 'update_failed');
-      try { console.warn('[PASSAGENS-MAQUINA] update tentativa #' + i + ' falhou:', lastUpdateErr.slice(0, 200)); } catch (_) {}
+      if (i === 0) {
+        try {
+          const errFull = upd.error || {};
+          const snapshot = {
+            of_id: ofId,
+            maquina_nome: maquinaNome,
+            modo: 'UPDATE',
+            row_id: existente.id || null,
+            payload_keys: Object.keys(toUpdate).sort().join(','),
+            payload_preview: JSON.stringify(toUpdate).slice(0, 1200),
+            message: String(errFull.message || '').slice(0, 2000),
+            code: String(errFull.code || '').slice(0, 200),
+            hint: String(errFull.hint || '').slice(0, 1000),
+            details: String(errFull.details || '').slice(0, 1000),
+            schema_name: String(errFull.schema || '').slice(0, 200),
+            table_name: String(errFull.table || '').slice(0, 200),
+            column_name: String(errFull.column || '').slice(0, 200),
+            constraint_name: String(errFull.constraint || '').slice(0, 400),
+            obj_keys: Object.keys(errFull || {}).sort().join(','),
+            obj_json: JSON.stringify(errFull).slice(0, 2500)
+          };
+          console.error('[PASSAGENS-MAQUINA] [PRIMEIRA_TENTATIVA_UPDATE] ERRO_BRUTO_POSTGRES_SUPABASE=' + JSON.stringify(snapshot));
+        } catch (_primUpd) {
+          try { console.error('[PASSAGENS-MAQUINA] PRIMEIRA_TENTATIVA_UPDATE falhou log:', String(_primUpd && _primUpd.message || _primUpd).slice(0, 500)); } catch (_) {}
+        }
+      }
+      try { console.warn('[PASSAGENS-MAQUINA] update tentativa #' + i + ' falhou:', lastUpdateErr.slice(0, 300)); } catch (_) {}
       const msg = String(upd.error.message || '').toLowerCase();
       const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i);
       const col = (m && m[1]) ? String(m[1]).trim() : '';
@@ -11612,7 +11638,32 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
       return { ok: true, mode: 'insert', payload: toInsert };
     }
     lastInsertErr = String(ins.error?.message || ins.error || 'insert_failed');
-    try { console.warn('[PASSAGENS-MAQUINA] insert tentativa #' + i + ' falhou:', lastInsertErr.slice(0, 220)); } catch (_) {}
+    if (i === 0) {
+      try {
+        const errFull = ins.error || {};
+        const snapshot = {
+          of_id: ofId,
+          maquina_nome: maquinaNome,
+          modo: 'INSERT',
+          payload_keys: Object.keys(toInsert).sort().join(','),
+          payload_preview: JSON.stringify(toInsert).slice(0, 1200),
+          message: String(errFull.message || '').slice(0, 2000),
+          code: String(errFull.code || '').slice(0, 200),
+          hint: String(errFull.hint || '').slice(0, 1000),
+          details: String(errFull.details || '').slice(0, 1000),
+          schema_name: String(errFull.schema || '').slice(0, 200),
+          table_name: String(errFull.table || '').slice(0, 200),
+          column_name: String(errFull.column || '').slice(0, 200),
+          constraint_name: String(errFull.constraint || '').slice(0, 400),
+          obj_keys: Object.keys(errFull || {}).sort().join(','),
+          obj_json: JSON.stringify(errFull).slice(0, 2500)
+        };
+        console.error('[PASSAGENS-MAQUINA] [PRIMEIRA_TENTATIVA_INSERT] ERRO_BRUTO_POSTGRES_SUPABASE=' + JSON.stringify(snapshot));
+      } catch (_primIns) {
+        try { console.error('[PASSAGENS-MAQUINA] PRIMEIRA_TENTATIVA_INSERT falhou log:', String(_primIns && _primIns.message || _primIns).slice(0, 500)); } catch (_) {}
+      }
+    }
+    try { console.warn('[PASSAGENS-MAQUINA] insert tentativa #' + i + ' falhou:', lastInsertErr.slice(0, 300)); } catch (_) {}
     const msg = String(ins.error.message || '').toLowerCase();
     const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i);
     const col = (m && m[1]) ? String(m[1]).trim() : '';
@@ -11624,7 +11675,16 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
     }
     break;
   }
-  try { console.error('[PASSAGENS-MAQUINA] FALHOU após todas tentativas. lastInsertErr=', lastInsertErr, 'lastUpdateErr=', lastUpdateErr, 'ofId=', ofId, 'maq=', maquinaNome); } catch (_) {}
+  try {
+    const snapshotFim = {
+      of_id: ofId,
+      maquina_nome: maquinaNome,
+      lastInsertErr: String(lastInsertErr || '').slice(0, 500),
+      lastUpdateErr: String(lastUpdateErr || '').slice(0, 500),
+      existia_existente_row: !!(existente && (existente.id || existente.of_id))
+    };
+    console.error('[PASSAGENS-MAQUINA] FALHOU apos todas tentativas. snapshot=' + JSON.stringify(snapshotFim));
+  } catch (_) {}
   return { ok: false, payload: raw, lastError: lastInsertErr || lastUpdateErr || null, ofId, maquinaNome };
 }
 
@@ -14644,50 +14704,13 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
     rows.push(...chunk);
     if (chunk.length < pageSize) break;
   }
-  const JJ3_BUCKET_TO_UUID = { U1: _JJ3_U1, U2: _JJ3_U2, U3: _JJ3_U3 };
-  let contadorFallbackEmpresa = 0;
-  let contadorOriginal = 0;
-  let contadorOutra = 0;
   const filtrada = rows.filter((row) => {
     if (row?.deleted_at) return false;
     if (!_vendasOficialStatusConcluido(row?.status)) return false;
     if (!_vendasOficialDentroDoPeriodo(row, range)) return false;
-    if (!companyIds.length) { contadorOriginal += 1; return true; }
-    const uuidDireto = _relatoriosPickEmpresaId(row);
-    if (uuidDireto && companyIds.includes(uuidDireto)) { contadorOriginal += 1; return true; }
-    const bucket = _jj3ClassificaEmpresa(row);
-    if (bucket === 'SEM') {
-      const temNull = companyIds.some((c) => !c || c === 'null' || c === 'SEM' || c === '__sem_empresa__');
-      if (temNull) { contadorFallbackEmpresa += 1; return true; }
-    }
-    if (bucket === 'OUTRA') {
-      contadorOutra += 1;
-      return true;
-    }
-    const uuidFallback = JJ3_BUCKET_TO_UUID[bucket] || '';
-    if (uuidFallback && companyIds.includes(uuidFallback)) {
-      contadorFallbackEmpresa += 1;
-      return true;
-    }
-    try {
-      console.warn('[RELATORIOS] OF descartada por empresa:', {
-        id: String(row?.id || '').slice(0, 8),
-        numero: row?.numero || row?.of || null,
-        status: row?.status || null,
-        empresa_id: row?.empresa_id || null,
-        emp_id: row?.emp_id || null,
-        empresa_nome: row?.empresa || row?.empresa_nome || null,
-        uuidDireto,
-        bucket
-      });
-    } catch (_) {}
-    return false;
+    if (!companyIds.length) return true;
+    return companyIds.includes(_relatoriosPickEmpresaId(row));
   });
-  try {
-    if (contadorFallbackEmpresa || contadorOutra) {
-      console.log('[RELATORIOS] empresa filter: total=' + filtrada.length + ' original=' + contadorOriginal + ' fallback=' + contadorFallbackEmpresa + ' OUTRA_mantida=' + contadorOutra);
-    }
-  } catch (_) {}
   return filtrada;
 }
 
