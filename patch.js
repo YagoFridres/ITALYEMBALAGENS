@@ -25461,8 +25461,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '</div>'
           + '<div id="ofmaq-final-amostras-semana" class="ofmaq-final-amostras-semana">'
           + '  <div class="ofmaq-amostras-semana-head">'
-          + '    <h3>🧪 Amostras da Semana <small>Pendentes com data prevista nesta semana</small></h3>'
-          + '    <span class="ofmaq-amostras-semana-count" data-ofmaq-amostras-count>0 pendentes</span>'
+          + '    <h3>🧪 Amostras Pendentes <small>Todas em aberto — atrasadas, desta semana e futuras</small></h3>'
+          + '    <span class="ofmaq-amostras-semana-count" data-ofmaq-amostras-count>0 pendente(s)</span>'
           + '  </div>'
           + '  <div data-ofmaq-amostras-grid class="ofmaq-amostras-semana-grid"><div class="ofmaq-amostras-vazio">Carregando amostras...</div></div>'
           + '</div>'
@@ -25587,7 +25587,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var weekEndIso = nowTemp.toISOString().slice(0, 10);
         var tokenAmostra = '';
         try { tokenAmostra = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
-        var queryParts = ['status=Pendente', 'limit=500', 't=' + Date.now()];
+        var queryParts = ['abertas=1', 'limit=500', 't=' + Date.now()];
         try {
           if (typeof window.rrEmpresaQueryParts === 'function') {
             var rrParts = window.rrEmpresaQueryParts();
@@ -25605,13 +25605,56 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var arr = [];
         try { arr = await r.json(); } catch (_p) { arr = []; }
         if (!Array.isArray(arr)) arr = (arr && arr.data) || [];
-        var pendentes = arr.filter(function(a) {
+        var hojeIso = new Date();
+        hojeIso.setHours(0,0,0,0);
+        var hojeIsoStr = hojeIso.toISOString().slice(0,10);
+        var semanaStartIso = weekStartIso;
+        var semanaEndIso = weekEndIso;
+        var pendentes = [];
+        arr.forEach(function(a) {
+          if (!a) return;
+          var s = String(a.status || 'Pendente').trim();
+          var sLow = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          if (sLow === 'feita' || sLow === 'feito' || sLow === 'concluida' || sLow === 'concluido' || sLow === 'entregue' || sLow === 'finalizada' || sLow === 'finalizado' || sLow === 'aprovada' || sLow === 'cancelada' || sLow === 'cancelado' || sLow === 'excluida' || sLow === 'excluido') return;
           var dp = String(a && (a.data_prevista || a.data_entrega || a.data_pedido || '')).slice(0, 10);
-          return dp && dp >= weekStartIso && dp <= weekEndIso;
+          var atrasada = false;
+          var naSemana = false;
+          var futura = false;
+          if (dp) {
+            if (dp < hojeIsoStr) atrasada = true;
+            else if (dp >= semanaStartIso && dp <= semanaEndIso) naSemana = true;
+            else if (dp > semanaEndIso) futura = true;
+          }
+          pendentes.push({
+            raw: a,
+            id: String(a.id || ''),
+            statusLabel: s || 'Pendente',
+            statusKey: sLow,
+            dataPrevista: dp,
+            atrasada: atrasada,
+            naSemana: naSemana,
+            futura: futura,
+            sortOrdem: (atrasada ? 0 : (naSemana ? 1 : 2)),
+            sortData: dp || '9999-12-31'
+          });
         });
-        if (badgeCount) badgeCount.textContent = String(pendentes.length) + ' pendente(s)';
+        pendentes.sort(function(x, y) {
+          if (x.sortOrdem !== y.sortOrdem) return x.sortOrdem - y.sortOrdem;
+          if (x.sortData < y.sortData) return -1;
+          if (x.sortData > y.sortData) return 1;
+          return String(x.id || '').localeCompare(String(y.id || ''));
+        });
+        var numAtrasadas = pendentes.filter(function(p) { return p.atrasada; }).length;
+        if (badgeCount) {
+          var badgeText = String(pendentes.length) + ' pendente(s)';
+          if (numAtrasadas > 0) badgeText += ' · ' + String(numAtrasadas) + ' atrasada(s)';
+          badgeCount.textContent = badgeText;
+          badgeCount.style.background = numAtrasadas > 0 ? 'rgba(239,68,68,.2)' : '';
+          badgeCount.style.borderColor = numAtrasadas > 0 ? 'rgba(248,113,113,.5)' : '';
+          badgeCount.style.color = numAtrasadas > 0 ? '#fecaca' : '';
+        }
         if (!pendentes.length) {
-          grid.innerHTML = '<div class="ofmaq-amostras-vazio">Nenhuma amostra pendente para esta semana. 🎉</div>';
+          grid.innerHTML = '<div class="ofmaq-amostras-vazio">Nenhuma amostra pendente. 🎉</div>';
           return;
         }
         var thead = '<thead style="position:sticky;top:0;background:#0f172a;z-index:2"><tr>'
@@ -25623,24 +25666,52 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<th style="width:130px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Data Entrega</th>'
           + '<th style="width:170px;text-align:center;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Ação</th>'
           + '</tr></thead>';
-        var tbodyRows = pendentes.map(function(a, idx) {
+        var tbodyRows = pendentes.map(function(p, idx) {
+          var a = p.raw || {};
           var id = String(a.id || '').trim();
           var cliente = String(a.cliente_nome || a.cliente || 'Amostra').trim();
           var produto = String(a.produto || a.descricao || 'Sem descrição').trim();
           var dpedido = String(a.data_pedido || '').slice(0, 10);
           var dentrega = String(a.data_entrega || a.data_prevista || '').slice(0, 10);
           var img = String(a.imagem_url || '').trim();
+          var statusLabel = p.statusLabel || 'Pendente';
+          var statusKey = p.statusKey;
+          var statusBg = 'rgba(148,163,184,.18)';
+          var statusCor = '#cbd5e1';
+          if (p.atrasada) { statusBg = 'rgba(239,68,68,.22)'; statusCor = '#fecaca'; }
+          else if (statusKey === 'em producao' || statusKey === 'em processo' || statusKey === 'em andamento' || statusKey.startsWith('em ')) { statusBg = 'rgba(245,158,11,.22)'; statusCor = '#fed7aa'; }
+          else if (statusKey === 'pendente' || statusKey === 'aguardando' || statusKey === 'na fila' || !statusKey) { statusBg = 'rgba(59,130,246,.2)'; statusCor = '#bfdbfe'; }
+          else if (p.futura) { statusBg = 'rgba(16,185,129,.18)'; statusCor = '#a7f3d0'; }
+          var dataEntregaCor = '#fbbf24';
+          var dataEntregaPeso = '600';
+          var dataEntregaPrefixo = '';
+          var linhaStyle = 'border-bottom:1px solid #1e293b;vertical-align:middle;';
+          if (p.atrasada) {
+            dataEntregaCor = '#ef4444';
+            dataEntregaPeso = '900';
+            dataEntregaPrefixo = '⚠️ ';
+            linhaStyle += 'background:rgba(153,27,27,.14);border-left:5px solid #ef4444;';
+          } else if (p.naSemana) {
+            dataEntregaCor = '#f59e0b';
+            dataEntregaPeso = '700';
+          } else if (p.futura) {
+            dataEntregaCor = '#10b981';
+            dataEntregaPeso = '600';
+          }
           var imgHtml = img
             ? ('<button type="button" class="ofmaq-final-thumb" data-amostra-image="' + escAttr(id) + '" style="width:48px;height:48px;padding:0;border:1px solid #334155;border-radius:6px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:zoom-in;"><img src="' + escAttr(img) + '" alt="Imagem amostra" style="width:100%;height:100%;object-fit:cover;display:block;"></button>')
             : '<span style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px dashed #334155;border-radius:6px;background:#0f172a;color:#64748b;font-size:1.1rem;">🧪</span>';
           return ''
-            + '<tr data-amostra-id="' + escAttr(id) + '" style="border-bottom:1px solid #1e293b;vertical-align:middle;">'
+            + '<tr data-amostra-id="' + escAttr(id) + '" data-atrasada="' + (p.atrasada ? '1' : '0') + '" style="' + linhaStyle + '">'
             + '<td style="padding:10px;">' + _amostraNumero(a, idx) + '</td>'
             + '<td style="padding:8px 10px;">' + imgHtml + '</td>'
             + '<td style="padding:8px 10px;"><div style="font-weight:600;color:#e2e8f0;font-size:.88rem;">' + escH(cliente) + '</div></td>'
-            + '<td style="padding:8px 10px;"><div style="font-weight:500;color:#f1f5f9;font-size:.88rem;">' + escH(produto) + '</div></td>'
+            + '<td style="padding:8px 10px;">'
+            + '  <div style="font-weight:500;color:#f1f5f9;font-size:.88rem;">' + escH(produto) + '</div>'
+            + '  <div style="margin-top:6px;"><span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:.03em;background:' + statusBg + ';color:' + statusCor + ';border:1px solid rgba(255,255,255,.06);">' + escH(statusLabel) + '</span></div>'
+            + '</td>'
             + '<td style="padding:8px 10px;color:#94a3b8;font-size:.85rem;">' + escH(fmtD(dpedido)) + '</td>'
-            + '<td style="padding:8px 10px;color:#fbbf24;font-size:.85rem;font-weight:600;">' + escH(fmtD(dentrega)) + '</td>'
+            + '<td style="padding:8px 10px;color:' + dataEntregaCor + ';font-size:.85rem;font-weight:' + dataEntregaPeso + ';white-space:nowrap;">' + dataEntregaPrefixo + escH(fmtD(dentrega)) + '</td>'
             + '<td style="padding:8px 10px;text-align:center;">'
             + '  <div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;">'
             + '    <button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '" '
