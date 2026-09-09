@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901416001';
-const SW_RUNTIME_VERSION = '20260901416001';
+const PATCH_RUNTIME_VERSION = '20260901417001';
+const SW_RUNTIME_VERSION = '20260901417001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9657,13 +9657,12 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const bodyRaw = (req.body && typeof req.body === 'object') ? req.body : {};
-    const maquinaNome = String(
+    let maquinaNome = String(
       bodyRaw.maquina_nome ||
       bodyRaw.maquina ||
       (bodyRaw.maquina && typeof bodyRaw.maquina === 'object' ? (bodyRaw.maquina.nome || bodyRaw.maquina.col || '') : '') ||
       ''
     ).trim();
-    if (!maquinaNome) return res.status(400).json({ ok: false, error: 'Máquina obrigatória' });
 
     const { data: of, error: errOf } = await supabase
       .from('ofs')
@@ -9672,6 +9671,53 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       .maybeSingle();
     if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
     if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    // D1HOT-P2: fallback robusto de nome de máquina a partir da própria OF caso o body venha
+    // "Sem Máquina Definida", vazio ou genérico. Evita que passou_maquina_nome salve inválido
+    // e que _upsertPassagemMaquinaRegistro canônize vazio e skippe o INSERT sem dar sinal.
+    (function() {
+      const raw = String(maquinaNome || '').trim();
+      const invalidos = new Set(['', 'sem maquina definida', 'sem máquina definida', 'sem maquina', 'sem máquina', 'nao informada', 'não informada', 'desconhecida', 'null', 'undefined']);
+      if (invalidos.has(raw.toLowerCase()) || !raw) {
+        const candidatos = [];
+        candidatos.push(String(of?.maquina_agendada || '').trim());
+        if (Array.isArray(of?.maq)) of.maq.forEach((m) => candidatos.push(String(m || '').trim()));
+        else if (of?.maq) candidatos.push(String(of.maq).trim());
+        const idxAt = Number(of?.maquina_atual_index || 0);
+        let fluxoArr = [];
+        try {
+          if (Array.isArray(of?.fluxo_maquinas)) fluxoArr = of.fluxo_maquinas;
+          else if (typeof of?.fluxo_maquinas === 'string') fluxoArr = JSON.parse(of.fluxo_maquinas || '[]');
+        } catch (_) { fluxoArr = []; }
+        if (Array.isArray(fluxoArr) && fluxoArr.length) {
+          const i = Number.isFinite(idxAt) && idxAt >= 0 ? Math.min(idxAt, fluxoArr.length - 1) : 0;
+          const el = fluxoArr[i];
+          if (el) {
+            if (typeof el === 'string') candidatos.push(String(el).trim());
+            else if (el && typeof el === 'object') candidatos.push(String(el.nome || el.col || el.name || el.maquina || '').trim());
+          }
+          for (let j = 0; j < fluxoArr.length; j++) {
+            const el2 = fluxoArr[j];
+            if (typeof el2 === 'string') candidatos.push(String(el2).trim());
+            else if (el2 && typeof el2 === 'object') candidatos.push(String(el2.nome || el2.col || el2.name || el2.maquina || '').trim());
+          }
+        }
+        candidatos.push(String(of?.passou_maquina_nome || '').trim());
+        if (Array.isArray(of?.passagens_maquina)) of.passagens_maquina.forEach((p) => {
+          if (typeof p === 'string') candidatos.push(String(p).trim());
+          else if (p && typeof p === 'object') candidatos.push(String(p.maquina || p.maquina_nome || '').trim());
+        });
+        const escolhido = candidatos.find((x) => {
+          if (!x) return false;
+          if (invalidos.has(x.toLowerCase())) return false;
+          return true;
+        }) || '';
+        if (escolhido) maquinaNome = escolhido;
+      }
+    })();
+    if (!maquinaNome) {
+      try { console.warn('[PASSOU-MAQUINA] sem nome de máquina após fallback, OF:', id); } catch (_) {}
+    }
 
     const nowIso = new Date().toISOString();
     const hojeIso = nowIso.slice(0, 10);
@@ -11419,17 +11465,80 @@ function _dedupePassagensMaquinaRows(rows) {
   return Array.from(mapa.values()).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a));
 }
 
+const PASSAGENS_MAQUINA_WHITELIST = new Set([
+  'id','of_id','of_numero','ofnumero','ofId',
+  'cliente','cliente_nome','clienteNome','cliNome','clinome',
+  'produto','produto_nome','produtoNome','produto_desc','descricao_produto',
+  'referencia','ref','referencia_produto',
+  'imagem','imagem_url','imgUrl','img','foto',
+  'maquina','maquina_nome','maquinaNome','maq',
+  'operador','operador_nome','usuario','usuario_nome','oper',
+  'quantidade','qtd','qtd_produzida','caixas_boas','produzido',
+  'data_passagem','data','dia','dt_passagem',
+  'hora_passagem','hora','horario','created_at','updated_at',
+  'status','tipo','evento','situacao',
+  'empresa','empresa_nome','empresaNome','emp_nome','nome_empresa',
+  'empresa_id','empId','emp_id',
+  'observacao','obs','obs2','observacoes','comentario',
+  'perda','perdido','qtd_perdida','motivo_perda'
+]);
+
+function _limparPayloadPassagens(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const mapped = { ...src };
+  if (!Object.prototype.hasOwnProperty.call(mapped, 'cliente_nome') && (src.cliente || src.cliNome || src.clinome)) {
+    mapped.cliente_nome = String(src.cliente || src.cliNome || src.clinome || '').trim() || undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(mapped, 'produto_desc') && (src.produto || src.descricao)) {
+    mapped.produto_desc = String(src.produto || src.descricao || '').trim() || undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(mapped, 'ref') && src.referencia) {
+    mapped.ref = String(src.referencia || '').trim() || undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(mapped, 'imagem_url') && (src.imagem || src.img)) {
+    mapped.imagem_url = String(src.imagem || src.img || '').trim() || undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(mapped, 'empresa_nome') && src.empresa) {
+    mapped.empresa_nome = String(src.empresa || '').trim() || undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(mapped, 'empresa_id') && (src.empId || src.emp_id)) {
+    mapped.empresa_id = String(src.empId || src.emp_id || '').trim() || undefined;
+  }
+  const out = {};
+  Object.keys(mapped).forEach((k) => {
+    const v = mapped[k];
+    if (v == null) return;
+    if (v === '' && PASSAGENS_MAQUINA_WHITELIST.has(k)) {
+      try { out[k] = v; } catch (_) {}
+      return;
+    }
+    if (PASSAGENS_MAQUINA_WHITELIST.has(k)) {
+      try { out[k] = v; } catch (_) {}
+    }
+  });
+  return out;
+}
+
 async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
-  const raw = basePayload && typeof basePayload === 'object' ? { ...basePayload } : {};
-  const ofId = String(raw.of_id || '').trim();
-  const maquinaNome = String(_canonMaqNome(raw.maquina || raw.maquina_nome || '') || raw.maquina || raw.maquina_nome || '').trim();
-  if (!ofId || !maquinaNome) return { ok: false, skipped: true };
-  const preferStatus = _normalizarStatusPassagem((opts && opts.status) || raw.status || '');
+  const rawOrig = basePayload && typeof basePayload === 'object' ? { ...basePayload } : {};
+  const ofId = String(rawOrig.of_id || '').trim();
+  const maquinaCanon = String(_canonMaqNome(rawOrig.maquina || rawOrig.maquina_nome || '') || '').trim();
+  const maquinaFallback = String(_normMaqNome(rawOrig.maquina || rawOrig.maquina_nome || '') || rawOrig.maquina || rawOrig.maquina_nome || '').trim();
+  const maquinaNome = maquinaCanon || maquinaFallback;
+  if (!ofId || !maquinaNome) {
+    try { console.warn('[PASSAGENS-MAQUINA] skip insert: sem ofId ou maquinaNome', { ofId, mc: maquinaCanon, mf: maquinaFallback }); } catch (_) {}
+    return { ok: false, skipped: true, motivo: 'ofid_ou_maquina_vazios', ofId, maquinaNome };
+  }
+  const preferStatus = _normalizarStatusPassagem((opts && opts.status) || rawOrig.status || '');
+  rawOrig.maquina = maquinaNome;
+  rawOrig.maquina_nome = maquinaNome;
+  if (preferStatus) rawOrig.status = preferStatus;
+  if (!rawOrig.data_passagem) rawOrig.data_passagem = new Date().toISOString().slice(0, 10);
+  if (!rawOrig.hora_passagem) rawOrig.hora_passagem = new Date().toISOString();
+  const raw = _limparPayloadPassagens(rawOrig);
   raw.maquina = maquinaNome;
   raw.maquina_nome = maquinaNome;
   if (preferStatus) raw.status = preferStatus;
-  if (!raw.data_passagem) raw.data_passagem = new Date().toISOString().slice(0, 10);
-  if (!raw.hora_passagem) raw.hora_passagem = new Date().toISOString();
   let existente = null;
   try {
     const q = await supabase
@@ -11440,47 +11549,64 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
       .limit(30);
     existente = Array.isArray(q?.data) && q.data.length
       ? _dedupePassagensMaquinaRows(q.data).find((row) => {
-          const maqExistente = String(_canonMaqNome(row?.maquina_nome || row?.maquina || '') || row?.maquina_nome || row?.maquina || '').trim();
-          return maqExistente === maquinaNome;
+          const mc = String(_canonMaqNome(row?.maquina_nome || row?.maquina || '') || '').trim();
+          const mf = String(_normMaqNome(row?.maquina_nome || row?.maquina || '') || row?.maquina_nome || row?.maquina || '').trim();
+          const comparar = mc || mf;
+          return comparar && (comparar === maquinaNome || (maquinaCanon && comparar === maquinaCanon) || (maquinaFallback && comparar === maquinaFallback));
         }) || null
       : null;
-  } catch (_) {}
+  } catch (_e) {
+    try { console.warn('[PASSAGENS-MAQUINA] lookup existente falhou:', String(_e && _e.message || _e).slice(0, 200)); } catch (_) {}
+  }
 
   let lastUpdateErr = null;
   let lastInsertErr = null;
 
   if (existente && String(existente.id || '').trim()) {
-    let toUpdate = { ...raw };
+    let toUpdate = _limparPayloadPassagens({ ...raw, id: existente.id });
     delete toUpdate.of_id;
     delete toUpdate.of_numero;
-    for (let i = 0; i < 8; i += 1) {
+    delete toUpdate.id;
+    for (let i = 0; i < 12; i += 1) {
       const upd = await supabase.from('passagens_maquina').update(toUpdate).eq('id', existente.id);
       if (!upd?.error) return { ok: true, mode: 'update', id: existente.id, payload: toUpdate };
       lastUpdateErr = String(upd.error?.message || upd.error || 'update_failed');
+      try { console.warn('[PASSAGENS-MAQUINA] update tentativa #' + i + ' falhou:', lastUpdateErr.slice(0, 200)); } catch (_) {}
       const msg = String(upd.error.message || '').toLowerCase();
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
-      if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
-        delete toUpdate[m[1]];
-        continue;
+      const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i);
+      const col = (m && m[1]) ? String(m[1]).trim() : '';
+      if (col && Object.prototype.hasOwnProperty.call(toUpdate, col)) { delete toUpdate[col]; continue; }
+      if (i === 0) {
+        const antes = Object.keys(toUpdate).length;
+        Object.keys(toUpdate).forEach((k) => { if (!PASSAGENS_MAQUINA_WHITELIST.has(k)) delete toUpdate[k]; });
+        if (Object.keys(toUpdate).length !== antes) continue;
       }
       break;
     }
   }
 
-  let toInsert = { ...raw };
-  for (let i = 0; i < 8; i += 1) {
+  let toInsert = _limparPayloadPassagens({ ...raw });
+  for (let i = 0; i < 12; i += 1) {
     const ins = await supabase.from('passagens_maquina').insert([toInsert]);
-    if (!ins?.error) return { ok: true, mode: 'insert', payload: toInsert };
+    if (!ins?.error) {
+      try { console.log('[PASSAGENS-MAQUINA] insert sucesso cols=' + Object.keys(toInsert).join(',')); } catch (_) {}
+      return { ok: true, mode: 'insert', payload: toInsert };
+    }
     lastInsertErr = String(ins.error?.message || ins.error || 'insert_failed');
+    try { console.warn('[PASSAGENS-MAQUINA] insert tentativa #' + i + ' falhou:', lastInsertErr.slice(0, 220)); } catch (_) {}
     const msg = String(ins.error.message || '').toLowerCase();
-    const m = msg.match(/column \"([^\"]+)\" of relation/i);
-    if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
-      delete toInsert[m[1]];
-      continue;
+    const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i);
+    const col = (m && m[1]) ? String(m[1]).trim() : '';
+    if (col && Object.prototype.hasOwnProperty.call(toInsert, col)) { delete toInsert[col]; continue; }
+    if (i === 0) {
+      const antes = Object.keys(toInsert).length;
+      Object.keys(toInsert).forEach((k) => { if (!PASSAGENS_MAQUINA_WHITELIST.has(k)) delete toInsert[k]; });
+      if (Object.keys(toInsert).length !== antes) continue;
     }
     break;
   }
-  return { ok: false, payload: raw, lastError: lastInsertErr || lastUpdateErr || null };
+  try { console.error('[PASSAGENS-MAQUINA] FALHOU após todas tentativas. lastInsertErr=', lastInsertErr, 'lastUpdateErr=', lastUpdateErr, 'ofId=', ofId, 'maq=', maquinaNome); } catch (_) {}
+  return { ok: false, payload: raw, lastError: lastInsertErr || lastUpdateErr || null, ofId, maquinaNome };
 }
 
 async function _normalizarMaquinasPassagens(rows) {
@@ -15410,6 +15536,11 @@ app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
 app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { res.setHeader('Vary','Accept-Encoding, Authorization, Accept'); } catch (_) {}
+    try { res.setHeader('X-Accel-Expires','0'); } catch (_) {}
+    try { res.setHeader('X-Robots-Tag','noindex'); } catch (_) {}
     try { cacheClearPrefix('ofs_'); } catch (_) {}
     try { cacheClearPrefix('rel_'); } catch (_) {}
     const anoRaw = Number(req.query?.ano || 0);
@@ -16713,9 +16844,9 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
     // Fallback de colunas: começa com versão validada L14374, se falhar por coluna inexistente
     // reduz para o menor conjunto compatível (id,numero_orcamento,nome,status,criado_em,emp_id).
     const colunasCandidatas = [
-      'id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,quantidade,onda,medidas,status,criado_em,emp_id',
-      'id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,status,criado_em,emp_id',
-      'id,numero_orcamento,nome,cliente_nome,valor_total,status,criado_em',
+      'id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,quantidade,onda,medidas,status,criado_em,emp_id,pasta_id',
+      'id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,status,criado_em,emp_id,pasta_id',
+      'id,numero_orcamento,nome,cliente_nome,valor_total,status,criado_em,pasta_id',
     ];
     const buildQuery = (applyEmpFilter, applyDeletedFilter, selectCols) => {
       const sel = selectCols || colunasCandidatas[0];

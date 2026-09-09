@@ -4770,6 +4770,48 @@ try {
       try {
         if (typeof window.toast === 'function') window.toast('OF #' + String(ofNum || of.numero || of.of || id) + ' ' + (novo ? 'marcada como Sem Papelão.' : 'removida de Sem Papelão.'), novo ? 'rgba(250,204,21,.95)' : 'var(--green)');
       } catch (_) {}
+      try {
+        var btnTxtNovo = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
+        var btnSel = [
+          '.kb-card-ofmaq[data-of-id="' + id + '"] button',
+          '.kb-card-ofmaq[data-id="' + id + '"] button',
+          '.patch-ofmaq-v2-row[data-of-id="' + id + '"] button',
+          'tr.patch-ofmaq-row[data-of-id="' + id + '"] button',
+          '#ofmaq-tbody-zero tr[data-of-id="' + id + '"] button',
+          '.ofmaq-final-table-wrap tr[data-of-id="' + id + '"] button',
+          '.ofmaq-final-row[data-of-id="' + id + '"] button',
+          '.ofmaq-row[data-of-id="' + id + '"] button',
+          'button[data-sem-papel-btn][data-of-id="' + id + '"]',
+          'button#semPapelBtn'
+        ].join(',');
+        var botoes = document.querySelectorAll(btnSel);
+        botoes.forEach(function(b) {
+          try {
+            var txt = String(b.textContent || '').trim();
+            if (/Sem Papelão/i.test(txt) || /Remover Sem Papelão/i.test(txt) || b.getAttribute('data-sem-papel-btn') || b.id === 'semPapelBtn') {
+              b.textContent = btnTxtNovo;
+            }
+          } catch (_eb) {}
+        });
+        var badges = document.querySelectorAll('.patch-sempapel-q-status');
+        badges.forEach(function(bd) {
+          try {
+            var wrapRow = bd.closest('[data-of-id], tr, .ofmaq-final-row, .ofmaq-row, .kb-card-ofmaq');
+            if (!wrapRow) return;
+            var rowId = String(wrapRow.getAttribute('data-of-id') || wrapRow.getAttribute('data-id') || '').trim();
+            if (rowId !== id && rowId !== String(ofNum || of.numero || '').trim()) return;
+            if (novo) {
+              if (!bd.textContent || bd.textContent.trim().length === 0) {
+                bd.innerHTML = '🟨 SEM PAPELÃO';
+                bd.style.display = '';
+              }
+            } else {
+              bd.innerHTML = '';
+              bd.style.display = 'none';
+            }
+          } catch (_ebd) {}
+        });
+      } catch (_) {}
       cleanupOfmaqArtifacts();
       return true;
     } catch (e) {
@@ -7183,7 +7225,13 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
     var vtotal = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total));
     var obs = window._compraPapelaoEsc(item && item.observacao || '—');
     var pedForn = window._compraPapelaoEsc(String(item && (item.pedido_fornecedor || item.ped_fornecedor || item.pedForn || item.ped_forn || item.cod_fornecedor) || '').trim() || '—');
-    var vincoCell = vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
+    var vincoCell = (function(){
+      var rawJoin = String(item && item.vincos || '').trim();
+      if (rawJoin && rawJoin.indexOf('/') > -1) {
+        return '<div style="font-size:13px;font-weight:800;letter-spacing:.02em">Posições:</div><div style="font-size:14px;font-weight:900;color:#0f172a;margin-top:4px;white-space:normal;word-break:break-word;line-height:1.35">' + window._compraPapelaoEsc(rawJoin) + '</div>';
+      }
+      return vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
+    })();
     return ''
       + '<tr style=\"display:table-row!important\">'
       + '  <td style=\"display:table-cell!important;font-weight:800;text-align:center\">' + seq + '</td>'
@@ -7475,17 +7523,30 @@ window._compraPapelaoCollectModalRows = function(overlay) {
     var pedClienteNome = String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim();
     var clienteRef = pedClienteNome ? window._compraPapelaoLookupClientePorNome(pedClienteNome) : null;
     var vincosLista = (function(rowEl) {
+      var lista = [];
+      var vistos = new Set();
       var chips = rowEl.querySelectorAll ? rowEl.querySelectorAll('[data-ccpx-vinco]') : [];
       if (chips && chips.length) {
-        var out = Array.prototype.slice.call(chips).map(function(input) { return String((input && input.value) || '').trim(); }).filter(Boolean);
-        if (out.length) return out;
+        Array.prototype.slice.call(chips).forEach(function(input) {
+          var v = String((input && input.value) || '').trim();
+          if (!v) return;
+          if (vistos.has(v)) return;
+          vistos.add(v);
+          lista.push(v);
+        });
       }
-      var fb = [];
-      ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(fn) {
+      var fbIdx = ['vinco1', 'vinco2', 'vinco3', 'vinco4'];
+      for (var fi = 0; fi < fbIdx.length; fi++) {
+        var fn = fbIdx[fi];
         var el = rowEl.querySelector ? rowEl.querySelector('[data-field="' + fn + '"]') : null;
-        if (el) { var v = String(el.value || '').trim(); if (v) fb.push(v); }
-      });
-      return fb;
+        if (!el) continue;
+        var vv = String(el.value || '').trim();
+        if (!vv) continue;
+        if (vistos.has(vv)) continue;
+        vistos.add(vv);
+        lista.splice(fi, 0, vv);
+      }
+      return lista;
     })(row);
     var item = {
       ped_cliente: pedClienteNome,
@@ -7862,7 +7923,13 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     var vtotal = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total));
     var obs = window._compraPapelaoEsc(String(item && item.observacao || '—'));
     var pedForn = window._compraPapelaoEsc(String(item && (item.pedido_fornecedor || item.ped_fornecedor || item.pedForn || item.ped_forn || item.cod_fornecedor || '')).trim() || '—');
-    var vincoCell = vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
+    var vincoCell = (function(){
+      var rawJoin = String(item && item.vincos || '').trim();
+      if (rawJoin && rawJoin.indexOf('/') > -1) {
+        return '<div style="font-size:13px;font-weight:800;letter-spacing:.02em">Posições:</div><div style="font-size:14px;font-weight:900;color:#0f172a;margin-top:4px;white-space:normal;word-break:break-word;line-height:1.35">' + window._compraPapelaoEsc(rawJoin) + '</div>';
+      }
+      return vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
+    })();
     return ''
       + '<tr style=\"display:table-row!important\">'
       + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;font-weight:800;text-align:center;background:#fff\">' + seq + '</td>'
@@ -7882,39 +7949,39 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
   }).join('');
   return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido de Chapas ' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</title>'
     + '<style>'
-    + 'body{font-family:Arial,sans-serif;color:#0f172a;margin:24px;background:#fff}'
-    + '.sheet{display:grid;gap:16px}'
+    + 'body{font-family:Arial,sans-serif;color:#0f172a;margin:22px;background:#fff;font-size:13px;line-height:1.5}'
+    + '.sheet{display:grid;gap:18px}'
     + '.topline{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}'
-    + '.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569}'
-    + '.title{font-size:28px;font-weight:800;letter-spacing:.04em;margin-top:4px}'
-    + '.subtitle{font-size:13px;color:#475569;margin-top:6px}'
-    + '.box{min-width:320px;border:2px solid #0f172a;padding:12px 14px}'
+    + '.brand{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#334155}'
+    + '.title{font-size:30px;font-weight:900;letter-spacing:.04em;margin-top:4px}'
+    + '.subtitle{font-size:14px;color:#475569;margin-top:6px}'
+    + '.box{min-width:340px;border:2px solid #0f172a;padding:14px 16px}'
     + '.box table{width:100%;border-collapse:collapse}'
-    + '.box td{padding:6px 8px;border:1px solid #0f172a;font-size:12px}'
-    + '.box td.label{width:34%;font-weight:700;background:#f8fafc}'
-    + '.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}'
-    + '.meta-card{border:1px solid #cbd5e1;padding:10px 12px;min-height:62px}'
-    + '.meta-card .label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
-    + '.meta-card .value{font-size:13px;font-weight:700;margin-top:6px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;line-height:1.4}'
-    + 'table.planilha{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1280px}'
+    + '.box td{padding:8px 10px;border:1px solid #0f172a;font-size:13px}'
+    + '.box td.label{width:34%;font-weight:800;background:#f8fafc}'
+    + '.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}'
+    + '.meta-card{border:1px solid #cbd5e1;padding:12px 14px;min-height:66px}'
+    + '.meta-card .label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#475569}'
+    + '.meta-card .value{font-size:14px;font-weight:800;margin-top:7px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;line-height:1.45}'
+    + 'table.planilha{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1320px}'
     + 'table.planilha colgroup{display:table-column-group}'
-    + 'table.planilha th,table.planilha td{border:1px solid #0f172a;padding:10px 14px;font-size:11.5px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.45;box-sizing:border-box}'
-    + 'table.planilha th{background:#e2e8f0;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.45;padding-top:12px;padding-bottom:12px;font-weight:900;color:#0f172a;position:sticky;top:0}'
+    + 'table.planilha th,table.planilha td{border:1px solid #0f172a;padding:12px 14px;font-size:13px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.5;box-sizing:border-box}'
+    + 'table.planilha th{background:#e2e8f0;text-transform:uppercase;font-size:12px;letter-spacing:.05em;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.45;padding-top:14px;padding-bottom:14px;font-weight:900;color:#0f172a;position:sticky;top:0}'
     + 'table.planilha td.num{text-align:right;font-variant-numeric:tabular-nums}'
-    + '.totais{display:flex;justify-content:flex-end;gap:18px;flex-wrap:wrap}'
-    + '.total-chip{border:1px solid #0f172a;min-width:180px;padding:12px 16px}'
-    + '.total-chip .label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
-    + '.total-chip .value{font-size:18px;font-weight:800;margin-top:6px}'
-    + '.obs{border:1px solid #cbd5e1;padding:14px 18px;font-size:13px;min-height:56px}'
-    + '.foot{margin-top:14px;font-size:12px;color:#64748b}'
+    + '.totais{display:flex;justify-content:flex-end;gap:20px;flex-wrap:wrap;margin-top:6px}'
+    + '.total-chip{border:2px solid #0f172a;min-width:200px;padding:14px 18px}'
+    + '.total-chip .label{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#475569}'
+    + '.total-chip .value{font-size:20px;font-weight:900;margin-top:8px}'
+    + '.obs{border:1px solid #cbd5e1;padding:16px 20px;font-size:14px;min-height:60px;line-height:1.5}'
+    + '.foot{margin-top:16px;font-size:13px;color:#64748b}'
     + '@page{size:A4 landscape;margin:10mm}'
-    + '@media print{ body{margin:10mm} table.planilha{min-width:100%!important;table-layout:fixed;width:100%!important} }'
-    + '@media screen{ table.planilha{min-width:1280px} }'
+    + '@media print{ body{margin:8mm;font-size:12.5px} table.planilha{min-width:100%!important;table-layout:fixed;width:100%!important} table.planilha th{font-size:11.5px} table.planilha td{font-size:12.5px} }'
+    + '@media screen{ table.planilha{min-width:1320px} }'
     + '</style></head><body><div class="sheet">'
     + '<div class="topline"><div><div class="brand">' + window._compraPapelaoEsc(empresa || 'Italy Embalagens') + '</div><div class="title">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(data.fornecedor || 'FORNECEDOR') + '</div><div class="subtitle">Gerado em ' + window._compraPapelaoEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</div></div>'
     + '<div class="box"><table><tr><td class="label">Pedido</td><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</td></tr><tr><td class="label">Data</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</td></tr><tr><td class="label">Fornecedor</td><td>' + window._compraPapelaoEsc(data.fornecedor || '—') + '</td></tr></table></div></div>'
     + '<div class="meta"><div class="meta-card"><div class="label">Pedido do Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Status</div><div class="value">' + window._compraPapelaoEsc(String(data.status || 'Aberto')) + '</div></div><div class="meta-card"><div class="label">Pasta</div><div class="value">' + window._compraPapelaoEsc(String(data.pasta_id && data.pasta_nome ? data.pasta_nome : (data.pasta_id ? data.pasta_id : 'Sem pasta'))) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
-    + '<table class="planilha"><colgroup><col style="width:3.2%"><col style="width:8.2%"><col style="width:7.3%"><col style="width:9.6%"><col style="width:10%"><col style="width:5.8%"><col style="width:7%"><col style="width:7.8%"><col style="width:7.8%"><col style="width:7.8%"><col style="width:8.3%"><col style="width:8.8%"><col style="width:9.2%"></colgroup><thead><tr><th style="width:3.2%!important">Nº Item</th><th style="width:8.2%!important">Data de Entrega</th><th style="width:7.3%!important">PO / Nomenclatura</th><th style="width:9.6%!important">Medidas Largura × Comprimento (mm)</th><th style="width:10%!important">Posições dos Vincos (mm)</th><th style="width:5.8%!important">Quantidade de Chapas</th><th style="width:7%!important">Lote Mínimo (un)</th><th style="width:7.8%!important">Área em m²</th><th style="width:7.8%!important">Valor por m²</th><th style="width:7.8%!important">Valor por Milheiro</th><th style="width:8.3%!important">Valor Total do Item</th><th style="width:8.8%!important">Observação</th><th style="width:9.2%!important">Pedido do Fornecedor</th></tr></thead><tbody>'
+    + '<table class="planilha"><colgroup><col style="width:3.0%"><col style="width:7.6%"><col style="width:7.0%"><col style="width:8.8%"><col style="width:14.0%"><col style="width:5.4%"><col style="width:6.4%"><col style="width:7.2%"><col style="width:7.2%"><col style="width:7.4%"><col style="width:8.0%"><col style="width:8.4%"><col style="width:9.6%"></colgroup><thead><tr><th style="width:3.0%!important">Nº Item</th><th style="width:7.6%!important">Data de Entrega</th><th style="width:7.0%!important">PO / Nomenclatura</th><th style="width:8.8%!important">Medidas Largura × Comprimento (mm)</th><th style="width:14.0%!important">Posições dos Vincos (mm)</th><th style="width:5.4%!important">Quantidade de Chapas</th><th style="width:6.4%!important">Lote Mínimo (un)</th><th style="width:7.2%!important">Área em m²</th><th style="width:7.2%!important">Valor por m²</th><th style="width:7.4%!important">Valor por Milheiro</th><th style="width:8.0%!important">Valor Total do Item</th><th style="width:8.4%!important">Observação</th><th style="width:9.6%!important">Pedido do Fornecedor</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="13">Nenhum item informado.</td></tr>')
     + '</tbody></table>'
     + '<div class="totais"><div class="total-chip"><div class="label">Quantidade Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</div></div><div class="total-chip"><div class="label">Área Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + ' m²</div></div><div class="total-chip"><div class="label">Valor Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</div></div></div>'
@@ -9306,17 +9373,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   function cCollectModalRows(overlay) {
     return Array.prototype.slice.call(overlay.querySelectorAll('#ccp-modal-items-body tr[data-ccp-item-row]')).map(function(row) {
       var vincosLista = (function(rowEl) {
+        var lista = [];
+        var vistos = new Set();
         var chips = rowEl.querySelectorAll ? rowEl.querySelectorAll('[data-ccpx-vinco]') : [];
         if (chips && chips.length) {
-          var out = Array.prototype.slice.call(chips).map(function(input) { return String((input && input.value) || '').trim(); }).filter(Boolean);
-          if (out.length) return out;
+          Array.prototype.slice.call(chips).forEach(function(input) {
+            var v = String((input && input.value) || '').trim();
+            if (!v) return;
+            if (vistos.has(v)) return;
+            vistos.add(v);
+            lista.push(v);
+          });
         }
-        var fb = [];
-        ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(fn) {
+        var fbIdx = ['vinco1', 'vinco2', 'vinco3', 'vinco4'];
+        for (var fi = 0; fi < fbIdx.length; fi++) {
+          var fn = fbIdx[fi];
           var el = rowEl.querySelector ? rowEl.querySelector('[data-field="' + fn + '"]') : null;
-          if (el) { var v = String(el.value || '').trim(); if (v) fb.push(v); }
-        });
-        return fb;
+          if (!el) continue;
+          var vv = String(el.value || '').trim();
+          if (!vv) continue;
+          if (vistos.has(vv)) continue;
+          vistos.add(vv);
+          lista.splice(fi, 0, vv);
+        }
+        return lista;
       })(row);
       var item = {
         ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
