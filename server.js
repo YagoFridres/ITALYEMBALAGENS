@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901425001';
-const SW_RUNTIME_VERSION = '20260901425001';
+const PATCH_RUNTIME_VERSION = '20260901426001';
+const SW_RUNTIME_VERSION = '20260901426001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -16287,6 +16287,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
       cidade: String(b.cidade || '').trim() || null,
       uf: String(b.uf || b.estado || '').trim() || null,
       endereco: String(b.endereco || '').trim() || null,
+      ramo: String(b.ramo || '').trim() || null,
       observacoes: String(b.observacoes || b.obs || '').trim() || null,
       ativo: true,
     };
@@ -34573,6 +34574,99 @@ app.delete('/api/ramos_atividade/:id', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+async function _ensureRamosAtividadeSeedFromClientes() {
+  try {
+    const { data: distRamos, error: errDist } = await supabase
+      .from('clientes')
+      .select('ramo')
+      .not('ramo', 'is', null)
+      .neq('ramo', '');
+    if (errDist) { console.warn('[SEED-RAMOS] erro buscar clientes.ramo:', String(errDist.message || errDist)); return; }
+    const uniq = new Map();
+    (distRamos || []).forEach(r => {
+      const v = String(r && r.ramo ? r.ramo : '').trim();
+      if (!v) return;
+      const k = v.toLowerCase();
+      if (!uniq.has(k)) uniq.set(k, v);
+    });
+    if (!uniq.size) { console.log('[SEED-RAMOS] nenhum valor distinto em clientes.ramo para seed'); return; }
+    const { data: existentes, error: errExist } = await supabase.from('ramos_atividade').select('nome');
+    if (errExist) { console.warn('[SEED-RAMOS] erro buscar existentes:', String(errExist.message || errExist)); return; }
+    const existLower = new Set((existentes || []).map(x => String((x && x.nome) || '').trim().toLowerCase()).filter(Boolean));
+    let inseridos = 0;
+    let pulados = 0;
+    for (const [k, nome] of uniq.entries()) {
+      if (existLower.has(k)) { pulados++; continue; }
+      try {
+        const ins = await supabase.from('ramos_atividade').insert([{ nome }]).select().maybeSingle();
+        if (!ins.error && ins.data) { inseridos++; existLower.add(k); }
+        else { pulados++; }
+      } catch (_) { pulados++; }
+    }
+    console.log(`[SEED-RAMOS] ${uniq.size} valores em clientes.ramo; ${inseridos} novos inseridos em ramos_atividade; ${pulados} já existentes/pulados.`);
+  } catch (e) {
+    console.error('[SEED-RAMOS] falha geral:', String(e && e.message ? e.message : e));
+  }
+}
+
+async function _ensureEstadosCidadesSeedFromClientes() {
+  try {
+    const { data: rows, error: errR } = await supabase
+      .from('clientes')
+      .select('cidade, uf')
+      .or('uf.not.is.null,cidade.not.is.null');
+    if (errR) { console.warn('[SEED-UF/CID] erro buscar clientes:', String(errR.message || errR)); return; }
+
+    const ufsUniq = new Map();
+    const cidUniq = new Map();
+    (rows || []).forEach(r => {
+      const uf = String(r && r.uf || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+      const cidade = String(r && r.cidade || '').trim();
+      if (uf) {
+        if (!ufsUniq.has(uf)) ufsUniq.set(uf, { uf });
+        if (cidade) {
+          const k = uf + '|' + cidade.toLowerCase();
+          if (!cidUniq.has(k)) cidUniq.set(k, { uf, nome: cidade });
+        }
+      }
+    });
+
+    if (ufsUniq.size) {
+      try {
+        const { data: exUf } = await supabase.from('estados').select('uf');
+        const ex = new Set((exUf || []).map(x => String((x && x.uf) || '').toUpperCase()).filter(Boolean));
+        let insUf = 0;
+        for (const [uf, obj] of ufsUniq.entries()) {
+          if (!ex.has(uf)) {
+            try { const ir = await supabase.from('estados').insert([{ uf, nome: uf }]).select().maybeSingle(); if (!ir.error) insUf++; } catch (_) {}
+          }
+        }
+        if (insUf) console.log(`[SEED-UF] ${insUf} novos estados inseridos de clientes.uf (${ufsUniq.size} totais)`);
+      } catch (e) { console.warn('[SEED-UF] falha:', String(e.message || e)); }
+    }
+
+    if (cidUniq.size) {
+      try {
+        const { data: exCid } = await supabase.from('cidades').select('nome, uf');
+        const ex = new Set((exCid || []).map(x => {
+          const uf = String((x && x.uf) || '').toUpperCase();
+          const nm = String((x && x.nome) || '').toLowerCase();
+          return uf && nm ? (uf + '|' + nm) : '';
+        }).filter(Boolean));
+        let insCid = 0;
+        for (const [k, obj] of cidUniq.entries()) {
+          if (!ex.has(k)) {
+            try { const ir = await supabase.from('cidades').insert([{ uf: obj.uf, nome: obj.nome }]).select().maybeSingle(); if (!ir.error) insCid++; } catch (_) {}
+          }
+        }
+        if (insCid) console.log(`[SEED-CID] ${insCid} novas cidades inseridas de clientes (${cidUniq.size} tuplas únicas)`);
+      } catch (e) { console.warn('[SEED-CID] falha:', String(e.message || e)); }
+    }
+  } catch (e) {
+    console.error('[SEED-UF/CID] falha geral:', String(e.message || e));
+  }
+}
+
 app.use((e, req, res, next) => {
   if (!e) return next();
   const msg = String(e.message || e);
@@ -34596,5 +34690,13 @@ app.listen(PORT, () => {
   _ensureOrcamentosPastasSchema().catch((e) => {
     console.error('[BOOT][ORC_PASTAS_SCHEMA] ERRO inesperado:', String(e?.message || e));
   });
+  setTimeout(() => {
+    _ensureRamosAtividadeSeedFromClientes().catch((e) => {
+      console.error('[BOOT][SEED-RAMOS] ERRO inesperado:', String(e?.message || e));
+    });
+    _ensureEstadosCidadesSeedFromClientes().catch((e) => {
+      console.error('[BOOT][SEED-UF/CID] ERRO inesperado:', String(e?.message || e));
+    });
+  }, 3000);
 });
 
