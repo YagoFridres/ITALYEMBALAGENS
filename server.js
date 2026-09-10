@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901423001';
-const SW_RUNTIME_VERSION = '20260901423001';
+const PATCH_RUNTIME_VERSION = '20260901424001';
+const SW_RUNTIME_VERSION = '20260901424001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -17076,6 +17076,9 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
     const ultimoNum = parseInt(String(ultimo?.[0]?.numero_orcamento || '0').replace(/\D/g, ''), 10) || 0;
     const novoNum = String(ultimoNum + 1).padStart(4, '0');
 
+    const subtotalBruto = Number(b.subtotal != null ? b.subtotal : b.valor_total || 0) || 0;
+    const freteBruto = Number(b.frete || 0) || 0;
+    const totalCalc = subtotalBruto + freteBruto;
     const payload = {
       numero_orcamento: novoNum,
       nome: b.nome || b.nome_orcamento || '',
@@ -17086,7 +17089,10 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       quantidade: b.quantidade || 0,
       onda: b.onda || '',
       valor_unitario: b.valor_unitario || 0,
-      valor_total: b.valor_total || 0,
+      valor_total: totalCalc || subtotalBruto || b.valor_total || 0,
+      subtotal: subtotalBruto,
+      frete: freteBruto,
+      total: totalCalc || subtotalBruto || b.valor_total || 0,
       parametros,
       resultados: b.resultados || [],
       itens: Array.isArray(b.itens) ? b.itens : [],
@@ -17166,6 +17172,21 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     if (has('onda')) updates.onda = b.onda ?? '';
     if (has('valor_unitario')) updates.valor_unitario = b.valor_unitario ?? 0;
     if (has('valor_total')) updates.valor_total = b.valor_total ?? 0;
+    if (has('subtotal') || has('frete') || has('total') || has('valor_total')) {
+      const subtotalIn = has('subtotal')
+        ? (Number(b.subtotal || 0) || 0)
+        : (has('valor_total') ? (Number(b.valor_total || 0) || 0) : (Number(atual.data?.subtotal || atual.data?.valor_total || 0) || 0));
+      const freteIn = has('frete')
+        ? (Number(b.frete || 0) || 0)
+        : (Number(atual.data?.frete || 0) || 0);
+      const totalIn = has('total')
+        ? (Number(b.total || 0) || 0)
+        : (subtotalIn + freteIn);
+      updates.subtotal = subtotalIn;
+      updates.frete = freteIn;
+      updates.total = totalIn || subtotalIn || 0;
+      if (!has('valor_total')) updates.valor_total = totalIn || subtotalIn || updates.valor_total || 0;
+    }
     if (has('parametros') || has('chapa_utilizada') || has('chapaUtilizada')) {
       const nextParametros = bodyParametros ? bodyParametros : currentParametros;
       if (has('chapa_utilizada') || has('chapaUtilizada')) {
@@ -34018,7 +34039,9 @@ app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
 app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
+    const empresaIdRaw = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const empresaId = (empresaIdRaw && UUID_RE.test(empresaIdRaw)) ? empresaIdRaw : '';
     const PAGE = 1000;
     const rows = [];
     for (let offset = 0; offset < 50000; offset += PAGE) {
@@ -34029,7 +34052,9 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE - 1);
       if (empresaId) {
-        query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId},empresa_id.is.null`);
+        try {
+          query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId},empresa_id.is.null`);
+        } catch (_) {}
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -34074,6 +34099,8 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     let temUrgenteFlag = false;
     let ofsPassaramMaquinaMes = 0;
     let ofsPassaramMaquinaCount = 0;
+    let ofsErros = 0;
+    const errosOfsIds = [];
     function parsePassagens(raw) {
       if (!raw) return [];
       var arr;
@@ -34095,48 +34122,58 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     }
 
     rows.forEach(function(of) {
-      const st = statusOf(of);
-      if (st === 'concluido') concluidos++;
-      else if (st === 'cancelado') cancelados++;
-      else abertos++;
+      try {
+        const ofId = String(of?.id || of?.numero || of?.of || '?').slice(0, 40);
+        const st = statusOf(of);
+        if (st === 'concluido') concluidos++;
+        else if (st === 'cancelado') cancelados++;
+        else abertos++;
 
-      if (st !== 'cancelado') {
-        const dt = entregaOf(of);
-        if (dt && st !== 'concluido') {
-          const hoje0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-          const ent0 = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-          const diff = Math.round((ent0 - hoje0) / 86400000);
-          if (diff < 0) atrasados++;
-          else if (diff <= 3) urgentes++;
-        }
-        const urgFlag = of?.urgente || of?.urg;
-        if (urgFlag && String(urgFlag).toLowerCase() !== 'false' && String(urgFlag) !== '0' && st !== 'concluido') temUrgenteFlag = true;
-
-        const valor = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
-        if (st === 'concluido' && valor > 0) {
-          const dtConc = of?.data_conclusao || of?.data_faturamento || of?.created_at;
-          const dtConcStr = String(dtConc || '').slice(0, 10);
-          if (dtConcStr >= inicioMes && dtConcStr < fimMesExclusivo) {
-            fatMesValor += valor;
-            fatMesCount++;
+        if (st !== 'cancelado') {
+          const dt = entregaOf(of);
+          if (dt && st !== 'concluido') {
+            const hoje0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+            const ent0 = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+            const diff = Math.round((ent0 - hoje0) / 86400000);
+            if (diff < 0) atrasados++;
+            else if (diff <= 3) urgentes++;
           }
-          if (dtConcStr === hojeStr) {
-            fatDiaValor += valor;
-            fatDiaCount++;
+          const urgFlag = of?.urgente || of?.urg;
+          if (urgFlag && String(urgFlag).toLowerCase() !== 'false' && String(urgFlag) !== '0' && st !== 'concluido') temUrgenteFlag = true;
+
+          const valor = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+          if (st === 'concluido' && valor > 0) {
+            const dtConc = of?.data_conclusao || of?.data_faturamento || of?.created_at;
+            const dtConcStr = String(dtConc || '').slice(0, 10);
+            if (dtConcStr >= inicioMes && dtConcStr < fimMesExclusivo) {
+              fatMesValor += valor;
+              fatMesCount++;
+            }
+            if (dtConcStr === hojeStr) {
+              fatDiaValor += valor;
+              fatDiaCount++;
+            }
           }
         }
-      }
 
-      const pass = parsePassagens(of?.passagens_maquina || of?.passagens_por_maquina || of?.passagens || null);
-      if (pass.length) {
-        ofsPassaramMaquinaCount++;
-        if (passagensTemDataNoMes(pass, 'data_passagem', inicioMes, fimMesExclusivo)) {
-          ofsPassaramMaquinaMes++;
+        const pass = parsePassagens(of?.passagens_maquina || of?.passagens_por_maquina || of?.passagens || null);
+        if (pass.length) {
+          ofsPassaramMaquinaCount++;
+          if (passagensTemDataNoMes(pass, 'data_passagem', inicioMes, fimMesExclusivo)) {
+            ofsPassaramMaquinaMes++;
+          }
         }
+      } catch (e) {
+        ofsErros++;
+        try { errosOfsIds.push(String(of?.id || of?.numero || of?.of || '?').slice(0, 40)); } catch (_) {}
+        try { console.warn('[dashboard/resumo-ofs] pulando OF com erro, id=', String(of?.id || of?.numero || '?'), 'erro=', e && (e.message || e) || e); } catch (_) {}
       }
     });
 
     if (temUrgenteFlag && urgentes === 0) urgentes = 1;
+    if (ofsErros > 0) {
+      try { console.warn('[dashboard/resumo-ofs] TOTAL ofs com erro:', ofsErros, 'ids:', errosOfsIds); } catch (_) {}
+    }
 
     return res.json({
       ok: true,
@@ -34149,7 +34186,8 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
       faturamento_mes: { valor: fatMesValor, ofs: fatMesCount },
       faturamento_dia: { valor: fatDiaValor, ofs: fatDiaCount },
       ofs_passaram_maquina_mes: ofsPassaramMaquinaMes,
-      ofs_passaram_maquina_total: ofsPassaramMaquinaCount
+      ofs_passaram_maquina_total: ofsPassaramMaquinaCount,
+      ofs_com_erro: ofsErros
     });
   } catch (e) {
     try { console.error('[dashboard/resumo-ofs]', e && (e.stack || e.message) || e); } catch (_) {}

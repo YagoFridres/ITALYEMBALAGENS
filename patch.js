@@ -13576,6 +13576,56 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       try {
         var current = currentOrcamentoFromState();
         if (current) {
+          try {
+            if (current && current.itens && Array.isArray(current.itens) && current.itens.length) {
+              var _subS = 0, _freS = 0, _totS = 0;
+              for (var _k = 0; _k < current.itens.length; _k++) {
+                var _ii = current.itens[_k] || {};
+                var _cf = Number((_ii.comFrete != null && !isNaN(_ii.comFrete)) ? _ii.comFrete
+                  : ((_ii.valor_total != null && !isNaN(_ii.valor_total)) ? _ii.valor_total
+                  : ((_ii.com_frete != null && !isNaN(_ii.com_frete)) ? _ii.com_frete : 0))) || 0;
+                var _lq = Number((_ii.liquida != null && !isNaN(_ii.liquida)) ? _ii.liquida : 0) || 0;
+                var _br = Number((_ii.bruto != null && !isNaN(_ii.bruto)) ? _ii.bruto : 0) || 0;
+                var _fi = Number((_ii.frete != null && !isNaN(_ii.frete)) ? _ii.frete : 0) || 0;
+                if (_cf > 0) _totS += _cf;
+                else if (Number(_ii.valor_total || 0) > 0) _totS += Number(_ii.valor_total || 0);
+                if (_lq > 0) _subS += _lq;
+                else if (_br > 0) _subS += _br;
+                else if (_cf > 0 && _fi > 0) _subS += Math.max(0, _cf - _fi);
+                else if (_cf > 0) _subS += _cf;
+                if (_fi > 0) _freS += _fi;
+                else if (_cf > 0 && _lq > 0) _freS += Math.max(0, _cf - _lq);
+                else if (_cf > 0 && _br > 0) _freS += Math.max(0, _cf - _br);
+              }
+              if (_totS > 0) {
+                if (_subS <= 0 && _freS <= _totS) _subS = _totS - _freS;
+                if (_freS <= 0 && _subS > 0 && _subS < _totS) _freS = _totS - _subS;
+                var _vtAtual = Number(current.valor_total || 0) || 0;
+                var _subAtual = Number(current.subtotal || 0) || 0;
+                var _freAtual = Number(current.frete || 0) || 0;
+                var _totAtual = Number(current.total || 0) || 0;
+                if (Math.abs(_vtAtual - _totS) > 0.02 || Math.abs(_subAtual - _subS) > 0.02
+                    || Math.abs(_freAtual - _freS) > 0.02 || Math.abs(_totAtual - _totS) > 0.02) {
+                  try {
+                    console.warn('[PATCH-ORC] wrapper detectou agregação incompleta, atualizando state local:',
+                      { nItens: current.itens.length, vtAntigo: _vtAtual, vtNovo: _totS,
+                        subAntigo: _subAtual, subNovo: _subS, freAntigo: _freAtual, freNovo: _freS,
+                        totAntigo: _totAtual, totNovo: _totS });
+                  } catch (_) {}
+                  current.subtotal = Number((_subS && _subS.toFixed) ? _subS.toFixed(2) : _subS) || 0;
+                  current.frete = Number((_freS && _freS.toFixed) ? _freS.toFixed(2) : _freS) || 0;
+                  current.total = Number((_totS && _totS.toFixed) ? _totS.toFixed(2) : _totS) || 0;
+                  current.valor_total = current.total;
+                  var _qtdT = 0;
+                  for (var _qk = 0; _qk < current.itens.length; _qk++)
+                    _qtdT += Number((current.itens[_qk] && current.itens[_qk].quantidade) || 0) || 0;
+                  if (_qtdT > 0) {
+                    current.valor_unitario = Number((current.valor_total / _qtdT).toFixed(4)) || current.valor_unitario;
+                  }
+                }
+              }
+            }
+          } catch (_e) {}
           updateLocalOrcamento(Object.assign({}, current, {
             nome: nomeAtual || current.nome || current.nome_orcamento,
             nome_orcamento: nomeAtual || current.nome_orcamento || current.nome,
@@ -13621,6 +13671,149 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       return ok;
     };
     window.salvarOrcamentoCalc.__patchOrcPastas = true;
+  }
+
+  if (!window.__patchApiHookOrcValores) {
+    window.__patchApiHookOrcValores = true;
+    (function installApiHookOrcValores() {
+      function calcularValoresOrcamento(bodyOriginal) {
+        try {
+          var itens = (bodyOriginal && bodyOriginal.itens && Array.isArray(bodyOriginal.itens)) ? bodyOriginal.itens : [];
+          var subtotalSoma = 0;
+          var freteSoma = 0;
+          var totalSoma = 0;
+          var qtdTotal = 0;
+          if (itens && itens.length) {
+            for (var idx = 0; idx < itens.length; idx++) {
+              var it = itens[idx] || {};
+              var comF = Number((it.comFrete != null && !isNaN(it.comFrete)) ? it.comFrete : ((it.valor_total != null && !isNaN(it.valor_total)) ? it.valor_total : ((it.com_frete != null && !isNaN(it.com_frete)) ? it.com_frete : 0))) || 0;
+              var liq = Number((it.liquida != null && !isNaN(it.liquida)) ? it.liquida : 0) || 0;
+              var brt = Number((it.bruto != null && !isNaN(it.bruto)) ? it.bruto : 0) || 0;
+              var freteItem = Number((it.frete != null && !isNaN(it.frete)) ? it.frete : 0) || 0;
+              var qtdItem = Number((it.quantidade != null && !isNaN(it.quantidade)) ? it.quantidade : 0) || 0;
+              qtdTotal += qtdItem;
+              if (comF > 0) totalSoma += comF;
+              else if (it.valor_total != null && Number(it.valor_total || 0) > 0) totalSoma += Number(it.valor_total || 0);
+              var subItem = 0;
+              if (liq > 0) subItem = liq;
+              else if (brt > 0) subItem = brt;
+              else if (comF > 0 && freteItem > 0) subItem = Math.max(0, comF - freteItem);
+              else if (comF > 0) subItem = comF;
+              var freteItemCalc = 0;
+              if (freteItem > 0) freteItemCalc = freteItem;
+              else if (comF > 0 && liq > 0) freteItemCalc = Math.max(0, comF - liq);
+              else if (comF > 0 && brt > 0) freteItemCalc = Math.max(0, comF - brt);
+              subtotalSoma += subItem;
+              freteSoma += freteItemCalc;
+            }
+          }
+          if (totalSoma <= 0 && bodyOriginal && bodyOriginal.valor_total != null && Number(bodyOriginal.valor_total || 0) > 0) {
+            totalSoma = Number(bodyOriginal.valor_total || 0) || 0;
+          }
+          if (subtotalSoma <= 0 && totalSoma > 0 && freteSoma <= totalSoma) subtotalSoma = totalSoma - freteSoma;
+          if (freteSoma <= 0 && totalSoma > 0 && subtotalSoma > 0 && subtotalSoma < totalSoma) freteSoma = totalSoma - subtotalSoma;
+          if (totalSoma <= 0 && subtotalSoma > 0) totalSoma = subtotalSoma + freteSoma;
+          var vtOriginal = Number(bodyOriginal && (bodyOriginal.valor_total != null || bodyOriginal.vtotal != null || bodyOriginal.vtot != null) ? (bodyOriginal.valor_total || bodyOriginal.vtotal || bodyOriginal.vtot) : 0) || 0;
+          var vtFinal = totalSoma > 0 ? totalSoma : vtOriginal;
+          var out = {
+            subtotal: Number((subtotalSoma && subtotalSoma.toFixed) ? subtotalSoma.toFixed(2) : subtotalSoma) || 0,
+            frete: Number((freteSoma && freteSoma.toFixed) ? freteSoma.toFixed(2) : freteSoma) || 0,
+            total: Number((totalSoma && totalSoma.toFixed) ? totalSoma.toFixed(2) : totalSoma) || 0,
+            valor_total: Number((vtFinal && vtFinal.toFixed) ? vtFinal.toFixed(2) : vtFinal) || 0
+          };
+          try {
+            console.debug('[PATCH-ORC] agregação itens (' + (itens ? itens.length : 0) + ' itens):', {
+              subtotalSoma: subtotalSoma,
+              freteSoma: freteSoma,
+              totalSoma: totalSoma,
+              vtOriginal: vtOriginal,
+              vtFinal: vtFinal,
+              qtdTotal: qtdTotal
+            });
+          } catch (_) {}
+          return out;
+        } catch (e) {
+          try { console.warn('[PATCH-ORC] calcularValoresOrcamento falhou:', e && e.message || e); } catch (_) {}
+          return { subtotal: null, frete: null, total: null, valor_total: null };
+        }
+      }
+      function interceptarBody(method, url, body) {
+        try {
+          var u = String(url || '').toLowerCase();
+          var isOrcamento = (u.indexOf('/orcamento') >= 0 || u.indexOf('/orcamentos') >= 0)
+            && (u.indexOf('/versoes') < 0) && (u.indexOf('/delete') < 0);
+          if (!isOrcamento) return body;
+          if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH') return body;
+          if (!body || typeof body !== 'object' || Array.isArray(body)) return body;
+          var valores = calcularValoresOrcamento(body);
+          if (valores.subtotal == null && valores.frete == null && valores.total == null && valores.valor_total == null) return body;
+          var clone = Object.assign({}, body);
+          if (valores.subtotal != null) clone.subtotal = valores.subtotal;
+          if (valores.frete != null) clone.frete = valores.frete;
+          if (valores.total != null) clone.total = valores.total;
+          if (valores.valor_total != null && valores.valor_total > 0) {
+            clone.valor_total = valores.valor_total;
+          }
+          try {
+            var unitAtual = Number(clone.valor_unitario || 0) || 0;
+            var itens = Array.isArray(clone.itens) ? clone.itens : [];
+            var qtdTotal = 0;
+            for (var k = 0; k < itens.length; k++) qtdTotal += Number((itens[k] && itens[k].quantidade) || 0) || 0;
+            if (qtdTotal > 0 && valores.valor_total != null && valores.valor_total > 0 && Math.abs(unitAtual - (valores.valor_total / qtdTotal)) > 0.0001) {
+              clone.valor_unitario = Number((valores.valor_total / qtdTotal).toFixed(4)) || clone.valor_unitario;
+            }
+          } catch (_) {}
+          try {
+            console.debug('[PATCH-ORC] hook api orcamento body final:', {
+              subtotal: clone.subtotal,
+              frete: clone.frete,
+              total: clone.total,
+              valor_total: clone.valor_total,
+              valor_unitario: clone.valor_unitario,
+              itensCount: (clone.itens && clone.itens.length) || 0
+            });
+          } catch (_) {}
+          return clone;
+        } catch (e) {
+          try { console.warn('[PATCH-ORC] hook api falhou:', e && e.message || e); } catch (_) {}
+          return body;
+        }
+      }
+      if (typeof window.api === 'function' && !window.api.__patchHookOrcValores) {
+        var _origApi = window.api;
+        window.api = function patchApiHook(method, url, body) {
+          var args = Array.prototype.slice.call(arguments);
+          try {
+            if (args.length >= 3 && typeof args[2] === 'object' && !Array.isArray(args[2])) {
+              args[2] = interceptarBody(String(method || '').toUpperCase(), String(url || ''), args[2]);
+            }
+          } catch (_) {}
+          return _origApi.apply(this, args);
+        };
+        try { Object.keys(_origApi).forEach(function(k) { window.api[k] = _origApi[k]; }); } catch (_) {}
+        window.api.__patchHookOrcValores = true;
+        window.api._original = _origApi;
+      }
+      if (typeof window.apiFetch === 'function' && !window.apiFetch.__patchHookOrcValores) {
+        var _origApiFetch = window.apiFetch;
+        window.apiFetch = function patchApiFetchHook(url, opts) {
+          try {
+            var method = String(opts && opts.method || 'GET').toUpperCase();
+            if (opts && typeof opts.body === 'string' && typeof JSON !== 'undefined') {
+              try {
+                var parsed = JSON.parse(opts.body);
+                var novo = interceptarBody(method, String(url || ''), parsed);
+                if (novo && novo !== parsed) opts.body = JSON.stringify(novo);
+              } catch (_) {}
+            } else if (opts && opts.body && typeof opts.body === 'object' && !Array.isArray(opts.body)) {
+              opts.body = interceptarBody(method, String(url || ''), opts.body);
+            }
+          } catch (_) {}
+          return _origApiFetch.apply(this, arguments);
+        };
+        window.apiFetch.__patchHookOrcValores = true;
+      }
+    })();
   }
 
   ensureUi();
@@ -38367,6 +38560,251 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   });
 })();
 
+(function patchOfRapidaClienteValidacaoFallback() {
+  if (window.__patchOfRapidaClienteFallbackInstalled) return;
+  window.__patchOfRapidaClienteFallbackInstalled = true;
+
+  function normalizarNome(s) {
+    return String(s || '').trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+  function tokenSet(s) {
+    var raw = normalizarNome(s);
+    var parts = raw.split(/[\s\-.,&/()]+/).filter(Boolean);
+    var set = Object.create(null);
+    parts.forEach(function(p) { if (p.length >= 2) set[p] = true; });
+    return { raw: raw, set: set, arr: parts };
+  }
+  function similaridade(a, b) {
+    if (!a || !b) return 0;
+    var ta = tokenSet(a), tb = tokenSet(b);
+    if (!ta.arr.length || !tb.arr.length) return 0;
+    var intersec = 0;
+    ta.arr.forEach(function(p) { if (tb.set[p]) intersec++; });
+    return intersec / Math.max(ta.arr.length, tb.arr.length);
+  }
+  function buscarNaListaLocalPorNome(nome) {
+    try {
+      var lista = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES))
+        ? CLIENTES
+        : (Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(window._CLIENTES) ? window._CLIENTES : []));
+      if (!lista || !lista.length) return null;
+      var alvo = normalizarNome(nome);
+      if (!alvo) return null;
+      var matchExato = null;
+      var melhores = [];
+      for (var i = 0; i < lista.length; i++) {
+        var c = lista[i] || {};
+        var candidatos = [c.nome, c.rs, c.razao_social, c.razaoSocial, c.razao].filter(Boolean);
+        for (var j = 0; j < candidatos.length; j++) {
+          var cand = normalizarNome(candidatos[j]);
+          if (!cand) continue;
+          if (cand === alvo) { matchExato = c; break; }
+          var sim = similaridade(alvo, cand);
+          if (sim >= 0.66) melhores.push({ cli: c, sim: sim, nome: candidatos[j] });
+        }
+        if (matchExato) break;
+      }
+      if (matchExato) return matchExato;
+      if (melhores.length) {
+        melhores.sort(function(a, b) { return b.sim - a.sim; });
+        try { console.log('[CLI-FALLBACK] match por similaridade local:', melhores[0].nome, 'sim=', melhores[0].sim); } catch (_) {}
+        return melhores[0].cli;
+      }
+    } catch (_) {}
+    return null;
+  }
+  async function buscarClientePorApiFallback(nomeCliente, clienteIdHint) {
+    try {
+      var token = '';
+      try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim(); } catch (_) {}
+      var headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      if (clienteIdHint && String(clienteIdHint).length >= 4) {
+        try {
+          var urlId = '/api/clientes/' + encodeURIComponent(String(clienteIdHint)) + '?lite=1';
+          var respId = await fetch(urlId, { headers: headers });
+          if (respId && respId.ok) {
+            var jsonId = await respId.json().catch(function() { return null; });
+            if (jsonId && jsonId.ok && jsonId.data && jsonId.data.id) {
+              try { console.log('[CLI-FALLBACK] sucesso GET /api/clientes/:id, id=', jsonId.data.id, 'nome=', jsonId.data.nome); } catch (_) {}
+              return jsonId.data;
+            }
+          }
+        } catch (_) {}
+      }
+      var nomeBusca = encodeURIComponent(String(nomeCliente || '').trim().slice(0, 100));
+      if (!nomeBusca) return null;
+      var urls = [
+        '/api/clientes?search=' + nomeBusca + '&limit=10&incluir_inativos=true&lite=1',
+        '/api/clientes?q=' + nomeBusca + '&limit=10&incluir_inativos=true&lite=1'
+      ];
+      for (var u = 0; u < urls.length; u++) {
+        try {
+          var resp = await fetch(urls[u], { headers: headers });
+          if (!resp || !resp.ok) continue;
+          var json = await resp.json().catch(function() { return null; });
+          if (json && json.ok && Array.isArray(json.data) && json.data.length) {
+            var arr = json.data;
+            var alvo = normalizarNome(nomeCliente);
+            var best = null, bestSim = 0;
+            for (var i = 0; i < arr.length; i++) {
+              var c = arr[i] || {};
+              var candidatos = [c.nome, c.rs, c.razao_social, c.razaoSocial, c.razao].filter(Boolean);
+              for (var j = 0; j < candidatos.length; j++) {
+                var cand = normalizarNome(candidatos[j]);
+                if (!cand) continue;
+                if (cand === alvo) return c;
+                var sim = similaridade(alvo, cand);
+                if (sim > bestSim) { bestSim = sim; best = c; }
+              }
+            }
+            if (best && bestSim >= 0.5) {
+              try { console.log('[CLI-FALLBACK] sucesso por API busca nome, sim=', bestSim, 'nome=', best.nome); } catch (_) {}
+              return best;
+            }
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      try { console.warn('[CLI-FALLBACK] erro geral ao buscar por API:', e && e.message || e); } catch (_) {}
+    }
+    return null;
+  }
+  function adicionarClienteNaListaLocal(c) {
+    try {
+      if (!c || !c.id) return;
+      var lista = null;
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) lista = CLIENTES;
+      else if (Array.isArray(window.CLIENTES)) lista = window.CLIENTES;
+      if (lista) {
+        var idx = lista.findIndex(function(x) { return String(x && x.id || '').trim() === String(c.id || '').trim(); });
+        if (idx >= 0) lista[idx] = Object.assign({}, lista[idx] || {}, c);
+        else lista.push(c);
+        try { if (lista.length) lista.sort(function(a, b) { return normalizarNome(a && a.nome).localeCompare(normalizarNome(b && b.nome), 'pt-BR'); }); } catch (_) {}
+      }
+      try {
+        if (Array.isArray(window.CLIENTES) && lista !== window.CLIENTES) {
+          var idx2 = window.CLIENTES.findIndex(function(x) { return String(x && x.id || '').trim() === String(c.id || '').trim(); });
+          if (idx2 >= 0) window.CLIENTES[idx2] = Object.assign({}, window.CLIENTES[idx2] || {}, c);
+          else window.CLIENTES.push(c);
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
+  function extrairClienteIdDatalist() {
+    try {
+      var inp = document.getElementById('of-r-cliente');
+      if (!inp) return '';
+      var fromAttr = String(inp.getAttribute('data-id') || inp.getAttribute('data-cliente-id') || inp.dataset && (inp.dataset.id || inp.dataset.clienteId) || '').trim();
+      if (fromAttr) return fromAttr;
+      try {
+        var listId = inp.getAttribute('list');
+        if (!listId) return '';
+        var dl = document.getElementById(listId);
+        if (!dl) return '';
+        var val = String(inp.value || '').trim();
+        var opts = dl.querySelectorAll('option');
+        for (var i = 0; i < opts.length; i++) {
+          var o = opts[i];
+          var label = String(o.label || o.value || o.textContent || '').trim();
+          var optVal = String(o.value || '').trim();
+          if (label === val || optVal === val) {
+            var idFound = String(o.getAttribute('data-id') || o.dataset && (o.dataset.id || o.dataset.clienteId) || '').trim();
+            if (idFound) return idFound;
+          }
+        }
+      } catch (_) {}
+    } catch (_) {}
+    return '';
+  }
+  function instalarWrapper() {
+    if (typeof window.salvarOfRapida !== 'function') return;
+    if (window.salvarOfRapida.__patchClienteFallback) return;
+    var _origSalvarOfRapida = window.salvarOfRapida;
+    var aguardandoVal = false;
+    var valSuspenso = null;
+    async function wrapperSalvarOfRapida() {
+      try {
+        if (aguardandoVal && valSuspenso && Date.now() - valSuspenso.ts < 60000) {
+          return _origSalvarOfRapida.apply(this, arguments);
+        }
+        var nomeEl = document.getElementById('of-r-cliente');
+        var nomeCliente = nomeEl ? String(nomeEl.value || '').trim() : '';
+        if (!nomeCliente) return _origSalvarOfRapida.apply(this, arguments);
+        var lista = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : (Array.isArray(window.CLIENTES) ? window.CLIENTES : []);
+        var cliPorNome = null;
+        try {
+          cliPorNome = (lista || []).find(function(c) {
+            var n = normalizarNome(c && (c.nome || c.rs || c.razao_social || ''));
+            return n && n === normalizarNome(nomeCliente);
+          }) || null;
+        } catch (_) { cliPorNome = null; }
+        var cliPorBuscaLocal = cliPorNome ? cliPorNome : buscarNaListaLocalPorNome(nomeCliente);
+        var hintId = extrairClienteIdDatalist();
+        if (!hintId) {
+          try {
+            var byIdHint = findClienteById ? findClienteById(nomeCliente) : null;
+            if (!byIdHint && /^[0-9a-f-]{36}$/i.test(nomeCliente)) hintId = nomeCliente;
+          } catch (_) {}
+        }
+        if (cliPorBuscaLocal && cliPorBuscaLocal.id) {
+          try { adicionarClienteNaListaLocal(cliPorBuscaLocal); } catch (_) {}
+          return _origSalvarOfRapida.apply(this, arguments);
+        }
+        var btn = document.getElementById('btn-salvar-of-rapida');
+        var oldLabel = '';
+        try { oldLabel = btn ? (btn.textContent || '').toString() : ''; } catch (_) {}
+        try { if (btn) { btn.textContent = '⏳ Verificando cliente...'; btn.disabled = true; } } catch (_) {}
+        try { toast('🔍 Validando cliente via servidor...', 'var(--orange)'); } catch (_) {}
+        var cliFallback = await buscarClientePorApiFallback(nomeCliente, hintId);
+        try { if (btn) { btn.textContent = oldLabel || '⚡ Salvar OF'; btn.disabled = false; } } catch (_) {}
+        if (cliFallback && cliFallback.id) {
+          try { adicionarClienteNaListaLocal(cliFallback); } catch (_) {}
+          try {
+            var nomeNorm = String(cliFallback.nome || nomeCliente || '').trim();
+            if (nomeNorm && nomeEl && String(nomeEl.value || '').trim() !== nomeNorm) nomeEl.value = nomeNorm;
+          } catch (_) {}
+          try { toast('✅ Cliente "' + String(cliFallback.nome || nomeCliente || '').slice(0, 40) + '" confirmado via servidor.', 'var(--green)'); } catch (_) {}
+          return _origSalvarOfRapida.apply(this, arguments);
+        }
+        try {
+          if (nomeEl) {
+            try { nomeEl.style.outline = '2px solid #ef4444'; } catch (_) {}
+            try { setTimeout(function() { try { nomeEl.style.outline = ''; } catch (_) {} }, 3000); } catch (_) {}
+          }
+        } catch (_) {}
+        try { console.warn('[CLI-FALLBACK] NENHUM match encontrado p/ cliente:', nomeCliente, 'hintId=', hintId); } catch (_) {}
+        try { toast('⚠ Cliente "' + String(nomeCliente || '').slice(0, 40) + '" não encontrado. Verifique a grafia ou cadastre o cliente antes.', 'var(--red)'); } catch (_) {}
+        return _origSalvarOfRapida.apply(this, arguments);
+      } catch (e) {
+        try { console.error('[CLI-FALLBACK] wrapper salvarOfRapida erro:', e && e.stack || e); } catch (_) {}
+        return _origSalvarOfRapida.apply(this, arguments);
+      }
+    }
+    try {
+      Object.keys(_origSalvarOfRapida).forEach(function(k) { wrapperSalvarOfRapida[k] = _origSalvarOfRapida[k]; });
+    } catch (_) {}
+    wrapperSalvarOfRapida.__patchClienteFallback = true;
+    wrapperSalvarOfRapida._original = _origSalvarOfRapida;
+    window.salvarOfRapida = wrapperSalvarOfRapida;
+    try { console.log('[CLI-FALLBACK] wrapper salvarOfRapida instalado.'); } catch (_) {}
+  }
+  function bootstrap() {
+    try { instalarWrapper(); } catch (_) {}
+    setTimeout(instalarWrapper, 600);
+    setTimeout(instalarWrapper, 2400);
+    setTimeout(instalarWrapper, 8000);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(instalarWrapper, 300);
+      });
+    }
+  }
+  bootstrap();
+})();
+
 (function patchOfRapidaCoresLoadingAndCache() {
   if (window.__patchOfRapidaCoresLoadingInstalled) return;
   window.__patchOfRapidaCoresLoadingInstalled = true;
@@ -39522,20 +39960,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-      var resp = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), {
+      var params = [
+        'limit=2000',
+        'order=nome',
+        'dir=asc',
+        't=' + Date.now()
+      ];
+      try {
+        var empFiltro = String(window.EMP_FILTRO || window.__empId || localStorage.getItem('emp_filtro') || '').trim();
+        if (empFiltro) params.push('empId=' + encodeURIComponent(empFiltro));
+      } catch (_) {}
+      var resp = await fetch('/api/clientes?' + params.join('&'), {
         headers: token ? { Authorization: 'Bearer ' + token } : {}
       });
       var json = await resp.json().catch(function() { return null; });
       if (json && json.ok && Array.isArray(json.data) && json.data.length) {
+        var arr = json.data.slice().sort(function(a, b) {
+          var na = String((a && a.nome) || '').trim().toLowerCase();
+          var nb = String((b && b.nome) || '').trim().toLowerCase();
+          return na.localeCompare(nb, 'pt-BR');
+        });
         try {
           if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
             CLIENTES.length = 0;
-            json.data.forEach(function(c) { CLIENTES.push(c); });
+            arr.forEach(function(c) { CLIENTES.push(c); });
           }
         } catch (_) {}
-        try { window.CLIENTES = json.data; } catch (_) {}
-        try { window._CLIENTES = json.data; } catch (_) {}
-        console.log('[PATCH] clientes carregados:', json.data.length);
+        try { window.CLIENTES = arr; } catch (_) {}
+        try { window._CLIENTES = arr; } catch (_) {}
+        console.log('[PATCH] clientes carregados:', arr.length, '(ordenados por nome A-Z)');
         if (typeof renderClientes === 'function') renderClientes();
       }
     } catch (e) {
