@@ -38900,6 +38900,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     }
   }
+  try {
+    window.__cliNormalizarNome = normalizarNome;
+    window.__cliTokenSet = tokenSet;
+    window.__cliSimilaridade = similaridade;
+    window.__cliBuscarLocal = buscarNaListaLocalPorNome;
+    window.__cliBuscarApiFallback = buscarClientePorApiFallback;
+    window.buscarNaListaLocalPorNome_sim = buscarNaListaLocalPorNome;
+    window.tokenSet = tokenSet;
+    window.similaridade = similaridade;
+    window.normalizarNome = normalizarNome;
+  } catch (_eExport) {}
   bootstrap();
 })();
 
@@ -61273,7 +61284,6 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function _tryReorderTodas(){
     try {
       var isTodas = (typeof PCP_DIA_ATUAL !== 'undefined') ? (String(PCP_DIA_ATUAL) === '__todas__') : false;
-      if (!isTodas) return;
       var tbody = document.getElementById('pcp-tbody');
       if (!tbody) return;
       var rows = Array.from(tbody.querySelectorAll('tr'));
@@ -61311,6 +61321,139 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   try { setTimeout(_tryReorderTodas, 4000); } catch (_) {}
   try { document.addEventListener('change', function(ev){ if (ev && ev.target && String(ev.target.id||'') === 'pcp-status') setTimeout(_tryReorderTodas, 300); }, true); } catch (_) {}
   try { document.addEventListener('click', function(ev){ if (ev && ev.target && ev.target.closest && (ev.target.closest('#pcp-hoje-btn') || ev.target.closest('.pcp-dia-nav, #pcp-dia-label, #pcp-dia-input') || String(ev.target.id||'')==='pcp-busca-btn')) setTimeout(_tryReorderTodas, 400); }, true); } catch (_) {}
+})();
+
+(function __amostrasPendentesGlobalFallback(){
+  try { if (window.__amostrasGlobalFallbackInstalled) return; window.__amostrasGlobalFallbackInstalled = true; } catch (_) {}
+  window.__amostrasTentarNovamente = function __amostrasTentarNovamenteFn(){
+    try {
+      var s1 = document.getElementById('ofmaq-final-shell');
+      if (s1) { try { s1._amostrasRendering = false; s1._amostrasRenderingTimestamp = 0; } catch (_) {} }
+      var fn = null;
+      try { if (typeof window.__ofmaqFinalShell === 'function') fn = window.__ofmaqFinalShell(); } catch (_) {}
+      if (!fn) { try { fn = window.__shellRef || window.__ofmaqShell || null; } catch (_) { fn = null; } }
+      var rAFN = null;
+      try { if (typeof renderAmostrasSemana === 'function') rAFN = renderAmostrasSemana; } catch (_) {}
+      if (!rAFN) { try { if (typeof window.renderAmostrasSemana === 'function') rAFN = window.renderAmostrasSemana; } catch (_) {} }
+      if (rAFN && fn) { try { rAFN(fn); } catch (_e1) {} }
+      else {
+        try {
+          document.querySelectorAll('[data-ofmaq-amostras-refresh]').forEach(function(b){
+            try { b.click(); } catch (_) {}
+          });
+        } catch (_e2) {}
+      }
+    } catch (_errTopo) {}
+  };
+  var primeiroVisto = {};
+  function btnHtml(reason){
+    var titleAttr = (reason || '').replace(/"/g, '&quot;');
+    return '<br><button type="button" onclick="window.__amostrasTentarNovamente()" style="margin-top:12px;padding:10px 18px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.15);color:#fecaca;font-weight:800;cursor:pointer;" title="' + titleAttr + '">🔄 Tentar Novamente (amostras)</button>';
+  }
+  function varrerCorrigir(){
+    try {
+      var todos = document.querySelectorAll('body *');
+      var agora = Date.now();
+      for (var i = 0; i < todos.length; i++) {
+        var el = todos[i];
+        var tag = (el.tagName || '').toUpperCase();
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE') continue;
+        var filhos = el.children || [];
+        if (filhos && filhos.length) continue;
+        var txt = (el.innerText || el.textContent || '').trim();
+        if (!txt || txt.length > 120) continue;
+        var contem = txt.indexOf('Carregando amostras') >= 0;
+        if (!contem) continue;
+        var key = (el.id || '') + '|' + txt + '|' + (el.className ? String(el.className).slice(0,60) : '');
+        var jaVisto = primeiroVisto[key] || 0;
+        if (!jaVisto) { primeiroVisto[key] = agora; continue; }
+        if (agora - jaVisto < 18000) continue;
+        var jaTemBtn = txt.indexOf('Tentar Novamente') >= 0 || (el.parentElement && String(el.parentElement.innerHTML || '').indexOf('Tentar Novamente (amostras)') >= 0);
+        if (jaTemBtn) continue;
+        try {
+          var shell = document.getElementById('ofmaq-final-shell') || window.__shellRef || null;
+          if (shell) {
+            try { shell._amostrasRendering = false; } catch (_) {}
+            try { shell._amostrasRenderingTimestamp = 0; } catch (_) {}
+          }
+          var novoHtml = (el.innerHTML || '') + btnHtml('timeout_' + ((agora-jaVisto)/1000|0) + 's');
+          try { el.innerHTML = novoHtml; } catch (_) { if (el.parentElement) try { el.parentElement.innerHTML = (el.parentElement.innerHTML||'') + btnHtml('fallback_pe'); } catch(__){} }
+        } catch (_g) {}
+      }
+    } catch (_topo) {}
+  }
+  try { setInterval(varrerCorrigir, 6000); } catch (_) {}
+  try { setTimeout(varrerCorrigir, 4000); } catch (_) {}
+  try { setTimeout(varrerCorrigir, 12000); } catch (_) {}
+  try { setTimeout(varrerCorrigir, 22000); } catch (_) {}
+})();
+
+(function __paramComerciaisRecalcGarantido(){
+  try { if (window.__paramComerciaisRecalcInstalled) return; window.__paramComerciaisRecalcInstalled = true; } catch (_) {}
+  function forcarCalc(){
+    try { if (typeof window.calcRecalc === 'function') window.calcRecalc(); } catch (_) {}
+    try { if (typeof calcRecalc === 'function') calcRecalc(); } catch (_) {}
+    try { if (typeof window.syncCalcFolderUi === 'function') window.syncCalcFolderUi(); } catch (_) {}
+    try { if (typeof window.syncCalcChapaUi === 'function') window.syncCalcChapaUi(); } catch (_) {}
+    try { if (typeof window.syncVb === 'function') window.syncVb(); } catch (_) {}
+    try { if (typeof window.calcAtualizarTotais === 'function') window.calcAtualizarTotais(); } catch (_) {}
+    try { if (typeof window.calcFreteRecalc === 'function') window.calcFreteRecalc(); } catch (_) {}
+  }
+  function bindarListenersGlobais(){
+    try {
+      var sel = '#calc-cm,#calc-cf,#calc-mg,#calc-cv,#calc-imp,#calc-vkm,#calc-km,#calc-vb,#calc-vc,#calc-vbc,#calc-vb2,.param-input,[data-calc-field="cm"],[data-calc-field="cf"],[data-calc-field="mg"],[data-calc-field="cvend"],[data-calc-field="imp"],[data-calc-field="vkm"],[data-calc-field="km"]';
+      document.addEventListener('input', function(ev){
+        try {
+          var t = ev && ev.target;
+          if (!t || !t.matches || !t.matches(sel)) return;
+          clearTimeout(window.__paramRecalcTimer || 0);
+          window.__paramRecalcTimer = setTimeout(forcarCalc, 120);
+        } catch (_p2) {}
+      }, true);
+      document.addEventListener('change', function(ev){
+        try {
+          var t = ev && ev.target;
+          if (!t || !t.matches || !t.matches(sel)) return;
+          clearTimeout(window.__paramRecalcTimerC || 0);
+          window.__paramRecalcTimerC = setTimeout(forcarCalc, 80);
+        } catch (_p3) {}
+      }, true);
+    } catch (_p) {}
+  }
+  try { setTimeout(bindarListenersGlobais, 300); } catch (_) {}
+  try { setTimeout(bindarListenersGlobais, 1500); } catch (_) {}
+  if (document.readyState === 'loading') try { document.addEventListener('DOMContentLoaded', bindarListenersGlobais); } catch(_){}
+  else try { bindarListenersGlobais(); } catch(_){}
+})();
+
+(function __mapaClientesFechaModaisAoNavegar(){
+  try { if (window.__mapaClientesModalLeakGuardInstalled) return; window.__mapaClientesModalLeakGuardInstalled = true; } catch (_) {}
+  function fecharTodosModaisAbertos(){
+    try {
+      document.querySelectorAll('[role="dialog"],.modal,.modal-backdrop,.overlay,[data-modal],[id*="modal-"][id*="estado"],[id*="modal-"][id*="cidade"],[id*="modal-"][id*="ramo"],[id*="novo-estado"],[id*="novo-estado"]').forEach(function(m){
+        try { if (m && typeof m.remove === 'function') m.remove(); else if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_rm) {}
+      });
+      document.querySelectorAll('.modal-open,.overflow-hidden').forEach(function(b){
+        try { b.classList && b.classList.remove('modal-open','overflow-hidden'); } catch (_cl) {}
+      });
+      document.body.style.overflow = '';
+    } catch (_f) {}
+  }
+  try {
+    var origGo = window.go;
+    if (typeof origGo === 'function') {
+      window.go = function wrappedGo(){
+        try { fecharTodosModaisAbertos(); } catch (_){}
+        try { return origGo.apply(this, arguments); } catch (e1){ try { return origGo(arguments[0]); } catch(e2){ throw e1||e2;} }
+      };
+    }
+  } catch (_g){}
+  try { window.addEventListener('hashchange', fecharTodosModaisAbertos, true); } catch (_){}
+  try { document.addEventListener('click', function(ev){
+    if (!ev || !ev.target || !ev.target.closest) return;
+    var link = ev.target.closest('a[data-page],button[data-page],nav button,nav a,[data-nav]');
+    if (link) try { setTimeout(fecharTodosModaisAbertos, 30); } catch(_){}
+  }, true); } catch (_){}
 })();
 
 
