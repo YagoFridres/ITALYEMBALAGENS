@@ -4688,7 +4688,14 @@ try {
         });
       }
       await refreshOfmaq('passou-maquina');
-      try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' — Passou pela máquina ' + machine + ' registrado com sucesso.', { title: 'Passagem registrada' }); } catch (_) {}
+      var _regHist = !!(j && typeof j === 'object' && j.passagem_registrada);
+      var _regErr = (j && typeof j === 'object' && j.passagem_erro) ? String(j.passagem_erro) : null;
+      if (_regHist) {
+        try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' — Passou pela máquina ' + machine + ' registrado com sucesso.', { title: 'Passagem registrada' }); } catch (_) {}
+      } else {
+        try { if (typeof window.toast === 'function') window.toast('⚠ OF marcada como passada, mas HISTÓRICO não gravado. Verifique logs: ' + (_regErr || 'erro_desconhecido'), 'rgba(245,158,11,.9)'); } catch (_) {}
+        try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' — Marcada como Passou por ' + machine + ', mas o histórico de passagens NÃO foi salvo no banco. Detalhe: ' + (_regErr || 'Erro desconhecido.') + ' — Contate o suporte.', { title: 'Aviso: histórico não gravado' }); } catch (_) {}
+      }
       return j;
     } catch (eTop) {
       try { await _ofmaqReportError('Passou pela Máquina (patch-legacy) geral', eTop, { ofId: id, ofNum: ofNum, machine: machine, payload: reqBody }); } catch (_) { try { console.error('[ERRO-OFMAQ-FALLBACK] Passou pela Máquina (patch-legacy)', eTop); } catch (__) {} }
@@ -24332,6 +24339,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: bodySent });
             logActionApiResult('zero', 'pass', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
+            var _passOk = !!(result && result.data && result.data.passagem_registrada);
+            var _passErr = (result && result.data && result.data.passagem_erro) ? String(result.data.passagem_erro) : null;
             closeModal('ofmaq-actions-zero');
             try {
               if (item.cardEl) {
@@ -24344,7 +24353,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             if (row) row.remove();
             updateToolbar(ensureShell());
             applyFilters();
-            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' passou pela máquina ' + String(item.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
+            if (_passOk) {
+              try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' passou pela máquina ' + String(item.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
+            } else {
+              try { if (typeof window.toast === 'function') window.toast('⚠ OF marcada como passada, mas HISTÓRICO não gravado: ' + (_passErr || 'erro_desconhecido'), 'rgba(245,158,11,.9)'); } catch (_) {}
+              try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' — Marcada como Passou por ' + String(item.maquina || '').trim() + ', mas o histórico NÃO foi salvo. Detalhe: ' + (_passErr || 'Erro desconhecido.') + ' — Contate o suporte.', { title: 'Aviso: histórico não gravado' }); } catch (_) {}
+            }
           } catch (err) {
             try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Passou pela Máquina (zero-kanban)', err, { ofId: id, ofNum: item && item.numero || null, machine: item && item.maquina || null, payload: typeof bodySent !== 'undefined' ? bodySent : null, resp: result && result.resp ? result.resp : null, data: result && result.data ? result.data : null }); } catch (_) {}
             try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
@@ -25258,6 +25272,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (ga !== gb) return ga.localeCompare(gb, 'pt-BR');
         }
         if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
+        var na = _safeNumeroOfOrdem(a && (a.numero || a.of || a.id || ''));
+        var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || b.id || ''));
+        if (na !== nb) return na - nb;
         return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
       });
       return list;
@@ -25543,53 +25560,61 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     async function renderAmostrasSemana(shell) {
       if (!shell || !shell.amostrasSemanaGrid) return;
       if (shell._amostrasRendering) {
-        try { console.log('[Amostras Semana] render sobreposto cancelado (lock ativo)'); } catch (_) {}
-        return;
-      }
-      shell._amostrasRendering = true;
-      try {
-        if (shell._amostrasAbort && typeof shell._amostrasAbort.abort === 'function') {
-          try { shell._amostrasAbort.abort('render_amostras_novo'); } catch (_) {}
+        var _ts = Number(shell._amostrasRenderingTimestamp || 0);
+        if (_ts > 0 && (Date.now() - _ts) > 15000) {
+          try { console.log('[Amostras Semana] lock stuck detectado (>15s), liberando forçadamente'); } catch (_) {}
+          try { shell._amostrasRendering = false; } catch (_) {}
+          try { shell._amostrasRenderingTimestamp = 0; } catch (_) {}
+        } else {
+          try { console.log('[Amostras Semana] render sobreposto cancelado (lock ativo)'); } catch (_) {}
+          return;
         }
-      } catch (_) {}
-      try {
-        shell._amostrasAbort = typeof AbortController === 'function' ? new AbortController() : null;
-      } catch (_) { shell._amostrasAbort = null; }
-      var grid = shell.amostrasSemanaGrid;
-      var badgeCount = shell.amostrasSemanaCount;
-      function escH(s) {
-        return String(s == null ? '' : s)
-          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-          .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
       }
-      function escAttr(s) { return escH(s); }
-      function fmtD(iso) {
+      try {
+        shell._amostrasRendering = true;
+        try { shell._amostrasRenderingTimestamp = Date.now(); } catch (_) {}
         try {
-          var d = String(iso || '').slice(0,10);
-          if (!d) return '—';
-          var dt = new Date(d + 'T12:00:00');
-          return dt.toLocaleDateString('pt-BR');
-        } catch(_) { return String(iso || '').slice(0,10) || '—'; }
-      }
-      function _amostraNumero(a, fallbackIdx) {
-        if (a && (a.numero_amostra != null)) {
-          var n = String(a.numero_amostra).trim();
-          if (n && n !== 'undefined' && n !== 'null' && n !== '0') {
-            return '<b style="font-size:1rem;color:#60a5fa">#' + escH(n) + '</b>';
+          if (shell._amostrasAbort && typeof shell._amostrasAbort.abort === 'function') {
+            try { shell._amostrasAbort.abort('render_amostras_novo'); } catch (_) {}
           }
+        } catch (_) {}
+        try {
+          shell._amostrasAbort = typeof AbortController === 'function' ? new AbortController() : null;
+        } catch (_) { shell._amostrasAbort = null; }
+        var grid = shell.amostrasSemanaGrid;
+        var badgeCount = shell.amostrasSemanaCount;
+        function escH(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         }
-        if (a && (a.numero != null)) {
-          var nr = String(a.numero).trim();
-          if (nr && nr !== 'undefined' && nr !== 'null' && nr !== '0') {
-            return '<span style="color:#94a3b8;font-size:.75rem">OF #</span>' + escH(nr);
+        function escAttr(s) { return escH(s); }
+        function fmtD(iso) {
+          try {
+            var d = String(iso || '').slice(0,10);
+            if (!d) return '—';
+            var dt = new Date(d + 'T12:00:00');
+            return dt.toLocaleDateString('pt-BR');
+          } catch(_) { return String(iso || '').slice(0,10) || '—'; }
+        }
+        function _amostraNumero(a, fallbackIdx) {
+          if (a && (a.numero_amostra != null)) {
+            var n = String(a.numero_amostra).trim();
+            if (n && n !== 'undefined' && n !== 'null' && n !== '0') {
+              return '<b style="font-size:1rem;color:#60a5fa">#' + escH(n) + '</b>';
+            }
           }
+          if (a && (a.numero != null)) {
+            var nr = String(a.numero).trim();
+            if (nr && nr !== 'undefined' && nr !== 'null' && nr !== '0') {
+              return '<span style="color:#94a3b8;font-size:.75rem">OF #</span>' + escH(nr);
+            }
+          }
+          if (fallbackIdx != null) {
+            return '<span style="color:#64748b">#' + escH(String(Number(fallbackIdx)+1)) + '</span>';
+          }
+          return '—';
         }
-        if (fallbackIdx != null) {
-          return '<span style="color:#64748b">#' + escH(String(Number(fallbackIdx)+1)) + '</span>';
-        }
-        return '—';
-      }
-      try {
         var wBase = state && state.weekStartIso ? state.weekStartIso : new Date().toISOString().slice(0, 10);
         var nowTemp = new Date(wBase + 'T00:00:00');
         var dayWeek = nowTemp.getDay();
@@ -25872,13 +25897,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!isAbort) {
           console.error('[Amostras Semana] render erro:', eGeral);
           try {
-            grid.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + '</div>';
+            var gridErr = shell && shell.amostrasSemanaGrid;
+            if (gridErr) gridErr.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + '</div>';
           } catch (_f) {}
         } else {
           try { console.log('[Amostras Semana] render abortado (sobreposição controlada)'); } catch (_) {}
         }
       } finally {
         try { shell._amostrasRendering = false; } catch (_) {}
+        try { shell._amostrasRenderingTimestamp = 0; } catch (_) {}
       }
     }
 
@@ -26351,6 +26378,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try { await window._ofmaqReportError('Passou pela Máquina (final)', errPass, { status: resultPass && resultPass.resp && resultPass.resp.status, statusText: resultPass && resultPass.resp && resultPass.resp.statusText, headers: resultPass && resultPass.resp && resultPass.resp.headers, rawBody: JSON.stringify(resultPass && resultPass.data || null), payload: bodyPass, ofContext: { id: id, numero: row.numero, maquina: machine, cliente: row.cliente, produto: row.produto } }); } catch (_) {}
         try { window.toast('Erro ao registrar passagem: ' + String(errPass.message || errPass), 'var(--red)'); } catch (_) {}
         throw errPass;
+      }
+      var _histOkFinal = !!(resultPass && resultPass.data && resultPass.data.passagem_registrada);
+      var _histErrFinal = (resultPass && resultPass.data && resultPass.data.passagem_erro) ? String(resultPass.data.passagem_erro) : null;
+      if (!_histOkFinal) {
+        try { if (typeof window.toast === 'function') window.toast('⚠ OF marcada, mas HISTÓRICO não gravado: ' + (_histErrFinal || 'erro_desconhecido'), 'rgba(245,158,11,.9)'); } catch (_) {}
       }
       if (row && typeof appendHist === 'function') {
         appendHist({
