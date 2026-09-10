@@ -4200,7 +4200,7 @@ try {
     ? window.registrarTempoOf
     : (typeof registrarTempoOf === 'function' ? registrarTempoOf : null);
   var originalPassouPelaMaquina = typeof window.passouPelaMaquina === 'function'
-    ? window.passouPelaMaquina
+    ? (window.passouPelaMaquina.__ofmaqGuardWrapped ? (window.passouPelaMaquina.__patchOriginal || window.passouPelaMaquina) : window.passouPelaMaquina)
     : null;
 
   function logOfmaq(msg, extra) {
@@ -5140,21 +5140,50 @@ try {
       throw e;
     }
   };
-  window.passouPelaMaquina = function(ofId, ofNum, nomeMaquina) {
-    logOfmaq('clique ação Passou pela Máquina', { ofId: ofId, ofNum: ofNum, nomeMaquina: nomeMaquina });
+  var __pmqWrapper = function(ofId, ofNum, nomeMaquina) {
     try {
-      return markPassedPatchedLegacy(ofId, ofNum, nomeMaquina);
-    } catch (e0) {
-      logOfmaq('erro abrir passou pela máquina via patch', String(e0 && e0.message || e0));
-    }
-    try {
-      if (typeof originalPassouPelaMaquina === 'function') return originalPassouPelaMaquina.apply(this, arguments);
-      logOfmaq('erro abrir passou pela máquina', 'função original indisponível');
-    } catch (e) {
-      logOfmaq('erro abrir passou pela máquina', String(e && e.message || e));
-      throw e;
+      if (typeof window.__passouMaquinaGlobalDepth !== 'number') window.__passouMaquinaGlobalDepth = 0;
+      if (typeof window.__passouMaquinaLastCallAt !== 'number') window.__passouMaquinaLastCallAt = 0;
+      var _depthNow = Number(window.__passouMaquinaGlobalDepth || 0);
+      var _now = Date.now();
+      var _last = Number(window.__passouMaquinaLastCallAt || 0);
+      var _dt = _now - _last;
+      if (_depthNow >= 15) {
+        try { console.warn('[PASSOU-MAQUINA] depth guard atingiu 15, bloqueando chamada recursiva.'); } catch (_) {}
+        try { if (typeof window.toast === 'function') window.toast('Aguardando conclusão da ação anterior (muitas chamadas em sequência), aguarde 1s...', 'rgba(245,158,11,.95)'); } catch (_) {}
+        return;
+      }
+      if (_depthNow > 0 && _dt < 250) {
+        try { console.warn('[PASSOU-MAQUINA] reentrada <250ms detectada, pulando. dt=' + _dt + ' depth=' + _depthNow); } catch (_) {}
+        return;
+      }
+      window.__passouMaquinaGlobalDepth = _depthNow + 1;
+      window.__passouMaquinaLastCallAt = _now;
+      try {
+        logOfmaq('clique ação Passou pela Máquina', { ofId: ofId, ofNum: ofNum, nomeMaquina: nomeMaquina, depth: window.__passouMaquinaGlobalDepth, dtMs: _dt });
+        try {
+          return markPassedPatchedLegacy(ofId, ofNum, nomeMaquina);
+        } catch (e0) {
+          logOfmaq('erro abrir passou pela máquina via patch', String(e0 && e0.message || e0));
+        }
+        try {
+          if (typeof originalPassouPelaMaquina === 'function') return originalPassouPelaMaquina.apply(this, arguments);
+          logOfmaq('erro abrir passou pela máquina', 'função original indisponível');
+        } catch (e) {
+          logOfmaq('erro abrir passou pela máquina', String(e && e.message || e));
+          throw e;
+        }
+      } finally {
+        try { window.__passouMaquinaGlobalDepth = Math.max(0, Number(window.__passouMaquinaGlobalDepth || 0) - 1); } catch (_) {}
+      }
+    } catch (_top) {
+      try { console.error('[PASSOU-MAQUINA] guard top-level catch:', String(_top && _top.message || _top)); } catch (__) {}
+      throw _top;
     }
   };
+  __pmqWrapper.__ofmaqGuardWrapped = true;
+  __pmqWrapper.__patchOriginal = originalPassouPelaMaquina;
+  window.passouPelaMaquina = __pmqWrapper;
   window.ofmaqOnBuscaInput = function() {
     var input = document.getElementById('ofmaq-busca');
     var value = String((input && input.value) || '').trim();
@@ -7979,11 +8008,20 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     var obs = window._compraPapelaoEsc(String(item && item.observacao || '—'));
     var pedForn = window._compraPapelaoEsc(String(item && (item.pedido_fornecedor || item.ped_fornecedor || item.pedForn || item.ped_forn || item.cod_fornecedor || '')).trim() || '—');
     var vincoCell = (function(){
-      var rawJoin = String(item && item.vincos || '').trim();
-      if (rawJoin && rawJoin.indexOf('/') > -1) {
-        return '<div style="font-size:13px;font-weight:800;letter-spacing:.02em">Posições:</div><div style="font-size:14px;font-weight:900;color:#0f172a;margin-top:4px;white-space:normal;word-break:break-word;line-height:1.35">' + window._compraPapelaoEsc(rawJoin) + '</div>';
+      var arrVincos = (window._compraVincosArrayFull(item) || []).map(function(s){ return String(s||'').trim(); }).filter(function(s){ return s !== '' && s !== '0'; });
+      var v1 = arrVincos[0] || '';
+      var v2 = arrVincos[1] || '';
+      var v3 = arrVincos[2] || '';
+      var v4 = arrVincos[3] || '';
+      var primarios = [v1,v2,v3,v4].join('/');
+      var extraHtml = '';
+      if (arrVincos.length > 4) {
+        var extras = arrVincos.slice(4).map(function(v, i){ return 'V' + (5 + i) + '=' + window._compraPapelaoEsc(v); });
+        extraHtml = extras.length ? ('<div style="margin-top:6px;font-size:11px;color:#334155;font-weight:700;letter-spacing:.02em">· ' + extras.join(' · ') + '</div>') : '';
       }
-      return vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
+      var displayPrincipal = String(primarios || '').replace(/^\/+|\/+$/g, '');
+      if (!displayPrincipal || /^[\/\s\-—]*$/.test(displayPrincipal)) displayPrincipal = '—';
+      return '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#475569;margin-bottom:4px">Posições V1/V2/V3/V4</div><div style="font-size:16px;font-weight:900;color:#0f172a;letter-spacing:.08em;font-family:Consolas,Courier New,monospace">' + window._compraPapelaoEsc(displayPrincipal) + '</div>' + extraHtml;
     })();
     return ''
       + '<tr style=\"display:table-row!important\">'
@@ -25768,8 +25806,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!shell || !shell.amostrasSemanaGrid) return;
       if (shell._amostrasRendering) {
         var _ts = Number(shell._amostrasRenderingTimestamp || 0);
-        if (_ts > 0 && (Date.now() - _ts) > 15000) {
-          try { console.log('[Amostras Semana] lock stuck detectado (>15s), liberando forçadamente'); } catch (_) {}
+        if (_ts > 0 && (Date.now() - _ts) > 45000) {
+          try { console.log('[Amostras Semana] lock stuck detectado (>45s), liberando forçadamente'); } catch (_) {}
           try { shell._amostrasRendering = false; } catch (_) {}
           try { shell._amostrasRenderingTimestamp = 0; } catch (_) {}
         } else {
@@ -26105,7 +26143,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           console.error('[Amostras Semana] render erro:', eGeral);
           try {
             var gridErr = shell && shell.amostrasSemanaGrid;
-            if (gridErr) gridErr.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + '</div>';
+            if (gridErr) {
+              var _btnRetry = '<br><button type="button" onclick="try{var sh=document.getElementById(\'ofmaq-final-shell\');if(sh&&sh._amostrasRendering)sh._amostrasRendering=false;var s=typeof window.__ofmaqFinalShell===\'function\'?window.__ofmaqFinalShell():null;if(s){renderAmostrasSemana(s);}else{document.querySelectorAll(\'[data-ofmaq-amostras-refresh]\').forEach(function(b){try{b.click();}catch(_){});}}catch(_){}" style="margin-top:12px;padding:10px 18px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.15);color:#fecaca;font-weight:800;cursor:pointer;">🔄 Tentar Novamente</button>';
+              gridErr.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + _btnRetry + '</div>';
+            }
           } catch (_f) {}
         } else {
           try { console.log('[Amostras Semana] render abortado (sobreposição controlada)'); } catch (_) {}
@@ -59202,7 +59243,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var resumo = (window._compraPapelaoStatsResumo && typeof window._compraPapelaoStatsResumo === 'function')
         ? (window._compraPapelaoStatsResumo() || {})
         : { valor_total: 0, area_total: 0, total_compras: 0, breakdown: [] };
-      var visible = Array.isArray(window.compraVisibleRows && typeof window.compraVisibleRows === 'function' ? window.compraVisibleRows() : []) || [];
+      var _visibleTemp = (window.compraVisibleRows && typeof window.compraVisibleRows === 'function')
+        ? window.compraVisibleRows()
+        : [];
+      var visible = Array.isArray(_visibleTemp) ? _visibleTemp : [];
+      try {
+        if (!Array.isArray(visible) || (typeof _visibleTemp !== 'undefined' && visible !== _visibleTemp)) {
+          try { console.warn('[PATCH-CMP] visible corrigido para array (tipo recebido:', typeof _visibleTemp, 'len:', Array.isArray(_visibleTemp)?_visibleTemp.length:'não array)'); } catch (_) {}
+        }
+      } catch (_) {}
       var breakdown = Array.isArray(resumo.breakdown) ? resumo.breakdown : [];
       var fornTop = (breakdown && breakdown[0] && typeof breakdown[0] === 'object' && breakdown[0].nome) ? breakdown[0].nome : 'Sem fornecedor';
       var totalItens = 0;
@@ -61034,6 +61083,91 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       };
     } catch (_e) {}
   })();
+})();
+
+(function __ggInstallCalcListeners() {
+  try {
+    if (window.__calcListenersInstalled) return;
+    window.__calcListenersInstalled = true;
+  } catch (_) {}
+  var PARAMS_FIELDS = { cm: true, cf: true, mg: true, cvend: true, imp: true, vkm: true, km: true };
+  function _descobrirBlockIdx(targetEl) {
+    try {
+      if (!targetEl) return 0;
+      var blk = targetEl.closest && targetEl.closest('[data-calc-block]');
+      if (blk) {
+        var b = Number(blk.getAttribute('data-calc-block') || 0);
+        if (isFinite(b) && b >= 0) return b;
+      }
+      var idEl = targetEl.id || '';
+      if (idEl) {
+        var mt = String(idEl).match(/^calc-blk(\d+)-/);
+        if (mt && mt[1]) {
+          var b2 = Number(mt[1]);
+          if (isFinite(b2) && b2 >= 0) return b2;
+        }
+      }
+      return 0;
+    } catch (_e) { return 0; }
+  }
+  function dispararRecalc(targetEl) {
+    try {
+      if (typeof calcRecalcFromScope !== 'function') return;
+      var blockIdx = _descobrirBlockIdx(targetEl);
+      calcRecalcFromScope(blockIdx);
+      try {
+        if (blockIdx === 0 && typeof calcRecalc === 'function') {
+          try { calcRecalc(); } catch (_) {}
+        }
+      } catch (_) {}
+      try {
+        if (typeof calcListAllBlocks === 'function') {
+          try { calcListAllBlocks(); } catch (_) {}
+        }
+      } catch (_) {}
+    } catch (e) {
+      try { console.warn('[CALC-PARAMS] recalc delegado falhou:', e && e.message || e); } catch (_) {}
+    }
+  }
+  try {
+    document.addEventListener('input', function(ev) {
+      try {
+        var t = ev && ev.target;
+        if (!t) return;
+        var attr = t.getAttribute && t.getAttribute('data-calc-field');
+        if (!attr) return;
+        if (!PARAMS_FIELDS[attr]) return;
+        dispararRecalc(t);
+      } catch (_) {}
+    }, { capture: true, passive: true });
+  } catch (_) {}
+  try {
+    document.addEventListener('change', function(ev) {
+      try {
+        var t = ev && ev.target;
+        if (!t) return;
+        var tag = String((t.tagName || '')).toLowerCase();
+        if (tag === 'select') {
+          var attr = t.getAttribute && t.getAttribute('data-calc-field');
+          if (attr && attr === 'tipo') dispararRecalc(t);
+        }
+      } catch (_) {}
+    }, { capture: true, passive: true });
+  } catch (_) {}
+  try { setTimeout(function() {
+    try {
+      if (typeof calcRecalcFromScope === 'function') {
+        try { calcRecalcFromScope(0); } catch (_) {}
+      }
+      var extras = document.querySelectorAll('[data-calc-block]');
+      extras && extras.forEach && extras.forEach(function(node) {
+        try {
+          var idx = Number(node.getAttribute('data-calc-block') || 0);
+          if (idx > 0 && typeof calcRecalcFromScope === 'function') calcRecalcFromScope(idx);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }, 800); } catch (_) {}
 })();
 
 
