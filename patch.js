@@ -38626,18 +38626,61 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   function tokenSet(s) {
     var raw = normalizarNome(s);
+    if (!raw) return { raw: '', set: Object.create(null), arr: [] };
+    var rawCompact = raw
+      .replace(/([a-z])\s+(\d)/gi, '$1$2')
+      .replace(/(\d)\s+([a-z])/gi, '$1$2');
     var parts = raw.split(/[\s\-.,&/()]+/).filter(Boolean);
     var set = Object.create(null);
-    parts.forEach(function(p) { if (p.length >= 2) set[p] = true; });
+    parts.forEach(function(p) {
+      if (!p || !p.length) return;
+      var keep = false;
+      if (p.length >= 2) keep = true;
+      if (p.length === 1 && /^\d+$/.test(p)) keep = true;
+      if (!keep && p.length === 1 && parts.length <= 2) keep = true;
+      if (keep) set[p] = true;
+    });
+    if (raw !== rawCompact) {
+      var cmpParts = rawCompact.split(/[\s\-.,&/()]+/).filter(Boolean);
+      cmpParts.forEach(function(cp) { if (cp && cp.length >= 3) set[cp] = true; });
+    }
+    for (var k = 0; k < parts.length - 1; k++) {
+      var a = parts[k], b = parts[k + 1];
+      if (!a || !b) continue;
+      if (/^[a-z]+$/i.test(a) && /^\d+$/.test(b)) {
+        var ab = a + b;
+        if (ab.length >= 3) set[ab] = true;
+      }
+      if (/^\d+$/.test(a) && /^[a-z]+$/i.test(b)) {
+        var ab2 = a + b;
+        if (ab2.length >= 3) set[ab2] = true;
+      }
+    }
     return { raw: raw, set: set, arr: parts };
   }
   function similaridade(a, b) {
     if (!a || !b) return 0;
     var ta = tokenSet(a), tb = tokenSet(b);
     if (!ta.arr.length || !tb.arr.length) return 0;
+    var keysA = Object.keys(ta.set);
     var intersec = 0;
-    ta.arr.forEach(function(p) { if (tb.set[p]) intersec++; });
-    return intersec / Math.max(ta.arr.length, tb.arr.length);
+    for (var k = 0; k < keysA.length; k++) if (tb.set[keysA[k]]) intersec++;
+    var keysB = Object.keys(tb.set);
+    var unionCount = keysA.length + keysB.length - intersec;
+    var sim = unionCount > 0 ? intersec / unionCount : 0;
+    var arrMax = Math.max(ta.arr.length, tb.arr.length);
+    var arrMin = Math.min(ta.arr.length, tb.arr.length);
+    if (arrMin <= 2) sim = Math.min(1.0, sim * (arrMax <= 3 ? 1.25 : 1.15));
+    var todosMinBatidos = true, temMin = false;
+    for (var i = 0; i < ta.arr.length; i++) {
+      var t = ta.arr[i];
+      if (!t || !t.length) continue;
+      if (t.length === 1 && !/^\d+$/.test(t) && tb.arr.length > 2) continue;
+      temMin = true;
+      if (!tb.set[t]) { todosMinBatidos = false; break; }
+    }
+    if (todosMinBatidos && temMin && sim < 0.8) sim = Math.max(sim, 0.8);
+    return sim > 1 ? 1 : sim < 0 ? 0 : sim;
   }
   function buscarNaListaLocalPorNome(nome) {
     try {
@@ -52838,7 +52881,19 @@ function _ocultarGraficoComissoes() {
         return num > 0 ? num : 0;
       }
       function renderVendedoresSelect(lista) {
-        vendedoresLista = Array.isArray(lista) ? lista.slice() : [];
+        var rawLista = Array.isArray(lista) ? lista.slice() : [];
+        var idsVistos = {};
+        var listaDedup = [];
+        rawLista.forEach(function(v) {
+          try {
+            var id = String(v && (v.id || v.vendedor_id || v.vendid || '') || '').trim();
+            if (!id) return;
+            if (idsVistos[id]) return;
+            idsVistos[id] = true;
+            listaDedup.push(v);
+          } catch (_) {}
+        });
+        vendedoresLista = listaDedup;
         var atual = String(vendedorAtualId || '').trim();
         if (!atual && vendedorAtualNome) {
           var hitNome = vendedoresLista.find(function(v) {
@@ -52847,11 +52902,23 @@ function _ocultarGraficoComissoes() {
           if (hitNome) atual = String(hitNome && (hitNome.id || hitNome.vendedor_id || hitNome.vendid || '') || '').trim();
         }
         if (!vendedorEl) return;
+        try {
+          while (vendedorEl.firstChild) vendedorEl.removeChild(vendedorEl.firstChild);
+        } catch (_) {
+          try { vendedorEl.options.length = 0; } catch (_) {}
+        }
         var opcoesBase = vendedoresLista.map(function(v) {
           var id = String(v && (v.id || v.vendedor_id || v.vendid || '') || '').trim();
           var nome = String(v && (v.nome || v.vendedor || v.vendedor_nome || id || '—') || '—').trim();
           return { id: id, nome: nome };
         }).filter(function(x) { return x.id; });
+        var idsOpcoes = {};
+        opcoesBase = opcoesBase.filter(function(x) {
+          if (!x || !x.id) return false;
+          if (idsOpcoes[x.id]) return false;
+          idsOpcoes[x.id] = true;
+          return true;
+        });
         var temNaLista = false;
         if (atual) {
           temNaLista = opcoesBase.some(function(x) { return x.id === atual; });
@@ -52863,11 +52930,28 @@ function _ocultarGraficoComissoes() {
             temNaLista = true;
           }
         }
-        var html = ['<option value="">Sem vendedor</option>'].concat(opcoesBase.map(function(x) {
-          return '<option value="' + x.id.replace(/"/g, '&quot;') + '"' + (x.id === atual ? ' selected' : '') + '>' + String(x.nome || x.id || '—').replace(/</g, '&lt;') + '</option>';
-        }));
-        vendedorEl.innerHTML = html.join('');
-        vendedorEl.value = atual;
+        try {
+          var placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = 'Sem vendedor';
+          vendedorEl.appendChild(placeholder);
+          opcoesBase.forEach(function(x) {
+            try {
+              var opt = document.createElement('option');
+              opt.value = String(x.id || '');
+              opt.textContent = String(x.nome || x.id || '—');
+              if (x.id === atual) opt.selected = true;
+              vendedorEl.appendChild(opt);
+            } catch (_) {}
+          });
+          try { vendedorEl.value = atual; } catch (_) {}
+        } catch (_) {
+          var html = ['<option value="">Sem vendedor</option>'].concat(opcoesBase.map(function(x) {
+            return '<option value="' + x.id.replace(/"/g, '&quot;') + '"' + (x.id === atual ? ' selected' : '') + '>' + String(x.nome || x.id || '—').replace(/</g, '&lt;') + '</option>';
+          }));
+          vendedorEl.innerHTML = html.join('');
+          try { vendedorEl.value = atual; } catch (_) {}
+        }
       }
       function renderTiposCaixaSelect(lista) {
         tiposCaixaLista = (Array.isArray(lista) ? lista : []).map(_normalizarTipoCaixaConclusao).filter(function(item) {
@@ -61168,6 +61252,65 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       });
     } catch (_) {}
   }, 800); } catch (_) {}
+})();
+
+(function __pcpFixSortTodasSafe(){
+  try { if (window.__pcpSortTodasFix) return; window.__pcpSortTodasFix = true; } catch (_) {}
+  function _numFromRow(tr){
+    try {
+      var span = tr.querySelector('.of-num');
+      if (span) {
+        var txt = span.textContent || '';
+        var inp = span.querySelector('input');
+        if (inp) txt = String(inp.value || txt);
+        return _safeNumeroOfOrdem(txt);
+      }
+      var tds = tr.querySelectorAll('td');
+      if (tds && tds.length >= 5) return _safeNumeroOfOrdem(tds[4].textContent || '');
+      return 0;
+    } catch (_) { return 0; }
+  }
+  function _tryReorderTodas(){
+    try {
+      var isTodas = (typeof PCP_DIA_ATUAL !== 'undefined') ? (String(PCP_DIA_ATUAL) === '__todas__') : false;
+      if (!isTodas) return;
+      var tbody = document.getElementById('pcp-tbody');
+      if (!tbody) return;
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      if (!rows.length) return;
+      var needSort = false;
+      for (var i = 1; i < Math.min(rows.length, 12); i++){
+        var prev = _numFromRow(rows[i-1]);
+        var cur = _numFromRow(rows[i]);
+        if (prev < cur) { needSort = true; break; }
+      }
+      if (!needSort) return;
+      rows.sort(function(a,b){
+        var urgA = (a.querySelector('.t-ug') || a.querySelector('[class*="urg"]') || a.innerHTML && a.innerHTML.indexOf('URG') > -1) ? 1 : 0;
+        var urgB = (b.querySelector('.t-ug') || b.querySelector('[class*="urg"]') || b.innerHTML && b.innerHTML.indexOf('URG') > -1) ? 1 : 0;
+        if (urgA !== urgB) return urgB - urgA;
+        var na = _numFromRow(a);
+        var nb = _numFromRow(b);
+        if (na !== nb) return nb - na;
+        return 0;
+      });
+      rows.forEach(function(r){ tbody.appendChild(r); });
+      try { console.log('[PCP-SORT] reorder TODAS via _safeNumeroOfOrdem aplicado, n=' + rows.length); } catch (_) {}
+    } catch (_) {}
+  }
+  try {
+    var mo = new MutationObserver(function(){ _tryReorderTodas(); });
+    if (document.body) mo.observe(document.body, { childList:true, subtree:true });
+    else if (typeof document.addEventListener === 'function') {
+      document.addEventListener('DOMContentLoaded', function(){ try { mo.observe(document.body,{childList:true,subtree:true}); } catch(_){} });
+    }
+  } catch (_) {
+    try { setInterval(_tryReorderTodas, 1200); } catch (_) {}
+  }
+  try { setTimeout(_tryReorderTodas, 1500); } catch (_) {}
+  try { setTimeout(_tryReorderTodas, 4000); } catch (_) {}
+  try { document.addEventListener('change', function(ev){ if (ev && ev.target && String(ev.target.id||'') === 'pcp-status') setTimeout(_tryReorderTodas, 300); }, true); } catch (_) {}
+  try { document.addEventListener('click', function(ev){ if (ev && ev.target && ev.target.closest && (ev.target.closest('#pcp-hoje-btn') || ev.target.closest('.pcp-dia-nav, #pcp-dia-label, #pcp-dia-input') || String(ev.target.id||'')==='pcp-busca-btn')) setTimeout(_tryReorderTodas, 400); }, true); } catch (_) {}
 })();
 
 
