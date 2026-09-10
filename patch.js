@@ -7587,14 +7587,21 @@ window._compraPapelaoCollectModalRows = function(overlay) {
       for (var fi = 0; fi < fbIdx.length; fi++) {
         var fn = fbIdx[fi];
         var el = rowEl.querySelector ? rowEl.querySelector('[data-field="' + fn + '"]') : null;
-        if (!el) continue;
-        var vv = String(el.value || '').trim();
-        if (!vv) continue;
-        if (vistos.has(vv)) continue;
-        vistos.add(vv);
-        lista.splice(fi, 0, vv);
+        var vv = el ? String(el.value || '').trim() : '';
+        if (fi >= lista.length) {
+          while (lista.length < fi) lista.push('');
+          lista.push(vv);
+        } else {
+          if (vv) lista[fi] = vv;
+        }
       }
-      return lista;
+      var nova = [];
+      for (var ni = 0; ni < lista.length; ni++) {
+        var sv = String(lista[ni] || '').trim();
+        if (ni < 4) nova.push(sv);
+        else if (sv) nova.push(sv);
+      }
+      return nova;
     })(row);
     var item = {
       ped_cliente: pedClienteNome,
@@ -9440,14 +9447,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         for (var fi = 0; fi < fbIdx.length; fi++) {
           var fn = fbIdx[fi];
           var el = rowEl.querySelector ? rowEl.querySelector('[data-field="' + fn + '"]') : null;
-          if (!el) continue;
-          var vv = String(el.value || '').trim();
-          if (!vv) continue;
-          if (vistos.has(vv)) continue;
-          vistos.add(vv);
-          lista.splice(fi, 0, vv);
+          var vv = el ? String(el.value || '').trim() : '';
+          if (fi >= lista.length) {
+            while (lista.length < fi) lista.push('');
+            lista.push(vv);
+          } else {
+            if (vv) lista[fi] = vv;
+          }
         }
-        return lista;
+        var nova = [];
+        for (var ni = 0; ni < lista.length; ni++) {
+          var sv = String(lista[ni] || '').trim();
+          if (ni < 4) nova.push(sv);
+          else if (sv) nova.push(sv);
+        }
+        return nova;
       })(row);
       var item = {
         ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
@@ -59180,72 +59194,168 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
   };
   window._compraPapelaoRenderBody = function() {
-    ensureRedesignStyle();
-    var host = document.getElementById('cmp-body');
-    if (!host) return;
-    var st = window._compraPapelaoStateRef();
-    var resumo = window._compraPapelaoStatsResumo ? window._compraPapelaoStatsResumo() : { valor_total: 0, area_total: 0, total_compras: 0, breakdown: [] };
-    var visible = compraVisibleRows();
-    var breakdown = Array.isArray(resumo.breakdown) ? resumo.breakdown : [];
-    var fornTop = breakdown[0] && breakdown[0].nome ? breakdown[0].nome : 'Sem fornecedor';
-    var totalItens = visible.reduce(function(acc, compra) { return acc + (Array.isArray(compra && compra.itens) ? compra.itens.length : 0); }, 0);
-    var totalSemPasta = compraFolderCount('nopasta');
-    var filtersHtml = ''
-      + '<button type="button" class="cmpx-folder-pill' + (String(st.filtroCard || 'all') === 'all' ? ' is-active' : '') + '" data-cmpx-filter="all"><span class="name">Todas as Compras</span><span class="meta">Base consolidada da empresa atual</span><span class="count">' + escHtml(String(compraFolderCount('all'))) + '</span></button>'
-      + '<button type="button" class="cmpx-folder-pill' + (String(st.filtroCard || '') === 'nopasta' ? ' is-active' : '') + '" data-cmpx-filter="nopasta"><span class="name">Sem Pasta</span><span class="meta">Compras ainda sem organização</span><span class="count">' + escHtml(String(totalSemPasta)) + '</span></button>'
-      + (Array.isArray(st.pastas) ? st.pastas : []).map(function(pasta) {
-        var key = window._compraPapelaoCardKey('folder', pasta);
-        return ''
-          + '<button type="button" class="cmpx-folder-pill' + (String(st.filtroCard || '') === key ? ' is-active' : '') + '" data-cmpx-filter="' + escAttr(key) + '">'
-          + '  <span class="name">' + escHtml(pasta && pasta.nome || 'Pasta') + '</span>'
-          + '  <span class="meta">' + escHtml(window._compraPapelaoEmpresaNome(pasta && pasta._emp_id_consulta) || 'Organização de compras') + '</span>'
-          + '  <span class="count">' + escHtml(String(compraFolderCount(key))) + '</span>'
-          + '  <span class="cmpx-folder-actions"><button type="button" data-cmpx-folder-rename="' + escAttr(key) + '" title="Renomear pasta">✎</button><button type="button" class="danger" data-cmpx-folder-delete="' + escAttr(key) + '" title="Excluir pasta">🗑</button></span>'
-          + '</button>';
-      }).join('');
-    var tableRows = visible.map(function(compra) {
-      var totals = window._compraPapelaoCompraTotals(compra);
-      var id = String(compra && compra.id || '').trim();
-      var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
-      var expanded = !!((window.__cmpxExpandedItems || {})[id]);
-      var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
-      return ''
-        + '<tr>'
-        + '  <td><div class="cmpx-stack"><strong>' + escHtml(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + escHtml(fmtDate(dataRef)) + '</span></div></td>'
-        + '  <td><div class="cmpx-stack"><strong>' + escHtml(compra && compra.fornecedor || '—') + '</strong><span>' + escHtml(compra && compra.status || 'Solicitada') + '</span></div></td>'
-        + '  <td><div class="cmpx-stack"><strong>' + escHtml(window._compraPapelaoFolderName(compra) || 'Sem pasta') + '</strong><span>' + escHtml(window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta) || 'Empresa') + '</span></div></td>'
-        + '  <td><div class="cmpx-stack"><strong>' + escHtml(compra && compra.ped_fornecedor || '—') + '</strong><span>' + escHtml((Array.isArray(compra && compra.itens) ? compra.itens.length : 0) + ' item(ns)') + '</span></div></td>'
-        + '  <td><div class="cmpx-stack"><strong>' + escHtml(((Array.isArray(compra && compra.itens) ? compra.itens[0] : [])[0] || {}).ped_cliente || '—') + '</strong><span>' + escHtml(((Array.isArray(compra && compra.itens) ? compra.itens[0] : [])[0] || {}).po || 'PO não informada') + '</span></div></td>'
-        + '  <td><button type="button" class="cmpx-toggle-btn" data-cmpx-toggle-items="' + escAttr(id) + '">' + (expanded ? '▾' : '▸') + ' Itens <span class="patch-btn-badge">' + escHtml(String(itens.length || 0)) + '</span></button></td>'
-        + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.qtd, 0)) + '</td>'
-        + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.area, 4)) + ' m²</td>'
-        + '  <td class="cmpx-num">' + escHtml(fmtMoney(totals.valor)) + '</td>'
-        + '  <td><div class="cmpx-actions-row"><button type="button" class="primary is-edit" data-cmpx-edit="' + escAttr(id) + '">✏ Editar</button><button type="button" class="is-folder" data-cmpx-folder-move="' + escAttr(id) + '">🗂 Pasta</button><button type="button" class="is-print" data-cmpx-print="' + escAttr(id) + '">🖨 Imprimir</button><button type="button" class="is-versions" data-cmpx-excel="' + escAttr(id) + '">📥 Excel</button><button type="button" class="is-copy" data-cmpx-clone="' + escAttr(id) + '">⧉ Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">🗑 Excluir</button></div></td>'
-        + '</tr>'
-        + (expanded ? '<tr class="cmpx-detail-row"><td colspan="10">' + compraItensExpansaoHtml(compra) + '</td></tr>' : '');
-    }).join('');
-    host.innerHTML = ''
-      + '<div class="pep-wrap cmpx-wrap">'
-      + '  <div class="pep-cards">'
-      + '    <div class="pep-card"><div class="pep-card-label">Valor Total Comprado</div><div class="pep-card-val">' + escHtml(fmtMoney(resumo.valor_total)) + '</div><div class="pep-card-sub">Somatório das compras carregadas</div></div>'
-      + '    <div class="pep-card"><div class="pep-card-label">Compras Visíveis</div><div class="pep-card-val">' + escHtml(String(visible.length)) + '</div><div class="pep-card-sub">Registros após filtros e busca</div></div>'
-      + '    <div class="pep-card"><div class="pep-card-label">Itens na Tela</div><div class="pep-card-val">' + escHtml(String(totalItens)) + '</div><div class="pep-card-sub">Linhas de pedido atualmente visíveis</div></div>'
-      + '    <div class="pep-card"><div class="pep-card-label">Área Total Comprada</div><div class="pep-card-val">' + escHtml(fmtNum(resumo.area_total, 4)) + ' m²</div><div class="pep-card-sub">Área consolidada de todos os itens</div></div>'
-      + '    <div class="pep-card"><div class="pep-card-label">Fornecedor em Destaque</div><div class="pep-card-val">' + escHtml(fornTop) + '</div><div class="pep-card-sub">Maior volume financeiro no conjunto</div></div>'
-      + '  </div>'
-      + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões ' + patchBadgeHtml(Array.isArray(st.pins) ? st.pins.length : 0) + '</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">📅 Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">🏷 Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">📊 Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">🖨 Imprimir</button></div></div>'
-      + '  <div class="pep-panel cmpx-filter-panel">'
-      + '    <div class="cmpx-filter-row"><input class="pep-input" id="cmpx-busca" type="text" placeholder="Buscar por fornecedor, pedido, número da compra, pasta, PO ou observação..." value="' + escAttr(st.busca || '') + '"><button type="button" class="pep-btn primary" id="cmpx-btn-buscar">Buscar</button></div>'
-      + '    <div class="cmpx-folder-strip">' + filtersHtml + '</div>'
-      + '  </div>'
-      + '  <div class="pep-panel">'
-      + '    <div class="cmpx-table-head"><div><div class="cmpx-table-title">Tabela Detalhada de Compras</div><div class="cmpx-table-sub">Cada linha resume a compra inteira e preserva as ações principais no mesmo contexto, como nas áreas de Estoques. O modal full-screen continua sendo o ponto central de criação e edição.</div></div></div>'
-      + '    <div class="cmpx-table-wrap"><table class="cmpx-table"><thead><tr><th>Compra</th><th>Fornecedor</th><th>Pasta</th><th>Pedido do Fornecedor</th><th>Primeiro Item</th><th>Itens</th><th>Qtd</th><th>Área</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
-      + (tableRows || '<tr><td colspan="10"><div class="cmpx-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>')
-      + '    </tbody></table></div>'
-      + '  </div>'
-      + '</div>';
-    window._compraPapelaoBindBody();
+    try {
+      ensureRedesignStyle();
+      var host = document.getElementById('cmp-body');
+      if (!host) return;
+      var st = window._compraPapelaoStateRef();
+      var resumo = (window._compraPapelaoStatsResumo && typeof window._compraPapelaoStatsResumo === 'function')
+        ? (window._compraPapelaoStatsResumo() || {})
+        : { valor_total: 0, area_total: 0, total_compras: 0, breakdown: [] };
+      var visible = Array.isArray(window.compraVisibleRows && typeof window.compraVisibleRows === 'function' ? window.compraVisibleRows() : []) || [];
+      var breakdown = Array.isArray(resumo.breakdown) ? resumo.breakdown : [];
+      var fornTop = (breakdown && breakdown[0] && typeof breakdown[0] === 'object' && breakdown[0].nome) ? breakdown[0].nome : 'Sem fornecedor';
+      var totalItens = 0;
+      try {
+        totalItens = visible.reduce(function(acc, compra) {
+          try {
+            if (!compra || !Array.isArray(compra.itens)) return acc;
+            return acc + Number(compra.itens.length || 0);
+          } catch (_) { return acc; }
+        }, 0);
+      } catch (_) { totalItens = 0; }
+      var totalSemPasta = 0;
+      try { if (typeof window.compraFolderCount === 'function') totalSemPasta = Number(window.compraFolderCount('nopasta') || 0) || 0; } catch (_) {}
+      var filtersHtml = '';
+      try {
+        var filterAllCount = 0;
+        try { if (typeof window.compraFolderCount === 'function') filterAllCount = Number(window.compraFolderCount('all') || 0) || 0; } catch (_) {}
+        filtersHtml = ''
+          + '<button type="button" class="cmpx-folder-pill' + (String(st && st.filtroCard || 'all') === 'all' ? ' is-active' : '') + '" data-cmpx-filter="all"><span class="name">Todas as Compras</span><span class="meta">Base consolidada da empresa atual</span><span class="count">' + escHtml(String(filterAllCount)) + '</span></button>'
+          + '<button type="button" class="cmpx-folder-pill' + (String(st && st.filtroCard || '') === 'nopasta' ? ' is-active' : '') + '" data-cmpx-filter="nopasta"><span class="name">Sem Pasta</span><span class="meta">Compras ainda sem organização</span><span class="count">' + escHtml(String(totalSemPasta)) + '</span></button>'
+          + (Array.isArray(st && st.pastas) ? st.pastas : []).map(function(pasta) {
+              try {
+                var key = (window._compraPapelaoCardKey && typeof window._compraPapelaoCardKey === 'function')
+                  ? String(window._compraPapelaoCardKey('folder', pasta) || '')
+                  : String(pasta && pasta.id || pasta && pasta.nome || Math.random()).trim();
+                var folderCount = 0;
+                try { if (typeof window.compraFolderCount === 'function') folderCount = Number(window.compraFolderCount(key) || 0) || 0; } catch (_) {}
+                var empNome = '';
+                try { if (typeof window._compraPapelaoEmpresaNome === 'function') empNome = String(window._compraPapelaoEmpresaNome(pasta && pasta._emp_id_consulta) || ''); } catch (_) {}
+                return ''
+                  + '<button type="button" class="cmpx-folder-pill' + (String(st && st.filtroCard || '') === key ? ' is-active' : '') + '" data-cmpx-filter="' + escAttr(key) + '">'
+                  + '  <span class="name">' + escHtml(pasta && pasta.nome || 'Pasta') + '</span>'
+                  + '  <span class="meta">' + escHtml(empNome || 'Organização de compras') + '</span>'
+                  + '  <span class="count">' + escHtml(String(folderCount)) + '</span>'
+                  + '  <span class="cmpx-folder-actions"><button type="button" data-cmpx-folder-rename="' + escAttr(key) + '" title="Renomear pasta">✎</button><button type="button" class="danger" data-cmpx-folder-delete="' + escAttr(key) + '" title="Excluir pasta">🗑</button></span>'
+                  + '</button>';
+              } catch (_e) {
+                return '';
+              }
+            }).join('');
+      } catch (_e) { filtersHtml = ''; }
+      var comprasComErro = 0;
+      var tableRows = '';
+      try {
+        tableRows = visible.map(function(compra) {
+          try {
+            var totals = (window._compraPapelaoCompraTotals && typeof window._compraPapelaoCompraTotals === 'function')
+              ? (window._compraPapelaoCompraTotals(compra) || { qtd: 0, area: 0, valor: 0 })
+              : { qtd: 0, area: 0, valor: 0 };
+            var id = String(compra && compra.id || '').trim();
+            var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
+            var expanded = !!((window.__cmpxExpandedItems || {})[id]);
+            var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
+            var primeiroItemRaw = (itens && itens[0]) || null;
+            var primeiroItem = null;
+            if (primeiroItemRaw) {
+              if (typeof primeiroItemRaw === 'object' && !Array.isArray(primeiroItemRaw)) primeiroItem = primeiroItemRaw;
+              else if (Array.isArray(primeiroItemRaw) && primeiroItemRaw[0] && typeof primeiroItemRaw[0] === 'object') primeiroItem = primeiroItemRaw[0];
+            }
+            primeiroItem = primeiroItem || {};
+            var pedCliente = String(primeiroItem.ped_cliente || primeiroItem.pedidoCliente || primeiroItem.pedido || '—').trim() || '—';
+            var poStr = String(primeiroItem.po || primeiroItem.PO || primeiroItem.numero_po || 'PO não informada').trim() || 'PO não informada';
+            var numeroCompra = (window._compraPapelaoNumeroLabel && typeof window._compraPapelaoNumeroLabel === 'function')
+              ? String(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || ''))
+              : String(compra && compra.numero_compra || '');
+            var fornecedor = String(compra && compra.fornecedor || '—').trim() || '—';
+            var statusStr = String(compra && compra.status || 'Solicitada').trim() || 'Solicitada';
+            var pastaNome = (window._compraPapelaoFolderName && typeof window._compraPapelaoFolderName === 'function')
+              ? String(window._compraPapelaoFolderName(compra) || '')
+              : '';
+            pastaNome = pastaNome || 'Sem pasta';
+            var empNome = (window._compraPapelaoEmpresaNome && typeof window._compraPapelaoEmpresaNome === 'function')
+              ? String(window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta) || '')
+              : '';
+            empNome = empNome || 'Empresa';
+            var pedForn = String(compra && compra.ped_fornecedor || '—').trim() || '—';
+            var itensCount = itens.length || 0;
+            var expandHtml = '';
+            try {
+              if (expanded && typeof window.compraItensExpansaoHtml === 'function') {
+                expandHtml = '<tr class="cmpx-detail-row"><td colspan="10">' + window.compraItensExpansaoHtml(compra) + '</td></tr>';
+              }
+            } catch (_x) { expandHtml = ''; }
+            return ''
+              + '<tr>'
+              + '  <td><div class="cmpx-stack"><strong>' + escHtml(numeroCompra || '—') + '</strong><span>' + escHtml(fmtDate(dataRef)) + '</span></div></td>'
+              + '  <td><div class="cmpx-stack"><strong>' + escHtml(fornecedor) + '</strong><span>' + escHtml(statusStr) + '</span></div></td>'
+              + '  <td><div class="cmpx-stack"><strong>' + escHtml(pastaNome) + '</strong><span>' + escHtml(empNome) + '</span></div></td>'
+              + '  <td><div class="cmpx-stack"><strong>' + escHtml(pedForn) + '</strong><span>' + escHtml(itensCount + ' item(ns)') + '</span></div></td>'
+              + '  <td><div class="cmpx-stack"><strong>' + escHtml(pedCliente) + '</strong><span>' + escHtml(poStr) + '</span></div></td>'
+              + '  <td><button type="button" class="cmpx-toggle-btn" data-cmpx-toggle-items="' + escAttr(id) + '">' + (expanded ? '▾' : '▸') + ' Itens <span class="patch-btn-badge">' + escHtml(String(itensCount || 0)) + '</span></button></td>'
+              + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.qtd || 0, 0)) + '</td>'
+              + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.area || 0, 4)) + ' m²</td>'
+              + '  <td class="cmpx-num">' + escHtml(fmtMoney(totals.valor || 0)) + '</td>'
+              + '  <td><div class="cmpx-actions-row"><button type="button" class="primary is-edit" data-cmpx-edit="' + escAttr(id) + '">✏ Editar</button><button type="button" class="is-folder" data-cmpx-folder-move="' + escAttr(id) + '">🗂 Pasta</button><button type="button" class="is-print" data-cmpx-print="' + escAttr(id) + '">🖨 Imprimir</button><button type="button" class="is-versions" data-cmpx-excel="' + escAttr(id) + '">📥 Excel</button><button type="button" class="is-copy" data-cmpx-clone="' + escAttr(id) + '">⧉ Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">🗑 Excluir</button></div></td>'
+              + '</tr>'
+              + expandHtml;
+          } catch (e) {
+            comprasComErro++;
+            try {
+              console.warn('[PATCH-CMP] render pulou compra por erro:', compra && compra.id, e && e.message || e);
+            } catch (_) {}
+            return '';
+          }
+        }).join('');
+      } catch (_e) {
+        try { console.warn('[PATCH-CMP] render body map falhou:', _e && _e.message || _e); } catch (_) {}
+        tableRows = '';
+      }
+      try {
+        host.innerHTML = ''
+          + '<div class="pep-wrap cmpx-wrap">'
+          + '  <div class="pep-cards">'
+          + '    <div class="pep-card"><div class="pep-card-label">Valor Total Comprado</div><div class="pep-card-val">' + escHtml(fmtMoney(resumo.valor_total || 0)) + '</div><div class="pep-card-sub">Somatório das compras carregadas</div></div>'
+          + '    <div class="pep-card"><div class="pep-card-label">Compras Visíveis</div><div class="pep-card-val">' + escHtml(String(visible.length || 0)) + '</div><div class="pep-card-sub">Registros após filtros e busca</div></div>'
+          + '    <div class="pep-card"><div class="pep-card-label">Itens na Tela</div><div class="pep-card-val">' + escHtml(String(totalItens || 0)) + '</div><div class="pep-card-sub">Linhas de pedido atualmente visíveis</div></div>'
+          + '    <div class="pep-card"><div class="pep-card-label">Área Total Comprada</div><div class="pep-card-val">' + escHtml(fmtNum(resumo.area_total || 0, 4)) + ' m²</div><div class="pep-card-sub">Área consolidada de todos os itens</div></div>'
+          + '    <div class="pep-card"><div class="pep-card-label">Fornecedor em Destaque</div><div class="pep-card-val">' + escHtml(fornTop) + '</div><div class="pep-card-sub">Maior volume financeiro no conjunto</div></div>'
+          + (comprasComErro > 0 ? ('    <div class="pep-card" style="background:rgba(234,179,8,.12)"><div class="pep-card-label">⚠ Itens pulados no render</div><div class="pep-card-val" style="color:#fbbf24">' + escHtml(String(comprasComErro)) + '</div><div class="pep-card-sub">Com dados incompletos; restante da tabela carregou normalmente.</div></div>') : '')
+          + '  </div>'
+          + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões ' + (typeof patchBadgeHtml === 'function' ? patchBadgeHtml(Array.isArray(st && st.pins) ? st.pins.length : 0) : '') + '</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">📅 Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">🏷 Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">📊 Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">🖨 Imprimir</button></div></div>'
+          + '  <div class="pep-panel cmpx-filter-panel">'
+          + '    <div class="cmpx-filter-row"><input class="pep-input" id="cmpx-busca" type="text" placeholder="Buscar por fornecedor, pedido, número da compra, pasta, PO ou observação..." value="' + escAttr(st && st.busca || '') + '"><button type="button" class="pep-btn primary" id="cmpx-btn-buscar">Buscar</button></div>'
+          + '    <div class="cmpx-folder-strip">' + filtersHtml + '</div>'
+          + '  </div>'
+          + '  <div class="pep-panel">'
+          + '    <div class="cmpx-table-head"><div><div class="cmpx-table-title">Tabela Detalhada de Compras</div><div class="cmpx-table-sub">Cada linha resume a compra inteira e preserva as ações principais no mesmo contexto, como nas áreas de Estoques. O modal full-screen continua sendo o ponto central de criação e edição.</div></div></div>'
+          + '    <div class="cmpx-table-wrap"><table class="cmpx-table"><thead><tr><th>Compra</th><th>Fornecedor</th><th>Pasta</th><th>Pedido do Fornecedor</th><th>Primeiro Item</th><th>Itens</th><th>Qtd</th><th>Área</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
+          + (tableRows || '<tr><td colspan="10"><div class="cmpx-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>')
+          + '    </tbody></table></div>'
+          + '  </div>'
+          + '</div>';
+      } catch (eHtml) {
+        try { console.warn('[PATCH-CMP] render body HTML montagem falhou:', eHtml && eHtml.message || eHtml); } catch (_) {}
+        try {
+          host.innerHTML = '<div style="padding:20px;border:1px solid rgba(239,68,68,.3);border-radius:12px;background:rgba(239,68,68,.06);color:#fecaca;font-weight:700">⚠ Erro ao montar tela. Recarregue a página e tente novamente. Se persistir, tente limpar cache de navegador com Ctrl+Shift+R.</div>';
+        } catch (_) {}
+      }
+      try {
+        if (typeof window._compraPapelaoBindBody === 'function') window._compraPapelaoBindBody();
+      } catch (e) {
+        try { console.warn('[PATCH-CMP] bind body falhou:', e && e.message || e); } catch (_) {}
+      }
+      return;
+    } catch (eOuter) {
+      try { console.error('[PATCH-CMP] _compraPapelaoRenderBody falhou completamente:', eOuter && eOuter.stack || eOuter); } catch (_) {}
+      try {
+        var host = document.getElementById('cmp-body');
+        if (host) {
+          host.innerHTML = '<div style="padding:20px;border:1px solid rgba(239,68,68,.3);border-radius:12px;background:rgba(239,68,68,.06);color:#fecaca;font-weight:700">⚠ Erro geral ao carregar Compra de Papelão. Recarregue a página (Ctrl+Shift+R). Se o erro persistir, contate o suporte. Detalhe: ' + escHtml(eOuter && eOuter.message || eOuter) + '</div>';
+        }
+      } catch (_) {}
+    }
   };
 
   function currentOrcEmpId() {
