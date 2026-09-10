@@ -25542,6 +25542,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     async function renderAmostrasSemana(shell) {
       if (!shell || !shell.amostrasSemanaGrid) return;
+      if (shell._amostrasRendering) {
+        try { console.log('[Amostras Semana] render sobreposto cancelado (lock ativo)'); } catch (_) {}
+        return;
+      }
+      shell._amostrasRendering = true;
+      try {
+        if (shell._amostrasAbort && typeof shell._amostrasAbort.abort === 'function') {
+          try { shell._amostrasAbort.abort('render_amostras_novo'); } catch (_) {}
+        }
+      } catch (_) {}
+      try {
+        shell._amostrasAbort = typeof AbortController === 'function' ? new AbortController() : null;
+      } catch (_) { shell._amostrasAbort = null; }
       var grid = shell.amostrasSemanaGrid;
       var badgeCount = shell.amostrasSemanaCount;
       function escH(s) {
@@ -25599,11 +25612,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             else queryParts.unshift('emp_id=' + encodeURIComponent(val));
           }
         } catch (_eAm) { queryParts.unshift('todas_empresas=1'); }
-        var r = await fetch('/api/amostras?' + queryParts.join('&'), {
-          headers: tokenAmostra ? { Authorization: 'Bearer ' + tokenAmostra } : {}
-        });
+        var r = null;
+        try {
+          var fetchOpts = {};
+          fetchOpts.headers = tokenAmostra ? { Authorization: 'Bearer ' + tokenAmostra } : {};
+          if (shell._amostrasAbort) fetchOpts.signal = shell._amostrasAbort.signal;
+          r = await fetch('/api/amostras?' + queryParts.join('&'), fetchOpts);
+        } catch (fetchErr) {
+          if (fetchErr && (String(fetchErr.name || '') === 'AbortError')) throw fetchErr;
+          if (r == null) r = { ok: false, status: 0 };
+        }
         var arr = [];
-        try { arr = await r.json(); } catch (_p) { arr = []; }
+        try { arr = r && typeof r.json === 'function' ? await r.json() : []; } catch (_p) { arr = []; }
         if (!Array.isArray(arr)) arr = (arr && arr.data) || [];
         var hojeIso = new Date();
         hojeIso.setHours(0,0,0,0);
@@ -25666,6 +25686,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<th style="width:130px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Data Entrega</th>'
           + '<th style="width:170px;text-align:center;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Ação</th>'
           + '</tr></thead>';
+        var colgroup = '<colgroup>'
+          + '<col style="width:70px"><col style="width:72px"><col style="width:1fr"><col style="width:1.4fr"><col style="width:130px"><col style="width:130px"><col style="width:170px">'
+          + '</colgroup>';
         var tbodyRows = pendentes.map(function(p, idx) {
           var a = p.raw || {};
           var id = String(a.id || '').trim();
@@ -25699,8 +25722,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             dataEntregaPeso = '600';
           }
           var imgHtml = img
-            ? ('<button type="button" class="ofmaq-final-thumb" data-amostra-image="' + escAttr(id) + '" style="width:48px;height:48px;padding:0;border:1px solid #334155;border-radius:6px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:zoom-in;"><img src="' + escAttr(img) + '" alt="Imagem amostra" style="width:100%;height:100%;object-fit:cover;display:block;"></button>')
-            : '<span style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px dashed #334155;border-radius:6px;background:#0f172a;color:#64748b;font-size:1.1rem;">🧪</span>';
+            ? ('<button type="button" class="ofmaq-final-thumb" data-amostra-image="' + escAttr(id) + '" style="width:48px;height:48px;padding:0;border:1px solid #334155;border-radius:6px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:zoom-in;aspect-ratio:1/1;box-sizing:border-box;"><img loading="lazy" decoding="async" src="' + escAttr(img) + '" alt="Imagem amostra" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"></button>')
+            : '<span style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px dashed #334155;border-radius:6px;background:#0f172a;color:#64748b;font-size:1.1rem;aspect-ratio:1/1;box-sizing:border-box;">🧪</span>';
           return ''
             + '<tr data-amostra-id="' + escAttr(id) + '" data-atrasada="' + (p.atrasada ? '1' : '0') + '" style="' + linhaStyle + '">'
             + '<td style="padding:10px;">' + _amostraNumero(a, idx) + '</td>'
@@ -25728,7 +25751,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }).join('');
         grid.innerHTML = ''
           + '<div style="border:1px solid #334155;border-radius:10px;overflow:hidden;background:#111827;">'
-          + '  <table class="ofmaq-final-table" style="width:100%;border-collapse:separate;border-spacing:0;display:block;max-height:380px;overflow:auto;">'
+          + '  <table class="ofmaq-final-table" style="width:100%;border-collapse:separate;border-spacing:0;display:block;max-height:380px;overflow:auto;table-layout:auto;">'
+          +      colgroup
           +      thead
           + '    <tbody>' + tbodyRows + '</tbody>'
           + '  </table>'
@@ -25844,10 +25868,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           });
         });
       } catch (eGeral) {
-        console.error('[Amostras Semana] render erro:', eGeral);
-        try {
-          grid.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + '</div>';
-        } catch (_f) {}
+        var isAbort = eGeral && (String(eGeral && eGeral.name || '') === 'AbortError' || String(eGeral && eGeral.message || '') === 'render_amostras_novo');
+        if (!isAbort) {
+          console.error('[Amostras Semana] render erro:', eGeral);
+          try {
+            grid.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + '</div>';
+          } catch (_f) {}
+        } else {
+          try { console.log('[Amostras Semana] render abortado (sobreposição controlada)'); } catch (_) {}
+        }
+      } finally {
+        try { shell._amostrasRendering = false; } catch (_) {}
       }
     }
 
@@ -25892,7 +25923,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       renderAlert(shell);
       renderSummary(shell);
       renderRedistribuicao(shell);
-      renderAmostrasSemana(shell);
     }
 
     function rowHtml(item) {

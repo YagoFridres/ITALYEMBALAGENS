@@ -670,12 +670,21 @@ if (false) {
 
   try {
     var lastW = window.innerWidth;
+    var lastMobileSwitch = 0;
     window.addEventListener('resize', function() {
-      var now = window.innerWidth;
-      if (lastW <= 768 && now > 900) {
-        try { location.reload(); } catch (_) {}
-      }
-      lastW = now;
+      try {
+        var now = window.innerWidth;
+        var mudouDirecaoMobile = (lastW <= 768 && now > 900) || (lastW > 900 && now <= 768);
+        if (mudouDirecaoMobile) {
+          var agora = Date.now();
+          if ((agora - lastMobileSwitch) < 4000) { lastW = now; return; }
+          lastMobileSwitch = agora;
+          if (typeof window.__patchMobileLayoutChange === 'function') {
+            try { window.__patchMobileLayoutChange({ wasW: lastW, nowW: now }); } catch (_) {}
+          }
+        }
+        lastW = now;
+      } catch (_e) { lastW = window.innerWidth; }
     });
   } catch (e) {}
 
