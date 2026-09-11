@@ -51610,10 +51610,32 @@ function _ocultarGraficoComissoes() {
     try {
       if (window.__VENDEDORES_LISTA && window.__VENDEDORES_LISTA.length) return window.__VENDEDORES_LISTA;
       var token = _getToken();
-      var resp = await fetch('/api/vendedores', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var resp = await fetch('/api/vendedores?ativo=1', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var j = await resp.json().catch(function() { return null; });
       var lista = (j && (j.data || j.vendedores)) || [];
       if (!Array.isArray(lista)) lista = [];
+      var _vendAtivoGlobal = function(v) {
+        try {
+          if (v == null) return false;
+          var a = v.ativo;
+          if (a === true || a === 1 || a === '1' || a === 'true' || a === 'TRUE') return true;
+          if (a === false || a === 0 || a === '0' || a === 'false' || a === 'FALSE') return false;
+          var s = String(v.status || '').trim().toLowerCase();
+          if (s === 'inativo' || s === 'desativado' || s === 'desligado') return false;
+          return true;
+        } catch (_) { return true; }
+      };
+      lista = lista.filter(_vendAtivoGlobal);
+      var ids = {}; var nomes = {};
+      lista = lista.filter(function(v) {
+        var id = String(v && v.id || '').trim();
+        var nk = String(v && (v.nome || v.vendedor || '') || '').trim().toLowerCase();
+        if (id && ids[id]) return false;
+        if (nk && nomes[nk]) return false;
+        if (id) ids[id] = true;
+        if (nk) nomes[nk] = true;
+        return true;
+      });
       window.__VENDEDORES_LISTA = lista;
       window._vendedoresMap = window._vendedoresMap || {};
       lista.forEach(function(v) {
@@ -52040,17 +52062,29 @@ function _ocultarGraficoComissoes() {
   async function _carregarOperadoresParaConclusao() {
     try { window._operadoresConclusaoCache = null; } catch (_) {}
     try { delete window._operadoresConclusaoCache; } catch (_) {}
+    var _opAtivo = function(o) {
+      try {
+        if (o == null) return false;
+        var a = o.ativo;
+        if (a === true || a === 1 || a === '1' || a === 'true' || a === 'TRUE' || a === 'True') return true;
+        if (a === false || a === 0 || a === '0' || a === 'false' || a === 'FALSE' || a === 'False') return false;
+        var s = String(o.status || o.situacao || o.estado || '').trim().toLowerCase();
+        if (s === 'inativo' || s === 'desativado' || s === 'desligado' || s === 'bloqueado') return false;
+        return true;
+      } catch (_) { return true; }
+    };
 
     try {
       var opNativos = window.OPERADORES || window._operadores || window.operadores || window.listaOperadores;
       if (Array.isArray(opNativos) && opNativos.length > 0) {
-        window._operadoresConclusaoCache = opNativos;
-        return opNativos;
+        var filtroNativos = opNativos.filter(_opAtivo);
+        window._operadoresConclusaoCache = filtroNativos;
+        return filtroNativos;
       }
     } catch (_) {}
 
     var token = _getToken();
-    var rotas = ['/api/operadores', '/api/operadores?todos=true', '/api/operadores?limit=100'];
+    var rotas = ['/api/operadores?ativo=1', '/api/operadores?limit=200', '/api/operadores'];
     for (var i = 0; i < rotas.length; i += 1) {
       try {
         var r = await fetch(rotas[i], { headers: token ? { Authorization: 'Bearer ' + token } : {} });
@@ -52058,9 +52092,10 @@ function _ocultarGraficoComissoes() {
         var d = await r.json().catch(function() { return null; });
         var lista = Array.isArray(d) ? d : ((d && (d.operadores || d.data)) || []);
         lista = Array.isArray(lista) ? lista : [];
+        var listaFiltrada = lista.filter(_opAtivo);
         if (lista.length > 0) {
-          window._operadoresConclusaoCache = lista;
-          return lista;
+          window._operadoresConclusaoCache = listaFiltrada;
+          return listaFiltrada;
         }
       } catch (_) {}
     }
@@ -52893,14 +52928,30 @@ function _ocultarGraficoComissoes() {
       }
       function renderVendedoresSelect(lista) {
         var rawLista = Array.isArray(lista) ? lista.slice() : [];
+        var _vendAtivo = function(v) {
+          try {
+            if (v == null) return false;
+            var a = v.ativo;
+            if (a === true || a === 1 || a === '1' || a === 'true' || a === 'TRUE' || a === 'True') return true;
+            if (a === false || a === 0 || a === '0' || a === 'false' || a === 'FALSE' || a === 'False') return false;
+            var s = String(v.status || v.situacao || v.estado || '').trim().toLowerCase();
+            if (s === 'inativo' || s === 'desativado' || s === 'desligado' || s === 'bloqueado') return false;
+            return true;
+          } catch (_) { return true; }
+        };
+        rawLista = rawLista.filter(_vendAtivo);
         var idsVistos = {};
+        var nomesVistos = {};
         var listaDedup = [];
         rawLista.forEach(function(v) {
           try {
             var id = String(v && (v.id || v.vendedor_id || v.vendid || '') || '').trim();
-            if (!id) return;
-            if (idsVistos[id]) return;
-            idsVistos[id] = true;
+            var nomeChave = String(v && (v.nome || v.vendedor || v.vendedor_nome || '') || '').trim().toLowerCase();
+            if (!id && !nomeChave) return;
+            if (id && idsVistos[id]) return;
+            if (nomeChave && nomesVistos[nomeChave]) return;
+            if (id) idsVistos[id] = true;
+            if (nomeChave) nomesVistos[nomeChave] = true;
             listaDedup.push(v);
           } catch (_) {}
         });
@@ -52924,10 +52975,14 @@ function _ocultarGraficoComissoes() {
           return { id: id, nome: nome };
         }).filter(function(x) { return x.id; });
         var idsOpcoes = {};
+        var nomesOpcoes = {};
         opcoesBase = opcoesBase.filter(function(x) {
           if (!x || !x.id) return false;
           if (idsOpcoes[x.id]) return false;
           idsOpcoes[x.id] = true;
+          var nk = String(x.nome || '').trim().toLowerCase();
+          if (nk && nomesOpcoes[nk]) return false;
+          if (nk) nomesOpcoes[nk] = true;
           return true;
         });
         var temNaLista = false;
