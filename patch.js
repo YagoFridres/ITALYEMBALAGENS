@@ -62324,9 +62324,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           + '#page-central-custos .ccustos-card.is-green{background:linear-gradient(160deg,rgba(16,185,129,.08),rgba(5,150,105,.08))}'
           + '#page-central-custos .ccustos-card.is-yellow{background:linear-gradient(160deg,rgba(234,179,8,.08),rgba(202,138,4,.08))}'
           + '#page-central-custos .ccustos-card.is-blue{background:linear-gradient(160deg,rgba(59,130,246,.08),rgba(139,92,246,.08))}'
-          + '#page-central-custos .ccustos-card-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}'
-          + '#page-central-custos .ccustos-card-val{font-size:24px;font-weight:1000;color:var(--text);margin-bottom:6px}'
-          + '#page-central-custos .ccustos-card-sub{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
+          + '#page-central-custos .ccustos-card-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;text-align:center}'
+          + '#page-central-custos .ccustos-card-val{font-size:24px;font-weight:1000;color:var(--text);margin-bottom:6px;text-align:center}'
+          + '#page-central-custos .ccustos-card-sub{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}'
           + '#page-central-custos .ccustos-var{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-weight:800;font-size:11px}'
           + '#page-central-custos .ccustos-var.is-pos{background:rgba(239,68,68,.15);color:#f87171}'
           + '#page-central-custos .ccustos-var.is-neg{background:rgba(16,185,129,.15);color:#34d399}'
@@ -62349,10 +62349,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           + '#page-central-custos .ccustos-input::placeholder{color:var(--text2)}'
           + '#page-central-custos .ccustos-table-wrap{max-width:100%;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.05)}'
           + '#page-central-custos table.ccustos-table{width:100%;border-collapse:collapse;font-size:12px}'
-          + '#page-central-custos table.ccustos-table th{text-align:left;padding:10px 12px;background:rgba(0,0,0,.22);color:var(--text2);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;z-index:1;border-bottom:1px solid rgba(255,255,255,.08)}'
-          + '#page-central-custos table.ccustos-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--text);vertical-align:middle}'
+          + '#page-central-custos table.ccustos-table th{text-align:center;padding:10px 12px;background:rgba(0,0,0,.22);color:var(--text2);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;z-index:1;border-bottom:1px solid rgba(255,255,255,.08)}'
+          + '#page-central-custos table.ccustos-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--text);vertical-align:middle;text-align:center}'
           + '#page-central-custos table.ccustos-table tr:hover td{background:rgba(14,165,233,.05)}'
-          + '#page-central-custos .ccustos-num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}'
+          + '#page-central-custos .ccustos-num{text-align:center;font-variant-numeric:tabular-nums;font-weight:700}'
           + '#page-central-custos .ccustos-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-weight:700;font-size:10px;gap:4px}'
           + '#page-central-custos .ccustos-badge.is-auto{background:rgba(59,130,246,.14);color:#60a5fa;border:1px solid rgba(59,130,246,.2)}'
           + '#page-central-custos .ccustos-badge.is-manual{background:rgba(168,85,247,.14);color:#c084fc;border:1px solid rgba(168,85,247,.2)}'
@@ -62411,6 +62411,25 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ];
 
     function cmpDt(isoA, isoB) { try { return new Date(isoA).getTime() - new Date(isoB).getTime(); } catch(_){ return 0; } }
+    function ccustosPickValorVenda(r) {
+      try {
+        if (!r) return 0;
+        var v1 = Number(r.valor_total ?? 0) || 0; if (v1 > 0) return v1;
+        var v2 = Number(r.valor_venda ?? 0) || 0; if (v2 > 0) return v2;
+        var v3 = Number(r.total ?? 0) || 0; if (v3 > 0) return v3;
+        var v4 = Number(r.of_valor_total ?? 0) || 0; if (v4 > 0) return v4;
+        var v5 = Number(r.vl_total ?? 0) || 0; if (v5 > 0) return v5;
+        return 0;
+      } catch(_){ return 0; }
+    }
+    function ccustosPickCustoPapelao(r) {
+      try {
+        if (!r) return 0;
+        var p = Number(r.custo_papelao ?? 0) || 0;
+        if (p > 0) return p;
+        return Number(r.custo_total ?? 0) || 0;
+      } catch(_){ return 0; }
+    }
     function mesAnterior(comp) {
       try {
         var p = String(comp||'').split('-');
@@ -62830,17 +62849,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       }
       var rows = (j && Array.isArray(j.rows)) ? j.rows : [];
       var totalCons = Number(j && j.total_custos_consolidado_competencia || 0);
-      var totalVenda = 0;
+      var totalVenda = Number(j && j.total_venda_consolidado_competencia || 0);
+      var totalPapelao = 0;
       rows.forEach(function(r){
-        var venda = Number(r && r.valor_venda||0) || (Number(r && r.of_valor_total||0) || 0);
-        totalVenda += venda;
+        var venda = ccustosPickValorVenda(r);
+        if (!totalVenda) totalVenda += venda;
+        totalPapelao += ccustosPickCustoPapelao(r);
       });
       html += ''
         + '<div class="ccustos-cards">'
         + '  <div class="ccustos-card is-blue"><div class="ccustos-card-label">Nº OFs listadas</div><div class="ccustos-card-val">' + esc(String(rows.length)) + '</div><div class="ccustos-card-sub">Concluídas em ' + esc(nomeComp(state.competencia)) + '</div></div>'
-        + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Valor Venda Total</div><div class="ccustos-card-val">' + fmt1(totalVenda) + '</div><div class="ccustos-card-sub">Somatório valor_total das OFs</div></div>'
-        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Custo Papelão + OFs</div><div class="ccustos-card-val">' + fmt1(totalCons) + '</div><div class="ccustos-card-sub">Cálculo canônico reaproveitado</div></div>'
-        + '  <div class="ccustos-card"><div class="ccustos-card-label">Resultado Estimado</div><div class="ccustos-card-val" style="color:' + ((totalVenda-totalCons)>=0?'#34d399':'#f87171') + '">' + fmt1(totalVenda-totalCons) + '</div><div class="ccustos-card-sub">Margem bruta ≈ ' + (totalVenda>0?fmtN(((totalVenda-totalCons)/totalVenda*100),1):'0,0') + '%</div></div>'
+        + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Valor Venda Total</div><div class="ccustos-card-val">' + fmt1(totalVenda) + '</div><div class="ccustos-card-sub">Somatório valor_total/valor_venda das OFs</div></div>'
+        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Custo Papelão (estimado por gramatura)</div><div class="ccustos-card-val">' + fmt1(totalCons||totalPapelao) + '</div><div class="ccustos-card-sub">Cálculo canônico reaproveitado</div></div>'
+        + '  <div class="ccustos-card"><div class="ccustos-card-label">Resultado Estimado</div><div class="ccustos-card-val" style="color:' + ((totalVenda-(totalCons||totalPapelao))>=0?'#34d399':'#f87171') + '">' + fmt1(totalVenda-(totalCons||totalPapelao)) + '</div><div class="ccustos-card-sub">Margem bruta ≈ ' + (totalVenda>0?fmtN(((totalVenda-(totalCons||totalPapelao))/totalVenda*100),1):'0,0') + '%</div></div>'
         + '</div>'
         + '<div class="ccustos-table-wrap">'
         + '  <table class="ccustos-table"><thead><tr>'
@@ -62852,9 +62873,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         rows.forEach(function(r, idx){
           var ofN = String(r.of||r.numero||'—');
           var cli = String(r.cliente||'—');
-          var venda = Number(r.valor_venda||r.of_valor_total||0) || 0;
+          var venda = ccustosPickValorVenda(r);
           var custoTot = Number(r.custo_total||0) || 0;
-          var papelao = Number(r.custo_papelao||r.custo_total||0) || 0;
+          var papelao = ccustosPickCustoPapelao(r);
           var outros = 0;
           var resultado = venda - custoTot;
           var margem = venda > 0 ? (resultado / venda * 100) : 0;
@@ -63106,9 +63127,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             + '<h3>🔍 Detalhe Custo OF #' + esc(String(r.of||r.numero||'—')) + '</h3>'
             + '<div class="ccustos-cards" style="margin-bottom:18px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">'
             + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Cliente</div><div class="ccustos-card-val" style="font-size:16px">' + esc(String(r.cliente||'—')) + '</div><div class="ccustos-card-sub">' + esc(String(r.descricao||'—')) + '</div></div>'
-            + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Valor Venda</div><div class="ccustos-card-val" style="color:#34d399">' + fmt1(Number(r.valor_venda||r.of_valor_total||0)||0) + '</div></div>'
+            + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Valor Venda</div><div class="ccustos-card-val" style="color:#34d399">' + fmt1(ccustosPickValorVenda(r)) + '</div></div>'
             + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Custo Total (Papelão)</div><div class="ccustos-card-val" style="color:#f87171">' + fmt1(Number(r.custo_total||0)||0) + '</div><div class="ccustos-card-sub">Qtd: ' + fmtN(r.qtd_produzida||0,0) + ' un.</div></div>'
-            + '  <div class="ccustos-card"><div class="ccustos-card-label">Resultado</div><div class="ccustos-card-val" style="color:' + (((Number(r.valor_venda||r.of_valor_total||0)||0) - (Number(r.custo_total||0)||0))>=0?'#34d399':'#f87171') + '">' + fmt1((Number(r.valor_venda||r.of_valor_total||0)||0) - (Number(r.custo_total||0)||0)) + '</div></div>'
+            + '  <div class="ccustos-card"><div class="ccustos-card-label">Resultado</div><div class="ccustos-card-val" style="color:' + ((ccustosPickValorVenda(r) - (Number(r.custo_total||0)||0))>=0?'#34d399':'#f87171') + '">' + fmt1(ccustosPickValorVenda(r) - (Number(r.custo_total||0)||0)) + '</div></div>'
             + '</div>'
             + '<div class="ccustos-panel" style="margin-bottom:0">'
             + '  <div class="ccustos-panel-title">Composição do custo (gramatura + dimensões)</div>'
