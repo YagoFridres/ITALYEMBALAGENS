@@ -3596,6 +3596,7 @@ try {
     { id: 'maiores-tamanhos-vendidos', label: 'Maiores Tamanhos Vendidos', icon: '📏', desc: 'Ranking dos tamanhos de caixa mais vendidos, do maior para o menor.', run: rrReportMaioresTamanhosVendidos },
     { id: 'amostras-do-mes', label: 'Amostras do Mês', icon: '🧪', desc: 'Resumo mensal de amostras produzidas e enviadas por cliente e período.', run: rrOpenAmostrasMesModal },
     { id: 'projecao-vendas', label: 'Projeção de Vendas', icon: '📊', desc: 'Projeção mensal de vendas por ano com histórico e comparação.', run: rrOpenProjecaoVendasModal },
+    { id: 'perdas-operador', label: 'Perdas por Operador', icon: '⚠️', desc: 'Ranking de produção, caixas perdidas e valor por operador. Inclui canceladas com perda.', run: rrOpenPerdasOperadorModal },
     { id: 'facas-mais-utilizadas', label: 'Facas Mais Utilizadas', icon: '🔪', desc: 'Ranking de uso de facas no período selecionado com detalhamento por máquina.', run: rrOpenFacasMaisUtilizadasModal },
     { id: 'resumo-anual', label: 'Resumo Anual', icon: '📅', desc: 'Totais consolidados do ano selecionado com detalhamento mês a mês (Janeiro a Dezembro). Usa data faturamento > conclusão > dia > criação.', run: rrOpenResumoAnualModal },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
@@ -3761,6 +3762,135 @@ try {
     }
   }
 
+  function rrOpenPerdasOperadorModal() {
+    try {
+      var now = new Date();
+      var mesDefault = now.getMonth() + 1;
+      var anoDefault = now.getFullYear();
+      var mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      var fmtNum = new Intl.NumberFormat('pt-BR');
+      var esc = function(s) { return String(s == null ? '' : s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
+      var card = document.createElement('div');
+      card.style.cssText = 'width:min(1240px,97vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:18px 20px 22px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+      var mesOptions = '';
+      for (var mm = 1; mm <= 12; mm++) {
+        mesOptions += '<option value="' + mm + '"' + (mm === mesDefault ? ' selected' : '') + '>' + String(mm).padStart(2,'0') + '. ' + mesesLabels[mm-1] + '</option>';
+      }
+      card.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
+        + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">⚠️ Produção e Perdas por Operador</div><div style="font-size:12px;color:#94a3b8">Ranking por operador no mês/ano com caixas produzidas, valor gerado, caixas perdidas e taxa. Inclui OFs concluídas e canceladas com perda registrada.</div></div>'
+        + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        + '    <select id="rr-perdas-mes" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700">' + mesOptions + '</select>'
+        + '    <input type="number" id="rr-perdas-ano" min="2020" max="2040" step="1" value="' + anoDefault + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700;width:110px" />'
+        + '    <select id="rr-perdas-empresa" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700">'
+        + '      <option value="ALL">Todas as empresas (Soma)</option>'
+        + '      <option value="E1">Italy Embalagens</option>'
+        + '      <option value="E2">Cartoeste</option>'
+        + '      <option value="E3">Oestepack</option>'
+        + '    </select>'
+        + '    <button type="button" id="rr-perdas-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+        + '    <button type="button" id="rr-perdas-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '  </div>'
+        + '</div>'
+        + '<div id="rr-perdas-body" style="min-height:320px"><p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando dados de produção e perdas por operador...</p></div>';
+      wrap.appendChild(card);
+      document.body.appendChild(wrap);
+      var btnClose = card.querySelector('#rr-perdas-close');
+      if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      var body = card.querySelector('#rr-perdas-body');
+      var selMes = card.querySelector('#rr-perdas-mes');
+      var inputAno = card.querySelector('#rr-perdas-ano');
+      var selEmp = card.querySelector('#rr-perdas-empresa');
+      var btnBuscar = card.querySelector('#rr-perdas-buscar');
+
+      function carregarPerdas(mes, ano) {
+        if (!body) return;
+        body.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando ranking operador ' + esc(mes + '/' + ano) + '...</p>';
+        var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+        var empId = selEmp && selEmp.value ? selEmp.value : 'ALL';
+        fetch('/api/relatorios/perdas-operador?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
+          .then(function(r) { return r.json(); })
+          .then(function(resp) {
+            if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
+            var tot = resp.totalizadores || {};
+            var ranking = Array.isArray(resp.ranking) ? resp.ranking : [];
+            var top3 = Array.isArray(tot.top3) ? tot.top3 : [];
+            var top3Html = top3.map(function(t, i) {
+              return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:900;color:#60a5fa;font-size:11px">#' + (i+1) + ' ' + esc(t.operador) + '</span><span style="font-weight:800;color:#93c5fd;font-size:11px">' + fmtNum.format(Number(t.qtd_produzida || 0)) + ' cx</span></div>';
+            }).join('');
+            var totPeriodoProd = Number(tot.total_qtd_produzida || 0);
+            var totPeriodoPerda = Number(tot.total_qtd_perdida || 0);
+            var perdaPct = totPeriodoProd + totPeriodoPerda > 0
+              ? Number(((totPeriodoPerda / (totPeriodoProd + totPeriodoPerda)) * 100).toFixed(2))
+              : 0;
+
+            var rowsHtml = ranking.map(function(r, idx) {
+              var rowStyle = idx % 2 === 0 ? 'background:rgba(255,255,255,.015)' : 'background:transparent';
+              return ''
+                + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + rowStyle + '">'
+                + '  <td style="padding:10px 12px;color:#f8fafc;font-size:13px;font-weight:700">' + esc(r.operador || '—') + '</td>'
+                + '  <td style="padding:10px 12px;color:#10b981;font-size:13px;font-weight:800;text-align:right">' + fmtNum.format(Number(r.qtd_produzida || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#3b82f6;font-size:13px;font-weight:800;text-align:right">' + fmtBRL.format(Number(r.valor_produzido || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#f87171;font-size:13px;font-weight:800;text-align:right">' + fmtNum.format(Number(r.qtd_perdida || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#fb923c;font-size:13px;font-weight:700;text-align:right">' + fmtBRL.format(Number(r.valor_perdido || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#a78bfa;font-size:12px;font-weight:700;text-align:right">' + fmtNum.format(Number(r.qtd_ofs || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#facc15;font-size:12px;font-weight:700;text-align:right">' + Number(r.pct_perda || 0).toFixed(2).replace('.',',') + '%</td>'
+                + '</tr>';
+            }).join('');
+
+            body.innerHTML = ''
+              + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">'
+              + '  <div style="background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(249,115,22,.12));border:1px solid rgba(239,68,68,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(239,68,68,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Período</div><div style="font-size:24px;font-weight:900;color:#fef2f2;margin-top:4px">' + esc(String(mes).padStart(2,'0') + '/' + resp.ano) + '</div><div style="font-size:10px;color:#fecaca;margin-top:2px">' + (function(){ var fid = String(resp.empresa_filtro_id || '').toUpperCase(); if (!fid || fid === 'ALL') return 'Todas as empresas (Soma)'; if (fid === 'E1') return 'Italy Embalagens'; if (fid === 'E2') return 'Cartoeste'; if (fid === 'E3') return 'Oestepack'; return 'Empresa: ' + esc(fid); })() + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(5,150,105,.14));border:1px solid rgba(16,185,129,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(16,185,129,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Caixas Produzidas</div><div style="font-size:24px;font-weight:900;color:#ecfdf5;margin-top:2px">' + fmtNum.format(Number(tot.total_qtd_produzida || 0)) + '</div><div style="font-size:10px;color:#a7f3d0;margin-top:2px">Valor: ' + fmtBRL.format(Number(tot.total_valor_produzido || 0)) + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(239,68,68,.14),rgba(220,38,38,.14));border:1px solid rgba(220,38,38,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(220,38,38,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Caixas Perdidas</div><div style="font-size:24px;font-weight:900;color:#fef2f2;margin-top:2px">' + fmtNum.format(Number(tot.total_qtd_perdida || 0)) + '</div><div style="font-size:10px;color:#fecaca;margin-top:2px">Valor: ' + fmtBRL.format(Number(tot.total_valor_perdido || 0)) + ' · Perda: ' + Number(perdaPct || 0).toFixed(2).replace('.',',') + '%</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(168,85,247,.14));border:1px solid rgba(139,92,246,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(168,85,247,.2),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#c4b5fd;font-weight:700;text-transform:uppercase;letter-spacing:.3px">🏆 Top 3 Operadores (Produção)</div>' + (top3Html ? '<div style="margin-top:4px">' + top3Html + '</div>' : '<div style="font-size:13px;color:#ddd6fe;margin-top:4px">Sem dados</div>') + '</div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(107,114,128,.12),rgba(75,85,99,.12));border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(148,163,184,.16),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#cbd5e1;font-weight:700;text-transform:uppercase;letter-spacing:.3px">OFs Contabilizadas</div><div style="font-size:24px;font-weight:900;color:#f8fafc;margin-top:2px">' + fmtNum.format(Number(tot.total_ofs || 0)) + '</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">' + fmtNum.format(ranking.length) + ' operador(es) no ranking</div></div></div>'
+              + '</div>'
+              + '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:16px;overflow:hidden">'
+              + '  <div style="padding:12px 16px;background:linear-gradient(90deg,rgba(30,41,59,.8),rgba(15,23,42,.8));border-bottom:1px solid rgba(148,163,184,.1);display:flex;justify-content:space-between;align-items:center">'
+              + '    <div style="color:#f1f5f9;font-weight:800;font-size:14px">⚠️ Ranking Produção + Perdas por Operador — ' + esc(String(mes).padStart(2,'0') + '/' + resp.ano) + '</div>'
+              + '    <div style="color:#94a3b8;font-size:11px;font-weight:600">' + fmtNum.format(ranking.length) + ' operador(es) listado(s) · Ordenado por caixas produzidas DESC</div>'
+              + '  </div>'
+              + (ranking.length === 0
+                ? '<div style="padding:50px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">🧾</div><div style="color:#94a3b8;font-size:14px;font-weight:600">Nenhum dado de operador registrado no período.</div><div style="color:#64748b;font-size:12px;margin-top:4px">Verifique o mês/ano ou se as OFs do período têm operadores de conclusão e qtd_produzida preenchidos.</div></div>'
+                : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:linear-gradient(90deg,#1e293b,#0f172a)"><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.4px">Operador</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Caixas Produzidas</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Valor Produzido</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Caixas Perdidas</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Valor Perdido</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">OFs</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">% Perda</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
+              + '</div>';
+          })
+          .catch(function(err) {
+            if (!body) return;
+            body.innerHTML = ''
+              + '<div style="padding:40px 20px;text-align:center">'
+              + '  <div style="font-size:42px;margin-bottom:10px">⚠️</div>'
+              + '  <div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao carregar Perdas por Operador</div>'
+              + '  <div style="color:#f87171;font-size:12px;margin-top:6px">' + esc(err && err.message || err) + '</div>'
+              + '  <button type="button" onclick="document.getElementById(\'rr-perdas-buscar\').click()" style="margin-top:14px;padding:8px 16px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700;font-size:12px">Tentar novamente</button>'
+              + '</div>';
+            console.error('[RR-PerdasOperador]', err);
+          });
+      }
+
+      if (btnBuscar) btnBuscar.onclick = function() {
+        try {
+          var m = Number(selMes ? selMes.value : 0);
+          var a = Number(inputAno ? inputAno.value : 0);
+          if (!m || m < 1 || m > 12) { try { if (typeof window.toastMod === 'function') window.toastMod('Informe um mês válido (1-12).', 'warn'); } catch (_) {} return; }
+          if (!a || a < 2020 || a > 2100) { try { if (typeof window.toastMod === 'function') window.toastMod('Informe um ano válido entre 2020 e 2100.', 'warn'); } catch (_) {} return; }
+          if (typeof window.toastMod === 'function') window.toastMod('Buscando Produção e Perdas por Operador ' + m + '/' + a + '...', 'info');
+          carregarPerdas(m, a);
+        } catch (e) { console.error('[RR-PerdasOperador][buscar]', e); }
+      };
+      setTimeout(function() { carregarPerdas(mesDefault, anoDefault); }, 30);
+    } catch (e) {
+      try { alert('Erro ao abrir Perdas por Operador: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
+
   function rrOpenResumoAnualModal() {
     try {
       var now = new Date();
@@ -3778,6 +3908,12 @@ try {
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
         + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">📅 Resumo Anual</div><div style="font-size:12px;color:#94a3b8">Totais consolidados do ano selecionado com detalhamento mês a mês (Janeiro a Dezembro). Usa a hierarquia oficial: data de faturamento > conclusão > dia > criação.</div></div>'
         + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        + '    <select id="rr-resumo-anual-empresa" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700">'
+        + '      <option value="ALL">Todas as empresas (Soma)</option>'
+        + '      <option value="E1">Italy Embalagens</option>'
+        + '      <option value="E2">Cartoeste</option>'
+        + '      <option value="E3">Oestepack</option>'
+        + '    </select>'
         + '    <input type="number" id="rr-resumo-anual-ano" min="2020" max="2040" step="1" value="' + anoDefault + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700;width:110px" />'
         + '    <button type="button" id="rr-resumo-anual-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
         + '    <button type="button" id="rr-resumo-anual-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
@@ -3798,7 +3934,9 @@ try {
         body.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando resumo anual de ' + esc(ano) + '...</p>';
         var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
         var h = token ? { 'Authorization': 'Bearer ' + token } : {};
-        fetch('/api/relatorios/resumo-anual?ano=' + encodeURIComponent(ano), { headers: h })
+        var selEmp = card.querySelector('#rr-resumo-anual-empresa');
+        var empId = selEmp && selEmp.value ? selEmp.value : 'ALL';
+        fetch('/api/relatorios/resumo-anual?ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
           .then(function(r) { return r.json(); })
           .then(function(resp) {
             if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
@@ -45699,6 +45837,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           runAfterGoEffects('estoque');
           return rr;
       }
+      if (page === 'central-custos') {
+        try {
+          if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fin_ok') !== '1') {
+            alert('Senha Financeiro obrigatória.');
+            try { abrirMenuFinanceiro(); } catch (_) {}
+            return;
+          }
+        } catch (_) {}
+        var hostCC = getMainPatchHost('central-custos', '💸 Central de Custos');
+        if (typeof window.renderPageCentralCustos === 'function') {
+          window.renderPageCentralCustos(hostCC);
+        } else {
+          hostCC.innerHTML = '<div style="padding:30px;color:#f75a5a">Erro: Módulo Central de Custos não carregado. Tente recarregar a página (Ctrl+F5).</div>';
+        }
+        return;
+      }
       if (page === 'estoque-tintas') {
         var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
         _renderEstoqueTintas(hostTintas);
@@ -45707,6 +45861,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (page === 'estoque-materiais') {
         var hostMateriais = getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
         _renderEstoqueMateriais(hostMateriais);
+        return;
+      }
+      if (page === 'operadores') {
+        var hostOps = getMainPatchHost('operadores', '👥 Operadores');
+        if (typeof window.renderPageOperadores === 'function') {
+          window.renderPageOperadores(hostOps);
+        }
         return;
       }
       if (page === 'estoque-dashboard') {
@@ -61509,6 +61670,1660 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var link = ev.target.closest('a[data-page],button[data-page],nav button,nav a,[data-nav]');
     if (link) try { setTimeout(fecharTodosModaisAbertos, 30); } catch(_){}
   }, true); } catch (_){}
+})();
+
+;(function __relatoriosExportarGlobaisEHelperMaquinas(){
+  try {
+    if (typeof window.rrOpenProjecaoVendasModal === 'undefined' && typeof rrOpenProjecaoVendasModal === 'function') {
+      window.rrOpenProjecaoVendasModal = rrOpenProjecaoVendasModal;
+    }
+  } catch (_) {}
+  try {
+    if (typeof window.rrOpenPerdasOperadorModal === 'undefined' && typeof rrOpenPerdasOperadorModal === 'function') {
+      window.rrOpenPerdasOperadorModal = rrOpenPerdasOperadorModal;
+    }
+  } catch (_) {}
+  try {
+    if (typeof window.rrOpenResumoAnualModal === 'undefined' && typeof rrOpenResumoAnualModal === 'function') {
+      window.rrOpenResumoAnualModal = rrOpenResumoAnualModal;
+    }
+  } catch (_) {}
+  try {
+    if (typeof window._histCanonicalMachineOptions === 'undefined' && typeof _histCanonicalMachineOptions === 'function') {
+      window._histCanonicalMachineOptions = _histCanonicalMachineOptions;
+    }
+  } catch (_) {}
+  try {
+    if (typeof window._histCanonicalMachineOptionsHtml === 'undefined' && typeof _histCanonicalMachineOptionsHtml === 'function') {
+      window._histCanonicalMachineOptionsHtml = _histCanonicalMachineOptionsHtml;
+    }
+  } catch (_) {}
+  try {
+    if (typeof window.rrDefs === 'undefined' && typeof rrDefs !== 'undefined') {
+      window.rrDefs = rrDefs;
+    }
+  } catch (_) {}
+
+  try {
+    if (typeof window._histCanonicalMachineOptions !== 'function') {
+      window._histCanonicalMachineOptions = function() {
+        return [
+          { value: 'IMP 01', label: 'IMP 01' },
+          { value: 'IMP 02', label: 'IMP 02' },
+          { value: 'IMP 03', label: 'IMP 03' },
+          { value: 'IMP 04', label: 'IMP 04' },
+          { value: 'IMP 05', label: 'IMP 05' },
+          { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
+          { value: 'Riscador', label: 'RISCADOR' }
+        ];
+      };
+    }
+  } catch (_) {}
+  try {
+    if (typeof window._histCanonicalMachineOptionsHtml !== 'function') {
+      window._histCanonicalMachineOptionsHtml = function(selectedValue) {
+        var selected = String(selectedValue || '').trim();
+        var fnList = typeof window._histCanonicalMachineOptions === 'function' ? window._histCanonicalMachineOptions : null;
+        var list = fnList ? fnList() : [
+          { value: 'IMP 01', label: 'IMP 01' },
+          { value: 'IMP 02', label: 'IMP 02' },
+          { value: 'IMP 03', label: 'IMP 03' },
+          { value: 'IMP 04', label: 'IMP 04' },
+          { value: 'IMP 05', label: 'IMP 05' },
+          { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
+          { value: 'Riscador', label: 'RISCADOR' }
+        ];
+        return ['<option value="">Todas as máquinas</option>'].concat(list.map(function(item) {
+          var value = String(item && item.value || '').trim();
+          var label = String(item && item.label || value).trim();
+          return '<option value="' + value.replace(/"/g, '&quot;') + '"' + (value === selected ? ' selected' : '') + '>' + label + '</option>';
+        })).join('');
+      };
+    }
+  } catch (_) {}
+})();
+
+;(function __operadoresPageModule() {
+  if (window.__operadoresPageModuleInstalled) return;
+  window.__operadoresPageModuleInstalled = true;
+
+  function _opToken() {
+    try {
+      var t = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      return String(t || '').trim();
+    } catch (_) { return ''; }
+  }
+
+  function _opFetchJson(input, init) {
+    try {
+      var tk = _opToken();
+      var hdrs = Object.assign({}, (init && init.headers) || {});
+      if (tk) hdrs['Authorization'] = 'Bearer ' + tk;
+      hdrs['Content-Type'] = 'application/json';
+      return fetch(input, Object.assign({}, init || {}, { headers: hdrs }));
+    } catch (e) { return Promise.reject(e); }
+  }
+
+  function _opMaquinaOptions(selValue) {
+    try {
+      if (typeof window._histCanonicalMachineOptionsHtml === 'function') {
+        return String(window._histCanonicalMachineOptionsHtml(selValue || '') || '');
+      }
+    } catch (_) {}
+    try {
+      var list = typeof window._histCanonicalMachineOptions === 'function' ? window._histCanonicalMachineOptions() : [];
+      if (!Array.isArray(list) || !list.length) {
+        list = [
+          { value: 'IMP 01', label: 'IMP 01' },
+          { value: 'IMP 02', label: 'IMP 02' },
+          { value: 'IMP 03', label: 'IMP 03' },
+          { value: 'IMP 04', label: 'IMP 04' },
+          { value: 'IMP 05', label: 'IMP 05' },
+          { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
+          { value: 'Riscador', label: 'RISCADOR' }
+        ];
+      }
+      var cur = String(selValue || '').trim().toUpperCase();
+      var opts = ['<option value="">(Sem máquina principal)</option>'].concat(list.map(function(it) {
+        var v = String(it && it.value || it || '').trim();
+        var l = String(it && it.label || v || '').trim();
+        return '<option value="' + v.replace(/"/g, '&quot;') + '"' + (v.toUpperCase() === cur ? ' selected' : '') + '>' + l + '</option>';
+      }));
+      return opts.join('');
+    } catch (_) { return ''; }
+  }
+
+  function _opIsAtivo(row) {
+    try {
+      if (!row || typeof row !== 'object') return true;
+      if (Object.prototype.hasOwnProperty.call(row, 'ativo')) {
+        var a = row.ativo;
+        if (typeof a === 'boolean') return a;
+        if (typeof a === 'number') return a !== 0;
+        if (typeof a === 'string') {
+          var s = a.trim().toLowerCase();
+          return s !== '' && s !== '0' && s !== 'false' && s !== 'nao' && s !== 'não' && s !== 'inativo' && s !== 'desativado';
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(row, 'status')) {
+        var st = String(row.status || '').trim().toLowerCase();
+        if (st === 'inativo' || st === 'desativado' || st === 'desligado') return false;
+      }
+    } catch (_) {}
+    return true;
+  }
+
+  function _opNorm(v, dflt) { try { return v != null ? String(v || '') : (dflt != null ? dflt : ''); } catch (_) { return dflt != null ? dflt : ''; } }
+  function _opEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function _opAttr(s) { return _opEsc(s); }
+
+  function _opMaqMatch(maqValue, opMaqPrincipal) {
+    var a = String(maqValue || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    var b = String(opMaqPrincipal || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!a || !b) return false;
+    return a === b;
+  }
+
+  function _opSugerirOperadoresPorMaquina(maqValue, operadoresLista, operadoresSelecionadosAtuais) {
+    try {
+      if (!Array.isArray(operadoresLista) || !operadoresLista.length) return [];
+      var selAtuais = Array.isArray(operadoresSelecionadosAtuais) ? operadoresSelecionadosAtuais.map(function(s) { return String(s || '').trim(); }).filter(Boolean) : [];
+      var filtraMaq = operadoresLista.filter(function(op) {
+        if (!op || typeof op !== 'object') return false;
+        if (!_opIsAtivo(op)) return false;
+        return _opMaqMatch(maqValue, op.maq_principal || op.maquina_principal || op.maquinaPadrao || op.maquina || '');
+      });
+      if (!filtraMaq.length) return selAtuais;
+      var set = {};
+      selAtuais.forEach(function(n) { set[n.toUpperCase()] = n; });
+      filtraMaq.forEach(function(op) {
+        var nm = String(op.nome || op.name || op.descricao || '').trim();
+        if (!nm) return;
+        if (!set[nm.toUpperCase()]) set[nm.toUpperCase()] = nm;
+      });
+      var out = [];
+      Object.keys(set).forEach(function(k) { out.push(set[k]); });
+      return out;
+    } catch (_) { return Array.isArray(operadoresSelecionadosAtuais) ? operadoresSelecionadosAtuais : []; }
+  }
+
+  window._opSugerirOperadoresPorMaquina = _opSugerirOperadoresPorMaquina;
+  window._opCarregarCacheOperadoresGlobais = async function() {
+    try {
+      var resp = await _opFetchJson('/api/operadores?ativo=1', { method: 'GET' });
+      if (!resp.ok) return null;
+      var j = await resp.json().catch(function() { return null; });
+      var lista = [];
+      if (j && Array.isArray(j)) lista = j;
+      else if (j && Array.isArray(j.data)) lista = j.data;
+      else if (j && Array.isArray(j.rows)) lista = j.rows;
+      else if (j && j.operadores && Array.isArray(j.operadores)) lista = j.operadores;
+      window.__operadoresCacheGlobais = Array.isArray(lista) ? lista : [];
+      return window.__operadoresCacheGlobais;
+    } catch (_) { return null; }
+  };
+
+  function _opInstalarHookSugestaoConclusao() {
+    try {
+      if (window.__opHookSugestaoConclusaoInstalled) return;
+      window.__opHookSugestaoConclusaoInstalled = true;
+      document.addEventListener('change', function(ev) {
+        try {
+          var t = ev && ev.target;
+          if (!t || !t.matches) return;
+          var isMaqLoss = !!t.closest('#conclusao-perdas-lista') && t.matches('.conc-loss-maq');
+          var isMaqPass = !!t.closest('#conclusao-maquinas-passagem-lista') && t.matches('.conc-passagem-maq');
+          if (!isMaqLoss && !isMaqPass) return;
+          var maqVal = String(t.value || '').trim();
+          if (!maqVal) return;
+          var row = t.closest('.com-conc-loss-row, .com-conc-passagem-row');
+          if (!row) return;
+          var opSels = row.querySelectorAll('.conc-loss-op, .conc-passagem-op');
+          if (!opSels || !opSels.length) return;
+          (function resolveCacheETenta() {
+            try {
+              var cache = Array.isArray(window.__operadoresCacheGlobais) ? window.__operadoresCacheGlobais.slice() : null;
+              if (cache) {
+                var sugs = _opSugerirOperadoresPorMaquina(maqVal, cache, []);
+                if (!sugs.length) return;
+                opSels.forEach(function(selEl, idx) {
+                  var opcao = sugs[idx] || '';
+                  if (!opcao) return;
+                  try {
+                    var opts = selEl.options || [];
+                    for (var i = 0; i < opts.length; i++) {
+                      var ov = String(opts[i].value || '').trim();
+                      var ol = String(opts[i].textContent || '').trim();
+                      if (ov.toUpperCase() === opcao.toUpperCase() || ol.toUpperCase() === opcao.toUpperCase()) {
+                        selEl.value = opts[i].value;
+                        try { selEl.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+                        break;
+                      }
+                    }
+                  } catch (_) {}
+                });
+                return;
+              }
+              if (window._opCarregarCacheOperadoresGlobais) {
+                Promise.resolve(window._opCarregarCacheOperadoresGlobais()).then(function() {
+                  try { setTimeout(resolveCacheETenta, 60); } catch (_) {}
+                }).catch(function() {});
+              }
+            } catch (_) {}
+          })();
+        } catch (_) {}
+      }, true);
+    } catch (_) {}
+  }
+  try { setTimeout(_opInstalarHookSugestaoConclusao, 300); } catch (_) {}
+
+  window.renderPageOperadores = function(hostParam) {
+    try {
+      var host = hostParam || (typeof getMainPatchHost === 'function' ? getMainPatchHost('operadores', '👥 Operadores') : null);
+      if (!host) {
+        try { host = document.getElementById('patch-page-body'); } catch (_) { host = null; }
+      }
+      if (!host) return;
+      try { if (typeof window._PAGE_ATUAL !== 'undefined') window._PAGE_ATUAL = 'operadores'; } catch (_) {}
+
+      function stClass(el, cls, on) { try { if (!el) return; if (on) el.classList.add(cls); else el.classList.remove(cls); } catch (_) {} }
+      function emptyNode(n) { try { while (n && n.firstChild) n.removeChild(n.firstChild); } catch (_) {} }
+
+      host.innerHTML = ''
+        + '<style>'
+        + '  #op-page-shell{display:grid;gap:14px}'
+        + '  #op-page-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,rgba(15,23,42,.9),rgba(15,23,42,.7));border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:16px}'
+        + '  #op-page-title{font-size:18px;font-weight:900;color:#f8fafc;margin:0}'
+        + '  #op-page-sub{font-size:12px;color:#94a3b8;margin-top:4px;max-width:720px}'
+        + '  #op-page-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+        + '  .op-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.2);background:#020617;color:#e2e8f0;font-size:13px;font-weight:800;cursor:pointer;box-sizing:border-box}'
+        + '  .op-btn.primary{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:rgba(37,99,235,.4);color:#fff}'
+        + '  .op-btn.ghost{background:transparent}'
+        + '  .op-btn.danger{background:rgba(127,29,29,.12);border-color:rgba(239,68,68,.3);color:#fca5a5}'
+        + '  .op-btn[disabled]{opacity:.55;cursor:wait}'
+        + '  #op-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;background:rgba(2,6,23,.32);border:1px solid rgba(148,163,184,.1);border-radius:14px;padding:12px}'
+        + '  #op-search{width:100%;padding:10px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px;box-sizing:border-box}'
+        + '  #op-search::placeholder{color:#94a3b8}'
+        + '  #op-count{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#60a5fa}'
+        + '  #op-tab-wrap{background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:14px}'
+        + '  #op-tab{width:100%;border-collapse:separate;border-spacing:0}'
+        + '  #op-tab thead th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;font-weight:900;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.34)}'
+        + '  #op-tab thead th.num, #op-tab tbody td.num{text-align:right}'
+        + '  #op-tab tbody td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.08);font-size:13px;color:#e2e8f0;vertical-align:middle}'
+        + '  #op-tab tbody tr.inativo td{opacity:.55}'
+        + '  #op-tab tbody tr:hover td{background:rgba(30,41,59,.32)}'
+        + '  .op-cell-input{width:100%;padding:9px 10px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:10px;color:#f8fafc;font-size:13px;box-sizing:border-box}'
+        + '  .op-cell-select{width:100%;padding:9px 10px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:10px;color:#f8fafc;font-size:13px;box-sizing:border-box}'
+        + '  .op-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}'
+        + '  .op-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}'
+        + '  .op-chip.on{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.28)}'
+        + '  .op-chip.off{background:rgba(148,163,184,.1);color:#94a3b8;border:1px solid rgba(148,163,184,.2)}'
+        + '  .op-switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}'
+        + '  .op-switch input{opacity:0;width:0;height:0;position:absolute}'
+        + '  .op-switch .slider{position:absolute;inset:0;cursor:pointer;background:#1e293b;border-radius:999px;border:1px solid rgba(148,163,184,.2);transition:.15s}'
+        + '  .op-switch .slider::before{position:absolute;content:"";height:18px;width:18px;left:3px;top:50%;transform:translateY(-50%);background:#cbd5e1;border-radius:50%;transition:.15s}'
+        + '  .op-switch input:checked + .slider{background:rgba(16,185,129,.2);border-color:rgba(16,185,129,.45)}'
+        + '  .op-switch input:checked + .slider::before{transform:translate(20px,-50%);background:#34d399}'
+        + '  #op-empty{padding:28px;text-align:center;color:#94a3b8;font-size:13px}'
+        + '  #op-toast{position:fixed;top:20px;right:20px;z-index:9999999;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:800;max-width:380px;box-shadow:0 16px 40px rgba(0,0,0,.4);display:none}'
+        + '  #op-toast.ok{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.35)}'
+        + '  #op-toast.err{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.35)}'
+        + '</style>'
+        + '<div id="op-toast"></div>'
+        + '<div id="op-page-shell">'
+        + '  <div id="op-page-head">'
+        + '    <div>'
+        + '      <div id="op-page-title">👥 Operadores</div>'
+        + '      <div id="op-page-sub">Cadastre os operadores da produção, defina a máquina principal para sugestão automática na conclusão de OFs e ative/desative rapidamente com o toggle.</div>'
+        + '    </div>'
+        + '    <div id="op-page-actions">'
+        + '      <button type="button" class="op-btn" id="op-refresh" title="Recarregar">🔄 Recarregar</button>'
+        + '      <button type="button" class="op-btn primary" id="op-add">➕ Adicionar Operador</button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div id="op-toolbar">'
+        + '    <input type="text" id="op-search" placeholder="🔍 Buscar por nome, telefone ou máquina principal..." autocomplete="off"/>'
+        + '    <div id="op-count">—</div>'
+        + '  </div>'
+        + '  <div id="op-tab-wrap">'
+        + '    <table id="op-tab">'
+        + '      <thead><tr>'
+        + '        <th style="width:30%">Nome</th>'
+        + '        <th style="width:18%">Telefone</th>'
+        + '        <th style="width:24%">Máquina Principal</th>'
+        + '        <th style="width:10%">Status</th>'
+        + '        <th class="num" style="width:18%">Ações</th>'
+        + '      </tr></thead>'
+        + '      <tbody id="op-tab-body"><tr><td id="op-empty" colspan="5">Carregando operadores...</td></tr></tbody>'
+        + '    </table>'
+        + '  </div>'
+        + '</div>';
+
+      var toastEl = host.querySelector('#op-toast');
+      function toast(msg, tipo) {
+        try {
+          if (!toastEl) return;
+          toastEl.textContent = String(msg || '');
+          toastEl.className = 'op-toast ' + (String(tipo || 'ok') === 'err' ? 'err' : 'ok');
+          toastEl.style.display = 'block';
+          clearTimeout(toastEl.__t);
+          toastEl.__t = setTimeout(function() { try { toastEl.style.display = 'none'; } catch (_) {} }, 2800);
+        } catch (_) {}
+      }
+
+      var state = {
+        lista: [],
+        busca: '',
+        loading: true,
+        salvando: {}
+      };
+
+      var tbody = host.querySelector('#op-tab-body');
+      var searchEl = host.querySelector('#op-search');
+      var countEl = host.querySelector('#op-count');
+      var refreshBtn = host.querySelector('#op-refresh');
+      var addBtn = host.querySelector('#op-add');
+
+      function buscaMatch(row, termo) {
+        try {
+          if (!termo) return true;
+          var t = String(termo).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          if (!t) return true;
+          var campos = [
+            row.nome || row.name || row.descricao || '',
+            row.telefone || row.telefone1 || row.tel || row.cel || row.celular || row.contato || '',
+            row.maq_principal || row.maquina_principal || row.maquinaPadrao || row.maquina || '',
+            row.email || row.cargo || ''
+          ].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return campos.indexOf(t) !== -1;
+        } catch (_) { return true; }
+      }
+
+      function visiveis() {
+        try {
+          var t = String(state.busca || '').trim();
+          var list = Array.isArray(state.lista) ? state.lista : [];
+          if (!t) return list.slice();
+          return list.filter(function(r) { return buscaMatch(r, t); });
+        } catch (_) { return []; }
+      }
+
+      function updateCount() {
+        try {
+          var vis = visiveis();
+          var tot = Array.isArray(state.lista) ? state.lista.length : 0;
+          var ativos = (Array.isArray(state.lista) ? state.lista : []).filter(_opIsAtivo).length;
+          countEl.textContent = String(vis.length) + ' de ' + String(tot) + ' • Ativos: ' + String(ativos);
+        } catch (_) {}
+      }
+
+      function salvarLinha(rowEl, id, rowAtual) {
+        try {
+          if (!id || !rowEl) { toast('ID inválido.', 'err'); return; }
+          var nomeInput = rowEl.querySelector('[data-op-field="nome"]');
+          var telInput = rowEl.querySelector('[data-op-field="telefone"]');
+          var maqSel = rowEl.querySelector('[data-op-field="maq_principal"]');
+          var ativoChk = rowEl.querySelector('[data-op-field="ativo"]');
+          var payload = {
+            nome: String((nomeInput && nomeInput.value != null) ? nomeInput.value : (rowAtual && rowAtual.nome || '')).trim(),
+            telefone: String((telInput && telInput.value != null) ? telInput.value : (rowAtual && (rowAtual.telefone || rowAtual.telefone1 || rowAtual.tel || rowAtual.cel || rowAtual.celular || rowAtual.contato) || '')).trim(),
+            maq_principal: String((maqSel && maqSel.value != null) ? maqSel.value : (rowAtual && (rowAtual.maq_principal || rowAtual.maquina_principal || rowAtual.maquinaPadrao || rowAtual.maquina) || '')).trim(),
+            ativo: !!(ativoChk ? ativoChk.checked : _opIsAtivo(rowAtual || {}))
+          };
+          if (!payload.nome) { toast('Nome é obrigatório.', 'err'); return; }
+          state.salvando[id] = true;
+          render();
+          (async function() {
+            try {
+              var resp = await _opFetchJson('/api/operadores/' + encodeURIComponent(String(id)), {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+              });
+              var j = await resp.json().catch(function() { return null; });
+              if (resp.ok && j && (j.ok || j.data || j.id || j.row || (j.error == null && j.message == null))) {
+                var idx = state.lista.findIndex(function(r) { return String(r && r.id || '') === String(id); });
+                if (idx >= 0) {
+                  state.lista[idx] = Object.assign({}, state.lista[idx] || {}, payload, j && j.data ? j.data : {});
+                }
+                toast('Operador salvo com sucesso.', 'ok');
+              } else {
+                var errMsg = (j && (j.error || j.message)) || 'Erro ao salvar';
+                toast(errMsg, 'err');
+              }
+            } catch (e) {
+              toast(String(e && e.message || e || 'Erro de rede'), 'err');
+            } finally {
+              delete state.salvando[id];
+              try { if (window._opCarregarCacheOperadoresGlobais) window._opCarregarCacheOperadoresGlobais(); } catch (_) {}
+              render();
+            }
+          })();
+        } catch (e) {
+          try { toast(String(e && e.message || e), 'err'); } catch (_) {}
+        }
+      }
+
+      function removerLinha(id, rowAtual) {
+        try {
+          if (!id) { toast('ID inválido.', 'err'); return; }
+          var msg = _opIsAtivo(rowAtual || {}) ? 'Desativar este operador? Ele continuará no histórico mas não aparecerá mais em sugestões.' : 'Reativar este operador?';
+          if (!confirm(msg)) return;
+          state.salvando['del_' + id] = true;
+          render();
+          (async function() {
+            try {
+              var resp = await _opFetchJson('/api/operadores/' + encodeURIComponent(String(id)), { method: 'DELETE' });
+              var j = await resp.json().catch(function() { return null; });
+              if (resp.ok && j && (j.ok || j.data || (j.error == null && j.message == null))) {
+                var idx = state.lista.findIndex(function(r) { return String(r && r.id || '') === String(id); });
+                if (idx >= 0) {
+                  state.lista[idx] = Object.assign({}, state.lista[idx] || {}, { ativo: !_opIsAtivo(state.lista[idx] || {}) });
+                }
+                toast('Status atualizado.', 'ok');
+              } else {
+                var errMsg = (j && (j.error || j.message)) || 'Erro ao atualizar status';
+                toast(errMsg, 'err');
+              }
+            } catch (e) {
+              toast(String(e && e.message || e || 'Erro de rede'), 'err');
+            } finally {
+              delete state.salvando['del_' + id];
+              try { if (window._opCarregarCacheOperadoresGlobais) window._opCarregarCacheOperadoresGlobais(); } catch (_) {}
+              render();
+            }
+          })();
+        } catch (e) {
+          try { toast(String(e && e.message || e), 'err'); } catch (_) {}
+        }
+      }
+
+      function adicionarNovo() {
+        try {
+          var nome = String(prompt('Nome do novo operador *') || '').trim();
+          if (!nome) { toast('Nome é obrigatório.', 'err'); return; }
+          var telefone = String(prompt('Telefone (opcional):', nome) || '').trim();
+          var payload = { nome: nome, telefone: telefone, ativo: true, maq_principal: '' };
+          state.salvando['__novo__'] = true;
+          render();
+          (async function() {
+            try {
+              var resp = await _opFetchJson('/api/operadores', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+              });
+              var j = await resp.json().catch(function() { return null; });
+              if (resp.ok && j && (j.ok || j.id || j.data || (j.error == null && j.message == null))) {
+                var novoId = String(j && (j.id || (j.data && j.data.id)) || '').trim();
+                if (!Array.isArray(state.lista)) state.lista = [];
+                if (novoId) {
+                  state.lista.unshift(Object.assign({ id: novoId }, payload, j.data || {}));
+                } else {
+                  state.lista.unshift(Object.assign({ id: 'temp_' + Date.now() }, payload));
+                }
+                toast('Operador cadastrado com sucesso.', 'ok');
+              } else {
+                var errMsg = (j && (j.error || j.message)) || 'Erro ao criar operador';
+                toast(errMsg, 'err');
+              }
+            } catch (e) {
+              toast(String(e && e.message || e || 'Erro de rede'), 'err');
+            } finally {
+              delete state.salvando['__novo__'];
+              try { if (window._opCarregarCacheOperadoresGlobais) window._opCarregarCacheOperadoresGlobais(); } catch (_) {}
+              render();
+            }
+          })();
+        } catch (e) {
+          try { toast(String(e && e.message || e), 'err'); } catch (_) {}
+        }
+      }
+
+      function render() {
+        try {
+          updateCount();
+          var rows = visiveis();
+          if (state.loading) {
+            emptyNode(tbody);
+            var tr = document.createElement('tr');
+            var td = document.createElement('td');
+            td.id = 'op-empty';
+            td.colSpan = 5;
+            td.textContent = 'Carregando operadores...';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+          }
+          if (!rows.length) {
+            emptyNode(tbody);
+            var trE = document.createElement('tr');
+            var tdE = document.createElement('td');
+            tdE.id = 'op-empty';
+            tdE.colSpan = 5;
+            tdE.textContent = (Array.isArray(state.lista) && state.lista.length) ? 'Nenhum operador corresponde à busca.' : 'Nenhum operador cadastrado. Clique em "➕ Adicionar Operador".';
+            trE.appendChild(tdE);
+            tbody.appendChild(trE);
+            return;
+          }
+          emptyNode(tbody);
+          rows.forEach(function(row) {
+            var id = String(row && row.id || '').trim();
+            var ativo = _opIsAtivo(row || {});
+            var salvando = !!state.salvando[id] || !!state.salvando['del_' + id] || !!state.salvando['__novo__'];
+            var tr = document.createElement('tr');
+            if (!ativo) tr.className = 'inativo';
+            tr.dataset.opId = id;
+
+            var tdNome = document.createElement('td');
+            tdNome.innerHTML = '<input type="text" class="op-cell-input" data-op-field="nome" value="' + _opAttr(_opNorm(row && row.nome || row && row.name || '', '')) + '" placeholder="Nome do operador" autocomplete="off"/>';
+            tr.appendChild(tdNome);
+
+            var tdTel = document.createElement('td');
+            tdTel.innerHTML = '<input type="text" class="op-cell-input" data-op-field="telefone" value="' + _opAttr(_opNorm(row && (row.telefone || row.telefone1 || row.tel || row.cel || row.celular || row.contato) || '', '')) + '" placeholder="(00) 00000-0000" autocomplete="off"/>';
+            tr.appendChild(tdTel);
+
+            var tdMaq = document.createElement('td');
+            tdMaq.innerHTML = '<select class="op-cell-select" data-op-field="maq_principal">' + _opMaquinaOptions(_opNorm(row && (row.maq_principal || row.maquina_principal || row.maquinaPadrao || row.maquina) || '', '')) + '</select>';
+            tr.appendChild(tdMaq);
+
+            var tdStatus = document.createElement('td');
+            tdStatus.innerHTML = ''
+              + '<div style="display:flex;align-items:center;gap:10px">'
+              + '  <label class="op-switch" title="Ativo / Inativo">'
+              + '    <input type="checkbox" data-op-field="ativo" ' + (ativo ? 'checked' : '') + '/>'
+              + '    <span class="slider"></span>'
+              + '  </label>'
+              + '  <span class="op-chip ' + (ativo ? 'on' : 'off') + '">' + (ativo ? 'ATIVO' : 'INATIVO') + '</span>'
+              + '</div>';
+            tr.appendChild(tdStatus);
+
+            var tdAcoes = document.createElement('td');
+            tdAcoes.className = 'num';
+            tdAcoes.innerHTML = ''
+              + '<div class="op-row-actions">'
+              + '  <button type="button" class="op-btn primary" data-op-save="' + _opAttr(id) + '"' + (salvando ? ' disabled' : '') + '>💾 Salvar</button>'
+              + '  <button type="button" class="op-btn danger" data-op-del="' + _opAttr(id) + '"' + (salvando ? ' disabled' : '') + '>' + (ativo ? '🗑 Desativar' : '♻ Ativar') + '</button>'
+              + '</div>';
+            tr.appendChild(tdAcoes);
+
+            tbody.appendChild(tr);
+          });
+
+          Array.prototype.slice.call(tbody.querySelectorAll('[data-op-save]')).forEach(function(btn) {
+            btn.onclick = function() {
+              var rid = String(btn.getAttribute('data-op-save') || '').trim();
+              var rowEl = btn.closest('tr');
+              var rowAtual = (Array.isArray(state.lista) ? state.lista : []).find(function(r) { return String(r && r.id || '') === rid; }) || null;
+              salvarLinha(rowEl, rid, rowAtual || {});
+            };
+          });
+          Array.prototype.slice.call(tbody.querySelectorAll('[data-op-del]')).forEach(function(btn) {
+            btn.onclick = function() {
+              var rid = String(btn.getAttribute('data-op-del') || '').trim();
+              var rowAtual = (Array.isArray(state.lista) ? state.lista : []).find(function(r) { return String(r && r.id || '') === rid; }) || null;
+              removerLinha(rid, rowAtual || {});
+            };
+          });
+        } catch (_) {}
+      }
+
+      async function carregar() {
+        state.loading = true;
+        render();
+        try {
+          var resp = await _opFetchJson('/api/operadores', { method: 'GET' });
+          var j = await resp.json().catch(function() { return null; });
+          var lista = [];
+          if (j && Array.isArray(j)) lista = j;
+          else if (j && Array.isArray(j.data)) lista = j.data;
+          else if (j && Array.isArray(j.rows)) lista = j.rows;
+          else if (j && j.operadores && Array.isArray(j.operadores)) lista = j.operadores;
+          state.lista = Array.isArray(lista) ? lista : [];
+          try { window.__operadoresCacheGlobais = state.lista.filter(_opIsAtivo); } catch (_) {}
+        } catch (e) {
+          toast(String(e && e.message || e || 'Erro ao carregar'), 'err');
+          state.lista = [];
+        } finally {
+          state.loading = false;
+          render();
+        }
+      }
+
+      if (searchEl) {
+        searchEl.addEventListener('input', function(ev) {
+          try { state.busca = String((ev && ev.target && ev.target.value != null) ? ev.target.value : searchEl.value || ''); } catch (_) { state.busca = ''; }
+          render();
+        }, false);
+      }
+      if (refreshBtn) refreshBtn.onclick = carregar;
+      if (addBtn) addBtn.onclick = adicionarNovo;
+
+      carregar();
+      try { if (window._opCarregarCacheOperadoresGlobais) window._opCarregarCacheOperadoresGlobais(); } catch (_) {}
+    } catch (e) {
+      try { console.error('[renderPageOperadores] erro fatal:', e); } catch (_) {}
+    }
+  };
+  ;(function __centralCustosModule(){
+    if (window.__centralCustosModInstalado) return;
+    window.__centralCustosModInstalado = true;
+
+    try {
+      if (!document.getElementById('ccustos-css-inline')) {
+        var stl = document.createElement('style');
+        stl.id = 'ccustos-css-inline';
+        stl.textContent = ''
+          + '#page-central-custos{--g1:#0ea5e9;--g2:#6366f1;--g3:#8b5cf6;--g4:#a855f7}'
+          + '#page-central-custos .ccustos-wrap{padding:18px 22px 120px}'
+          + '#page-central-custos .ccustos-tabs{display:flex;gap:6px;background:rgba(0,0,0,.12);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:6px;margin-bottom:18px;flex-wrap:wrap}'
+          + '#page-central-custos .ccustos-tab{flex:1;min-width:140px;padding:10px 12px;border-radius:10px;text-align:center;cursor:pointer;font-weight:700;color:var(--text2);font-size:13px;transition:all .15s}'
+          + '#page-central-custos .ccustos-tab.is-active{background:linear-gradient(135deg,var(--g1),var(--g3));color:#fff;box-shadow:0 6px 18px rgba(99,102,241,.28)}'
+          + '#page-central-custos .ccustos-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px}'
+          + '#page-central-custos .ccustos-card{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px;background:linear-gradient(160deg,rgba(14,165,233,.08),rgba(139,92,246,.08));position:relative;overflow:hidden}'
+          + '#page-central-custos .ccustos-card::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at top right,rgba(255,255,255,.08),transparent 60%);pointer-events:none}'
+          + '#page-central-custos .ccustos-card.is-red{background:linear-gradient(160deg,rgba(239,68,68,.08),rgba(190,18,60,.08))}'
+          + '#page-central-custos .ccustos-card.is-green{background:linear-gradient(160deg,rgba(16,185,129,.08),rgba(5,150,105,.08))}'
+          + '#page-central-custos .ccustos-card.is-yellow{background:linear-gradient(160deg,rgba(234,179,8,.08),rgba(202,138,4,.08))}'
+          + '#page-central-custos .ccustos-card.is-blue{background:linear-gradient(160deg,rgba(59,130,246,.08),rgba(139,92,246,.08))}'
+          + '#page-central-custos .ccustos-card-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}'
+          + '#page-central-custos .ccustos-card-val{font-size:24px;font-weight:1000;color:var(--text);margin-bottom:6px}'
+          + '#page-central-custos .ccustos-card-sub{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
+          + '#page-central-custos .ccustos-var{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-weight:800;font-size:11px}'
+          + '#page-central-custos .ccustos-var.is-pos{background:rgba(239,68,68,.15);color:#f87171}'
+          + '#page-central-custos .ccustos-var.is-neg{background:rgba(16,185,129,.15);color:#34d399}'
+          + '#page-central-custos .ccustos-var.is-neu{background:rgba(148,163,184,.15);color:#94a3b8}'
+          + '#page-central-custos .ccustos-panel{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;background:rgba(0,0,0,.08);margin-bottom:18px}'
+          + '#page-central-custos .ccustos-panel-title{font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px}'
+          + '#page-central-custos .ccustos-panel-sub{font-size:12px;color:var(--text2);margin-bottom:14px}'
+          + '#page-central-custos .ccustos-mes-carousel{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:18px}'
+          + '#page-central-custos .ccustos-mes-btn{border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:var(--text);border-radius:10px;padding:8px 16px;font-weight:800;cursor:pointer;font-size:13px}'
+          + '#page-central-custos .ccustos-mes-btn:hover{background:rgba(14,165,233,.16)}'
+          + '#page-central-custos .ccustos-mes-label{font-size:18px;font-weight:1000;color:var(--text);min-width:180px;text-align:center}'
+          + '#page-central-custos .ccustos-graf-wrap{max-width:100%;height:340px;position:relative;margin-top:10px}'
+          + '#page-central-custos .ccustos-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}'
+          + '#page-central-custos .ccustos-btn{padding:8px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.18);color:var(--text);display:inline-flex;align-items:center;gap:6px;transition:all .12s}'
+          + '#page-central-custos .ccustos-btn:hover{background:rgba(14,165,233,.16)}'
+          + '#page-central-custos .ccustos-btn.is-primary{background:linear-gradient(135deg,var(--g1),var(--g3));border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(99,102,241,.28)}'
+          + '#page-central-custos .ccustos-btn.is-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25);color:#f87171}'
+          + '#page-central-custos .ccustos-btn.is-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.25);color:#fbbf24}'
+          + '#page-central-custos .ccustos-input,#page-central-custos .ccustos-select{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.18);color:var(--text);font-size:13px;font-family:inherit;min-width:0}'
+          + '#page-central-custos .ccustos-input::placeholder{color:var(--text2)}'
+          + '#page-central-custos .ccustos-table-wrap{max-width:100%;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.05)}'
+          + '#page-central-custos table.ccustos-table{width:100%;border-collapse:collapse;font-size:12px}'
+          + '#page-central-custos table.ccustos-table th{text-align:left;padding:10px 12px;background:rgba(0,0,0,.22);color:var(--text2);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;z-index:1;border-bottom:1px solid rgba(255,255,255,.08)}'
+          + '#page-central-custos table.ccustos-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--text);vertical-align:middle}'
+          + '#page-central-custos table.ccustos-table tr:hover td{background:rgba(14,165,233,.05)}'
+          + '#page-central-custos .ccustos-num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}'
+          + '#page-central-custos .ccustos-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-weight:700;font-size:10px;gap:4px}'
+          + '#page-central-custos .ccustos-badge.is-auto{background:rgba(59,130,246,.14);color:#60a5fa;border:1px solid rgba(59,130,246,.2)}'
+          + '#page-central-custos .ccustos-badge.is-manual{background:rgba(168,85,247,.14);color:#c084fc;border:1px solid rgba(168,85,247,.2)}'
+          + '#page-central-custos .ccustos-badge.is-ativo{background:rgba(16,185,129,.14);color:#34d399;border:1px solid rgba(16,185,129,.2)}'
+          + '#page-central-custos .ccustos-badge.is-inativo{background:rgba(148,163,184,.14);color:#94a3b8;border:1px solid rgba(148,163,184,.2)}'
+          + '#page-central-custos .ccustos-center{text-align:center}'
+          + '#page-central-custos .ccustos-empty{padding:30px;text-align:center;color:var(--text2);font-size:13px}'
+          + '.ccustos-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px}'
+          + '.ccustos-modal{width:100%;max-width:720px;max-height:90vh;overflow:auto;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(20,25,40,.98),rgba(12,15,25,.98));padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.6)}'
+          + '.ccustos-modal h3{margin:0 0 16px;font-size:18px;font-weight:1000;color:#fff}'
+          + '.ccustos-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-bottom:18px}'
+          + '.ccustos-form-grid.is-full{grid-template-columns:1fr}'
+          + '@media(max-width:720px){.ccustos-form-grid{grid-template-columns:1fr}}'
+          + '.ccustos-form-field label{display:block;font-size:11px;color:#94a3b8;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}'
+          + '.ccustos-form-field input,.ccustos-form-field select,.ccustos-form-field textarea{width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.25);color:#fff;font-family:inherit;font-size:13px;box-sizing:border-box}'
+          + '.ccustos-form-field textarea{resize:vertical;min-height:60px}'
+          + '.ccustos-modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}'
+          + '.ccustos-btn-modal{padding:9px 16px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.25);color:#fff}'
+          + '.ccustos-btn-modal.is-primary{background:linear-gradient(135deg,#0ea5e9,#8b5cf6);border-color:transparent}'
+          + '.ccustos-btn-modal.is-danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171}'
+          + '.ccustos-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--g1);border-radius:50%;animation:ccustosSpin .7s linear infinite;margin-right:6px;vertical-align:middle}'
+          + '@keyframes ccustosSpin{to{transform:rotate(360deg)}}';
+        document.head.appendChild(stl);
+      }
+    } catch (_) {}
+
+    var fmt1 = (typeof window.fmtMoney === 'function') ? window.fmtMoney : function(v){ try { return 'R$ ' + Number(v||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); } catch(_){ return 'R$ 0,00'; } };
+    var fmtN = (typeof window.fmtNum === 'function') ? window.fmtNum : function(v, d){ try { return Number(v||0).toFixed(d||0).replace('.',','); } catch(_){ return '0'; } };
+    var esc = (typeof window.escHtml === 'function') ? window.escHtml : function(v){ try { var s = String(v==null?'':v); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); } catch(_){ return ''; } };
+    var escA = (typeof window.escAttr === 'function') ? window.escAttr : function(v){ return esc(v); };
+    var toastFn = (typeof window.toast === 'function') ? window.toast : (typeof window.toastHotfix === 'function') ? window.toastHotfix : function(msg){ try { alert(String(msg)); } catch(_){} };
+    var ensureChart = (typeof window.ensureChartJsLoaded === 'function') ? window.ensureChartJsLoaded : function(){ return Promise.resolve(); };
+
+    var CATEGORIAS_OFICIAIS = [
+      { key:'PAPELAO_CHAPAS', label:'Papelão / Chapas', cor:'#f59e0b', tipo:'auto' },
+      { key:'FOLHA_PAGAMENTO', label:'Folha de Pagamento', cor:'#3b82f6', tipo:'manual' },
+      { key:'ENERGIA_ELETRICA', label:'Energia Elétrica', cor:'#eab308', tipo:'manual' },
+      { key:'AGUA', label:'Água', cor:'#06b6d4', tipo:'manual' },
+      { key:'TELEFONE_INTERNET', label:'Telefone / Internet', cor:'#8b5cf6', tipo:'manual' },
+      { key:'COMBUSTIVEL', label:'Combustível / Gasolina', cor:'#ef4444', tipo:'manual' },
+      { key:'MANUTENCAO', label:'Manutenção', cor:'#f97316', tipo:'manual' },
+      { key:'FRETES', label:'Fretes', cor:'#10b981', tipo:'manual' },
+      { key:'INSUMOS', label:'Insumos', cor:'#ec4899', tipo:'manual' },
+      { key:'OUTROS', label:'Outros', cor:'#64748b', tipo:'manual' }
+    ];
+    var CATEGORIAS_MAP = {};
+    CATEGORIAS_OFICIAIS.forEach(function(c){ CATEGORIAS_MAP[c.key] = c; });
+    var NATUREZAS = ['DESPESA','RECEITA'];
+    var FORMAS_PAGAMENTO = ['Dinheiro','PIX','Boleto','Cartão Crédito','Cartão Débito','Transferência','Cheque','Outros'];
+    var PERIODICIDADES = [
+      { key:'MENSAL', label:'Mensal', meses:1 },
+      { key:'BIMESTRAL', label:'Bimestral', meses:2 },
+      { key:'TRIMESTRAL', label:'Trimestral', meses:3 },
+      { key:'SEMESTRAL', label:'Semestral', meses:6 },
+      { key:'ANUAL', label:'Anual', meses:12 }
+    ];
+
+    function cmpDt(isoA, isoB) { try { return new Date(isoA).getTime() - new Date(isoB).getTime(); } catch(_){ return 0; } }
+    function mesAnterior(comp) {
+      try {
+        var p = String(comp||'').split('-');
+        var y = parseInt(p[0]||'0',10); var m = parseInt(p[1]||'0',10);
+        if (!y || !m) return '';
+        m--; if (m < 1) { m = 12; y--; }
+        return y + '-' + (m < 10 ? '0' + m : String(m));
+      } catch(_){ return ''; }
+    }
+    function mesSeguinte(comp) {
+      try {
+        var p = String(comp||'').split('-');
+        var y = parseInt(p[0]||'0',10); var m = parseInt(p[1]||'0',10);
+        if (!y || !m) return '';
+        m++; if (m > 12) { m = 1; y++; }
+        return y + '-' + (m < 10 ? '0' + m : String(m));
+      } catch(_){ return ''; }
+    }
+    function nomeComp(comp) {
+      try {
+        var p = String(comp||'').split('-');
+        var y = parseInt(p[0]||'0',10); var m = parseInt(p[1]||'0',10);
+        if (!y || !m) return String(comp||'-');
+        var d = new Date(y, m-1, 1);
+        var nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        return nomes[d.getMonth()] + ' ' + String(y);
+      } catch(_){ return String(comp||'-'); }
+    }
+    function variacaoPct(atual, ant) {
+      try {
+        var a = Number(atual||0) || 0;
+        var b = Number(ant||0) || 0;
+        if (b === 0 && a === 0) return 0;
+        if (b === 0) return null;
+        return ((a - b) / Math.abs(b)) * 100;
+      } catch(_){ return null; }
+    }
+    function varHtml(v, invertCor) {
+      var pct = variacaoPct(v && v.atual, v && v.ant);
+      if (pct == null) return '<span class="ccustos-var is-neu">— base zero</span>';
+      var cls = 'is-pos'; var sinal = '+';
+      if (invertCor) { if (pct < 0) { cls = 'is-neg'; sinal = ''; } else if (pct > 0) { cls = 'is-pos'; sinal = '+'; } else { cls = 'is-neu'; sinal = ''; } }
+      else { if (pct < 0) { cls = 'is-neg'; sinal = ''; } else if (pct > 0) { cls = 'is-pos'; sinal = '+'; } else { cls = 'is-neu'; sinal = ''; } }
+      return '<span class="ccustos-var ' + cls + '">' + sinal + fmtN(pct,2) + '%</span>';
+    }
+    function ccustosFetch(url, opts) {
+      var o = opts || {};
+      o.headers = Object.assign({ 'Accept':'application/json','Content-Type':'application/json' }, o.headers || {});
+      if (typeof o.credentials === 'undefined') o.credentials = 'include';
+      return fetch(url, o).catch(function(e){ return { ok:false, status:0, json:function(){ return Promise.resolve({ error:String(e&&e.message||e) }); } }; });
+    }
+    function fecharModaisCCustos() {
+      var mods = document.querySelectorAll('.ccustos-modal-backdrop');
+      for (var i = 0; i < mods.length; i++) { try { if (mods[i] && mods[i].parentNode) mods[i].parentNode.removeChild(mods[i]); } catch(_){} }
+    }
+    function openModalCCustos(htmlInner, onReady) {
+      var bd = document.createElement('div');
+      bd.className = 'ccustos-modal-backdrop';
+      bd.innerHTML = '<div class="ccustos-modal" role="dialog" aria-modal="true">' + String(htmlInner||'') + '</div>';
+      bd.addEventListener('click', function(ev){ if (ev && ev.target === bd) fecharModaisCCustos(); });
+      document.body.appendChild(bd);
+      if (typeof onReady === 'function') { try { onReady(bd); } catch(_){} }
+      return bd;
+    }
+
+    var state = {
+      aba: 1,
+      competencia: (new Date()).toISOString().slice(0,7),
+      emp_id: '',
+      filtro: { categoria:null, centro:null, busca:'', fornecedor:'' },
+      visao: null,
+      lancamentos: [],
+      centros: [],
+      historico: [],
+      ofsCustos: null,
+      loading: {},
+      chartGraf: null
+    };
+    function ccustosNormEmpId(raw) {
+      try {
+        var v = String(raw||'').trim();
+        if (v) return v;
+        var cand = [];
+        try { if (window.EMP_FILTRO) cand.push(String(window.EMP_FILTRO)); } catch(_){}
+        try { if (window.CURRENT_USER) { var u = window.CURRENT_USER; cand.push(u.emp_id||u.empId||u.empresa_id||u.empresa||''); } } catch(_){}
+        for (var i = 0; i < cand.length; i++) if (String(cand[i]||'').trim()) return String(cand[i]).trim();
+        return 'ALL';
+      } catch(_){ return 'ALL'; }
+    }
+
+    function loadVisaoGeral(competencia, empId) {
+      state.loading.visao = true; render();
+      var comp = String(competencia||state.competencia);
+      var emp = ccustosNormEmpId(empId||state.emp_id);
+      return ccustosFetch('/api/central-custos/visao-geral?competencia=' + encodeURIComponent(comp) + '&emp_id=' + encodeURIComponent(emp))
+        .then(function(r){ try { return r.json(); } catch(_){ return { ok:false }; } })
+        .then(function(j){
+          state.visao = (j && j.ok) ? j : null;
+          state.loading.visao = false;
+          render();
+          if (state.aba === 1) try { setTimeout(renderGrafCategoria, 40); } catch(_){}
+          return j;
+        }).catch(function(){ state.loading.visao = false; render(); });
+    }
+    function loadLancamentos(competencia, opts) {
+      state.loading.lanc = true; render();
+      var comp = String(competencia||state.competencia);
+      var emp = ccustosNormEmpId(state.emp_id);
+      var qs = [];
+      qs.push('competencia=' + encodeURIComponent(comp));
+      qs.push('emp_id=' + encodeURIComponent(emp));
+      if (state.filtro.categoria) qs.push('categoria=' + encodeURIComponent(state.filtro.categoria));
+      if (state.filtro.centro) qs.push('centro_custo_id=' + encodeURIComponent(state.filtro.centro));
+      if (state.filtro.fornecedor) qs.push('fornecedor=' + encodeURIComponent(state.filtro.fornecedor));
+      if (state.filtro.busca) qs.push('q=' + encodeURIComponent(state.filtro.busca));
+      return ccustosFetch('/api/central-custos/lancamentos?' + qs.join('&'))
+        .then(function(r){ try { return r.json(); } catch(_){ return []; } })
+        .then(function(j){
+          var arr = [];
+          if (Array.isArray(j)) arr = j;
+          else if (j && Array.isArray(j.data)) arr = j.data;
+          else if (j && Array.isArray(j.rows)) arr = j.rows;
+          else if (j && Array.isArray(j.lancamentos)) arr = j.lancamentos;
+          state.lancamentos = arr;
+          state.loading.lanc = false; render();
+          return arr;
+        }).catch(function(){ state.loading.lanc = false; render(); return []; });
+    }
+    function loadCentros(opts) {
+      state.loading.centros = true; render();
+      var emp = ccustosNormEmpId(state.emp_id);
+      return ccustosFetch('/api/centros-custo?ativo=&emp_id=' + encodeURIComponent(emp))
+        .then(function(r){ try { return r.json(); } catch(_){ return []; } })
+        .then(function(j){
+          var arr = [];
+          if (Array.isArray(j)) arr = j;
+          else if (j && Array.isArray(j.data)) arr = j.data;
+          else if (j && Array.isArray(j.rows)) arr = j.rows;
+          state.centros = arr;
+          state.loading.centros = false; render();
+          return arr;
+        }).catch(function(){ state.loading.centros = false; render(); return []; });
+    }
+    function loadHistorico() {
+      state.loading.hist = true; render();
+      var emp = ccustosNormEmpId(state.emp_id);
+      return ccustosFetch('/api/central-custos/historico?meses=12&emp_id=' + encodeURIComponent(emp))
+        .then(function(r){ try { return r.json(); } catch(_){ return { ok:false }; } })
+        .then(function(j){
+          state.historico = (j && j.ok && Array.isArray(j.meses)) ? j : { ok:true, meses:[], consolidado_12m:null };
+          state.loading.hist = false; render();
+          return j;
+        }).catch(function(){ state.loading.hist = false; render(); });
+    }
+    function loadCustoOFs() {
+      state.loading.ofs = true; render();
+      var hoje = new Date();
+      var y = hoje.getFullYear(); var m = hoje.getMonth() + 1;
+      var comp = String(y) + '-' + (m < 10 ? '0'+m : String(m));
+      if (state.competencia) comp = String(state.competencia);
+      var parts = comp.split('-');
+      var yy = parseInt(parts[0]||'0',10); var mm = parseInt(parts[1]||'0',10);
+      if (!yy || !mm) { yy = y; mm = m; }
+      var dinicial = yy + '-' + (mm<10?'0'+mm:mm) + '-01';
+      var dFimM = new Date(yy, mm, 0).getDate();
+      var dfinal = yy + '-' + (mm<10?'0'+mm:mm) + '-' + dFimM;
+      var emp = ccustosNormEmpId(state.emp_id);
+      var url = '/api/relatorios/custos?data_inicio=' + encodeURIComponent(dinicial) + '&data_fim=' + encodeURIComponent(dfinal) + '&emp_id=' + encodeURIComponent(emp);
+      return ccustosFetch(url)
+        .then(function(r){ try { return r.json(); } catch(_){ return { ok:false }; } })
+        .then(function(j){
+          state.ofsCustos = (j && j.ok) ? j : null;
+          state.loading.ofs = false; render();
+          return j;
+        }).catch(function(){ state.loading.ofs = false; render(); });
+    }
+
+    function renderGrafCategoria() {
+      if (state.aba !== 1) return;
+      var canvas = document.getElementById('ccustos-graf-cat');
+      if (!canvas) return;
+      var dados = (state.visao && state.visao.grafico_categorias) ? state.visao.grafico_categorias : [];
+      var labels = []; var vals = []; var cores = [];
+      CATEGORIAS_OFICIAIS.forEach(function(c){
+        var v = 0;
+        for (var i = 0; i < dados.length; i++) if (String(dados[i] && dados[i].categoria) === String(c.key)) { v = Number(dados[i].valor||0) || 0; break; }
+        labels.push(c.label); vals.push(Number(v.toFixed(2))); cores.push(c.cor);
+      });
+      ensureChart().then(function(){
+        try {
+          if (state.chartGraf) { try { state.chartGraf.destroy(); } catch(_){} state.chartGraf = null; }
+          if (typeof Chart !== 'function') return;
+          var ctx = canvas.getContext('2d');
+          state.chartGraf = new Chart(ctx, {
+            type:'bar',
+            data:{ labels:labels, datasets:[{ label:'R$', data:vals, backgroundColor:cores, borderColor:cores, borderWidth:0, borderRadius:8, barThickness:'flex' }] },
+            options:{
+              responsive:true, maintainAspectRatio:false,
+              onClick:function(evt, els){
+                try {
+                  if (!els || !els.length) return;
+                  var idx = els[0].index;
+                  var cat = CATEGORIAS_OFICIAIS[idx];
+                  if (!cat) return;
+                  state.filtro.categoria = cat.key;
+                  state.aba = 2;
+                  render();
+                  loadLancamentos();
+                } catch(_){}
+              },
+              plugins:{
+                legend:{ display:false },
+                tooltip:{
+                  callbacks:{
+                    label:function(ctx){ try { return ' R$ ' + Number(ctx && ctx.parsed && ctx.parsed.y||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); } catch(_){ return ''; } }
+                  }
+                }
+              },
+              scales:{
+                x:{ ticks:{ color:'rgba(255,255,255,.6)', font:{ size:10 } }, grid:{ color:'rgba(255,255,255,.04)' } },
+                y:{ ticks:{ color:'rgba(255,255,255,.6)', font:{ size:10 }, callback:function(v){ try { return (Number(v||0)/1000).toFixed(0)+'k'; } catch(_){ return v; } } }, grid:{ color:'rgba(255,255,255,.06)' } }
+              }
+            }
+          });
+        } catch(e){ try { console.warn('[CCUSTOS] grafico:', e); } catch(_){} }
+      }).catch(function(){});
+    }
+
+    function renderCardsVisao() {
+      var v = state.visao;
+      if (!v || !v.cards) return '<div class="ccustos-empty">Carregando Visão Geral...</div>';
+      var c = v.cards;
+      var html = ''
+        + '<div class="ccustos-cards">'
+        + '  <div class="ccustos-card is-blue"><div class="ccustos-card-label">Custo Total Mês</div><div class="ccustos-card-val">' + fmt1(c.custo_total||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_total, ant:c.custo_total_anterior}, false) + '<span style="color:var(--text2)">vs mês anterior</span></div></div>'
+        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Despesas da Fábrica</div><div class="ccustos-card-val">' + fmt1(c.despesas_fabrica||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.despesas_fabrica, ant:c.despesas_fabrica_anterior}, false) + '<span style="color:var(--text2)">Manuais + Automáticas</span></div></div>'
+        + '  <div class="ccustos-card is-yellow"><div class="ccustos-card-label">Custo Papelão</div><div class="ccustos-card-val">' + fmt1(c.custo_papelao||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_papelao, ant:c.custo_papelao_anterior}, false) + '<span class="ccustos-badge is-auto">🔵 Automático</span></div></div>'
+        + '  <div class="ccustos-card"><div class="ccustos-card-label">Custo das OFs</div><div class="ccustos-card-val">' + fmt1(c.custo_ofs||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_ofs, ant:c.custo_ofs_anterior}, false) + '<span class="ccustos-badge is-auto">🔵 OFs Concluídas</span></div></div>'
+        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Perdas</div><div class="ccustos-card-val">' + fmt1(c.perdas||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.perdas, ant:c.perdas_anterior}, false) + '<span style="color:var(--text2)">Caixas perdidas estimadas</span></div></div>'
+        + '</div>';
+      var compAuto = c.lanc_automaticos||0, compMan = c.lanc_manuais||0;
+      html += ''
+        + '<div class="ccustos-panel">'
+        + '  <div class="ccustos-panel-title">PARA ONDE FOI O DINHEIRO?</div>'
+        + '  <div class="ccustos-panel-sub">Clique numa categoria para filtrar os lançamentos · Competência <b style="color:var(--text)">' + esc(nomeComp(state.competencia)) + '</b></div>'
+        + '  <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+        + '    <span class="ccustos-badge is-auto">🔵 Automáticos: ' + fmt1(compAuto) + '</span>'
+        + '    <span class="ccustos-badge is-manual">🟣 Manuais: ' + fmt1(compMan) + '</span>'
+        + '  </div>'
+        + '  <div class="ccustos-graf-wrap"><canvas id="ccustos-graf-cat"></canvas></div>'
+        + '</div>';
+      var gcentros = (v && Array.isArray(v.gastos_por_centro)) ? v.gastos_por_centro : [];
+      if (gcentros.length) {
+        var totalG = 0; for (var i = 0; i < gcentros.length; i++) totalG += Number(gcentros[i].valor||0) || 0;
+        html += '<div class="ccustos-panel"><div class="ccustos-panel-title">Gastos por Centro de Custo</div><div class="ccustos-panel-sub">Clique num centro para filtrar lançamentos</div><div style="display:flex;flex-direction:column;gap:10px">';
+        gcentros.forEach(function(gc){
+          var nome = String(gc.nome||gc.codigo||'Sem nome');
+          var cod = String(gc.codigo||'').trim();
+          var cor = String(gc.cor_visual||'#64748b');
+          var val = Number(gc.valor||0) || 0;
+          var pct = totalG > 0 ? (val / totalG * 100) : 0;
+          html += ''
+            + '<div data-centro-row data-centro="' + escA(gc.id||'') + '" style="display:flex;gap:12px;align-items:center;cursor:pointer;padding:8px 10px;border-radius:10px;transition:background .15s" onmouseover="this.style.background=\'rgba(14,165,233,.08)\'" onmouseout="this.style.background=\'\'">'
+            + '  <div style="min-width:240px;display:flex;align-items:center"><span class="ccustos-cor" style="background:' + esc(cor) + ';display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid rgba(255,255,255,.2)"></span><b style="font-size:13px">' + esc(nome) + '</b>' + (cod ? (' <span style="color:var(--text2);font-size:11px;margin-left:6px">[&nbsp;' + esc(cod) + '&nbsp;]</span>') : '') + '</div>'
+            + '  <div class="ccustos-bar-wrap" style="height:8px;border-radius:999px;background:rgba(0,0,0,.22);overflow:hidden;min-width:100px;flex:1"><div class="ccustos-bar-fill" style="height:100%;background:linear-gradient(90deg,var(--g1),var(--g3));border-radius:999px;transition:width .4s;width:' + Math.max(0, Math.min(100, pct)).toFixed(1) + '%"></div></div>'
+            + '  <div style="min-width:180px;text-align:right"><b style="font-size:13px">' + fmt1(val) + '</b><span style="color:var(--text2);font-size:11px;margin-left:8px">' + fmtN(pct,1) + '%</span></div>'
+            + '</div>';
+        });
+        html += '</div></div>';
+      }
+      return html;
+    }
+
+    function renderLancamentos() {
+      var html = ''
+        + '<div class="ccustos-row">'
+        + '  <button class="ccustos-btn is-primary" id="cc-btn-novo-lanc">➕ Novo Lançamento</button>'
+        + '  <button class="ccustos-btn is-warn" id="cc-btn-gerar-recorr">🔁 Gerar Recorrentes do Mês</button>'
+        + '  <div style="flex:1"></div>'
+        + '  <input class="ccustos-input" id="cc-busca-lanc" type="text" placeholder="🔍 Buscar descrição, fornecedor, obs..." value="' + escA(state.filtro.busca) + '" style="min-width:260px">'
+        + '</div>'
+        + '<div class="ccustos-row">'
+        + '  <select class="ccustos-select" id="cc-filtro-cat" style="min-width:200px"><option value="">Todas Categorias</option>' + CATEGORIAS_OFICIAIS.map(function(c){ return '<option value="' + escA(c.key) + '" ' + (state.filtro.categoria===c.key?'selected':'') + '>' + esc(c.label) + '</option>'; }).join('') + '</select>'
+        + '  <select class="ccustos-select" id="cc-filtro-centro" style="min-width:200px"><option value="">Todos Centros</option>' + state.centros.map(function(cc){ return '<option value="' + escA(cc.id||'') + '" ' + (state.filtro.centro===String(cc.id||'')?'selected':'') + '>' + esc((cc.codigo?cc.codigo+' · ':'') + (cc.nome||'—')) + '</option>'; }).join('') + '</select>'
+        + '  <input class="ccustos-input" id="cc-filtro-forn" type="text" placeholder="Fornecedor..." value="' + escA(state.filtro.fornecedor) + '" style="min-width:180px">'
+        + '</div>'
+        + '<div class="ccustos-table-wrap">'
+        + '  <table class="ccustos-table"><thead><tr>'
+        + '    <th>Data</th><th>Competência</th><th>Descrição</th><th>Categoria</th><th>Centro</th><th>Fornecedor</th><th class="ccustos-num">Valor</th><th>Pgto</th><th>Tipo</th><th style="min-width:160px">Ações</th>'
+        + '  </tr></thead><tbody>';
+      if (state.loading.lanc && !state.lancamentos.length) {
+        html += '<tr><td colspan="10" class="ccustos-empty"><span class="ccustos-spinner"></span>Carregando lançamentos...</td></tr>';
+      } else if (!state.lancamentos.length) {
+        html += '<tr><td colspan="10" class="ccustos-empty">Nenhum lançamento encontrado para <b>' + esc(nomeComp(state.competencia)) + '</b>. Clique em ➕ Novo Lançamento ou 🔁 Gerar Recorrentes.</td></tr>';
+      } else {
+        var centrosNm = {};
+        state.centros.forEach(function(cc){ centrosNm[String(cc.id||'')] = ((cc.codigo?cc.codigo+' · ':'') + (cc.nome||'—')); });
+        state.lancamentos.sort(function(a,b){ return cmpDt(b && b.data_lancamento||b && b.created_at, a && a.data_lancamento||a && a.created_at); });
+        state.lancamentos.forEach(function(l){
+          var idL = String(l && l.id||'');
+          var desc = String(l && l.descricao||'Sem descrição');
+          var catK = String(l && l.categoria||'');
+          var cat = CATEGORIAS_MAP[catK];
+          var nat = String(l && l.natureza||'DESPESA');
+          var valor = Number(l && l.valor||0) || 0;
+          if (nat === 'RECEITA') valor = -Math.abs(valor);
+          var centroId = String(l && l.centro_custo_id||'');
+          var centroNm = centrosNm[centroId] || (l && l.centro_custo_nome || '—');
+          var forn = String(l && l.fornecedor_beneficiario||'—');
+          var pgto = String(l && l.forma_pagamento||'—');
+          var dt = String(l && l.data_lancamento||'-').slice(0,10);
+          var comp = String(l && l.competencia||'-');
+          var temRec = String(l && l.recorrencia_id||'').trim() !== '';
+          var tipoBadge = (temRec || (cat && cat.tipo==='auto')) ? '<span class="ccustos-badge is-auto">🔵 ' + (temRec?'Recorrente':'Auto') + '</span>' : '<span class="ccustos-badge is-manual">🟣 Manual</span>';
+          var corLinha = (nat === 'RECEITA') ? ' style="background:rgba(16,185,129,.04)"' : '';
+          html += ''
+            + '<tr' + corLinha + ' data-id="' + escA(idL) + '">'
+            + '  <td style="white-space:nowrap">' + esc(dt) + '</td>'
+            + '  <td><span class="ccustos-badge ' + (comp===state.competencia?'is-ativo':'is-inativo') + '">' + esc(comp) + '</span></td>'
+            + '  <td style="font-weight:800;min-width:220px">' + esc(desc) + '</td>'
+            + '  <td style="white-space:nowrap"><span class="ccustos-cor" style="background:' + esc(cat?cat.cor:'#64748b') + ';display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid rgba(255,255,255,.2)"></span>' + esc(cat?cat.label:catK) + '</td>'
+            + '  <td>' + esc(centroNm) + '</td>'
+            + '  <td style="min-width:160px">' + esc(forn) + '</td>'
+            + '  <td class="ccustos-num" style="color:' + (valor<0?'#34d399':'#fca5a5') + ';font-size:13px">' + fmt1(Math.abs(valor)) + '</td>'
+            + '  <td>' + esc(pgto) + '</td>'
+            + '  <td>' + tipoBadge + '</td>'
+            + '  <td class="ccustos-center"><div class="ccustos-actions" style="justify-content:center">'
+            + '    <button class="ccustos-btn" data-cc-editar="' + escA(idL) + '">✏ Editar</button>'
+            + '    <button class="ccustos-btn is-danger" data-cc-excluir="' + escA(idL) + '">🗑 Excluir</button>'
+            + '  </div></td>'
+            + '</tr>';
+        });
+      }
+      html += '  </tbody></table></div>';
+      return html;
+    }
+
+    function renderCentrosRow() {
+      var html = '';
+      var seedArr = state.centros && state.centros.length ? state.centros.slice() : [
+        { id:'_P1', codigo:'PROD', nome:'Produção', cor_visual:'#ef4444', ativo:true, temp:true },
+        { id:'_P2', codigo:'ADM', nome:'Administrativo', cor_visual:'#3b82f6', ativo:true, temp:true },
+        { id:'_P3', codigo:'COMER', nome:'Comercial', cor_visual:'#8b5cf6', ativo:true, temp:true },
+        { id:'_P4', codigo:'EXP', nome:'Expedição', cor_visual:'#10b981', ativo:true, temp:true },
+        { id:'_P5', codigo:'EST', nome:'Estoque', cor_visual:'#f59e0b', ativo:true, temp:true },
+        { id:'_P6', codigo:'MAN', nome:'Manutenção', cor_visual:'#f97316', ativo:true, temp:true },
+        { id:'_P7', codigo:'LOG', nome:'Veículos / Logística', cor_visual:'#06b6d4', ativo:true, temp:true }
+      ];
+      if (state.loading.centros && !state.centros.length) {
+        html += '<div class="ccustos-empty"><span class="ccustos-spinner"></span>Carregando Centros de Custo...</div>';
+        return html;
+      }
+      var gcentros = (state.visao && Array.isArray(state.visao.gastos_por_centro)) ? state.visao.gastos_por_centro : [];
+      var gcMap = {}; gcentros.forEach(function(g){ gcMap[String(g.id||'')] = g; });
+      var total = 0; gcentros.forEach(function(g){ total += Number(g.valor||0)||0; });
+      html += ''
+        + '<div class="ccustos-cards">';
+      seedArr.forEach(function(cc){
+        var g = gcMap[String(cc.id||'')] || {};
+        var val = Number(g.valor||0) || 0;
+        var varPct = variacaoPct(g.valor, g.valor_anterior);
+        var varH = (varPct==null) ? '<span class="ccustos-var is-neu">—</span>' : (varPct<0 ? '<span class="ccustos-var is-neg">'+fmtN(varPct,2)+'%</span>' : '<span class="ccustos-var is-pos">+'+fmtN(varPct,2)+'%</span>');
+        var pct = total>0 ? (val/total*100) : 0;
+        html += ''
+          + '<div class="ccustos-card" data-centro-card="' + escA(cc.id||'') + '" style="cursor:pointer">'
+          + '  <div class="ccustos-card-label"><span class="ccustos-cor" style="background:' + esc(cc.cor_visual||'#64748b') + ';display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid rgba(255,255,255,.2)"></span>' + esc((cc.codigo?cc.codigo+' · ':'') + (cc.nome||'—')) + '</div>'
+          + '  <div class="ccustos-card-val">' + fmt1(val) + '</div>'
+          + '  <div class="ccustos-card-sub">' + varH + '<span style="margin-left:auto;color:var(--text2)">' + fmtN(pct,1) + '% do total</span></div>'
+          + '  <div class="ccustos-bar-wrap" style="height:8px;border-radius:999px;background:rgba(0,0,0,.22);overflow:hidden;min-width:100px;flex:1;margin-top:10px"><div class="ccustos-bar-fill" style="height:100%;background:linear-gradient(90deg,var(--g1),var(--g3));border-radius:999px;transition:width .4s;width:' + Math.max(0,Math.min(100,pct)).toFixed(1) + '%"></div></div>'
+          + '</div>';
+      });
+      html += '</div>';
+      html += ''
+        + '<div class="ccustos-panel">'
+        + '  <div class="ccustos-row">'
+        + '    <div><div class="ccustos-panel-title">Cadastro de Centros de Custo</div><div class="ccustos-panel-sub">Seed inicial de 7 setores oficiais. Edite códigos, nomes e cores. Desative em vez de excluir para preservar histórico.</div></div>'
+        + '    <div style="flex:1"></div>'
+        + '    <button class="ccustos-btn is-primary" id="cc-btn-centro-novo">➕ Novo Centro</button>'
+        + '  </div>'
+        + '  <div class="ccustos-table-wrap" style="margin-top:14px">'
+        + '    <table class="ccustos-table"><thead><tr>'
+        + '      <th>Código</th><th>Nome</th><th>Cor</th><th>Status</th><th style="min-width:240px">Ações</th>'
+        + '    </tr></thead><tbody>';
+      seedArr.forEach(function(cc){
+        var id = String(cc.id||'');
+        var ativo = cc.ativo !== false;
+        var cor = String(cc.cor_visual||'#64748b');
+        html += ''
+          + '<tr data-centro-id="' + escA(id) + '">'
+          + '  <td style="min-width:120px"><input class="ccustos-input cc-campo-cod" type="text" value="' + escA(cc.codigo||'') + '" style="width:100%;font-weight:800"></td>'
+          + '  <td style="min-width:220px"><input class="ccustos-input cc-campo-nome" type="text" value="' + escA(cc.nome||'') + '" style="width:100%;font-weight:800"></td>'
+          + '  <td><input class="cc-campo-cor" type="color" value="' + escA(cor) + '" style="width:46px;height:34px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.18);border-radius:8px;cursor:pointer;padding:2px"></td>'
+          + '  <td>' + (ativo ? '<span class="ccustos-badge is-ativo">● Ativo</span>' : '<span class="ccustos-badge is-inativo">○ Inativo</span>') + '</td>'
+          + '  <td class="ccustos-center"><div class="ccustos-actions" style="justify-content:center">'
+          + (cc.temp ? '<button class="ccustos-btn is-primary cc-criar-centro" data-temp="' + escA(id) + '">💾 Salvar (criar)</button>' : '<button class="ccustos-btn cc-salvar-centro">💾 Salvar</button>')
+          + '    <button class="ccustos-btn cc-toggle-centro">' + (ativo?'⏸ Desativar':'▶ Reativar') + '</button>'
+          + '  </div></td>'
+          + '</tr>';
+      });
+      html += '    </tbody></table></div>'
+        + '</div>';
+      return html;
+    }
+
+    function renderCustoOFs() {
+      var html = '';
+      var j = state.ofsCustos;
+      html += ''
+        + '<div class="ccustos-row">'
+        + '  <div><div class="ccustos-panel-title" style="margin:0">Custo por OF · ' + esc(nomeComp(state.competencia)) + '</div><div class="ccustos-panel-sub" style="margin:4px 0 0">Reutiliza 100% o cálculo do Relatório de Custos oficial. Clique na linha para detalhes.</div></div>'
+        + '  <div style="flex:1"></div>'
+        + '  <button class="ccustos-btn" id="cc-btn-recarregar-ofs">🔄 Recarregar</button>'
+        + '</div>';
+      if (state.loading.ofs && (!j || !j.rows)) {
+        html += '<div class="ccustos-empty"><span class="ccustos-spinner"></span>Carregando OFs concluídas do mês...</div>';
+        return html;
+      }
+      var rows = (j && Array.isArray(j.rows)) ? j.rows : [];
+      var totalCons = Number(j && j.total_custos_consolidado_competencia || 0);
+      var totalVenda = 0;
+      rows.forEach(function(r){
+        var venda = Number(r && r.valor_venda||0) || (Number(r && r.of_valor_total||0) || 0);
+        totalVenda += venda;
+      });
+      html += ''
+        + '<div class="ccustos-cards">'
+        + '  <div class="ccustos-card is-blue"><div class="ccustos-card-label">Nº OFs listadas</div><div class="ccustos-card-val">' + esc(String(rows.length)) + '</div><div class="ccustos-card-sub">Concluídas em ' + esc(nomeComp(state.competencia)) + '</div></div>'
+        + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Valor Venda Total</div><div class="ccustos-card-val">' + fmt1(totalVenda) + '</div><div class="ccustos-card-sub">Somatório valor_total das OFs</div></div>'
+        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Custo Papelão + OFs</div><div class="ccustos-card-val">' + fmt1(totalCons) + '</div><div class="ccustos-card-sub">Cálculo canônico reaproveitado</div></div>'
+        + '  <div class="ccustos-card"><div class="ccustos-card-label">Resultado Estimado</div><div class="ccustos-card-val" style="color:' + ((totalVenda-totalCons)>=0?'#34d399':'#f87171') + '">' + fmt1(totalVenda-totalCons) + '</div><div class="ccustos-card-sub">Margem bruta ≈ ' + (totalVenda>0?fmtN(((totalVenda-totalCons)/totalVenda*100),1):'0,0') + '%</div></div>'
+        + '</div>'
+        + '<div class="ccustos-table-wrap">'
+        + '  <table class="ccustos-table"><thead><tr>'
+        + '    <th>OF</th><th>Cliente</th><th class="ccustos-num">Venda (R$)</th><th class="ccustos-num">Papelão (R$)</th><th class="ccustos-num">Outros (R$)</th><th class="ccustos-num">Custo Total (R$)</th><th class="ccustos-num">Resultado (R$)</th><th class="ccustos-num">Margem (%)</th><th style="min-width:80px">Ação</th>'
+        + '  </tr></thead><tbody>';
+      if (!rows.length) {
+        html += '<tr><td colspan="9" class="ccustos-empty">Nenhuma OF concluída encontrada para a competência <b>' + esc(nomeComp(state.competencia)) + '</b>.</td></tr>';
+      } else {
+        rows.forEach(function(r, idx){
+          var ofN = String(r.of||r.numero||'—');
+          var cli = String(r.cliente||'—');
+          var venda = Number(r.valor_venda||r.of_valor_total||0) || 0;
+          var custoTot = Number(r.custo_total||0) || 0;
+          var papelao = Number(r.custo_papelao||r.custo_total||0) || 0;
+          var outros = 0;
+          var resultado = venda - custoTot;
+          var margem = venda > 0 ? (resultado / venda * 100) : 0;
+          html += ''
+            + '<tr data-of-idx="' + escA(String(idx)) + '" style="cursor:pointer">'
+            + '  <td style="font-weight:1000;font-size:13px">#' + esc(ofN) + '</td>'
+            + '  <td style="min-width:220px">' + esc(cli) + '</td>'
+            + '  <td class="ccustos-num" style="color:#34d399">' + fmt1(venda) + '</td>'
+            + '  <td class="ccustos-num" style="color:#fbbf24">' + fmt1(papelao) + '</td>'
+            + '  <td class="ccustos-num" style="color:#94a3b8">' + fmt1(outros) + '</td>'
+            + '  <td class="ccustos-num" style="color:#f87171">' + fmt1(custoTot) + '</td>'
+            + '  <td class="ccustos-num" style="color:' + (resultado>=0?'#34d399':'#f87171') + '">' + fmt1(resultado) + '</td>'
+            + '  <td class="ccustos-num" style="color:' + (margem>=0?'#34d399':'#f87171') + '">' + fmtN(margem,1) + '%</td>'
+            + '  <td class="ccustos-center"><button class="ccustos-btn cc-of-detalhe">🔍 Detalhe</button></td>'
+            + '</tr>';
+        });
+      }
+      html += '  </tbody></table></div>';
+      return html;
+    }
+
+    function renderHistorico() {
+      var html = '';
+      var ok = state.historico && state.historico.ok;
+      var meses = (ok && Array.isArray(state.historico.meses)) ? state.historico.meses : [];
+      var cons12 = (ok && state.historico.consolidado_12m) ? state.historico.consolidado_12m : null;
+      var ult = meses[meses.length-1] || {};
+      var ant = meses.length>=2 ? meses[meses.length-2] : (ult && ult.mes_anterior) || {};
+      html += '<div class="ccustos-cards">';
+      function cardH(label, campo, invertCor, cls) {
+        var va = Number(ult[campo]||0)||0; var vb = Number(ant[campo]||0)||0;
+        return '<div class="ccustos-card ' + esc(cls||'') + '"><div class="ccustos-card-label">' + esc(label) + '</div><div class="ccustos-card-val">' + fmt1(va) + '</div><div class="ccustos-card-sub">Mês ant: ' + fmt1(vb) + ' ' + varHtml({atual:va,ant:vb}, !!invertCor) + '</div></div>';
+      }
+      if (meses.length) {
+        html += cardH('Custo Último Mês','custo_total',false,'is-blue');
+        html += cardH('Custo OFs','custo_ofs',false);
+        html += cardH('Despesas Manuais','despesas_manuais',false,'is-yellow');
+        var vl = Number(ult.resultado_liq||0)||0;
+        var va2 = Number(ant.resultado_liq||0)||0;
+        var varR = variacaoPct(vl, va2);
+        var varH = (varR==null) ? '<span class="ccustos-var is-neu">—</span>' : (varR>=0 ? '<span class="ccustos-var is-neg">+'+fmtN(varR,2)+'%</span>' : '<span class="ccustos-var is-pos">'+fmtN(varR,2)+'%</span>');
+        var mg = Number(ult.margem_pct||0)||0;
+        html += ''
+          + '<div class="ccustos-card ' + (vl>=0?'is-green':'is-red') + '"><div class="ccustos-card-label">Resultado Líquido (Receita − Custo)</div>'
+          + '<div class="ccustos-card-val" style="color:' + (vl>=0?'#34d399':'#f87171') + '">' + fmt1(vl) + '</div>'
+          + '<div class="ccustos-card-sub">Margem ' + fmtN(mg,1) + '% · Ant ' + fmt1(va2) + ' ' + varH + '</div></div>';
+      } else if (state.loading.hist) {
+        html += '<div class="ccustos-card"><div class="ccustos-card-label">Aguarde</div><div class="ccustos-card-val"><span class="ccustos-spinner"></span>Calculando 12 meses...</div></div>';
+      }
+      html += '</div>';
+      if (cons12) {
+        html += ''
+          + '<div class="ccustos-panel">'
+          + '  <div class="ccustos-panel-title">Consolidado Últimos 12 Meses</div>'
+          + '  <div class="ccustos-panel-sub">Somatório completo do período histórico</div>'
+          + '  <div class="ccustos-cards" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:0">'
+          + '    <div class="ccustos-card is-blue"><div class="ccustos-card-label">Custo Total 12m</div><div class="ccustos-card-val">' + fmt1(cons12.custo_total||0) + '</div></div>'
+          + '    <div class="ccustos-card"><div class="ccustos-card-label">Custo OFs</div><div class="ccustos-card-val">' + fmt1(cons12.custo_ofs||0) + '</div></div>'
+          + '    <div class="ccustos-card is-yellow"><div class="ccustos-card-label">Papelão</div><div class="ccustos-card-val">' + fmt1(cons12.papelao||0) + '</div></div>'
+          + '    <div class="ccustos-card is-red"><div class="ccustos-card-label">Perdas</div><div class="ccustos-card-val">' + fmt1(cons12.perdas||0) + '</div></div>'
+          + '    <div class="ccustos-card ' + ((Number(cons12.resultado_liq||0)||0)>=0?'is-green':'is-red') + '"><div class="ccustos-card-label">Resultado 12m</div><div class="ccustos-card-val" style="color:' + ((Number(cons12.resultado_liq||0)||0)>=0?'#34d399':'#f87171') + '">' + fmt1(cons12.resultado_liq||0) + '</div><div class="ccustos-card-sub">Margem média ' + fmtN(cons12.margem_pct||0,1) + '%</div></div>'
+          + '  </div>'
+          + '</div>';
+      }
+      html += ''
+        + '<div class="ccustos-panel">'
+        + '  <div class="ccustos-panel-title">Histórico Comparativo · Últimos ' + esc(String(Math.max(1,meses.length))) + ' meses</div>'
+        + '  <div class="ccustos-panel-sub">Cada linha consolidada por competência YYYY-MM. Permite comparar mês a mês.</div>'
+        + '  <div class="ccustos-table-wrap" style="margin-top:10px">'
+        + '    <table class="ccustos-table"><thead><tr>'
+        + '      <th>Mês</th><th class="ccustos-num">Custo Total</th><th class="ccustos-num">Custo OFs</th><th class="ccustos-num">Papelão</th><th class="ccustos-num">Despesas Manuais</th><th class="ccustos-num">Perdas</th><th class="ccustos-num">Receita</th><th class="ccustos-num">Resultado Líq.</th><th class="ccustos-num">Margem %</th>'
+        + '    </tr></thead><tbody>';
+      if (!meses.length && !state.loading.hist) {
+        html += '<tr><td colspan="9" class="ccustos-empty">Sem dados históricos suficientes.</td></tr>';
+      } else {
+        meses.forEach(function(m){
+          var rl = Number(m.resultado_liq||0)||0; var mg = Number(m.margem_pct||0)||0;
+          html += ''
+            + '<tr data-mes="' + escA(m.mes||'') + '">'
+            + '  <td style="font-weight:900;white-space:nowrap"><button class="ccustos-btn cc-pular-mes" style="padding:4px 10px;font-size:12px;margin-right:8px">→</button>' + esc(nomeComp(m.mes||'-')) + '</td>'
+            + '  <td class="ccustos-num" style="color:#60a5fa">' + fmt1(m.custo_total||0) + '</td>'
+            + '  <td class="ccustos-num">' + fmt1(m.custo_ofs||0) + '</td>'
+            + '  <td class="ccustos-num" style="color:#fbbf24">' + fmt1(m.papelao||0) + '</td>'
+            + '  <td class="ccustos-num">' + fmt1(m.despesas_manuais||0) + '</td>'
+            + '  <td class="ccustos-num" style="color:#f87171">' + fmt1(m.perdas||0) + '</td>'
+            + '  <td class="ccustos-num" style="color:#34d399">' + fmt1(m.receita||0) + '</td>'
+            + '  <td class="ccustos-num" style="color:' + (rl>=0?'#34d399':'#f87171') + '">' + fmt1(rl) + '</td>'
+            + '  <td class="ccustos-num" style="color:' + (mg>=0?'#34d399':'#f87171') + '">' + fmtN(mg,1) + '%</td>'
+            + '</tr>';
+        });
+      }
+      html += '    </tbody></table></div>'
+        + '</div>';
+      return html;
+    }
+
+    function htmlAba1() { return renderCardsVisao(); }
+    function htmlAba2() { return renderLancamentos(); }
+    function htmlAba3() { return renderCentrosRow(); }
+    function htmlAba4() { return renderCustoOFs(); }
+    function htmlAba5() { return renderHistorico(); }
+
+    function montarHtmlLancForm(editarPayload, idEditar) {
+      var p = editarPayload || {};
+      var compEditar = p.competencia || state.competencia;
+      var dataEditar = (p.data_lancamento||'').slice(0,10) || compEditar + '-01';
+      var nat = p.natureza || 'DESPESA';
+      var optsCat = CATEGORIAS_OFICIAIS.map(function(c){ return '<option value="'+escA(c.key)+'" ' + ((p.categoria||'')===c.key?'selected':'') + '>' + esc(c.label) + '</option>'; }).join('');
+      var optsCen = state.centros.map(function(cc){ return '<option value="'+escA(cc.id||'')+'" ' + (String(p.centro_custo_id||'')===String(cc.id||'')?'selected':'') + '>' + esc((cc.codigo?cc.codigo+' · ':'') + (cc.nome||'—')) + '</option>'; }).join('');
+      var optsNat = NATUREZAS.map(function(n){ return '<option value="'+escA(n)+'" ' + (nat===n?'selected':'') + '>' + esc(n==='DESPESA'?'DESPESA (saída)':'RECEITA (entrada)') + '</option>'; }).join('');
+      var optsPgto = FORMAS_PAGAMENTO.map(function(f){ return '<option value="'+escA(f)+'" ' + ((p.forma_pagamento||'')===f?'selected':'') + '>' + esc(f) + '</option>'; }).join('');
+      return ''
+        + '<h3>' + (idEditar ? '✏ Editar Lançamento' : '➕ Novo Lançamento') + '</h3>'
+        + '<div class="ccustos-form-grid">'
+        + '  <div class="ccustos-form-field"><label>Descrição *</label><input id="ccf-desc" type="text" value="' + escA(p.descricao||'') + '" placeholder="Ex.: Conta de energia setembro"></div>'
+        + '  <div class="ccustos-form-field"><label>Categoria *</label><select id="ccf-cat">' + optsCat + '</select></div>'
+        + '  <div class="ccustos-form-field"><label>Natureza</label><select id="ccf-nat">' + optsNat + '</select></div>'
+        + '  <div class="ccustos-form-field"><label>Centro de Custo *</label><select id="ccf-centro"><option value="">Selecione...</option>' + optsCen + '</select></div>'
+        + '  <div class="ccustos-form-field"><label>Valor (R$) *</label><input id="ccf-valor" type="number" step="0.01" min="0" value="' + escA(Number(p.valor||0).toFixed(2)) + '"></div>'
+        + '  <div class="ccustos-form-field"><label>Data Lançamento</label><input id="ccf-data" type="date" value="' + escA(dataEditar) + '"></div>'
+        + '  <div class="ccustos-form-field"><label>Competência (YYYY-MM) *</label><input id="ccf-comp" type="month" value="' + escA(compEditar) + '"></div>'
+        + '  <div class="ccustos-form-field"><label>Fornecedor / Beneficiário</label><input id="ccf-forn" type="text" value="' + escA(p.fornecedor_beneficiario||'') + '"></div>'
+        + '  <div class="ccustos-form-field"><label>Forma Pagamento</label><select id="ccf-pgto"><option value="">—</option>' + optsPgto + '</select></div>'
+        + '  <div class="ccustos-form-field"><label>Anexo URL (MVP)</label><input id="ccf-anexo" type="text" placeholder="https://..." value="' + escA(p.anexo_url||'') + '"></div>'
+        + '</div>'
+        + '<div class="ccustos-form-grid is-full"><div class="ccustos-form-field"><label>Observação</label><textarea id="ccf-obs" placeholder="Observações internas...">' + esc(p.observacao||'') + '</textarea></div></div>'
+        + '<div class="ccustos-modal-actions">'
+        + '  <button class="ccustos-btn-modal" id="ccf-cancelar">Cancelar</button>'
+        + '  <button class="ccustos-btn-modal is-primary" id="ccf-salvar">💾 ' + (idEditar ? 'Salvar Alterações' : 'Criar Lançamento') + '</button>'
+        + '</div>';
+    }
+
+    function bindEventos(host) {
+      function recarregarPorAba() {
+        if (state.aba===1) loadVisaoGeral();
+        if (state.aba===2) loadLancamentos();
+        if (state.aba===3) loadCentros();
+        if (state.aba===4) loadCustoOFs();
+        if (state.aba===5) loadHistorico();
+      }
+      try { (function(){ var b=document.getElementById('cc-tab-1'); if(b) b.onclick=function(){ state.aba=1; render(); loadVisaoGeral(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-tab-2'); if(b) b.onclick=function(){ state.aba=2; render(); loadLancamentos(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-tab-3'); if(b) b.onclick=function(){ state.aba=3; render(); loadCentros(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-tab-4'); if(b) b.onclick=function(){ state.aba=4; render(); loadCustoOFs(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-tab-5'); if(b) b.onclick=function(){ state.aba=5; render(); loadHistorico(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-mes-ant'); if(b) b.onclick=function(){ state.competencia=mesAnterior(state.competencia)||state.competencia; render(); recarregarPorAba(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-mes-seg'); if(b) b.onclick=function(){ state.competencia=mesSeguinte(state.competencia)||state.competencia; render(); recarregarPorAba(); }; })(); } catch(_){}
+      try { (function(){ var b=document.getElementById('cc-mes-hoje'); if(b) b.onclick=function(){ state.competencia=(new Date()).toISOString().slice(0,7); render(); recarregarPorAba(); }; })(); } catch(_){}
+
+      try {
+        var buscaL = document.getElementById('cc-busca-lanc');
+        if (buscaL) buscaL.addEventListener('input', function(){ state.filtro.busca = buscaL.value; setTimeout(loadLancamentos, 220); }, false);
+      } catch(_){}
+      try {
+        var filCat = document.getElementById('cc-filtro-cat');
+        if (filCat) filCat.addEventListener('change', function(){ state.filtro.categoria = filCat.value; loadLancamentos(); }, false);
+      } catch(_){}
+      try {
+        var filCen = document.getElementById('cc-filtro-centro');
+        if (filCen) filCen.addEventListener('change', function(){ state.filtro.centro = filCen.value; loadLancamentos(); }, false);
+      } catch(_){}
+      try {
+        var filForn = document.getElementById('cc-filtro-forn');
+        if (filForn) filForn.addEventListener('input', function(){ state.filtro.fornecedor = filForn.value; setTimeout(loadLancamentos, 280); }, false);
+      } catch(_){}
+
+      try { (function(){ var b=document.getElementById('cc-btn-novo-lanc'); if(b) b.onclick=abrirModalLancamento; })(); } catch(_){}
+      try {
+        (function(){
+          var b = document.getElementById('cc-btn-gerar-recorr');
+          if (!b) return;
+          b.onclick = function() {
+            if (!confirm('Gerar lançamentos recorrentes para ' + nomeComp(state.competencia) + '? Lançamentos já gerados anteriormente serão pulados (idempotente).')) return;
+            var comp = state.competencia; var emp = ccustosNormEmpId(state.emp_id);
+            var bkp = b.innerHTML;
+            b.innerHTML = '<span class="ccustos-spinner"></span>Gerando...';
+            b.disabled = true;
+            ccustosFetch('/api/central-custos/recorrentes/gerar-mes', {
+              method:'POST', body:JSON.stringify({ competencia:comp, emp_id:emp })
+            }).then(function(r){ try { return r.json(); } catch(_){ return {ok:false}; } })
+              .then(function(j){
+                if (j && j.ok) toastFn('Gerado: ' + (j.criados||0) + ' criados · ' + (j.pulados||0) + ' pulados (já existiam).', 'ok');
+                else toastFn((j&&(j.error||j.message))||'Erro ao gerar recorrentes.', 'err');
+                loadLancamentos(); loadVisaoGeral();
+              }).catch(function(e){ toastFn(String(e&&e.message||e),'err'); })
+              .finally(function(){ b.disabled = false; b.innerHTML = bkp; });
+          };
+        })();
+      } catch(_){}
+
+      function abrirModalLancamento(editarPayload, idEditar) {
+        var inner = montarHtmlLancForm(editarPayload || {}, idEditar || null);
+        openModalCCustos(inner, function(bd){
+          try {
+            var cancelar = document.getElementById('ccf-cancelar');
+            if (cancelar) cancelar.onclick = fecharModaisCCustos;
+            var salvar = document.getElementById('ccf-salvar');
+            if (salvar) salvar.onclick = function() {
+              try {
+                var fv = function(id){ var el = document.getElementById(id); return el ? el.value : ''; };
+                var desc = String(fv('ccf-desc')||'').trim();
+                var cat = String(fv('ccf-cat')||'').trim();
+                var nat2 = String(fv('ccf-nat')||'DESPESA');
+                var centro = String(fv('ccf-centro')||'').trim();
+                var val = Number(fv('ccf-valor')||0) || 0;
+                var dt = String(fv('ccf-data')||'').trim();
+                var comp = String(fv('ccf-comp')||'').trim();
+                var forn = String(fv('ccf-forn')||'').trim();
+                var pgto = String(fv('ccf-pgto')||'').trim();
+                var anexo = String(fv('ccf-anexo')||'').trim();
+                var obs = String((document.getElementById('ccf-obs')||{}).value||'').trim();
+                if (!desc) { toastFn('Descrição obrigatória.', 'err'); return; }
+                if (!cat) { toastFn('Categoria obrigatória.', 'err'); return; }
+                if (!centro) { toastFn('Centro de Custo obrigatório.', 'err'); return; }
+                if (val <= 0) { toastFn('Valor deve ser > 0.', 'err'); return; }
+                if (!/^\d{4}\-\d{2}$/.test(comp)) { toastFn('Competência inválida (use YYYY-MM).', 'err'); return; }
+                var payloadF = {
+                  descricao: desc, categoria: cat, natureza: nat2, centro_custo_id: centro,
+                  valor: val, data_lancamento: dt || (comp+'-01'), competencia: comp,
+                  fornecedor_beneficiario: forn, forma_pagamento: pgto, anexo_url: anexo,
+                  observacao: obs, empresa_id: ccustosNormEmpId(state.emp_id)
+                };
+                var methodL = idEditar ? 'PUT' : 'POST';
+                var urlL = idEditar ? ('/api/central-custos/lancamentos/' + encodeURIComponent(idEditar)) : '/api/central-custos/lancamentos';
+                var bkpH = salvar.innerHTML;
+                salvar.innerHTML = '<span class="ccustos-spinner"></span>Salvando...';
+                salvar.disabled = true;
+                ccustosFetch(urlL, { method:methodL, body:JSON.stringify(payloadF) })
+                  .then(function(r){ try { return r.json(); } catch(_){ return {ok:false}; } })
+                  .then(function(j){
+                    if (j && (j.ok || j.id)) {
+                      toastFn(idEditar ? 'Alterações salvas.' : 'Lançamento criado.', 'ok');
+                      fecharModaisCCustos();
+                      Promise.all([loadLancamentos(), loadVisaoGeral()]).then(function(){ render(); });
+                    } else toastFn((j&&(j.error||j.message))||'Erro ao salvar.', 'err');
+                  }).catch(function(e){ toastFn(String(e&&e.message||e),'err'); })
+                  .finally(function(){ salvar.disabled=false; salvar.innerHTML = bkpH; });
+              } catch(e) { toastFn(String(e&&e.message||e),'err'); }
+            };
+          } catch(_){}
+        });
+      }
+
+      function abrirModalOfDetalhe(r) {
+        try {
+          var compOf = Number(r.comp||0)||0, largOf = Number(r.larg||0)||0;
+          var areaM2 = (compOf>0 && largOf>0) ? ((compOf/1000)*(largOf/1000)) : 0;
+          var inner = ''
+            + '<h3>🔍 Detalhe Custo OF #' + esc(String(r.of||r.numero||'—')) + '</h3>'
+            + '<div class="ccustos-cards" style="margin-bottom:18px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">'
+            + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Cliente</div><div class="ccustos-card-val" style="font-size:16px">' + esc(String(r.cliente||'—')) + '</div><div class="ccustos-card-sub">' + esc(String(r.descricao||'—')) + '</div></div>'
+            + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Valor Venda</div><div class="ccustos-card-val" style="color:#34d399">' + fmt1(Number(r.valor_venda||r.of_valor_total||0)||0) + '</div></div>'
+            + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Custo Total (Papelão)</div><div class="ccustos-card-val" style="color:#f87171">' + fmt1(Number(r.custo_total||0)||0) + '</div><div class="ccustos-card-sub">Qtd: ' + fmtN(r.qtd_produzida||0,0) + ' un.</div></div>'
+            + '  <div class="ccustos-card"><div class="ccustos-card-label">Resultado</div><div class="ccustos-card-val" style="color:' + (((Number(r.valor_venda||r.of_valor_total||0)||0) - (Number(r.custo_total||0)||0))>=0?'#34d399':'#f87171') + '">' + fmt1((Number(r.valor_venda||r.of_valor_total||0)||0) - (Number(r.custo_total||0)||0)) + '</div></div>'
+            + '</div>'
+            + '<div class="ccustos-panel" style="margin-bottom:0">'
+            + '  <div class="ccustos-panel-title">Composição do custo (gramatura + dimensões)</div>'
+            + '  <div class="ccustos-table-wrap" style="margin-top:12px">'
+            + '    <table class="ccustos-table"><tbody>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Gramatura</td><td style="font-weight:900">' + esc(String(r.gramatura||'—')) + '</td></tr>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Valor m² (R$)</td><td style="font-weight:900">' + fmt1(Number(r.valor_unitario_m2||0)||0) + '</td></tr>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Dimensões (C×L mm)</td><td style="font-weight:900">' + fmtN(compOf,0) + ' × ' + fmtN(largOf,0) + ' mm</td></tr>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Área por unidade</td><td style="font-weight:900">' + fmtN(areaM2,4) + ' m²/un</td></tr>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Custo unitário (R$)</td><td style="font-weight:900;color:#fbbf24">' + fmt1(Number(r.custo_unitario||0)||0) + '</td></tr>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Qtd produzida</td><td style="font-weight:900">' + fmtN(r.qtd_produzida||0,0) + ' caixas</td></tr>'
+            + '      <tr><td style="color:var(--text2);font-weight:800">Data conclusão</td><td style="font-weight:900">' + esc(String(r.data_conclusao||'—').slice(0,10)) + '</td></tr>'
+            + '    </tbody></table>'
+            + '  </div>'
+            + '</div>'
+            + '<div class="ccustos-modal-actions">'
+            + '  <button class="ccustos-btn-modal is-primary" id="cc-of-fechar">Fechar</button>'
+            + '</div>';
+          openModalCCustos(inner, function(bd){ try { var f=document.getElementById('cc-of-fechar'); if(f) f.onclick=fecharModaisCCustos; } catch(_){} });
+        } catch(_){}
+      }
+
+      try {
+        host.addEventListener('click', function(ev){
+          var t = ev && ev.target; if (!t) return;
+          var up = null;
+          try { if (t.closest) up = t.closest('[data-cc-editar]'); } catch(_){}
+          if (!up) try { var x=t; while(x && x !== host && !x.getAttribute) x = x.parentNode; if(x && x.getAttribute && x.getAttribute('data-cc-editar')) up = x; } catch(_){}
+          if (up) {
+            ev.preventDefault && ev.preventDefault();
+            var idEd = String(up.getAttribute('data-cc-editar')||'').trim();
+            var lanc = null;
+            for (var i = 0; i < state.lancamentos.length; i++) if (String(state.lancamentos[i] && state.lancamentos[i].id||'') === idEd) { lanc = state.lancamentos[i]; break; }
+            abrirModalLancamento(lanc, idEd);
+            return;
+          }
+          var delEl = null; try { if (t.closest) delEl = t.closest('[data-cc-excluir]'); } catch(_){}
+          if (!delEl) try { var x2 = t; while(x2 && x2 !== host && !x2.getAttribute) x2 = x2.parentNode; if(x2 && x2.getAttribute && x2.getAttribute('data-cc-excluir')) delEl = x2; } catch(_){}
+          if (delEl) {
+            ev.preventDefault && ev.preventDefault();
+            var idDel = String(delEl.getAttribute('data-cc-excluir')||'').trim();
+            if (!idDel) return;
+            if (!confirm('Excluir este lançamento? Esta ação apaga o registro permanentemente.')) return;
+            var emp2 = ccustosNormEmpId(state.emp_id);
+            ccustosFetch('/api/central-custos/lancamentos/' + encodeURIComponent(idDel) + '?emp_id=' + encodeURIComponent(emp2), { method:'DELETE' })
+              .then(function(r){ try { return r.json(); } catch(_){ return {ok:false}; } })
+              .then(function(j){
+                if (j && j.ok) { toastFn('Lançamento excluído.', 'ok'); loadLancamentos(); loadVisaoGeral(); }
+                else toastFn((j&&(j.error||j.message))||'Erro ao excluir.', 'err');
+              }).catch(function(e){ toastFn(String(e&&e.message||e),'err'); });
+            return;
+          }
+          var centroEl = null; try { if (t.closest) centroEl = t.closest('[data-centro-row]'); } catch(_){}
+          if (!centroEl) try { var y = t; while(y && y !== host && !y.getAttribute) y = y.parentNode; if(y && y.getAttribute && y.getAttribute('data-centro-row')) centroEl = y; } catch(_){}
+          if (centroEl) {
+            var idC = String(centroEl.getAttribute('data-centro')||'').trim();
+            if (idC) { state.filtro.centro = idC; state.aba = 2; render(); loadLancamentos(); return; }
+          }
+          var ccard = null; try { if (t.closest) ccard = t.closest('[data-centro-card]'); } catch(_){}
+          if (!ccard) try { var z = t; while(z && z !== host && !z.getAttribute) z = z.parentNode; if(z && z.getAttribute && z.getAttribute('data-centro-card')) ccard = z; } catch(_){}
+          if (ccard) {
+            var idC2 = String(ccard.getAttribute('data-centro-card')||'').trim();
+            if (idC2 && !idC2.startsWith('_P')) { state.filtro.centro = idC2; state.aba = 2; render(); loadLancamentos(); return; }
+          }
+          var pulMes = null; try { if (t.closest) pulMes = t.closest('.cc-pular-mes'); } catch(_){}
+          if (pulMes) {
+            ev.preventDefault && ev.preventDefault();
+            var tr = pulMes.closest ? pulMes.closest('tr[data-mes]') : null;
+            if (tr) {
+              var mes = String(tr.getAttribute('data-mes')||'').trim();
+              if (mes) { state.competencia = mes; state.aba = 1; render(); recarregarPorAba(); return; }
+            }
+          }
+          var ofDet = null; try { if (t.closest) ofDet = t.closest('tr[data-of-idx], .cc-of-detalhe'); } catch(_){}
+          if (!ofDet) try { var w = t; while(w && w !== host && !w.getAttribute) w = w.parentNode; if(w && w.getAttribute && (w.getAttribute('data-of-idx')||w.classList.contains('cc-of-detalhe'))) ofDet = w; } catch(_){}
+          if (ofDet) {
+            ev.preventDefault && ev.preventDefault();
+            var tr2 = ofDet.closest ? ofDet.closest('tr[data-of-idx]') : null;
+            if (!tr2) return;
+            var idx = parseInt(tr2.getAttribute('data-of-idx')||'0',10) || 0;
+            var rowsOf = (state.ofsCustos && Array.isArray(state.ofsCustos.rows)) ? state.ofsCustos.rows : [];
+            var r = rowsOf[idx]; if (!r) return;
+            abrirModalOfDetalhe(r);
+            return;
+          }
+          try {
+            var novoCb = document.getElementById('cc-btn-centro-novo');
+            if (novoCb && ev.target === novoCb) {
+              var novoCentro = { id: '_NOVO_'+Date.now(), codigo:'', nome:'', cor_visual:'#64748b', ativo:true, temp:true, novo:true };
+              state.centros.unshift(novoCentro);
+              render();
+              return;
+            }
+          } catch(_){}
+          try {
+            var recOf = document.getElementById('cc-btn-recarregar-ofs');
+            if (recOf && ev.target === recOf) { loadCustoOFs(); return; }
+          } catch(_){}
+          try {
+            var salvarC = null; if (t.closest) salvarC = t.closest('.cc-salvar-centro,.cc-criar-centro');
+            if (salvarC) {
+              ev.preventDefault && ev.preventDefault();
+              var trC = salvarC.closest ? salvarC.closest('tr[data-centro-id]') : null;
+              if (!trC) return;
+              var idC3 = String(trC.getAttribute('data-centro-id')||'').trim();
+              var codigo = String((trC.querySelector('.cc-campo-cod')||{}).value||'').trim();
+              var nome = String((trC.querySelector('.cc-campo-nome')||{}).value||'').trim();
+              var cor = String((trC.querySelector('.cc-campo-cor')||{}).value||'#64748b').trim();
+              if (!nome) { toastFn('Nome do centro obrigatório.', 'err'); return; }
+              var existente = null;
+              for (var ci = 0; ci < state.centros.length; ci++) if (String(state.centros[ci] && state.centros[ci].id||'') === idC3) { existente = state.centros[ci]; break; }
+              var metodo = 'POST'; var urlC = '/api/centros-custo'; var payloadC = { codigo:codigo, nome:nome, cor_visual:cor, ativo:true, emp_id:ccustosNormEmpId(state.emp_id) };
+              if (existente && !existente.temp) { metodo = 'PUT'; urlC = '/api/centros-custo/' + encodeURIComponent(idC3); }
+              var bkpSalvar = salvarC.innerHTML; salvarC.innerHTML = '<span class="ccustos-spinner"></span>Salvando...'; salvarC.disabled = true;
+              ccustosFetch(urlC, { method:metodo, body:JSON.stringify(payloadC) })
+                .then(function(r){ try { return r.json(); } catch(_){ return {ok:false}; } })
+                .then(function(j){
+                  if (j && (j.ok || j.id)) {
+                    toastFn('Centro salvo.', 'ok');
+                    if (existente) {
+                      existente.codigo = codigo; existente.nome = nome; existente.cor_visual = cor; existente.ativo = true;
+                      if (j && j.id) existente.id = j.id;
+                      delete existente.temp; delete existente.novo;
+                    }
+                    Promise.all([loadCentros(), loadVisaoGeral()]).then(function(){ render(); });
+                  } else toastFn((j&&(j.error||j.message))||'Erro ao salvar centro.', 'err');
+                }).catch(function(e){ toastFn(String(e&&e.message||e),'err'); })
+                .finally(function(){ salvarC.disabled = false; salvarC.innerHTML = bkpSalvar; });
+              return;
+            }
+          } catch(_){}
+          try {
+            var toggleC = null; if (t.closest) toggleC = t.closest('.cc-toggle-centro');
+            if (toggleC) {
+              ev.preventDefault && ev.preventDefault();
+              var trC2 = toggleC.closest ? toggleC.closest('tr[data-centro-id]') : null;
+              if (!trC2) return;
+              var idC4 = String(trC2.getAttribute('data-centro-id')||'').trim();
+              if (idC4.startsWith('_')) { toastFn('Salve o centro antes de ativar/desativar.', 'err'); return; }
+              var exist2 = null;
+              for (var cj = 0; cj < state.centros.length; cj++) if (String(state.centros[cj] && state.centros[cj].id||'') === idC4) { exist2 = state.centros[cj]; break; }
+              if (!exist2) return;
+              var novoAtivo = exist2.ativo === false ? true : false;
+              ccustosFetch('/api/centros-custo/' + encodeURIComponent(idC4), { method:'PUT', body:JSON.stringify({ ativo:novoAtivo }) })
+                .then(function(r){ try { return r.json(); } catch(_){ return {ok:false}; } })
+                .then(function(j){
+                  if (j && (j.ok || j.id)) { exist2.ativo = novoAtivo; loadCentros(); toastFn('Status atualizado.', 'ok'); }
+                  else toastFn((j&&(j.error||j.message))||'Erro.', 'err');
+                }).catch(function(e){ toastFn(String(e&&e.message||e),'err'); });
+              return;
+            }
+          } catch(_){}
+        }, false);
+      } catch(_){}
+    }
+
+    function render() {
+      try {
+        var host = document.getElementById('page-central-custos');
+        if (!host) host = document.getElementById('patch-main-host');
+        if (!host) return;
+        var abasHtml = ''
+          + '<div class="ccustos-tabs">'
+          + '  <div id="cc-tab-1" class="ccustos-tab ' + (state.aba===1?'is-active':'') + '">📊 Visão Geral</div>'
+          + '  <div id="cc-tab-2" class="ccustos-tab ' + (state.aba===2?'is-active':'') + '">📒 Lançamentos</div>'
+          + '  <div id="cc-tab-3" class="ccustos-tab ' + (state.aba===3?'is-active':'') + '">🏢 Centros de Custo</div>'
+          + '  <div id="cc-tab-4" class="ccustos-tab ' + (state.aba===4?'is-active':'') + '">📦 Custo por OF</div>'
+          + '  <div id="cc-tab-5" class="ccustos-tab ' + (state.aba===5?'is-active':'') + '">📈 Histórico Comparativo</div>'
+          + '</div>'
+          + '<div class="ccustos-mes-carousel">'
+          + '  <button class="ccustos-mes-btn" id="cc-mes-ant">← Mês Anterior</button>'
+          + '  <div class="ccustos-mes-label">' + esc(nomeComp(state.competencia)) + '</div>'
+          + '  <button class="ccustos-mes-btn" id="cc-mes-seg">Próximo Mês →</button>'
+          + '  <button class="ccustos-mes-btn" id="cc-mes-hoje" style="margin-left:10px">📅 Hoje</button>'
+          + '</div>';
+        var bodyHtml = '';
+        if (state.aba === 1) bodyHtml = htmlAba1();
+        else if (state.aba === 2) bodyHtml = htmlAba2();
+        else if (state.aba === 3) bodyHtml = htmlAba3();
+        else if (state.aba === 4) bodyHtml = htmlAba4();
+        else if (state.aba === 5) bodyHtml = htmlAba5();
+        host.innerHTML = '<div id="page-central-custos" class="ccustos-wrap">' + abasHtml + bodyHtml + '</div>';
+        try { bindEventos(host); } catch(e) { try { console.error('[CCUSTOS] bind:',e); } catch(_){} }
+        if (state.aba === 1) try { setTimeout(renderGrafCategoria, 50); } catch(_){}
+      } catch (e) {
+        try { console.error('[CCUSTOS] render fatal:', e); } catch(_){}
+        try {
+          var host = document.getElementById('patch-main-host');
+          if (host) host.innerHTML = '<div style="padding:20px;color:#f75a5a;font-weight:800">Erro fatal Central de Custos: ' + esc(e && e.message || e) + '</div>';
+        } catch(_){}
+      }
+    }
+
+    window.renderPageCentralCustos = function(hostParam) {
+      try {
+        if (typeof hostParam === 'object' && hostParam) {
+          try { hostParam.id = 'patch-main-host'; } catch(_){}
+        }
+        state.aba = 1;
+        state.emp_id = ccustosNormEmpId(state.emp_id);
+        var hojeC = (new Date()).toISOString().slice(0,7);
+        if (!state.competencia) state.competencia = hojeC;
+        render();
+        Promise.all([
+          loadVisaoGeral(),
+          loadLancamentos(),
+          loadCentros(),
+          loadHistorico(),
+          loadCustoOFs()
+        ]).then(function(){ render(); }).catch(function(){});
+      } catch (e) {
+        try { console.error('[renderPageCentralCustos] fatal:', e); } catch(_){}
+      }
+    };
+  })();
 })();
 
 

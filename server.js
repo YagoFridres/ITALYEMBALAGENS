@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260911432001';
-const SW_RUNTIME_VERSION = '20260911432001';
+const PATCH_RUNTIME_VERSION = '20260914434001';
+const SW_RUNTIME_VERSION = '20260914434001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11513,6 +11513,37 @@ const PASSAGENS_MAQUINA_WHITELIST = new Set([
   'perda','perdido','qtd_perdida','motivo_perda'
 ]);
 
+const CENTROS_CUSTO_WHITELIST = new Set([
+  'id','empresa_id','empId','emp_id',
+  'codigo','nome','ativo','cor_visual','observacoes','updated_at'
+]);
+const LANCAMENTOS_CUSTOS_WHITELIST = new Set([
+  'id','empresa_id','empId','emp_id',
+  'centro_custo_id','competencia','data_lancamento',
+  'categoria','natureza','descricao','valor',
+  'fornecedor_beneficiario','forma_pagamento',
+  'observacao','anexo_url','of_id','recorrencia_id','usuario_id','updated_at'
+]);
+const RECORRENTES_WHITELIST = new Set([
+  'id','empresa_id','empId','emp_id',
+  'centro_custo_id','categoria','natureza',
+  'descricao_padrao','fornecedor_padrao','forma_pagamento_padrao',
+  'valor_padrao','dia_vencimento','periodicidade',
+  'data_inicio','data_fim','ativo','observacoes','updated_at'
+]);
+function _centralCustosSanitizePayload(payload, whitelist) {
+  if (!payload || typeof payload !== 'object') return {};
+  const out = {};
+  Object.keys(payload).forEach(function(k) { if (whitelist.has(k)) out[k] = payload[k]; });
+  const aliasMap = { empId: 'empresa_id', emp_id: 'empresa_id' };
+  Object.keys(aliasMap).forEach(function(alias) {
+    if (Object.prototype.hasOwnProperty.call(payload, alias) && !Object.prototype.hasOwnProperty.call(out, aliasMap[alias])) {
+      out[aliasMap[alias]] = payload[alias];
+    }
+  });
+  return out;
+}
+
 function _limparPayloadPassagens(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const mapped = { ...src };
@@ -15695,11 +15726,22 @@ app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
     try { cacheClearPrefix('rel_'); } catch (_) {}
     const anoRaw = Number(req.query?.ano || 0);
     const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : new Date().getFullYear();
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    const companyIds = empresa_id
-      ? [empresa_id]
-      : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+    const empParam = String(req.query.emp_id || '').trim().toUpperCase();
+    let companyIds;
+    let filtroRetorno = null;
+    if (empParam === 'ALL') {
+      companyIds = [
+        'df5f7672-0a6b-402d-ae65-296554236c31',
+        'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+      ];
+      filtroRetorno = 'ALL';
+    } else {
+      let empresa_id = null;
+      try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+      companyIds = empresa_id ? [empresa_id] : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+      filtroRetorno = empParam || empresa_id || null;
+    }
     const range = {
       inicio: `${ano}-01-01`,
       fim: `${ano}-12-31`,
@@ -15832,12 +15874,217 @@ app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
       ok: true,
       ano,
       range,
-      empresa_filtro_id: empresa_id || null,
+      empresa_filtro_id: filtroRetorno || null,
       resumo_anual,
       meses: mesesArr
     });
   } catch (e) {
     console.error('[RELATORIOS][RESUMO-ANUAL]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('rel_'); } catch (_) {}
+
+    const hoje = new Date();
+    const mesRaw = Number(req.query?.mes || 0);
+    const anoRaw = Number(req.query?.ano || 0);
+    const mes = Number.isFinite(mesRaw) && mesRaw >= 1 && mesRaw <= 12 ? mesRaw : (hoje.getMonth() + 1);
+    const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : hoje.getFullYear();
+
+    const empParam = String(req.query.emp_id || '').trim().toUpperCase();
+    let companyIds;
+    let filtroRetorno = null;
+    if (empParam === 'ALL') {
+      companyIds = [
+        'df5f7672-0a6b-402d-ae65-296554236c31',
+        'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+      ];
+      filtroRetorno = 'ALL';
+    } else {
+      let empresa_id = null;
+      try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+      companyIds = empresa_id ? [empresa_id] : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+      filtroRetorno = empParam || empresa_id || null;
+    }
+
+    const mesSeguinte = mes === 12 ? 1 : mes + 1;
+    const anoSeguinte = mes === 12 ? ano + 1 : ano;
+    const range = {
+      inicio: `${ano}-${String(mes).padStart(2, '0')}-01`,
+      fim: `${ano}-${String(mes).padStart(2, '0')}-31`,
+      fim_exclusivo: `${anoSeguinte}-${String(mesSeguinte).padStart(2, '0')}-01`
+    };
+    const inicioIso = range.inicio;
+    const fimExclusivoIso = range.fim_exclusivo;
+
+    const columns = [
+      'id', 'numero', 'of', 'status', 'deleted_at',
+      'data_faturamento', 'data_conclusao', 'dia', 'created_at',
+      'empresa_id', 'emp_id', 'cli_id', 'cliente_nome', 'cliNome', 'clinome',
+      'valor_total', 'valor_venda', 'total',
+      'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
+      'qtd_perdida', 'caixas_perdidas',
+      'operador_conclusao', 'operadores_conclusao', 'maquina_perda'
+    ].join(',');
+
+    const rows = [];
+    const pageSize = 1000;
+    for (let offset = 0; offset < 50000; offset += pageSize) {
+      const result = await _selectCompatRows('ofs', columns, (q) => {
+        let b = q.or(`and(status.ilike.%conclu%,status.ilike.%cancel%)`);
+        const orParts = [
+          `and(data_faturamento.gte.${inicioIso},data_faturamento.lt.${fimExclusivoIso})`,
+          `and(data_conclusao.gte.${inicioIso},data_conclusao.lt.${fimExclusivoIso})`,
+          `and(dia.gte.${inicioIso},dia.lt.${fimExclusivoIso})`,
+          `and(created_at.gte.${inicioIso},created_at.lt.${fimExclusivoIso})`
+        ].join(',');
+        try { b = b.or(orParts); } catch (_) {}
+        try { b = b.is('deleted_at', null); } catch (_) {}
+        return b.order('created_at', { ascending: true }).range(offset, offset + pageSize - 1);
+      });
+      if (result?.error) throw result.error;
+      const chunk = Array.isArray(result?.data) ? result.data : [];
+      if (!chunk.length) break;
+      rows.push(...chunk);
+      if (chunk.length < pageSize) break;
+    }
+
+    const ofsFiltrados = rows.filter((row) => {
+      if (row?.deleted_at) return false;
+      const sts = String(row?.status || '').trim().toLowerCase();
+      const isConcluido = sts.includes('conclu') || sts === 'concluida' || sts === 'concluído';
+      const isCancelada = sts.includes('cancel');
+      if (!isConcluido && !isCancelada) return false;
+      const qtdPerdida = Number(row?.qtd_perdida ?? row?.caixas_perdidas ?? 0) || 0;
+      const temMaqPerda = String(row?.maquina_perda || '').trim() !== '';
+      if (isCancelada && qtdPerdida <= 0 && !temMaqPerda) return false;
+      if (!_vendasOficialDentroDoPeriodo(row, range)) return false;
+      if (!companyIds.length) return true;
+      return companyIds.includes(_relatoriosPickEmpresaId(row));
+    });
+
+    function unpackOperadores(of) {
+      const raw = of?.operadores_conclusao ?? of?.operador_conclusao ?? '';
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw.map((s) => String(s || '').trim()).filter(Boolean);
+      const s = String(raw || '').trim();
+      if (!s) return [];
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map((x) => String(x || '').trim()).filter(Boolean);
+      } catch (_) {}
+      return s.split(/[,;|]+/g).map((x) => x.trim()).filter(Boolean);
+    }
+
+    const ranking = new Map();
+    let total_qtd_perdida = 0;
+    let total_valor_perdido = 0;
+    let total_qtd_produzida = 0;
+    let total_valor_produzido = 0;
+    let total_ofs = 0;
+    const ofsIds = new Set();
+
+    ofsFiltrados.forEach((of) => {
+      const idOf = String(of?.id || '').trim();
+      const valor = _relatoriosPickValorOf(of);
+      const qtd = _relatoriosPickQtdOf(of);
+      const perda = Math.max(0, Number(of?.qtd_perdida ?? of?.caixas_perdidas ?? 0) || 0);
+      const denominador = Math.max(1, qtd + perda);
+      const valorPerda = Number(((perda / denominador) * valor).toFixed(2));
+      const valorProduzido = denominador > 0 ? Number(((qtd / denominador) * valor).toFixed(2)) : valor;
+
+      const operadores = unpackOperadores(of);
+      if (!operadores.length) return;
+
+      if (!ofsIds.has(idOf)) {
+        total_ofs += 1;
+        ofsIds.add(idOf);
+      }
+      total_qtd_perdida += perda;
+      total_valor_perdido += valorPerda;
+      total_qtd_produzida += qtd;
+      total_valor_produzido += valorProduzido;
+
+      const perOperadorQtd = qtd > 0 ? qtd / operadores.length : 0;
+      const perOperadorValor = qtd > 0 ? valorProduzido / operadores.length : 0;
+      const perOperadorPerdQtd = perda > 0 ? perda / operadores.length : 0;
+      const perOperadorPerdValor = perda > 0 ? valorPerda / operadores.length : 0;
+
+      operadores.forEach((nomeOp) => {
+        const k = nomeOp.toUpperCase();
+        if (!ranking.has(k)) {
+          ranking.set(k, {
+            operador: nomeOp,
+            qtd_produzida: 0,
+            valor_produzido: 0,
+            qtd_perdida: 0,
+            valor_perdido: 0,
+            ofs_ids: new Set(),
+            qtd_ofs: 0
+          });
+        }
+        const r = ranking.get(k);
+        r.qtd_produzida += perOperadorQtd;
+        r.valor_produzido += perOperadorValor;
+        r.qtd_perdida += perOperadorPerdQtd;
+        r.valor_perdido += perOperadorPerdValor;
+        if (idOf && !r.ofs_ids.has(idOf)) {
+          r.ofs_ids.add(idOf);
+          r.qtd_ofs += 1;
+        }
+      });
+    });
+
+    const arrRanking = Array.from(ranking.values())
+      .map((r) => {
+        const qtdTotal = Number(r.qtd_produzida || 0) + Number(r.qtd_perdida || 0);
+        const perdaPct = qtdTotal > 0 ? Number(((Number(r.qtd_perdida || 0) / qtdTotal) * 100).toFixed(2)) : 0;
+        return {
+          operador: r.operador,
+          qtd_produzida: Number(Number(r.qtd_produzida || 0).toFixed(2)),
+          valor_produzido: Number(Number(r.valor_produzido || 0).toFixed(2)),
+          qtd_perdida: Number(Number(r.qtd_perdida || 0).toFixed(2)),
+          valor_perdido: Number(Number(r.valor_perdido || 0).toFixed(2)),
+          qtd_ofs: Number(r.qtd_ofs || 0),
+          pct_perda: perdaPct
+        };
+      })
+      .sort((a, b) => Number(b.qtd_produzida || 0) - Number(a.qtd_produzida || 0));
+
+    const top3 = arrRanking.slice(0, 3).map((r) => ({
+      operador: r.operador,
+      qtd_produzida: r.qtd_produzida,
+      valor_produzido: r.valor_produzido,
+      qtd_perdida: r.qtd_perdida,
+      pct_perda: r.pct_perda
+    }));
+
+    return res.json({
+      ok: true,
+      mes,
+      ano,
+      range,
+      empresa_filtro_id: filtroRetorno || null,
+      totalizadores: {
+        total_qtd_perdida: Number(total_qtd_perdida || 0),
+        total_valor_perdido: Number(total_valor_perdido || 0),
+        total_qtd_produzida: Number(total_qtd_produzida || 0),
+        total_valor_produzido: Number(total_valor_produzido || 0),
+        total_ofs: Number(total_ofs || 0),
+        top3
+      },
+      ranking: arrRanking
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][PERDAS-OPERADOR]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -16239,11 +16486,14 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
       if (Number(b?.custo_total || 0) !== Number(a?.custo_total || 0)) return Number(b?.custo_total || 0) - Number(a?.custo_total || 0);
       return String(a?.cliente || '').localeCompare(String(b?.cliente || ''), 'pt-BR');
     });
+    const totalCustosConsolidado = rows.reduce((s, r) => s + Number(r?.custo_total || 0), 0);
     return res.json({
       ok: true,
       data_inicio: range.inicio,
       data_fim: range.fim,
-      rows
+      rows,
+      total_custos_consolidado_competencia: Math.round(totalCustosConsolidado * 100) / 100,
+      ofs_completo_para_central: true
     });
   } catch (e) {
     console.error('[RELATORIOS][CUSTOS]', e?.message || e);
@@ -18358,6 +18608,150 @@ const _CHAPAS_GRUPOS_SCHEMA_SQL =
 let _orcamentosPastasSchemaReady = null;
 let _orcamentosVersoesSchemaReady = null;
 let _chapasGruposSchemaReady = null;
+
+let _centralCustosSchemaReady = null;
+function _centralCustosCreateSql() {
+  return ""
+    + "CREATE TABLE IF NOT EXISTS centros_custo ( "
+    + "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "
+    + "empresa_id UUID NULL, "
+    + "codigo TEXT NOT NULL, "
+    + "nome TEXT NOT NULL, "
+    + "ativo BOOLEAN NOT NULL DEFAULT TRUE, "
+    + "cor_visual TEXT NULL, "
+    + "observacoes TEXT NULL, "
+    + "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+    + "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW() ); "
+    + "CREATE UNIQUE INDEX IF NOT EXISTS centros_custo_codigo_unq ON centros_custo (codigo); "
+    + "CREATE INDEX IF NOT EXISTS centros_custo_empresa_idx ON centros_custo(empresa_id); "
+    + "CREATE INDEX IF NOT EXISTS centros_custo_ativo_idx ON centros_custo(ativo); "
+    + "INSERT INTO centros_custo (codigo, nome, ativo) VALUES "
+    + "  ('PROD','Produção',TRUE), "
+    + "  ('ADM','Administrativo',TRUE), "
+    + "  ('COMER','Comercial',TRUE), "
+    + "  ('EXP','Expedição',TRUE), "
+    + "  ('EST','Estoque',TRUE), "
+    + "  ('MAN','Manutenção',TRUE), "
+    + "  ('LOG','Veículos/Logística',TRUE) "
+    + "ON CONFLICT (codigo) DO NOTHING; "
+    + "CREATE TABLE IF NOT EXISTS lancamentos_custos ( "
+    + "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "
+    + "empresa_id UUID NULL, "
+    + "centro_custo_id UUID NULL REFERENCES centros_custo(id) ON DELETE SET NULL, "
+    + "competencia TEXT NOT NULL, "
+    + "data_lancamento DATE NOT NULL DEFAULT CURRENT_DATE, "
+    + "categoria TEXT NOT NULL, "
+    + "natureza TEXT NOT NULL DEFAULT 'DESPESA', "
+    + "descricao TEXT NOT NULL, "
+    + "valor NUMERIC(15,2) NOT NULL DEFAULT 0, "
+    + "fornecedor_beneficiario TEXT NULL, "
+    + "forma_pagamento TEXT NULL, "
+    + "observacao TEXT NULL, "
+    + "anexo_url TEXT NULL, "
+    + "of_id UUID NULL REFERENCES ofs(id) ON DELETE SET NULL, "
+    + "recorrencia_id UUID NULL, "
+    + "usuario_id UUID NULL, "
+    + "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+    + "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW() ); "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_custos_natureza_chk') THEN "
+    + "    ALTER TABLE lancamentos_custos ADD CONSTRAINT lanc_custos_natureza_chk CHECK (natureza IN ('RECEITA','DESPESA','CUSTO_FIXO','CUSTO_VARIAVEL','INVESTIMENTO')); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_custos_forma_pgto_chk') THEN "
+    + "    ALTER TABLE lancamentos_custos ADD CONSTRAINT lanc_custos_forma_pgto_chk CHECK (forma_pagamento IS NULL OR forma_pagamento IN ('DINHEIRO','PIX','CARTAO_CREDITO','CARTAO_DEBITO','TRANSFERENCIA','BOLETO','CHEQUE','OUTRO')); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_custos_categoria_chk') THEN "
+    + "    ALTER TABLE lancamentos_custos ADD CONSTRAINT lanc_custos_categoria_chk CHECK (categoria IN ('PAPELAO','FOLHA_PAGTO','ENERGIA','AGUA','TELEFONE_INTERNET','COMBUSTIVEL','MANUTENCAO','FRETES','INSUMOS','OUTROS')); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_comp_idx ON lancamentos_custos(competencia); "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_cat_idx ON lancamentos_custos(categoria); "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_centro_idx ON lancamentos_custos(centro_custo_id); "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_emp_idx ON lancamentos_custos(empresa_id); "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_of_idx ON lancamentos_custos(of_id); "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_nat_idx ON lancamentos_custos(natureza); "
+    + "CREATE INDEX IF NOT EXISTS lanc_custos_forn_idx ON lancamentos_custos(fornecedor_beneficiario); "
+    + "CREATE TABLE IF NOT EXISTS lancamentos_recorrentes ( "
+    + "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "
+    + "empresa_id UUID NULL, "
+    + "centro_custo_id UUID NULL REFERENCES centros_custo(id) ON DELETE SET NULL, "
+    + "categoria TEXT NOT NULL, "
+    + "natureza TEXT NOT NULL DEFAULT 'DESPESA', "
+    + "descricao_padrao TEXT NOT NULL, "
+    + "fornecedor_padrao TEXT NULL, "
+    + "forma_pagamento_padrao TEXT NULL, "
+    + "valor_padrao NUMERIC(15,2) NOT NULL DEFAULT 0, "
+    + "dia_vencimento SMALLINT NOT NULL DEFAULT 5, "
+    + "periodicidade TEXT NOT NULL DEFAULT 'MENSAL', "
+    + "data_inicio DATE NOT NULL DEFAULT CURRENT_DATE, "
+    + "data_fim DATE NULL, "
+    + "ativo BOOLEAN NOT NULL DEFAULT TRUE, "
+    + "observacoes TEXT NULL, "
+    + "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+    + "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW() ); "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_rec_natureza_chk') THEN "
+    + "    ALTER TABLE lancamentos_recorrentes ADD CONSTRAINT lanc_rec_natureza_chk CHECK (natureza IN ('RECEITA','DESPESA','CUSTO_FIXO','CUSTO_VARIAVEL','INVESTIMENTO')); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_rec_categoria_chk') THEN "
+    + "    ALTER TABLE lancamentos_recorrentes ADD CONSTRAINT lanc_rec_categoria_chk CHECK (categoria IN ('PAPELAO','FOLHA_PAGTO','ENERGIA','AGUA','TELEFONE_INTERNET','COMBUSTIVEL','MANUTENCAO','FRETES','INSUMOS','OUTROS')); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_rec_dia_chk') THEN "
+    + "    ALTER TABLE lancamentos_recorrentes ADD CONSTRAINT lanc_rec_dia_chk CHECK (dia_vencimento BETWEEN 1 AND 31); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_rec_periodo_chk') THEN "
+    + "    ALTER TABLE lancamentos_recorrentes ADD CONSTRAINT lanc_rec_periodo_chk CHECK (periodicidade IN ('MENSAL','BIMESTRAL','TRIMESTRAL','SEMESTRAL','ANUAL')); "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "CREATE INDEX IF NOT EXISTS lanc_recorr_emp_idx ON lancamentos_recorrentes(empresa_id); "
+    + "CREATE INDEX IF NOT EXISTS lanc_recorr_ativo_idx ON lancamentos_recorrentes(ativo); "
+    + "CREATE INDEX IF NOT EXISTS lanc_recorr_cat_idx ON lancamentos_recorrentes(categoria); "
+    + "DO $$ BEGIN "
+    + "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'lanc_custos_recorrencia_fk') THEN "
+    + "    ALTER TABLE lancamentos_custos ADD CONSTRAINT lanc_custos_recorrencia_fk FOREIGN KEY (recorrencia_id) REFERENCES lancamentos_recorrentes(id) ON DELETE SET NULL; "
+    + "  END IF; "
+    + "EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chapas_estoque_v2' AND column_name='data_recebimento') THEN ALTER TABLE chapas_estoque_v2 ADD COLUMN data_recebimento DATE NULL; END IF; EXCEPTION WHEN OTHERS THEN NULL; END $$; "
+    + "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chapas_estoque' AND column_name='data_recebimento') THEN ALTER TABLE chapas_estoque ADD COLUMN data_recebimento DATE NULL; END IF; EXCEPTION WHEN OTHERS THEN NULL; END $$; ";
+}
+async function _ensureCentralCustosSchema() {
+  if (_centralCustosSchemaReady === true) return true;
+  if (!supabase) {
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] Supabase indisponível; não foi possível validar schema.');
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] SQL necessário: supabase/migrations/20260914000001_central_custos.sql');
+    _centralCustosSchemaReady = false;
+    return false;
+  }
+  try {
+    const probe = await supabase.from('centros_custo').select('id,codigo,nome,ativo').limit(1);
+    if (!probe.error) {
+      _centralCustosSchemaReady = true;
+      console.log('[BOOT][CENTRAL_CUSTOS_SCHEMA] OK - tabelas centros_custo/lancamentos_custos/lancamentos_recorrentes presentes');
+      return true;
+    }
+    const msg = _orcamentosPastasSchemaMissingMessage(probe.error) || String(probe.error?.message || probe.error || 'schema indisponível');
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] FALHA - schema ausente ou indisponível:', msg);
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] SQL necessário: supabase/migrations/20260914000001_central_custos.sql (executar no SQL Editor Supabase)');
+    _centralCustosSchemaReady = false;
+    return false;
+  } catch (e) {
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] ERRO ao validar schema:', String(e?.message || e));
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] SQL necessário: supabase/migrations/20260914000001_central_custos.sql');
+    _centralCustosSchemaReady = false;
+    return false;
+  }
+}
+
 function _orcamentosPastasSchemaMissingMessage(err) {
   const low = String(err?.message || err || '').toLowerCase();
   if (
@@ -34728,6 +35122,733 @@ async function _ensureEstadosCidadesSeedFromClientes() {
   }
 }
 
+const _CCUSTOS_EMP_IDS = {
+  E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
+  E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  ITALY: 'df5f7672-0a6b-402d-ae65-296554236c31',
+  CARTOESTE: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+};
+function _ccustosResolveEmpresaId(raw, defaultNull) {
+  const s = String(raw || '').trim();
+  if (!s) return defaultNull != null ? defaultNull : null;
+  if (s === 'ALL' || s === 'TODAS' || s === '*') return 'ALL';
+  if (_CCUSTOS_EMP_IDS[s]) return _CCUSTOS_EMP_IDS[s];
+  if (/^[0-9a-fA-F]{8}-/.test(s)) return s;
+  if (s === '__sem_empresa__') return 'SEM_EMPRESA';
+  return s;
+}
+function _ccustosGetEmpresaFilterUuids(empId) {
+  const r = _ccustosResolveEmpresaId(empId, 'ALL');
+  if (r === 'ALL') return Object.values(_CCUSTOS_EMP_IDS);
+  if (r === 'SEM_EMPRESA') return [];
+  return [r];
+}
+function _ccustosApplyEmpresaFilter(query, empId, colName) {
+  const col = colName || 'empresa_id';
+  const r = _ccustosResolveEmpresaId(empId, 'ALL');
+  if (r === 'ALL') return query;
+  if (r === 'SEM_EMPRESA') {
+    return query.or(`${col}.is.null,${col}.eq.,${col}.eq.__sem_empresa__`);
+  }
+  return query.eq(col, r);
+}
+function _ccustosPickQtdOf(of) {
+  return Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+}
+function _ccustosPickCustoOf(of, gramMap) {
+  const comp = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+  const larg = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+  const qtd = _ccustosPickQtdOf(of);
+  const gramId = String(of?.gramatura_id || '').trim();
+  const gram = (gramId && gramMap && typeof gramMap.get === 'function') ? gramMap.get(gramId) : null;
+  const valorUnitM2 = Number(gram?.valor_unitario ?? 0) || 0;
+  if (comp > 0 && larg > 0 && valorUnitM2 > 0 && qtd > 0) {
+    const areaM2 = (comp / 1000) * (larg / 1000);
+    const custo = areaM2 * valorUnitM2 * qtd;
+    if (custo > 0) return Math.round(custo * 100) / 100;
+  }
+  const custoM2 = Number(of?.custo_m2_venda ?? of?.custo_m2 ?? 0) || 0;
+  if (comp > 0 && larg > 0 && custoM2 > 0 && qtd > 0) {
+    const areaM2 = (comp / 1000) * (larg / 1000);
+    const c2 = areaM2 * custoM2 * qtd;
+    if (c2 > 0) return Math.round(c2 * 100) / 100;
+  }
+  return 0;
+}
+const _CCUSTOS_CATEGORIAS_LABEL = {
+  PAPELAO: 'Papelão/chapas',
+  FOLHA_PAGTO: 'Folha de pagamento',
+  ENERGIA: 'Energia elétrica',
+  AGUA: 'Água',
+  TELEFONE_INTERNET: 'Telefone/Internet',
+  COMBUSTIVEL: 'Combustível/Gasolina',
+  MANUTENCAO: 'Manutenção',
+  FRETES: 'Fretes',
+  INSUMOS: 'Insumos',
+  OUTROS: 'Outros',
+};
+const _CCUSTOS_CATEGORIAS_ORDEM = [
+  'PAPELAO','FOLHA_PAGTO','ENERGIA','AGUA',
+  'TELEFONE_INTERNET','COMBUSTIVEL','MANUTENCAO','FRETES','INSUMOS','OUTROS'
+];
+async function _ccustosCarregarGramMap(ofIds) {
+  const gm = new Map();
+  if (!supabase) return gm;
+  const ids = Array.isArray(ofIds) ? ofIds.filter(Boolean).slice(0, 5000) : [];
+  if (!ids.length) return gm;
+  try {
+    const cols = 'id,valor_unitario,nome,gramatura,fornecedor_id';
+    const { data, error } = await supabase.from('gramaturas').select(cols).in('id', ids).limit(5000);
+    if (!error && Array.isArray(data)) {
+      data.forEach(function(g) { gm.set(String(g?.id || '').trim(), g); });
+    }
+  } catch (_) {}
+  return gm;
+}
+async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
+  if (!supabase) return { total_custo: 0, ofs: [], total_receita: 0 };
+  const compAlvo = String(competencia || '').trim();
+  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return { total_custo: 0, ofs: [], total_receita: 0 };
+  const inicio = compAlvo + '-01';
+  const aux = new Date(compAlvo + '-01T12:00:00');
+  aux.setMonth(aux.getMonth() + 1);
+  const fimExclusivo = aux.toISOString().slice(0, 10);
+  const cols = 'id,numero,of,descricao,status,data_conclusao,empresa_id,cli_id,gramatura_id,gramatura_nome,gramatura,dim_comprimento,dim_largura,caixa_comprimento,caixa_largura,qtd_produzida,qtd,quantidade,qtd_pedida,valor_total,custo_m2_venda,custo_m2';
+  let q = supabase.from('ofs').select(cols)
+    .ilike('status', '%conclu%')
+    .gte('data_conclusao', inicio)
+    .lt('data_conclusao', fimExclusivo)
+    .limit(10000);
+  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+  if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+  const sel = await q;
+  const ofsRaw = Array.isArray(sel?.data) ? sel.data : [];
+  const gramIds = Array.from(new Set(ofsRaw.map(function(o) { return String(o?.gramatura_id || '').trim(); }).filter(_isUuid)));
+  const gramMap = await _ccustosCarregarGramMap(gramIds);
+  const cliIds = Array.from(new Set(ofsRaw.map(function(o) { return String(o?.cli_id || '').trim(); }).filter(_isUuid)));
+  const clientesMap = new Map();
+  if (cliIds.length && _assistLoadClientesByIds) {
+    try {
+      const r = await _assistLoadClientesByIds(cliIds);
+      if (r && typeof r.get === 'function') {
+        r.forEach(function(v, k) { clientesMap.set(k, v); });
+      }
+    } catch (_) {}
+  }
+  let totalCusto = 0;
+  let totalReceita = 0;
+  const ofs = ofsRaw.map(function(of) {
+    const custo = _ccustosPickCustoOf(of, gramMap);
+    const receita = Number(of?.valor_total || 0) || 0;
+    totalCusto += custo;
+    totalReceita += receita;
+    const cliId = String(of?.cli_id || '').trim();
+    return {
+      of_id: of?.id || null,
+      of_numero: of?.numero ?? of?.of ?? null,
+      cliente: clientesMap.get(cliId) || (cliId || 'Sem cliente'),
+      descricao: String(of?.descricao || '').trim() || '—',
+      venda: Math.round(receita * 100) / 100,
+      papelao: custo,
+      outros_custos: 0,
+      custo_total: custo,
+      resultado: Math.round((receita - custo) * 100) / 100,
+      margem_pct: receita > 0 ? Math.round(((receita - custo) / receita) * 10000) / 100 : 0,
+      qtd_produzida: _ccustosPickQtdOf(of),
+      data_conclusao: of?.data_conclusao || null,
+      gramatura: String(of?.gramatura_nome || of?.gramatura || '').trim() || '—',
+    };
+  });
+  return { total_custo: Math.round(totalCusto * 100) / 100, total_receita: Math.round(totalReceita * 100) / 100, ofs: ofs };
+}
+async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll) {
+  if (!supabase) return 0;
+  const compAlvo = String(competencia || '').trim();
+  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return 0;
+  const inicio = compAlvo + '-01';
+  const aux = new Date(compAlvo + '-01T12:00:00');
+  aux.setMonth(aux.getMonth() + 1);
+  const fimExclusivo = aux.toISOString().slice(0, 10);
+  let table = 'chapas_estoque_v2';
+  try { table = await _chapasPreferV2Table(); } catch (_) { table = 'chapas_estoque_v2'; }
+  const valorCol = table === 'chapas_estoque_v2' ? 'valor_unitario' : 'coalesce(valor_unitario, val) as valor_unitario';
+  const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'coalesce(quantidade_atual, quantidade, qtd) as quantidade_atual';
+  const cols = `id,${valorCol},${qtdCol},empresa_id,data_recebimento,created_at`;
+  let q = supabase.from(table).select(cols).limit(10000);
+  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+  if (Array.isArray(uuids) && uuids.length) {
+    try { q = q.in('empresa_id', uuids); } catch (_) {}
+  }
+  const sel = await q;
+  const rows = Array.isArray(sel?.data) ? sel.data : [];
+  let total = 0;
+  rows.forEach(function(r) {
+    const dr = String(r?.data_recebimento || '').slice(0, 10);
+    const cr = String(r?.created_at || '').slice(0, 10);
+    const d = dr || cr;
+    if (!d) return;
+    if (d < inicio || d >= fimExclusivo) return;
+    const v = Number(r?.valor_unitario || 0) || 0;
+    const qnt = Math.trunc(Number(r?.quantidade_atual || 0) || 0);
+    if (v > 0 && qnt > 0) total += v * qnt;
+  });
+  return Math.round(total * 100) / 100;
+}
+async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll) {
+  if (!supabase) return { valor: 0, qtd: 0 };
+  const compAlvo = String(competencia || '').trim();
+  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return { valor: 0, qtd: 0 };
+  const inicio = compAlvo + '-01';
+  const aux = new Date(compAlvo + '-01T12:00:00');
+  aux.setMonth(aux.getMonth() + 1);
+  const fimExclusivo = aux.toISOString().slice(0, 10);
+  let q = supabase.from('caixas_perdidas')
+    .select('id,of_id,qtd_perdida,data,created_at,emp_id,empresa_id')
+    .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
+  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+  if (Array.isArray(uuids) && uuids.length) {
+    try { q = q.or(`emp_id.in.(${uuids.join(',')}),empresa_id.in.(${uuids.join(',')})`); } catch (_) {}
+  }
+  const { data, error } = await q;
+  if (error || !Array.isArray(data)) return { valor: 0, qtd: 0 };
+  let qtdTotal = 0;
+  data.forEach(function(p) { qtdTotal += Math.trunc(Number(p?.qtd_perdida || 0) || 0); });
+  return { valor: 0, qtd: qtdTotal };
+}
+async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
+  const resumo = { total: 0, por_categoria: {}, por_centro: {}, automatico: 0, manual: 0, rows: [] };
+  _CCUSTOS_CATEGORIAS_ORDEM.forEach(function(c) { resumo.por_categoria[c] = 0; });
+  if (!supabase) return resumo;
+  const compAlvo = String(competencia || '').trim();
+  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return resumo;
+  let q = supabase.from('lancamentos_custos')
+    .select('*')
+    .eq('competencia', compAlvo)
+    .limit(10000);
+  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+  if (Array.isArray(uuids) && uuids.length) {
+    try { q = q.in('empresa_id', uuids); } catch (_) {}
+  }
+  const { data, error } = await q;
+  if (error || !Array.isArray(data)) return resumo;
+  data.forEach(function(row) {
+    const v = Number(row?.valor || 0) || 0;
+    if (v === 0) return;
+    const cat = String(row?.categoria || 'OUTROS').toUpperCase();
+    const centro = String(row?.centro_custo_id || '').trim();
+    const sinal = String(row?.natureza || 'DESPESA') === 'RECEITA' ? -1 : 1;
+    const valor = Math.round(v * sinal * 100) / 100;
+    resumo.total += valor;
+    resumo.manual += valor;
+    if (_CCUSTOS_CATEGORIAS_ORDEM.includes(cat)) resumo.por_categoria[cat] += valor;
+    else resumo.por_categoria['OUTROS'] += valor;
+    if (centro) {
+      resumo.por_centro[centro] = (resumo.por_centro[centro] || 0) + valor;
+    }
+    resumo.rows.push(row);
+  });
+  Object.keys(resumo.por_categoria).forEach(function(k) {
+    resumo.por_categoria[k] = Math.round(resumo.por_categoria[k] * 100) / 100;
+  });
+  Object.keys(resumo.por_centro).forEach(function(k) {
+    resumo.por_centro[k] = Math.round(resumo.por_centro[k] * 100) / 100;
+  });
+  resumo.total = Math.round(resumo.total * 100) / 100;
+  resumo.manual = Math.round(resumo.manual * 100) / 100;
+  return resumo;
+}
+async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
+  const [ofs, papelao, perdas, lancs] = await Promise.all([
+    _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll),
+    _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll),
+    _ccustosCalcularPerdasCompetencia(competencia, empIdAll),
+    _ccustosCalcularLancamentosCompetencia(competencia, empIdAll),
+  ]);
+  const despesasFabrica = Math.round((lancs.total + perdas.valor) * 100) / 100;
+  const custoTotalMes = Math.round((ofs.total_custo + papelao + despesasFabrica) * 100) / 100;
+  const categorias = JSON.parse(JSON.stringify(lancs.por_categoria));
+  if (!categorias.PAPELAO) categorias.PAPELAO = 0;
+  categorias.PAPELAO = Math.round((categorias.PAPELAO + papelao) * 100) / 100;
+  const grafico = _CCUSTOS_CATEGORIAS_ORDEM.map(function(key) {
+    return { key: key, label: _CCUSTOS_CATEGORIAS_LABEL[key] || key, valor: Math.round(Number(categorias[key] || 0) * 100) / 100 };
+  });
+  return {
+    competencia,
+    cards_5: {
+      custo_total_mes: custoTotalMes,
+      despesas_fabrica: despesasFabrica,
+      custo_papelao: papelao,
+      custo_ofs: Math.round(ofs.total_custo * 100) / 100,
+      perdas: perdas.qtd,
+      perdas_valor: perdas.valor,
+      receita_ofs: Math.round(ofs.total_receita * 100) / 100,
+    },
+    grafico_categorias_10: grafico,
+    resumo_auto_vs_manual: {
+      custos_automaticos: Math.round((ofs.total_custo + papelao + perdas.valor) * 100) / 100,
+      custos_manuais: Math.round(lancs.manual * 100) / 100,
+    },
+    por_centro: lancs.por_centro,
+    __lancs_rows: lancs.rows,
+  };
+}
+function _ccustosMesAnterior(compStr) {
+  if (!/^\d{4}-\d{2}$/.test(compStr || '')) return null;
+  const d = new Date(String(compStr) + '-01T12:00:00');
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function _ccustosVariacaoPct(atual, anterior) {
+  const a = Number(atual || 0);
+  const b = Number(anterior || 0);
+  if (b === 0) return a === 0 ? 0 : null;
+  return Math.round(((a - b) / Math.abs(b)) * 10000) / 100;
+}
+
+app.post('/api/central-custos/admin/apply-migration', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (schemaOk) return res.json({ ok: true, applied: false, message: 'Schema já existe' });
+    const servKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '').trim();
+    const sbUrl = String(supabaseUrl || process.env.SUPABASE_URL || '').trim();
+    if (!servKey || !sbUrl) return res.status(500).json({ ok: false, error: 'service_role_missing', sql: _centralCustosCreateSql() });
+    const sql = _centralCustosCreateSql();
+    try {
+      const r = await fetch(`${sbUrl.replace(/\/$/, '')}/rest/v1/rpc/exec_sql_ddl`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': servKey, 'Authorization': `Bearer ${servKey}` },
+        body: JSON.stringify({ sql }),
+      });
+      const j = await r.json().catch(function() { return null; });
+      if (!r.ok) {
+        const { error: e2 } = await supabase.rpc('exec_sql_ddl', { sql }).catch(function() { return { error: 'rpc_call_failed' }; });
+        if (e2) return res.status(500).json({ ok: false, error: String(e2?.message || e2 || j?.message || r.status), sql });
+      }
+    } catch (eRpc) {
+      console.warn('[CENTRAL_CUSTOS apply-migration] RPC falhou:', String(eRpc?.message || eRpc));
+    }
+    setTimeout(async function() { try { await _ensureCentralCustosSchema(); } catch (_) {} }, 2000);
+    return res.json({ ok: true, applied: true, message: 'Migration SQL enviado. Verificar logs após 30s.', sql: sql.slice(0, 200) });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e), sql: _centralCustosCreateSql() }); }
+});
+
+app.get('/api/centros-custo', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing', sql_hint: 'Execute SQL em supabase/migrations/20260914000001_central_custos.sql' });
+    let q = supabase.from('centros_custo').select('*').order('codigo', { ascending: true });
+    const ativoRaw = req.query?.ativo;
+    if (ativoRaw !== undefined && ativoRaw !== null && ativoRaw !== '') {
+      const s = String(ativoRaw).toLowerCase().trim();
+      const v = s === '1' || s === 'true' || s === 'ativo' || s === 'sim';
+      q = q.eq('ativo', v);
+    }
+    const empId = String(req.query.emp_id || req.query.empresa_id || '').trim();
+    const uuids = _ccustosGetEmpresaFilterUuids(empId);
+    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json(Array.isArray(data) ? data : []);
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.post('/api/centros-custo', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const raw = _centralCustosSanitizePayload(req.body || {}, CENTROS_CUSTO_WHITELIST);
+    if (!raw.nome || !String(raw.nome || '').trim()) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    raw.nome = String(raw.nome).trim();
+    raw.codigo = String(raw.codigo || raw.nome || '').trim().slice(0, 20);
+    if (raw.ativo === undefined) raw.ativo = true;
+    const { data, error } = await supabase.from('centros_custo').insert([raw]).select().maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data: data || {} });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.put('/api/centros-custo/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const id = String(req.params?.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const raw = _centralCustosSanitizePayload(req.body || {}, CENTROS_CUSTO_WHITELIST);
+    delete raw.id;
+    raw.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('centros_custo').update(raw).eq('id', id).select().maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data: data || {} });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.delete('/api/centros-custo/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const id = String(req.params?.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { error } = await supabase.from('centros_custo').update({ ativo: false, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) throw error;
+    return res.json({ ok: true, id, desativado: true });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    let q = supabase.from('lancamentos_custos').select('*').limit(10000);
+    const comp = String(req.query?.competencia || '').trim();
+    if (/^\d{4}-\d{2}$/.test(comp)) q = q.eq('competencia', comp);
+    const cat = String(req.query?.categoria || '').trim().toUpperCase();
+    if (cat) q = q.eq('categoria', cat);
+    const centro = String(req.query?.centro_custo_id || '').trim();
+    if (centro) q = q.eq('centro_custo_id', centro);
+    const forn = String(req.query?.fornecedor || '').trim();
+    if (forn) q = q.ilike('fornecedor_beneficiario', `%${forn.replace(/%/g, '')}%`);
+    const empId = String(req.query.emp_id || req.query.empresa_id || '').trim();
+    const uuids = _ccustosGetEmpresaFilterUuids(empId);
+    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    const qbusca = String(req.query?.q || '').trim().replace(/%/g, '');
+    if (qbusca) q = q.or(`descricao.ilike.%${qbusca}%,observacao.ilike.%${qbusca}%,fornecedor_beneficiario.ilike.%${qbusca}%`);
+    q = q.order('data_lancamento', { ascending: false });
+    const { data, error } = await q;
+    if (error) throw error;
+    let rows = Array.isArray(data) ? data : [];
+    return res.json({ ok: true, competencia: comp || null, count: rows.length, rows });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const raw = _centralCustosSanitizePayload(req.body || {}, LANCAMENTOS_CUSTOS_WHITELIST);
+    if (!raw.descricao || !String(raw.descricao || '').trim()) return res.status(400).json({ ok: false, error: 'descricao obrigatória' });
+    if (!/^\d{4}-\d{2}$/.test(String(raw.competencia || ''))) {
+      const d = new Date();
+      raw.competencia = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    if (!raw.categoria) raw.categoria = 'OUTROS';
+    raw.categoria = String(raw.categoria).toUpperCase();
+    if (!_CCUSTOS_CATEGORIAS_ORDEM.includes(raw.categoria)) raw.categoria = 'OUTROS';
+    raw.valor = Math.round((Number(raw.valor || 0) || 0) * 100) / 100;
+    raw.data_lancamento = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.data_lancamento || ''))
+      ? raw.data_lancamento
+      : new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase.from('lancamentos_custos').insert([raw]).select().maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data: data || {} });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const id = String(req.params?.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const raw = _centralCustosSanitizePayload(req.body || {}, LANCAMENTOS_CUSTOS_WHITELIST);
+    delete raw.id;
+    if (raw.categoria) {
+      raw.categoria = String(raw.categoria).toUpperCase();
+      if (!_CCUSTOS_CATEGORIAS_ORDEM.includes(raw.categoria)) delete raw.categoria;
+    }
+    if (raw.valor !== undefined) raw.valor = Math.round((Number(raw.valor || 0) || 0) * 100) / 100;
+    raw.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('lancamentos_custos').update(raw).eq('id', id).select().maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data: data || {} });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const id = String(req.params?.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { error } = await supabase.from('lancamentos_custos').delete().eq('id', id);
+    if (error) throw error;
+    return res.json({ ok: true, id, excluido: true });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    let q = supabase.from('lancamentos_recorrentes').select('*').order('dia_vencimento', { ascending: true }).limit(5000);
+    const ativoRaw = req.query?.ativo;
+    if (ativoRaw !== undefined && ativoRaw !== null && String(ativoRaw) !== '') {
+      const s = String(ativoRaw).toLowerCase().trim();
+      q = q.eq('ativo', s === '1' || s === 'true' || s === 'sim');
+    }
+    const empId = String(req.query.emp_id || req.query.empresa_id || '').trim();
+    const uuids = _ccustosGetEmpresaFilterUuids(empId);
+    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, rows: Array.isArray(data) ? data : [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.post('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const raw = _centralCustosSanitizePayload(req.body || {}, RECORRENTES_WHITELIST);
+    if (!raw.descricao_padrao || !String(raw.descricao_padrao || '').trim()) return res.status(400).json({ ok: false, error: 'descricao_padrao obrigatória' });
+    if (!raw.categoria) raw.categoria = 'OUTROS';
+    raw.categoria = String(raw.categoria).toUpperCase();
+    if (!_CCUSTOS_CATEGORIAS_ORDEM.includes(raw.categoria)) raw.categoria = 'OUTROS';
+    raw.valor_padrao = Math.round((Number(raw.valor_padrao || 0) || 0) * 100) / 100;
+    raw.dia_vencimento = Math.min(28, Math.max(1, Math.trunc(Number(raw.dia_vencimento || 5) || 5)));
+    if (!raw.periodicidade) raw.periodicidade = 'MENSAL';
+    const pers = ['MENSAL','BIMESTRAL','TRIMESTRAL','SEMESTRAL','ANUAL'];
+    if (!pers.includes(String(raw.periodicidade).toUpperCase())) raw.periodicidade = 'MENSAL';
+    raw.periodicidade = String(raw.periodicidade).toUpperCase();
+    raw.data_inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.data_inicio || '')) ? raw.data_inicio : new Date().toISOString().slice(0, 10);
+    if (raw.ativo === undefined) raw.ativo = true;
+    const { data, error } = await supabase.from('lancamentos_recorrentes').insert([raw]).select().maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data: data || {} });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.put('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const id = String(req.params?.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const raw = _centralCustosSanitizePayload(req.body || {}, RECORRENTES_WHITELIST);
+    delete raw.id;
+    if (raw.categoria) {
+      raw.categoria = String(raw.categoria).toUpperCase();
+      if (!_CCUSTOS_CATEGORIAS_ORDEM.includes(raw.categoria)) delete raw.categoria;
+    }
+    if (raw.valor_padrao !== undefined) raw.valor_padrao = Math.round((Number(raw.valor_padrao || 0) || 0) * 100) / 100;
+    if (raw.dia_vencimento !== undefined) raw.dia_vencimento = Math.min(28, Math.max(1, Math.trunc(Number(raw.dia_vencimento || 5) || 5)));
+    if (raw.periodicidade) {
+      const pers = ['MENSAL','BIMESTRAL','TRIMESTRAL','SEMESTRAL','ANUAL'];
+      if (!pers.includes(String(raw.periodicidade).toUpperCase())) delete raw.periodicidade;
+      else raw.periodicidade = String(raw.periodicidade).toUpperCase();
+    }
+    raw.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('lancamentos_recorrentes').update(raw).eq('id', id).select().maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data: data || {} });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.delete('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const id = String(req.params?.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { error } = await supabase.from('lancamentos_recorrentes').update({ ativo: false, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) throw error;
+    return res.json({ ok: true, id, desativado: true });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+function _ccustosPeriodicidadeMatch(rec, competencia) {
+  if (!rec || !/^\d{4}-\d{2}$/.test(competencia || '')) return false;
+  const ativo = rec.ativo !== false;
+  if (!ativo) return false;
+  const compAno = Number(String(competencia).slice(0, 4));
+  const compMes = Number(String(competencia).slice(5, 7));
+  const dtIni = String(rec.data_inicio || '').slice(0, 10);
+  if (dtIni && /^\d{4}-\d{2}-\d{2}$/.test(dtIni)) {
+    const aI = Number(dtIni.slice(0, 4)), mI = Number(dtIni.slice(5, 7));
+    if (compAno < aI || (compAno === aI && compMes < mI)) return false;
+  }
+  const dtFim = String(rec.data_fim || '').slice(0, 10);
+  if (dtFim && /^\d{4}-\d{2}-\d{2}$/.test(dtFim)) {
+    const aF = Number(dtFim.slice(0, 4)), mF = Number(dtFim.slice(5, 7));
+    if (compAno > aF || (compAno === aF && compMes > mF)) return false;
+  }
+  const per = String(rec.periodicidade || 'MENSAL').toUpperCase();
+  if (!dtIni) return per === 'MENSAL';
+  const aI = Number(dtIni.slice(0, 4)), mI = Number(dtIni.slice(5, 7));
+  const mesesDesde = (compAno - aI) * 12 + (compMes - mI);
+  if (mesesDesde < 0) return false;
+  switch (per) {
+    case 'MENSAL': return true;
+    case 'BIMESTRAL': return mesesDesde % 2 === 0;
+    case 'TRIMESTRAL': return mesesDesde % 3 === 0;
+    case 'SEMESTRAL': return mesesDesde % 6 === 0;
+    case 'ANUAL': return mesesDesde % 12 === 0;
+    default: return false;
+  }
+}
+app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const comp = String(req.body?.competencia || req.query?.competencia || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(comp)) return res.status(400).json({ ok: false, error: 'competencia inválido (YYYY-MM)' });
+    const empId = String(req.body?.emp_id || req.query?.emp_id || '').trim();
+    let q = supabase.from('lancamentos_recorrentes').select('*').eq('ativo', true).limit(5000);
+    const uuids = _ccustosGetEmpresaFilterUuids(empId);
+    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    const { data: recsRaw, error: eRec } = await q;
+    if (eRec) throw eRec;
+    const recs = Array.isArray(recsRaw) ? recsRaw.filter(function(r) { return _ccustosPeriodicidadeMatch(r, comp); }) : [];
+    if (!recs.length) return res.json({ ok: true, competencia: comp, criados: 0, pulados: 0, ids: [] });
+    const jaExistemQuery = supabase
+      .from('lancamentos_custos')
+      .select('recorrencia_id')
+      .eq('competencia', comp)
+      .not('recorrencia_id', 'is', null)
+      .limit(5000);
+    const uuids2 = _ccustosGetEmpresaFilterUuids(empId);
+    if (Array.isArray(uuids2) && uuids2.length) jaExistemQuery.in('empresa_id', uuids2);
+    const { data: jaExistem } = await jaExistemQuery.catch(function() { return { data: [] }; });
+    const existemIds = new Set((Array.isArray(jaExistem) ? jaExistem : []).map(function(x) { return String(x?.recorrencia_id || '').trim(); }).filter(Boolean));
+    let criados = 0;
+    let pulados = existemIds.size;
+    const idsCriados = [];
+    for (let i = 0; i < recs.length; i++) {
+      const rec = recs[i];
+      const recId = String(rec?.id || '').trim();
+      if (!recId || existemIds.has(recId)) { if (recId && existemIds.has(recId)) pulados = pulados + (existemIds.has(recId) ? 1 : 0); continue; }
+      const payload = {
+        empresa_id: rec.empresa_id || null,
+        centro_custo_id: rec.centro_custo_id || null,
+        competencia: comp,
+        categoria: String(rec.categoria || 'OUTROS').toUpperCase(),
+        natureza: String(rec.natureza || 'DESPESA').toUpperCase(),
+        descricao: String(rec.descricao_padrao || '').trim() || 'Lançamento recorrente',
+        valor: Math.round((Number(rec.valor_padrao || 0) || 0) * 100) / 100,
+        fornecedor_beneficiario: String(rec.fornecedor_padrao || '').trim() || null,
+        forma_pagamento: String(rec.forma_pagamento_padrao || '').trim() || null,
+        data_lancamento: `${comp}-01`,
+        recorrencia_id: recId,
+        observacao: `Gerado automaticamente de recorrência (${String(rec.periodicidade || 'MENSAL')})`,
+      };
+      if (!_CCUSTOS_CATEGORIAS_ORDEM.includes(payload.categoria)) payload.categoria = 'OUTROS';
+      try {
+        const r = await supabase.from('lancamentos_custos').insert([payload]).select().maybeSingle();
+        if (!r.error && r.data) { criados++; idsCriados.push(String(r.data?.id || '')); existemIds.add(recId); }
+        else pulados++;
+      } catch (_) { pulados++; }
+    }
+    return res.json({ ok: true, competencia: comp, criados, pulados, ids: idsCriados });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    let comp = String(req.query?.competencia || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(comp)) {
+      const d = new Date();
+      comp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const empId = String(req.query.emp_id || '').trim();
+    const compAnt = _ccustosMesAnterior(comp);
+    const [atual, anterior] = await Promise.all([
+      _ccustosCalcularVisaoGeralCompetencia(comp, empId),
+      compAnt ? _ccustosCalcularVisaoGeralCompetencia(compAnt, empId) : null,
+    ]);
+    const variacoes = {};
+    ['custo_total_mes','despesas_fabrica','custo_papelao','custo_ofs','receita_ofs'].forEach(function(k) {
+      const a = Number(atual?.cards_5?.[k] || 0);
+      const b = anterior ? Number(anterior?.cards_5?.[k] || 0) : 0;
+      variacoes[k] = { mes_anterior_valor: b, variacao_pct: _ccustosVariacaoPct(a, b) };
+    });
+    delete atual.__lancs_rows;
+    if (anterior) delete anterior.__lancs_rows;
+    let centrosMap = new Map();
+    try {
+      const cc = await supabase.from('centros_custo').select('id,codigo,nome,ativo').limit(500);
+      if (!cc.error && Array.isArray(cc.data)) {
+        cc.data.forEach(function(c) { centrosMap.set(String(c.id || ''), c); });
+      }
+    } catch (_) {}
+    const gastosPorCentro = Object.keys(atual.por_centro || {}).map(function(cid) {
+      const info = centrosMap.get(cid) || {};
+      return {
+        centro_custo_id: cid,
+        codigo: info.codigo || null,
+        nome: info.nome || 'Sem nome',
+        ativo: info.ativo !== false,
+        valor_mes_atual: atual.por_centro[cid] || 0,
+        valor_mes_anterior: anterior && anterior.por_centro ? (anterior.por_centro[cid] || 0) : 0,
+      };
+    });
+    gastosPorCentro.sort(function(a, b) { return Number(b.valor_mes_atual || 0) - Number(a.valor_mes_atual || 0); });
+    return res.json({
+      ok: true,
+      competencia: comp,
+      competencia_anterior: compAnt,
+      cards_5: atual.cards_5,
+      variacoes_vs_mes_anterior: variacoes,
+      grafico_categorias_10: atual.grafico_categorias_10,
+      resumo_auto_vs_manual: atual.resumo_auto_vs_manual,
+      gastos_por_centro: gastosPorCentro,
+      cards_5_mes_anterior: anterior ? anterior.cards_5 : null,
+    });
+  } catch (e) {
+    console.error('[CENTRAL_CUSTOS][VISAO_GERAL]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureCentralCustosSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
+    const empId = String(req.query.emp_id || '').trim();
+    const nMeses = Math.max(3, Math.min(12, Math.trunc(Number(req.query?.meses || 12) || 12)));
+    const meses = [];
+    const hoje = new Date();
+    for (let i = nMeses - 1; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    const resultados = new Map();
+    for (let i = 0; i < meses.length; i++) {
+      const c = meses[i];
+      try { resultados.set(c, await _ccustosCalcularVisaoGeralCompetencia(c, empId)); } catch (_) { resultados.set(c, null); }
+    }
+    const mesesRows = meses.map(function(comp, idx) {
+      const d = resultados.get(comp) || {};
+      const cards = d.cards_5 || {};
+      const receita = Number(cards.receita_ofs || 0);
+      const custo = Number(cards.custo_total_mes || 0);
+      const resultado = Math.round((receita - custo) * 100) / 100;
+      const margem = receita > 0 ? Math.round(((receita - custo) / receita) * 10000) / 100 : 0;
+      const anterior = idx > 0 ? resultados.get(meses[idx - 1])?.cards_5 : null;
+      const variacao = anterior ? _ccustosVariacaoPct(cards.custo_total_mes, anterior.custo_total_mes) : null;
+      return {
+        mes: comp,
+        custo_total: Number(cards.custo_total_mes || 0),
+        custo_ofs: Number(cards.custo_ofs || 0),
+        papelao: Number(cards.custo_papelao || 0),
+        despesas_manuais: Number(d.resumo_auto_vs_manual?.custos_manuais || 0),
+        perdas: Number(cards.perdas || 0),
+        receita_ofs: receita,
+        resultado_liq: resultado,
+        margem_pct: margem,
+        variacao_vs_anterior_pct: variacao,
+      };
+    });
+    let total12Custo = 0, total12Receita = 0;
+    mesesRows.forEach(function(m) { total12Custo += Number(m.custo_total || 0); total12Receita += Number(m.receita_ofs || 0); });
+    return res.json({
+      ok: true,
+      meses: mesesRows,
+      consolidado_12m: {
+        custo_total: Math.round(total12Custo * 100) / 100,
+        receita_ofs: Math.round(total12Receita * 100) / 100,
+        resultado_liq: Math.round((total12Receita - total12Custo) * 100) / 100,
+        margem_pct: total12Receita > 0 ? Math.round(((total12Receita - total12Custo) / total12Receita) * 10000) / 100 : 0,
+      },
+    });
+  } catch (e) {
+    console.error('[CENTRAL_CUSTOS][HISTORICO]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.use((e, req, res, next) => {
   if (!e) return next();
   const msg = String(e.message || e);
@@ -34750,6 +35871,9 @@ app.listen(PORT, () => {
   });
   _ensureOrcamentosPastasSchema().catch((e) => {
     console.error('[BOOT][ORC_PASTAS_SCHEMA] ERRO inesperado:', String(e?.message || e));
+  });
+  _ensureCentralCustosSchema().catch((e) => {
+    console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] ERRO inesperado:', String(e?.message || e));
   });
   setTimeout(() => {
     _ensureRamosAtividadeSeedFromClientes().catch((e) => {
