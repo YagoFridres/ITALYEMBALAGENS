@@ -62509,8 +62509,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       lancamentos: [],
       centros: [],
       operadores: [],
+      fornecedores: [],
       historico: [],
       ofsCustos: null,
+      ofsSort: { col: '', dir: 'desc' },
       loading: {},
       chartGraf: null
     };
@@ -62627,6 +62629,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           return state.operadores;
         }).catch(function(){ state.loading.operadores = false; render(); return []; });
     }
+    function loadFornecedores() {
+      state.loading.fornecedores = true; render();
+      return ccustosFetch('/api/fornecedores')
+        .then(function(r){ try { return r.json(); } catch(_){ return { ok:false }; } })
+        .then(function(j){
+          var arr = [];
+          if (Array.isArray(j)) arr = j;
+          else if (j && Array.isArray(j.fornecedores)) arr = j.fornecedores;
+          else if (j && Array.isArray(j.data)) arr = j.data;
+          else if (j && Array.isArray(j.rows)) arr = j.rows;
+          state.fornecedores = arr.filter(function(f){ return f && (f.nome || f.nome_fantasia || f.razao_social || f.name || f.id); });
+          state.loading.fornecedores = false; render();
+          return state.fornecedores;
+        }).catch(function(){ state.loading.fornecedores = false; render(); return []; });
+    }
 
     function renderGrafCategoria() {
       if (state.aba !== 1) return;
@@ -62684,6 +62701,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!v || !v.cards) return '<div class="ccustos-empty">Carregando Visão Geral...</div>';
       var c = v.cards;
       var html = ''
+        + '<div class="ccustos-row" style="margin-bottom:12px">'
+        + '  <div><div class="ccustos-panel-title" style="margin:0">📊 Visão Geral · ' + esc(nomeComp(state.competencia)) + '</div><div class="ccustos-panel-sub" style="margin:4px 0 0">Cards consolidados + gráfico de categorias</div></div>'
+        + '  <div style="flex:1"></div>'
+        + '  <button class="ccustos-btn" id="cc-btn-imprimir-visao">🖨 Imprimir</button>'
+        + '</div>'
         + '<div class="ccustos-cards">'
         + '  <div class="ccustos-card is-blue"><div class="ccustos-card-label">Custo Total Mês</div><div class="ccustos-card-val">' + fmt1(c.custo_total||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_total, ant:c.custo_total_anterior}, false) + '<span style="color:var(--text2)">vs mês anterior</span></div></div>'
         + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Despesas da Fábrica</div><div class="ccustos-card-val">' + fmt1(c.despesas_fabrica||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.despesas_fabrica, ant:c.despesas_fabrica_anterior}, false) + '<span style="color:var(--text2)">Manuais + Automáticas</span></div></div>'
@@ -62858,17 +62880,50 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     function renderCustoOFs() {
       var html = '';
       var j = state.ofsCustos;
+      var sortCol = String(state.ofsSort && state.ofsSort.col || '').trim();
+      var sortDir = String(state.ofsSort && state.ofsSort.dir || 'desc').trim() === 'asc' ? 'asc' : 'desc';
       html += ''
         + '<div class="ccustos-row">'
-        + '  <div><div class="ccustos-panel-title" style="margin:0">Custo por OF · ' + esc(nomeComp(state.competencia)) + '</div><div class="ccustos-panel-sub" style="margin:4px 0 0">Reutiliza 100% o cálculo do Relatório de Custos oficial. Clique na linha para detalhes.</div></div>'
+        + '  <div><div class="ccustos-panel-title" style="margin:0">Custo por OF · ' + esc(nomeComp(state.competencia)) + '</div><div class="ccustos-panel-sub" style="margin:4px 0 0">Reutiliza 100% o cálculo do Relatório de Custos oficial. Clique na linha para detalhes · Clique nos cabeçalhos numéricos para ordenar.</div></div>'
         + '  <div style="flex:1"></div>'
+        + '  <button class="ccustos-btn" id="cc-btn-imprimir-ofs" style="margin-right:8px">🖨 Imprimir</button>'
         + '  <button class="ccustos-btn" id="cc-btn-recarregar-ofs">🔄 Recarregar</button>'
         + '</div>';
       if (state.loading.ofs && (!j || !j.rows)) {
         html += '<div class="ccustos-empty"><span class="ccustos-spinner"></span>Carregando OFs concluídas do mês...</div>';
         return html;
       }
-      var rows = (j && Array.isArray(j.rows)) ? j.rows : [];
+      var rows = (j && Array.isArray(j.rows)) ? j.rows.slice() : [];
+      function valRowCol(r, col) {
+        switch (col) {
+          case 'venda': return ccustosPickValorVenda(r);
+          case 'papelao': return ccustosPickCustoPapelao(r);
+          case 'outros': return Number(r.outros_custos || r.outros || 0) || 0;
+          case 'custo_total': return Number(r.custo_total || 0) || 0;
+          case 'resultado': return ccustosPickValorVenda(r) - (Number(r.custo_total || 0) || 0);
+          case 'margem': return (ccustosPickValorVenda(r) > 0) ? ((ccustosPickValorVenda(r) - (Number(r.custo_total || 0) || 0)) / ccustosPickValorVenda(r) * 100) : 0;
+          case 'of': return String(r.of || r.numero || '');
+          case 'cliente': return String(r.cliente || '');
+          default: return Number(r[col] || 0) || 0;
+        }
+      }
+      function thSort(col, label, num) {
+        var ativo = sortCol === col;
+        var dirDisp = '';
+        if (ativo) dirDisp = sortDir === 'asc' ? ' ↑' : ' ↓';
+        var cls = num ? 'class="ccustos-num"' : '';
+        return '<th ' + cls + ' data-ofs-sort="' + escA(col) + '" style="cursor:pointer;user-select:none;text-decoration:' + (ativo ? 'underline' : 'none') + '">' + esc(label) + '<span style="opacity:' + (ativo ? '1' : '.35') + ';margin-left:4px;font-weight:800">' + esc(dirDisp || '↕') + '</span></th>';
+      }
+      if (sortCol && rows.length) {
+        rows.sort(function(a, b) {
+          var va = valRowCol(a, sortCol);
+          var vb = valRowCol(b, sortCol);
+          var cmp = 0;
+          if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+          else cmp = String(va || '').localeCompare(String(vb || ''), 'pt-BR');
+          return sortDir === 'asc' ? cmp : -cmp;
+        });
+      }
       var totalCons = Number(j && j.total_custos_consolidado_competencia || 0);
       var totalVenda = Number(j && j.total_venda_consolidado_competencia || 0);
       var totalPapelao = 0;
@@ -62886,7 +62941,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '</div>'
         + '<div class="ccustos-table-wrap">'
         + '  <table class="ccustos-table"><thead><tr>'
-        + '    <th>OF</th><th>Cliente</th><th class="ccustos-num">Venda (R$)</th><th class="ccustos-num">Papelão (R$)</th><th class="ccustos-num">Outros (R$)</th><th class="ccustos-num">Custo Total (R$)</th><th class="ccustos-num">Resultado (R$)</th><th class="ccustos-num">Margem (%)</th><th style="min-width:80px">Ação</th>'
+        + thSort('of','OF',false) + thSort('cliente','Cliente',false)
+        + thSort('venda','Venda (R$)',true)
+        + thSort('papelao','Papelão (R$)',true)
+        + thSort('outros','Outros (R$)',true)
+        + thSort('custo_total','Custo Total (R$)',true)
+        + thSort('resultado','Resultado (R$)',true)
+        + thSort('margem','Margem (%)',true)
+        + '    <th style="min-width:80px">Ação</th>'
         + '  </tr></thead><tbody>';
       if (!rows.length) {
         html += '<tr><td colspan="9" class="ccustos-empty">Nenhuma OF concluída encontrada para a competência <b>' + esc(nomeComp(state.competencia)) + '</b>.</td></tr>';
@@ -62901,7 +62963,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           var resultado = venda - custoTot;
           var margem = venda > 0 ? (resultado / venda * 100) : 0;
           html += ''
-            + '<tr data-of-idx="' + escA(String(idx)) + '" style="cursor:pointer">'
+            + '<tr data-of-row style="cursor:pointer">'
             + '  <td style="font-weight:1000;font-size:13px">#' + esc(ofN) + '</td>'
             + '  <td style="min-width:220px">' + esc(cli) + '</td>'
             + '  <td class="ccustos-num" style="color:#34d399">' + fmt1(venda) + '</td>'
@@ -62915,6 +62977,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         });
       }
       html += '  </tbody></table></div>';
+      // attach sorted rows back via custom data attr on tbody for later bind
+      try {
+        state.__ofsSortedRows = rows;
+      } catch(_){}
       return html;
     }
 
@@ -63021,6 +63087,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           return '<option value="'+escA(idO)+'" ' + sel + ' data-nome="'+escA(nomeO)+'">' + esc(nomeO) + '</option>';
         }).join('');
         fornHtml = '<select id="ccf-forn-oper"><option value="">Selecione o operador...</option>' + optsOper + '</select>';
+      } else {
+        var optsForn = (state.fornecedores||[]).map(function(f){
+          var idF = String(f.id||f.uuid||f.codigo||'').trim();
+          var nomeF = String(f.nome||f.nome_fantasia||f.razao_social||f.name||'—').trim();
+          var sel = String(p.fornecedor_beneficiario||'') === nomeF ? 'selected' : '';
+          return '<option value="'+escA(idF)+'" ' + sel + ' data-nome="'+escA(nomeF)+'">' + esc(nomeF) + '</option>';
+        }).join('');
+        fornHtml = '<select id="ccf-forn-forn"><option value="">Selecione o fornecedor...</option>' + optsForn + '<option value="__custom__">✏ Outro (digitar manual)</option></select><div id="ccf-forn-custom-wrap" style="display:none;margin-top:6px"><input id="ccf-forn-custom" type="text" value="' + escA(p.fornecedor_beneficiario||'') + '" placeholder="Nome do fornecedor..."></div>';
       }
       return ''
         + '<h3>' + (idEditar ? '✏ Editar Lançamento' : '➕ Novo Lançamento') + '</h3>'
@@ -63121,7 +63195,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                   wrap.innerHTML = '<select id="ccf-forn-oper"><option value="">Selecione o operador...</option>' + optsOper + '</select>';
                 } else {
                   if (label) label.textContent = 'Fornecedor / Beneficiário';
-                  wrap.innerHTML = '<input id="ccf-forn" type="text" placeholder="Nome do fornecedor ou beneficiário">';
+                  var optsForn = (state.fornecedores||[]).map(function(f){
+                    var idF = String(f.id||f.uuid||f.codigo||'').trim();
+                    var nomeF = String(f.nome||f.nome_fantasia||f.razao_social||f.name||'—').trim();
+                    return '<option value="'+escA(idF)+'" data-nome="'+escA(nomeF)+'">' + esc(nomeF) + '</option>';
+                  }).join('');
+                  wrap.innerHTML = '<select id="ccf-forn-forn"><option value="">Selecione o fornecedor...</option>' + optsForn + '<option value="__custom__">✏ Outro (digitar manual)</option></select><div id="ccf-forn-custom-wrap" style="display:none;margin-top:6px"><input id="ccf-forn-custom" type="text" placeholder="Nome do fornecedor..."></div>';
+                  try {
+                    var selF = document.getElementById('ccf-forn-forn');
+                    var customWrap = document.getElementById('ccf-forn-custom-wrap');
+                    if (selF && customWrap) {
+                      selF.addEventListener('change', function(){
+                        customWrap.style.display = selF.value === '__custom__' ? 'block' : 'none';
+                      }, false);
+                    }
+                  } catch(_){}
                 }
               } catch(_){}
             }
@@ -63154,7 +63242,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                     }
                   } catch(_){ forn = ''; }
                 } else {
-                  forn = String(fv('ccf-forn')||'').trim();
+                  try {
+                    var selForn2 = document.getElementById('ccf-forn-forn');
+                    if (selForn2 && selForn2.value === '__custom__') {
+                      forn = String((document.getElementById('ccf-forn-custom')||{}).value || '').trim();
+                    } else if (selForn2 && selForn2.options && selForn2.selectedIndex >= 0) {
+                      var optF = selForn2.options[selForn2.selectedIndex];
+                      forn = String(optF && optF.getAttribute ? (optF.getAttribute('data-nome') || optF.textContent || '') : (optF ? optF.text : '')).trim();
+                    } else {
+                      forn = String(fv('ccf-forn')||'').trim();
+                    }
+                  } catch(_){
+                    try { forn = String(fv('ccf-forn')||'').trim(); } catch(_){ forn = ''; }
+                  }
                 }
                 var pgto = String(fv('ccf-pgto')||'').trim();
                 var anexo = String(fv('ccf-anexo')||'').trim();
@@ -63301,6 +63401,113 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             if (recOf && ev.target === recOf) { loadCustoOFs(); return; }
           } catch(_){}
           try {
+            var impOfs = document.getElementById('cc-btn-imprimir-ofs');
+            if (impOfs && ev.target === impOfs) {
+              try {
+                var rowsP = Array.isArray(state.__ofsSortedRows) ? state.__ofsSortedRows : ((state.ofsCustos && Array.isArray(state.ofsCustos.rows)) ? state.ofsCustos.rows : []);
+                var tV = 0, tP = 0;
+                var detRows = rowsP.map(function(r){
+                  var v = ccustosPickValorVenda(r);
+                  var cp = ccustosPickCustoPapelao(r);
+                  var ct = Number(r.custo_total || 0) || 0;
+                  var res = v - ct;
+                  var mg = v > 0 ? (res / v * 100) : 0;
+                  tV += v; tP += cp;
+                  return [
+                    esc(String(r.of || r.numero || '—')),
+                    esc(String(r.cliente || '—')),
+                    rrFmtMoney(v),
+                    rrFmtMoney(cp),
+                    rrFmtMoney(Number(r.outros_custos || r.outros || 0) || 0),
+                    rrFmtMoney(ct),
+                    rrFmtMoney(res),
+                    rrFmtNum(mg, 1) + '%'
+                  ];
+                });
+                var tRes = tV - tP;
+                var cfg = {
+                  title: 'Custo por OF · ' + nomeComp(state.competencia),
+                  periodo: 'Competência: ' + nomeComp(state.competencia),
+                  cards: [
+                    { label: 'Nº OFs', value: rrFmtNum(rowsP.length, 0), sub: 'Concluídas no período' },
+                    { label: 'Venda Total', value: rrFmtMoney(tV), sub: 'Somatório valor_venda/total OFs' },
+                    { label: 'Custo Papelão', value: rrFmtMoney(tP), sub: 'Estimado por gramatura' },
+                    { label: 'Resultado', value: rrFmtMoney(tRes), sub: 'Margem bruta ' + (tV>0?rrFmtNum(tRes/tV*100,1):'0,0') + '%' }
+                  ],
+                  detailTitle: 'Detalhamento por OF (' + rrFmtNum(rowsP.length,0) + ' linhas)',
+                  detailHeaders: ['OF', 'Cliente', 'Venda (R$)', 'Papelão (R$)', 'Outros (R$)', 'Custo Total (R$)', 'Resultado (R$)', 'Margem (%)'],
+                  detailRows: detRows,
+                  emptyDetailCols: 8
+                };
+                if (typeof rrOpenPrint === 'function') rrOpenPrint(cfg);
+                else alert('Módulo impressão rrOpenPrint não carregado.');
+              } catch(ePrint){ toastFn('Erro ao montar relatório: ' + String(ePrint.message||ePrint), 'err'); }
+              return;
+            }
+          } catch(_){}
+          try {
+            var impVis = document.getElementById('cc-btn-imprimir-visao');
+            if (impVis && ev.target === impVis) {
+              try {
+                var v = state.visao;
+                var c = v && v.cards ? v.cards : {};
+                var cats = (v && Array.isArray(v.grafico_categorias)) ? v.grafico_categorias : [];
+                var catRows = cats.map(function(g){ return [esc(String(g.label||g.key||'—')), rrFmtMoney(Number(g.valor||0))]; });
+                var cfgVis = {
+                  title: 'Visão Geral · ' + nomeComp(state.competencia),
+                  periodo: 'Competência: ' + nomeComp(state.competencia),
+                  cards: [
+                    { label: 'Custo Total Mês', value: fmt1(c.custo_total||0), sub: 'Papelão + OFs + Despesas' },
+                    { label: 'Despesas da Fábrica', value: fmt1(c.despesas_fabrica||0), sub: 'Manuais + Automáticas' },
+                    { label: 'Custo Papelão', value: fmt1(c.custo_papelao||0), sub: 'Automático' },
+                    { label: 'Custo das OFs', value: fmt1(c.custo_ofs||0), sub: 'OFs Concluídas' },
+                    { label: 'Perdas', value: fmt1(c.perdas||0), sub: 'Caixas · Valor ' + fmt1(c.perdas_valor||0) }
+                  ],
+                  summaryTitle: 'Para onde foi o dinheiro? (10 categorias)',
+                  summaryHeaders: ['Categoria', 'Valor (R$)'],
+                  summaryRows: catRows,
+                  emptySummaryCols: 2
+                };
+                if (typeof rrOpenPrint === 'function') rrOpenPrint(cfgVis);
+                else alert('Módulo impressão rrOpenPrint não carregado.');
+              } catch(ePrint2){ toastFn('Erro ao montar relatório: ' + String(ePrint2.message||ePrint2), 'err'); }
+              return;
+            }
+          } catch(_){}
+          try {
+            var sortTh = null;
+            try { if (t.closest) sortTh = t.closest('[data-ofs-sort]'); } catch(_){}
+            if (!sortTh) try { var w2 = t; while(w2 && w2 !== host && !w2.getAttribute) w2 = w2.parentNode; if(w2 && w2.getAttribute && w2.getAttribute('data-ofs-sort')) sortTh = w2; } catch(_){}
+            if (sortTh) {
+              ev.preventDefault && ev.preventDefault();
+              var col = String(sortTh.getAttribute('data-ofs-sort')||'').trim();
+              if (!col) return;
+              if (state.ofsSort && state.ofsSort.col === col) {
+                state.ofsSort.dir = (state.ofsSort.dir === 'asc') ? 'desc' : 'asc';
+              } else {
+                state.ofsSort = { col: col, dir: 'desc' };
+              }
+              render();
+              return;
+            }
+          } catch(_){}
+          try {
+            var ofDet = null; try { if (t.closest) ofDet = t.closest('tr[data-of-row], .cc-of-detalhe'); } catch(_){}
+            if (!ofDet) try { var w = t; while(w && w !== host && !w.getAttribute) w = w.parentNode; if(w && w.getAttribute && (w.getAttribute('data-of-row')||w.classList.contains('cc-of-detalhe'))) ofDet = w; } catch(_){}
+            if (ofDet) {
+              ev.preventDefault && ev.preventDefault();
+              var tr2 = ofDet.closest ? ofDet.closest('tr[data-of-row]') : null;
+              if (!tr2) return;
+              var rowsAll = Array.isArray(state.__ofsSortedRows) ? state.__ofsSortedRows : ((state.ofsCustos && Array.isArray(state.ofsCustos.rows)) ? state.ofsCustos.rows : []);
+              var allTr = Array.prototype.slice.call(host.querySelectorAll('tr[data-of-row]'));
+              var pos = allTr.indexOf(tr2);
+              var r = (pos >= 0 && pos < rowsAll.length) ? rowsAll[pos] : null;
+              if (!r) return;
+              abrirModalOfDetalhe(r);
+              return;
+            }
+          } catch(_){}
+          try {
             var salvarC = null; if (t.closest) salvarC = t.closest('.cc-salvar-centro,.cc-criar-centro');
             if (salvarC) {
               ev.preventDefault && ev.preventDefault();
@@ -63411,7 +63618,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           loadCentros(),
           loadHistorico(),
           loadCustoOFs(),
-          loadOperadores()
+          loadOperadores(),
+          loadFornecedores()
         ]).then(function(){ render(); }).catch(function(){});
       } catch (e) {
         try { console.error('[renderPageCentralCustos] fatal:', e); } catch(_){}

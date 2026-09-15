@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260914434103';
-const SW_RUNTIME_VERSION = '20260914434103';
+const PATCH_RUNTIME_VERSION = '20260914434104';
+const SW_RUNTIME_VERSION = '20260914434104';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -35234,7 +35234,7 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
   const aux = new Date(compAlvo + '-01T12:00:00');
   aux.setMonth(aux.getMonth() + 1);
   const fimExclusivo = aux.toISOString().slice(0, 10);
-  const cols = 'id,numero,of,descricao,status,data_conclusao,empresa_id,cli_id,gramatura_id,gramatura_nome,gramatura,dim_comprimento,dim_largura,caixa_comprimento,caixa_largura,qtd_produzida,qtd,quantidade,qtd_pedida,valor_total,custo_m2_venda,custo_m2';
+  const cols = 'id,numero,of,descricao,status,data_conclusao,empresa_id,cli_id,gramatura_id,gramatura_nome,gramatura,dim_comprimento,dim_largura,caixa_comprimento,caixa_largura,qtd_produzida,qtd,quantidade,qtd_pedida,valor_total,valor_venda,total,of_valor_total,vl_total,custo_m2_venda,custo_m2';
   let q = supabase.from('ofs').select(cols)
     .ilike('status', '%conclu%')
     .gte('data_conclusao', inicio)
@@ -35256,11 +35256,23 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
       }
     } catch (_) {}
   }
+  function _ccustosPickValorVendaOf(of) {
+    var a = Number(of?.valor_total ?? 0) || 0;
+    if (a > 0) return a;
+    var b = Number(of?.valor_venda ?? 0) || 0;
+    if (b > 0) return b;
+    var c = Number(of?.total ?? 0) || 0;
+    if (c > 0) return c;
+    var d = Number(of?.of_valor_total ?? 0) || 0;
+    if (d > 0) return d;
+    var e = Number(of?.vl_total ?? 0) || 0;
+    return e;
+  }
   let totalCusto = 0;
   let totalReceita = 0;
   const ofs = ofsRaw.map(function(of) {
     const custo = _ccustosPickCustoOf(of, gramMap);
-    const receita = Number(of?.valor_total || 0) || 0;
+    const receita = _ccustosPickValorVendaOf(of);
     totalCusto += custo;
     totalReceita += receita;
     const cliId = String(of?.cli_id || '').trim();
@@ -35278,11 +35290,17 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
       qtd_produzida: _ccustosPickQtdOf(of),
       data_conclusao: of?.data_conclusao || null,
       gramatura: String(of?.gramatura_nome || of?.gramatura || '').trim() || '—',
+      of_raw: of
     };
   });
   return { total_custo: Math.round(totalCusto * 100) / 100, total_receita: Math.round(totalReceita * 100) / 100, ofs: ofs };
 }
-async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll) {
+async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofsResult) {
+  if (ofsResult && Array.isArray(ofsResult.ofs) && ofsResult.ofs.length) {
+    var _totalPapelao = 0;
+    ofsResult.ofs.forEach(function(of) { _totalPapelao += Number(of?.papelao || 0) || 0; });
+    return Math.round(_totalPapelao * 100) / 100;
+  }
   if (!supabase) return 0;
   const compAlvo = String(competencia || '').trim();
   if (!/^\d{4}-\d{2}$/.test(compAlvo)) return 0;
@@ -35302,7 +35320,7 @@ async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll) {
   }
   const sel = await q;
   const rows = Array.isArray(sel?.data) ? sel.data : [];
-  let total = 0;
+  let _totalChapas = 0;
   rows.forEach(function(r) {
     const dr = String(r?.data_recebimento || '').slice(0, 10);
     const cr = String(r?.created_at || '').slice(0, 10);
@@ -35311,11 +35329,11 @@ async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll) {
     if (d < inicio || d >= fimExclusivo) return;
     const v = Number(r?.valor_unitario || 0) || 0;
     const qnt = Math.trunc(Number(r?.quantidade_atual || 0) || 0);
-    if (v > 0 && qnt > 0) total += v * qnt;
+    if (v > 0 && qnt > 0) _totalChapas += v * qnt;
   });
-  return Math.round(total * 100) / 100;
+  return Math.round(_totalChapas * 100) / 100;
 }
-async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll) {
+async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResult) {
   if (!supabase) return { valor: 0, qtd: 0 };
   const compAlvo = String(competencia || '').trim();
   if (!/^\d{4}-\d{2}$/.test(compAlvo)) return { valor: 0, qtd: 0 };
@@ -35323,18 +35341,71 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll) {
   const aux = new Date(compAlvo + '-01T12:00:00');
   aux.setMonth(aux.getMonth() + 1);
   const fimExclusivo = aux.toISOString().slice(0, 10);
-  let q = supabase.from('caixas_perdidas')
-    .select('id,of_id,qtd_perdida,data,created_at,emp_id,empresa_id')
-    .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
-  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-  if (Array.isArray(uuids) && uuids.length) {
-    try { q = q.or(`emp_id.in.(${uuids.join(',')}),empresa_id.in.(${uuids.join(',')})`); } catch (_) {}
+  const baseCols = 'id,of_id,of_numero,valor_unitario,qtd_perdida,valor_perdido,data,created_at,emp_id,empresa_id,quantidade,caixas_perdidas';
+  const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
+  let data = [];
+  for (var ti = 0; ti < tabelas.length; ti++) {
+    try {
+      let q = supabase.from(tabelas[ti])
+        .select(baseCols)
+        .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
+      const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+      if (Array.isArray(uuids) && uuids.length) {
+        try { q = q.or(`emp_id.in.(${uuids.join(',')}),empresa_id.in.(${uuids.join(',')})`); } catch (_) {}
+      }
+      const r = await q;
+      if (!r?.error && Array.isArray(r?.data) && r.data.length) { data = r.data; break; }
+      if (!r?.error && Array.isArray(r?.data)) { data = r.data; break; }
+    } catch (_) {}
   }
-  const { data, error } = await q;
-  if (error || !Array.isArray(data)) return { valor: 0, qtd: 0 };
+  if (!Array.isArray(data)) return { valor: 0, qtd: 0 };
+  const ofIds = Array.from(new Set(data.map(function(p){ return String(p?.of_id || '').trim(); }).filter(Boolean)));
+  const ofsMap = new Map();
+  if (ofsResult && Array.isArray(ofsResult.ofs)) {
+    ofsResult.ofs.forEach(function(of) {
+      var k = String(of?.of_id || '').trim();
+      if (k) ofsMap.set(k, of);
+    });
+  }
+  if (ofIds.length && ofIds.some(function(id){ return !ofsMap.has(id); }) && supabase) {
+    try {
+      const idsFaltantes = ofIds.filter(function(id){ return !ofsMap.has(id); });
+      for (var li = 0; li < idsFaltantes.length; li += 200) {
+        var chunk = idsFaltantes.slice(li, li + 200);
+        var sel2 = await supabase.from('ofs')
+          .select('id,numero,of,quantidade,qtd,valor_total,valor_venda,total,custo_total')
+          .in('id', chunk).limit(200);
+        (Array.isArray(sel2?.data) ? sel2.data : []).forEach(function(ofr) {
+          ofsMap.set(String(ofr?.id || '').trim(), { of_id: ofr.id, of_raw: ofr });
+        });
+      }
+    } catch (_) {}
+  }
   let qtdTotal = 0;
-  data.forEach(function(p) { qtdTotal += Math.trunc(Number(p?.qtd_perdida || 0) || 0); });
-  return { valor: 0, qtd: qtdTotal };
+  let valorTotal = 0;
+  data.forEach(function(p) {
+    const qtd = Math.trunc(Number(p?.qtd_perdida ?? p?.quantidade ?? p?.caixas_perdidas ?? 0) || 0);
+    qtdTotal += qtd;
+    var valPer = Number(p?.valor_perdido ?? 0) || 0;
+    if (valPer > 0) { valorTotal += valPer; return; }
+    var vUnit = Number(p?.valor_unitario ?? 0) || 0;
+    if (vUnit > 0 && qtd > 0) { valorTotal += vUnit * qtd; return; }
+    var ofData = null;
+    const ofId = String(p?.of_id || '').trim();
+    if (ofId) ofData = ofsMap.get(ofId);
+    if (ofData) {
+      const raw = ofData.of_raw || ofData;
+      const qtdProduzida = Number(raw?.qtd_produzida ?? raw?.qtd ?? raw?.quantidade ?? 0) || 0;
+      var receitaOf = Number(raw?.valor_total ?? 0) || 0;
+      if (!receitaOf) receitaOf = Number(raw?.valor_venda ?? 0) || 0;
+      if (!receitaOf) receitaOf = Number(raw?.total ?? 0) || 0;
+      if (!receitaOf && Number(ofData?.venda ?? 0) > 0) receitaOf = Number(ofData.venda);
+      if (qtdProduzida > 0 && receitaOf > 0 && qtd > 0) {
+        valorTotal += (receitaOf / qtdProduzida) * qtd;
+      }
+    }
+  });
+  return { valor: Math.round(valorTotal * 100) / 100, qtd: qtdTotal };
 }
 async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
   const resumo = { total: 0, por_categoria: {}, por_centro: {}, automatico: 0, manual: 0, rows: [] };
@@ -35379,10 +35450,10 @@ async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
   return resumo;
 }
 async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
-  const [ofs, papelao, perdas, lancs] = await Promise.all([
-    _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll),
-    _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll),
-    _ccustosCalcularPerdasCompetencia(competencia, empIdAll),
+  const ofs = await _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll);
+  const [papelao, perdas, lancs] = await Promise.all([
+    _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofs),
+    _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofs),
     _ccustosCalcularLancamentosCompetencia(competencia, empIdAll),
   ]);
   const despesasFabrica = Math.round((lancs.total + perdas.valor) * 100) / 100;
@@ -35390,6 +35461,8 @@ async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
   const categorias = JSON.parse(JSON.stringify(lancs.por_categoria));
   if (!categorias.PAPELAO) categorias.PAPELAO = 0;
   categorias.PAPELAO = Math.round((categorias.PAPELAO + papelao) * 100) / 100;
+  if (!categorias.OUTROS) categorias.OUTROS = 0;
+  categorias.OUTROS = Math.round((categorias.OUTROS + perdas.valor) * 100) / 100;
   const grafico = _CCUSTOS_CATEGORIAS_ORDEM.map(function(key) {
     return { key: key, label: _CCUSTOS_CATEGORIAS_LABEL[key] || key, valor: Math.round(Number(categorias[key] || 0) * 100) / 100 };
   });
