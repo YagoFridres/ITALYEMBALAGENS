@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260915434112';
-const SW_RUNTIME_VERSION = '20260915434112';
+const PATCH_RUNTIME_VERSION = '20260915434113';
+const SW_RUNTIME_VERSION = '20260915434113';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -35400,8 +35400,7 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
     .gte('data_conclusao', inicio)
     .lt('data_conclusao', fimExclusivo)
     .limit(10000);
-  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-  if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+  q = _ccustosApplyEmpresaFilter(q, empIdAll, 'empresa_id');
   const sel = await q;
   const ofsRaw = Array.isArray(sel?.data) ? sel.data : [];
   const gramIds = Array.from(new Set(ofsRaw.map(function(o) { return String(o?.gramatura_id || '').trim(); }).filter(_isUuid)));
@@ -35479,10 +35478,7 @@ async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, of
     const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'coalesce(quantidade_atual, quantidade, qtd) as quantidade_atual';
     const cols = `id,${valorCol},${qtdCol},empresa_id,created_at`;
     let q = supabase.from(table).select(cols).limit(10000);
-    const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-    if (Array.isArray(uuids) && uuids.length) {
-      try { q = q.in('empresa_id', uuids); } catch (_) {}
-    }
+    q = _ccustosApplyEmpresaFilter(q, empIdAll, 'empresa_id');
     const sel = await q;
     if (sel?.error) {
       console.error('[CCUSTOS-VISAO-PAPELAO] comp=%s QUERY_ERROR msg=%j details=%j hint=%j code=%j', compAlvo, sel.error.message || null, sel.error.details || null, sel.error.hint || null, sel.error.code || null);
@@ -35526,9 +35522,13 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResul
         let q = supabase.from(tabelas[ti])
           .select(baseCols)
           .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
-        const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-        if (Array.isArray(uuids) && uuids.length) {
-          try { q = q.or(`emp_id.in.(${uuids.join(',')}),empresa_id.in.(${uuids.join(',')})`); } catch (_) {}
+        const rPerdas = _ccustosResolveEmpresaId(empIdAll, 'ALL');
+        if (rPerdas !== 'ALL') {
+          if (rPerdas === 'SEM_EMPRESA') {
+            try { q = q.or('emp_id.is.null,emp_id.eq.,empresa_id.is.null,empresa_id.eq.'); } catch (_) {}
+          } else {
+            try { q = q.or(`emp_id.eq.${rPerdas},empresa_id.eq.${rPerdas}`); } catch (_) {}
+          }
         }
         const r = await q;
         if (r?.error) {
@@ -35607,10 +35607,7 @@ async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
       .select('*')
       .eq('competencia', compAlvo)
       .limit(10000);
-    const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-    if (Array.isArray(uuids) && uuids.length) {
-      try { q = q.in('empresa_id', uuids); } catch (_) {}
-    }
+    q = _ccustosApplyEmpresaFilter(q, empIdAll, 'empresa_id');
     const { data, error } = await q;
     if (error) {
       console.error('[CCUSTOS-VISAO-LANC] comp=%s QUERY_ERROR msg=%j details=%j hint=%j code=%j', compAlvo, error.message || null, error.details || null, error.hint || null, error.code || null);
@@ -35811,8 +35808,7 @@ app.get('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
     const forn = String(req.query?.fornecedor || '').trim();
     if (forn) q = q.ilike('fornecedor_beneficiario', `%${forn.replace(/%/g, '')}%`);
     const empId = String(req.query.emp_id || req.query.empresa_id || '').trim();
-    const uuids = _ccustosGetEmpresaFilterUuids(empId);
-    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    q = _ccustosApplyEmpresaFilter(q, empId, 'empresa_id');
     const qbusca = String(req.query?.q || '').trim().replace(/%/g, '');
     if (qbusca) q = q.or(`descricao.ilike.%${qbusca}%,observacao.ilike.%${qbusca}%,fornecedor_beneficiario.ilike.%${qbusca}%`);
     q = q.order('data_lancamento', { ascending: false });
