@@ -5350,6 +5350,108 @@ try {
       window.__ofmaqActionsFixObs.observe(document.body, { childList: true, subtree: true });
     }
   } catch (_) {}
+  try {
+    function _procuraOfNumeroNoSheet(rootEl) {
+      if (!rootEl) return { ofId:'', ofNum:'' };
+      try {
+        var txt = String(rootEl.textContent || '').replace(/\s+/g, ' ').slice(0, 2000);
+        var m = txt.match(/OF\s*(?:#|Nº|N°|No|numero|nº)?\s*(\d{2,8})/i);
+        if (m && m[1]) return { ofNum: String(m[1]).trim(), ofId: String(m[1]).trim() };
+        var titleEl = rootEl.querySelector('[role="heading"], h1, h2, h3, h4, .modal-title, .sheet-title, .titulo, .title');
+        if (titleEl) {
+          var m2 = String(titleEl.textContent || '').match(/(\d{2,8})/);
+          if (m2 && m2[1]) return { ofNum: String(m2[1]).trim(), ofId: String(m2[1]).trim() };
+        }
+      } catch(_){}
+      return { ofId:'', ofNum:'' };
+    }
+    function _encontrarActionsHostNoSheet(rootEl) {
+      if (!rootEl) return null;
+      var hosts = rootEl.querySelectorAll('.acoes, .botoes, .actions, .footer, .modal-footer, .sheet-footer, .sheet-actions, .modal-actions, [data-of-actions-host], .of-actions, .ofacoes');
+      if (hosts && hosts.length) {
+        for (var i = 0; i < hosts.length; i++) {
+          if (hosts[i] && hosts[i].getBoundingClientRect && hosts[i].getBoundingClientRect().height > 0) return hosts[i];
+        }
+        return hosts[0];
+      }
+      var btns = rootEl.querySelectorAll('button[data-action], button[data-of-action], button[onclick*="concluir"], button[onclick*="OF"], button[onclick*="of "], button[onclick*="Acoes"], button[onclick*="acoes"]');
+      if (btns && btns.length && btns[0]) {
+        var p = btns[0].parentElement;
+        while (p && p !== rootEl && p !== document.body) {
+          var cnt = (p.querySelectorAll && p.querySelectorAll('button').length) || 0;
+          if (cnt >= 2) return p;
+          p = p.parentElement;
+        }
+        return btns[0].parentElement || rootEl;
+      }
+      var allBtns = rootEl.querySelectorAll('button');
+      if (allBtns && allBtns.length >= 2) {
+        var p2 = allBtns[0].parentElement;
+        while (p2 && p2 !== rootEl && p2 !== document.body) {
+          var cnt2 = (p2.querySelectorAll && p2.querySelectorAll('button').length) || 0;
+          if (cnt2 >= 2) return p2;
+          p2 = p2.parentElement;
+        }
+        return allBtns[0].parentElement || rootEl;
+      }
+      return rootEl;
+    }
+    function _injectSemPapelSheet() {
+      try {
+        var sheets = document.querySelectorAll('[role="dialog"], .modal, .bottom-sheet, .sheet, .bs-modal, .bs-sheet, #bs-acoes, #ofmaq-acoes-sheet, .acoes-dropdown');
+        if (!sheets || !sheets.length) return;
+        for (var i = 0; i < sheets.length; i++) {
+          var s = sheets[i];
+          if (!s || !s.getBoundingClientRect) continue;
+          var rect = s.getBoundingClientRect();
+          if (rect.width < 100 || rect.height < 100) continue;
+          var existBtn = s.querySelector('.patch-ofmaq-sem-papel-btn');
+          if (existBtn) continue;
+          var inf = _procuraOfNumeroNoSheet(s);
+          if (!inf || !(inf.ofNum || inf.ofId)) continue;
+          var host = _encontrarActionsHostNoSheet(s);
+          if (!host) continue;
+          try {
+            var ofAlvo = getOfmaqById(String(inf.ofId || inf.ofNum || '')) || null;
+            var semAtual = !!(ofAlvo && ofAlvo.sem_papel);
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'patch-ofmaq-sem-papel-btn';
+            btn.setAttribute('data-active', semAtual ? '1' : '0');
+            btn.setAttribute('data-of-num', String(inf.ofNum || inf.ofId || ''));
+            btn.setAttribute('data-of-id', String(inf.ofId || inf.ofNum || ''));
+            btn.innerHTML = '<span style="display:block;font-weight:900">' + (semAtual ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão') + '</span>'
+              + '<small style="display:block;opacity:.9;font-size:11px;margin-top:3px">' + (semAtual ? 'Voltar ao fluxo normal' : 'Destacar amarela / sem papelão') + '</small>';
+            btn.style.cssText = 'width:100%;margin-top:8px;padding:11px 14px;border-radius:12px;border:1px solid rgba(250,204,21,.45);background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(234,179,8,.1));color:#fbbf24;font-size:13px;font-weight:900;cursor:pointer;line-height:1.15;text-align:left';
+            btn.onclick = function(ev) {
+              try {
+                if (ev && ev.preventDefault) ev.preventDefault();
+                if (ev && ev.stopPropagation) ev.stopPropagation();
+              } catch(_){}
+              try {
+                var bNum = String(btn.getAttribute('data-of-num') || '').trim();
+                var bId = String(btn.getAttribute('data-of-id') || bNum || '').trim();
+                window.toggleSemPapelOf(bId, bNum || bId, btn);
+              } catch(e){
+                try { window.toast && window.toast('Erro Sem Papelão: ' + String(e && e.message || e), 'var(--red)'); } catch(_){}
+              }
+            };
+            try { host.insertBefore(btn, host.firstChild); } catch(_ih){ try { host.appendChild(btn); } catch(_ap){} }
+            console.log('[SEMPAPEL-BOTTOM-SHEET] INJETADO para OF=%j hostTag=%j sheetIndex=%s', inf.ofNum || inf.ofId, host && host.tagName || null, i);
+          } catch(_e){}
+        }
+      } catch(_global){}
+    }
+    if (!window.__patchSemPapelSheetObs) {
+      window.__patchSemPapelSheetObs = new MutationObserver(function() {
+        try { clearTimeout(window.__patchSemPapelSheetTimer); } catch(_){}
+        window.__patchSemPapelSheetTimer = setTimeout(_injectSemPapelSheet, 80);
+      });
+      try { window.__patchSemPapelSheetObs.observe(document.body, { childList: true, subtree: true }); } catch(_){}
+    }
+    setTimeout(_injectSemPapelSheet, 350);
+    setTimeout(_injectSemPapelSheet, 1800);
+  } catch (_) {}
 })();
 ;(function() {
   if (window.__simdBoxPlannerPatched) return;
@@ -53196,6 +53298,26 @@ function _ocultarGraficoComissoes() {
       }
       function renderVendedoresSelect(lista) {
         var rawLista = Array.isArray(lista) ? lista.slice() : [];
+        try {
+          console.log('[CONCLUSAO-VEND] ENTRY rawListaLen=%s vendedorAtualId=%s vendedorAtualNome=%s',
+            rawLista.length,
+            String(vendedorAtualId||'').slice(0,20)||'null',
+            String(vendedorAtualNome||'').slice(0,60)||'null');
+          var _nomesRaw = {};
+          rawLista.forEach(function(v,i){
+            try{
+              var nk = String(v && (v.nome || v.vendedor || v.vendedor_nome || '') || '').trim().toLowerCase();
+              if (!nk) return;
+              if (!_nomesRaw[nk]) _nomesRaw[nk] = [];
+              _nomesRaw[nk].push({i:i,id:String(v && v.id||'').slice(0,12)||'null'});
+            }catch(_){}
+          });
+          Object.keys(_nomesRaw).forEach(function(nk){
+            if (_nomesRaw[nk] && _nomesRaw[nk].length > 1) {
+              console.log('[CONCLUSAO-VEND] DUPLICADO-RAW nome=%j ocorrencias=%j', nk, _nomesRaw[nk]);
+            }
+          });
+        } catch (_) {}
         var _vendAtivo = function(v) {
           try {
             if (v == null) return false;
@@ -53257,13 +53379,44 @@ function _ocultarGraficoComissoes() {
         if (atual) {
           temNaLista = opcoesBase.some(function(x) { return x.id === atual; });
           if (!temNaLista && vendedorAtualNome) {
-            opcoesBase.unshift({ id: atual, nome: vendedorAtualNome });
+            var atualNomeChave = String(vendedorAtualNome || '').trim().toLowerCase();
+            var temPorNome = atualNomeChave && opcoesBase.some(function(x){ return String(x.nome||'').trim().toLowerCase() === atualNomeChave; });
+            if (!temPorNome) {
+              opcoesBase.unshift({ id: atual, nome: vendedorAtualNome });
+            } else if (atualNomeChave) {
+              var alvo = opcoesBase.find(function(x){ return String(x.nome||'').trim().toLowerCase() === atualNomeChave; }) || null;
+              if (alvo && String(alvo.id||'').trim() !== String(atual||'').trim()) { atual = String(alvo.id || '').trim(); }
+            }
             temNaLista = true;
           } else if (!temNaLista) {
             opcoesBase.unshift({ id: atual, nome: atual });
             temNaLista = true;
           }
         }
+        try {
+          var idsFinais = {};
+          var nomesFinais = {};
+          var opcoesFinais = [];
+          for (var _fi = 0; _fi < opcoesBase.length; _fi++) {
+            var _opX = opcoesBase[_fi];
+            if (!_opX || !String(_opX.id||'').trim()) continue;
+            var _idX = String(_opX.id||'').trim();
+            var _nmX = String(_opX.nome||_opX.id||'').trim();
+            var _nkX = _nmX.toLowerCase();
+            if (idsFinais[_idX]) { console.log('[CONCLUSAO-VEND] DEDUP-FINAL removido por id duplicado: %s nome=%s', _idX, _nmX); continue; }
+            if (_nkX && nomesFinais[_nkX]) { console.log('[CONCLUSAO-VEND] DEDUP-FINAL removido por nome duplicado: nome=%s id=%s vs idExistente=%s', _nmX, _idX, String(nomesFinais[_nkX]||'')); continue; }
+            idsFinais[_idX] = true;
+            if (_nkX) nomesFinais[_nkX] = _idX;
+            opcoesFinais.push(_opX);
+          }
+          opcoesBase = opcoesFinais;
+          try { console.log('[CONCLUSAO-VEND] FINAL opcoesLen=%s selecionadoId=%s selecionadoNome=%s opcoesPrimeirosNomes=%j',
+            opcoesBase.length,
+            atual || 'null',
+            opcoesBase.find(function(x){return String(x.id||'').trim()===String(atual||'').trim();}) && opcoesBase.find(function(x){return String(x.id||'').trim()===String(atual||'').trim();}).nome || 'null',
+            opcoesBase.slice(0,10).map(function(x){return String(x.nome||'').slice(0,40);}));
+          } catch(_){}
+        } catch(_){}
         try {
           var placeholder = document.createElement('option');
           placeholder.value = '';
@@ -63799,6 +63952,46 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             state && state.aba ? state.aba : 'null', state && state.competencia ? state.competencia : 'null', state && state.emp_id ? state.emp_id : 'null');
           if (!_patchHost && !_mainHost) console.warn('[CCUSTOS-RENDER] AVISO: nenhum host (#patch-page-host nem #patch-main-host) existe no DOM!');
         } catch (_logErr) {}
+        if (!(typeof hostParam === 'object' && hostParam && typeof hostParam.appendChild === 'function')) {
+          try {
+            var ccHostExistente = document.getElementById('patch-main-host');
+            if (!(ccHostExistente && typeof ccHostExistente.appendChild === 'function')) {
+              var ccMain = document.querySelector('.content, #content, .content-wrapper, .main-area, #main-content, #page-content, body > div:last-child');
+              if (!ccMain) ccMain = document.body;
+              var ccPageHost = document.getElementById('patch-page-host');
+              if (!ccPageHost) {
+                ccPageHost = document.createElement('div');
+                ccPageHost.id = 'patch-page-host';
+                ccPageHost.className = 'page';
+                ccPageHost.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:20px;background:var(--bg)';
+                ccPageHost.innerHTML = ''
+                  + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+                  + '  <h2 id="patch-page-title" style="margin:0;color:var(--text);font-size:18px"></h2>'
+                  + '</div>'
+                  + '<div id="patch-page-body"></div>';
+                try { ccMain.appendChild(ccPageHost); } catch(_eApx){}
+              }
+              try { document.querySelectorAll('[id^="page-"]').forEach(function(el){ try { if (el !== ccPageHost) el.style.display = 'none'; } catch(_q){} }); } catch(_qAll){}
+              try { ccPageHost.style.display = 'block'; } catch(_d){}
+              try { document.getElementById('patch-page-title').textContent = '💸 Central de Custos'; } catch(_t){}
+              var ccBody = document.getElementById('patch-page-body');
+              if (ccBody && typeof ccBody.appendChild === 'function') {
+                ccBody.id = 'patch-main-host';
+                hostParam = ccBody;
+                try { window._PAGE_ATUAL = 'central-custos'; } catch(_pg){}
+                console.log('[CCUSTOS-RENDER] HOST-CRIADO: patch-page-body renomeado p/ patch-main-host via fallback dinâmico');
+              }
+            } else {
+              hostParam = ccHostExistente;
+              try {
+                var ccPh = document.getElementById('patch-page-host');
+                if (ccPh) { ccPh.style.display = 'block'; ccPh.removeAttribute('hidden'); }
+              } catch(_ph){}
+            }
+          } catch(_eHost){
+            console.warn('[CCUSTOS-RENDER] FALHA criar host fallback:', _eHost && _eHost.message || _eHost);
+          }
+        }
         if (typeof hostParam === 'object' && hostParam) {
           try { hostParam.id = 'patch-main-host'; } catch(_){}
         }
