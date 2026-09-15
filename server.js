@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260915434106';
-const SW_RUNTIME_VERSION = '20260915434106';
+const PATCH_RUNTIME_VERSION = '20260915434107';
+const SW_RUNTIME_VERSION = '20260915434107';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9579,6 +9579,8 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (!antesConcluida && agoraConcluida) {
         const hoje = new Date().toISOString().slice(0, 10);
         const maquina = String(data?.maquina || data?.maquina_agendada || (Array.isArray(data?.maq) ? data.maq[0] : data?.maq) || data?.passou_maquina_nome || '').trim() || null;
+        console.log('[PASSAGENS-MAQUINA] [CALLER-1] PATCH /api/ofs/:id (mudanca status concluida): of_id=%j of_numero=%j maquina=%j',
+          id, String(data?.numero || data?.of_num || data?.of || '').trim() || null, maquina);
         const upsertResult = await _upsertPassagemMaquinaRegistro({
           of_id: id,
           of_numero: String(data?.numero || data?.of_num || data?.of || '').trim() || null,
@@ -9800,6 +9802,8 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       const produto = String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null;
       const operador = String(req.usuario?.nome || (typeof req.usuario?.email === 'string' ? req.usuario.email.split('@')[0] : '') || 'Sistema').trim();
       const empresaIdUuid = String(of?.empresa_id || of?.emp_id || of?.empId || 'df5f7672-0a6b-402d-ae65-296554236c31').trim() || 'df5f7672-0a6b-402d-ae65-296554236c31';
+      console.log('[PASSAGENS-MAQUINA] [CALLER-2] POST /api/ofs/:id/passou-maquina (botao passou-maquina L9670): of_id=%j of_numero=%j maquina=%j',
+        id, ofNumero, maquinaNome);
       const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: id,
         of_numero: ofNumero,
@@ -9967,6 +9971,8 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
         const maquinaNome = String(atual || maqBody || maquinaRef || of?.passou_maquina_nome || of?.maquina || (Array.isArray(of?.maq) ? of.maq[0] : of?.maq) || '').trim() || null;
         if (maquinaNome) {
           const ofRef = (upd && upd.data) ? upd.data : of;
+          console.log('[PASSAGENS-MAQUINA] [CALLER-3] POST /api/ofs/:id/concluir (concluir modal acao): of_id=%j of_numero=%j maquina=%j',
+            id, String(ofRef?.numero || ofRef?.of_num || ofRef?.of || '').trim() || null, maquinaNome);
           await _upsertPassagemMaquinaRegistro({
             of_id: id,
             of_numero: String(ofRef?.numero || ofRef?.of_num || ofRef?.of || '').trim() || null,
@@ -10485,6 +10491,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         (Array.isArray(of.maq) ? of.maq[0] : of.maq) ||
         ''
       ).trim() || 'Sem máquina';
+      console.log('[PASSAGENS-MAQUINA] [CALLER-4] POST /api/ofs/:id/concluir (concluir operador endpoint L10052): of_id=%j of_numero=%j maquina=%j',
+        sid, String(of?.numero || of?.of_num || of?.of || '').trim() || null, maquinaNome);
       const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: sid,
         of_numero: String(of?.numero || of?.of_num || of?.of || '').trim() || null,
@@ -10828,6 +10836,8 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
                         fluxo[idxAtual] || 
                         'Nao informada'; 
  
+      console.log('[PASSAGENS-MAQUINA] [CALLER-5] /api/ofs/:id/passou-maquina (duplicata L10736 NÃO executar): of_id=%j of_numero=%j maquina=%j',
+        req.params.id, String(of.numero || of.of_num || ''), maqPassou);
       const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: req.params.id,
         of_numero: of.numero || of.of_num || '',
@@ -11638,7 +11648,7 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
   const maquinaFallback = String(_normMaqNome(rawOrig.maquina || rawOrig.maquina_nome || '') || rawOrig.maquina || rawOrig.maquina_nome || '').trim();
   const maquinaNome = maquinaCanon || maquinaFallback;
   try {
-    console.log('[PASSAGENS-MAQUINA] [ENTRY] _upsertPassagemMaquinaRegistro chamado: of_id=' + ofId + ' of_numero=' + (ofNumero || 'null') + ' maquina=' + maquinaNome + ' payload_keys=' + Object.keys(rawOrig).sort().join(','));
+    console.log('[PASSAGENS-MAQUINA] [ENTRY] _upsertPassagemMaquinaRegistro chamado: of_id=' + ofId + ' of_numero=' + (ofNumero || 'null') + ' maquina=' + maquinaNome + ' payload_keys=' + Object.keys(rawOrig).sort().join(',') + ' payload=' + JSON.stringify(rawOrig).slice(0, 800));
   } catch (_) {}
   if (!ofId || !maquinaNome) {
     try { console.warn('[PASSAGENS-MAQUINA] skip insert: sem ofId ou maquinaNome', { ofId, mc: maquinaCanon, mf: maquinaFallback }); } catch (_) {}
@@ -11682,6 +11692,9 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
     delete toUpdate.of_id;
     delete toUpdate.of_numero;
     delete toUpdate.id;
+    console.log('[PASSAGENS-MAQUINA] [BEFORE-UPDATE] row_id=%j of_id=%j of_numero=%j maquina=%j updatePayload=%j',
+      String(existente.id || ''), ofId, ofNumero, maquinaNome,
+      Object.keys(toUpdate).sort().map(function(k){ return k + '=' + String(toUpdate[k] ?? 'null').slice(0, 50); }).join(' | ').slice(0, 1200));
     for (let i = 0; i < 12; i += 1) {
       const upd = await supabase.from('passagens_maquina').update(toUpdate).eq('id', existente.id);
       if (!upd?.error) {
@@ -11730,6 +11743,9 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
   }
 
   let toInsert = _limparPayloadPassagens({ ...raw });
+  console.log('[PASSAGENS-MAQUINA] [BEFORE-INSERT] of_id=%j of_numero=%j maquina=%j payload=%j',
+    ofId, ofNumero, maquinaNome,
+    Object.keys(toInsert).sort().map(function(k){ return k + '=' + String(toInsert[k] ?? 'null').slice(0, 50); }).join(' | ').slice(0, 1200));
   for (let i = 0; i < 12; i += 1) {
     const ins = await supabase.from('passagens_maquina').insert([toInsert]);
     if (!ins?.error) {
@@ -26444,14 +26460,17 @@ function _ff3CacheSet(key, val) {
 
 async function _comprasChapasFetchNested(filters = {}) {
   const empId = _comprasChapasStr(filters.empId);
-  // FF3 otimização: cache 30s memória + LIMIT/ORDER evita carregar tabela inteira.
-  // Se for busca (ids preenchidos), não aplica limit para não quebrar resultados.
   const hasIds = Array.isArray(filters.ids) && filters.ids.length;
   const pastaKey = filters.semPasta ? '__sem_pasta__' : (filters.pastaId || 'todas');
   const cacheKey = hasIds ? '' : ('cc:v2:' + empId + '|' + pastaKey + '|' + String(filters.ids ? 'ids:' + filters.ids.length : 'all'));
+  console.log('[COMPRAS-CHAPAS-FETCH] entry cacheKey=%j filters.empId=%j filters.semPasta=%j filters.pastaId=%j ids.count=%d',
+    cacheKey, filters.empId, filters.semPasta || false, filters.pastaId || null, filters.ids ? filters.ids.length : 0);
   if (cacheKey) {
     const cached = _ff3CacheGet(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      console.log('[COMPRAS-CHAPAS-FETCH] cache-hit rows=%d', cached.length);
+      return cached;
+    }
   }
   let comprasOut;
   const orderCols = ['criado_em', 'numero_compra', 'id'];
@@ -26466,6 +26485,8 @@ async function _comprasChapasFetchNested(filters = {}) {
       const tmp = await q;
       if (tmp.error) {
         const msg = String(tmp.error.message || tmp.error || '');
+        console.log('[COMPRAS-CHAPAS-FETCH] order=%s query error=%j details=%j hint=%j',
+          orderCols[i], tmp.error.message || null, tmp.error.details || null, tmp.error.hint || null);
         if (i < orderCols.length - 1 && (msg.includes('column') || msg.includes('does not exist'))) {
           try { console.warn('[FF3 CC] ORDER coluna ' + orderCols[i] + ' inexistente, fallback ' + orderCols[i + 1]); } catch (_) {}
           continue;
@@ -26473,21 +26494,29 @@ async function _comprasChapasFetchNested(filters = {}) {
         comprasOut = tmp;
         break;
       }
+      console.log('[COMPRAS-CHAPAS-FETCH] order=%s ok rawRows=%d', orderCols[i], (tmp.data || []).length);
       comprasOut = tmp;
       break;
     } catch (e) {
+      console.log('[COMPRAS-CHAPAS-FETCH] order=%s exception=%s stack=%s', orderCols[i], e?.message || e, e?.stack || '');
       if (i === orderCols.length - 1) throw e;
     }
   }
   if (!comprasOut) throw new Error('Falha ao consultar compras_chapas (ORDER fallback esgotado)');
   if (comprasOut.error) throw comprasOut.error;
   const compras = Array.isArray(comprasOut.data) ? comprasOut.data : [];
+  console.log('[COMPRAS-CHAPAS-FETCH] headersFinal=%d primeiroHeaderEmpId=%j primeiroHeaderNum=%j',
+    compras.length, compras[0]?.emp_id || null, compras[0]?.numero_compra || null);
   const ids = compras.map((row) => _comprasChapasStr(row?.id)).filter(Boolean);
   let itens = [];
   if (ids.length) {
     const itensOut = await supabase.from('compras_chapas_itens').select('*').in('compra_id', ids).order('seq', { ascending: true });
-    if (itensOut.error) throw itensOut.error;
+    if (itensOut.error) {
+      console.log('[COMPRAS-CHAPAS-FETCH] itens query error=%j', itensOut.error?.message || itensOut.error);
+      throw itensOut.error;
+    }
     itens = Array.isArray(itensOut.data) ? itensOut.data : [];
+    console.log('[COMPRAS-CHAPAS-FETCH] itensRows=%d', itens.length);
   }
   const itensMap = ids.reduce((acc, id) => {
     acc[id] = [];
@@ -26502,6 +26531,7 @@ async function _comprasChapasFetchNested(filters = {}) {
   const resultado = compras
     .map((row) => ({ ...row, itens: itensMap[_comprasChapasStr(row?.id)] || [] }))
     .sort((a, b) => (Math.trunc(_comprasChapasNum(b?.numero_compra)) - Math.trunc(_comprasChapasNum(a?.numero_compra))));
+  console.log('[COMPRAS-CHAPAS-FETCH] finalSorted=%d', resultado.length);
   if (cacheKey) _ff3CacheSet(cacheKey, resultado);
   return resultado;
 }
@@ -26799,6 +26829,8 @@ app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
     const pastaId = _comprasChapasStr(req.query?.pasta_id);
     const semPasta = String(req.query?.sem_pasta || '').trim().toLowerCase() === 'true';
     const busca = _comprasChapasStr(req.query?.busca);
+    console.log('[COMPRAS-CHAPAS-GET] entry rawEmpId=%j resolvedEmpId=%j resolvedRaw=%j pastaId=%j semPasta=%j busca=%j',
+      req.query?.emp_id || req.query?.empId || null, empId, empInfo.raw || null, pastaId || null, semPasta || false, busca || null);
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
     let ids = null;
     if (busca) {
@@ -26809,46 +26841,82 @@ app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
     return ok(res, data);
   } catch (e) {
     _comprasChapasLog('GET /api/compras-chapas', e);
+    console.error('[COMPRAS-CHAPAS-GET] exception=%s stack=%s query=%j', e?.message || e, e?.stack || '', JSON.stringify(req.query || {}));
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
 app.post('/api/compras-chapas', authMiddleware, async (req, res) => {
+  let etapa = 'inicio';
   try {
     try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const body = req.body || {};
+    console.log('[COMPRAS-CHAPAS-POST] etapa=%s bodyKeys=%j fornecedor=%j numeroItens=%d bodyDump=%j',
+      etapa, Object.keys(body || {}), (body || {}).fornecedor || null,
+      Array.isArray((body || {}).itens) ? (body || {}).itens.length : 0,
+      {
+        emp_id_body: body?.emp_id || null,
+        empId_body: body?.empId || null,
+        pasta_id: body?.pasta_id || null,
+        ped_fornecedor: body?.ped_fornecedor || null,
+        observacao_len: String(body?.observacao || '').length,
+      });
     const empInfo = await _comprasChapasResolveEmpId(req, body);
     const empId = empInfo.empId;
+    etapa = 'empresa_resolvida';
+    console.log('[COMPRAS-CHAPAS-POST] etapa=%s resolvedEmpId=%j raw=%j', etapa, empId, empInfo.raw || null);
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || body.emp_id || body.empId) });
     if (!_comprasChapasStr(body.fornecedor)) return res.status(400).json({ ok: false, error: 'fornecedor obrigatório' });
     const pastaId = body.pasta_id ? _comprasChapasStr(body.pasta_id) : null;
+    etapa = 'validar_pasta';
     if (pastaId) {
       const pastaOk = await _comprasChapasValidarPasta(pastaId, empId);
       if (!pastaOk.ok) return res.status(404).json({ ok: false, error: String(pastaOk.error?.message || pastaOk.error) });
     }
+    etapa = 'proximo_numero';
     const numeroCompra = await _comprasChapasProximoNumero(empId);
+    console.log('[COMPRAS-CHAPAS-POST] etapa=%s numeroCompra=%d', etapa, numeroCompra);
+    etapa = 'build_header';
     const headerPayload = _comprasChapasBuildHeaderPayload({ ...body, pasta_id: pastaId }, req, {
       isInsert: true,
       empId,
       empresaId: empId,
       numeroCompra,
     });
+    console.log('[COMPRAS-CHAPAS-POST] etapa=%s headerKeys=%j headerEmpId=%j headerEmpresaId=%j fornecedor=%j',
+      etapa, Object.keys(headerPayload || {}), headerPayload?.emp_id || null, headerPayload?.empresa_id || null,
+      headerPayload?.fornecedor || null);
+    etapa = 'insert_header';
     const insHeader = await _comprasChapasInsertCompat('compras_chapas', [headerPayload], '*');
-    if (insHeader.error) return res.status(500).json({ ok: false, error: String(insHeader.error.message || insHeader.error) });
+    if (insHeader.error) {
+      console.error('[COMPRAS-CHAPAS-POST] etapa=%s headerInsert error=%j details=%j hint=%j headerPayloadKeys=%j',
+        etapa, insHeader.error.message || null, insHeader.error.details || null, insHeader.error.hint || null,
+        Object.keys(headerPayload || {}));
+      return res.status(500).json({ ok: false, error: String(insHeader.error.message || insHeader.error) });
+    }
     const compraCriada = Array.isArray(insHeader.data) ? insHeader.data[0] : insHeader.data;
+    console.log('[COMPRAS-CHAPAS-POST] etapa=%s compra.id=%j numero_compra=%j', etapa, compraCriada?.id || null, compraCriada?.numero_compra || null);
+    etapa = 'insert_itens';
     const itens = Array.isArray(body.itens) ? body.itens : [];
     if (itens.length) {
       const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, compraCriada.id, idx + 1));
+      console.log('[COMPRAS-CHAPAS-POST] etapa=%s itensCount=%d payloadSampleKeys=%j',
+        etapa, itensPayload.length, Object.keys((itensPayload[0] || {})));
       const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
       if (insItens.error) {
+        console.error('[COMPRAS-CHAPAS-POST] etapa=%s itensInsert error=%j details=%j hint=%j',
+          etapa, insItens.error.message || null, insItens.error.details || null, insItens.error.hint || null);
         await supabase.from('compras_chapas').delete().eq('id', compraCriada.id);
         return res.status(500).json({ ok: false, error: String(insItens.error.message || insItens.error) });
       }
     }
+    etapa = 'load_full';
     const full = await _comprasChapasLoadById(compraCriada.id);
+    console.log('[COMPRAS-CHAPAS-POST] etapa=%s fullId=%j itensLoaded=%d SUCESSO', etapa, full?.id || null, (full?.itens || []).length);
     return ok(res, full);
   } catch (e) {
-    _comprasChapasLog('POST /api/compras-chapas', e);
+    console.error('[COMPRAS-CHAPAS-POST] etapa=%s error=%s stack=%s', etapa, e?.message || e, e?.stack || '');
+    _comprasChapasLog('POST /api/compras-chapas etapa=' + etapa, e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -35637,6 +35705,7 @@ app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => 
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
     const raw = _centralCustosSanitizePayload(req.body || {}, LANCAMENTOS_CUSTOS_WHITELIST);
+    console.log('[CCUSTOS-LANC-POST] entry sanitized=%j', raw);
     if (!raw.descricao || !String(raw.descricao || '').trim()) return res.status(400).json({ ok: false, error: 'descricao obrigatória' });
     if (!/^\d{4}-\d{2}$/.test(String(raw.competencia || ''))) {
       const d = new Date();
@@ -35649,10 +35718,20 @@ app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => 
     raw.data_lancamento = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.data_lancamento || ''))
       ? raw.data_lancamento
       : new Date().toISOString().slice(0, 10);
+    console.log('[CCUSTOS-LANC-POST] before-insert payload=%j insertKeys=%j', raw, Object.keys(raw || {}));
     const { data, error } = await supabase.from('lancamentos_custos').insert([raw]).select().maybeSingle();
-    if (error) throw error;
+    if (error) {
+      console.error('[CCUSTOS-LANC-POST] insert error=%j details=%j hint=%j code=%j',
+        error?.message || null, error?.details || null, error?.hint || null, error?.code || null);
+      throw error;
+    }
+    console.log('[CCUSTOS-LANC-POST] SUCESSO id=%j categoria=%j valor=%d', data?.id || null, data?.categoria || null, Number(data?.valor || 0));
     return res.json({ ok: true, data: data || {} });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+  } catch (e) {
+    console.error('[CCUSTOS-LANC-POST] unhandled error=%s stack=%s bodyDump=%j',
+      e?.message || e, e?.stack || '', JSON.stringify(req.body || {}));
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
   try {
@@ -35668,10 +35747,19 @@ app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) 
     }
     if (raw.valor !== undefined) raw.valor = Math.round((Number(raw.valor || 0) || 0) * 100) / 100;
     raw.updated_at = new Date().toISOString();
+    console.log('[CCUSTOS-LANC-PUT] id=%j payload=%j', id, raw);
     const { data, error } = await supabase.from('lancamentos_custos').update(raw).eq('id', id).select().maybeSingle();
-    if (error) throw error;
+    if (error) {
+      console.error('[CCUSTOS-LANC-PUT] update error=%j details=%j hint=%j code=%j',
+        error?.message || null, error?.details || null, error?.hint || null, error?.code || null);
+      throw error;
+    }
     return res.json({ ok: true, data: data || {} });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+  } catch (e) {
+    console.error('[CCUSTOS-LANC-PUT] unhandled error=%s stack=%s id=%j body=%j',
+      e?.message || e, e?.stack || '', req.params?.id || null, JSON.stringify(req.body || {}));
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
   try {
@@ -35680,9 +35768,16 @@ app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, re
     const id = String(req.params?.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const { error } = await supabase.from('lancamentos_custos').delete().eq('id', id);
-    if (error) throw error;
+    if (error) {
+      console.error('[CCUSTOS-LANC-DEL] delete error=%j details=%j hint=%j id=%j',
+        error?.message || null, error?.details || null, error?.hint || null, id);
+      throw error;
+    }
     return res.json({ ok: true, id, excluido: true });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+  } catch (e) {
+    console.error('[CCUSTOS-LANC-DEL] unhandled error=%s stack=%s id=%j', e?.message || e, e?.stack || '', req.params?.id || null);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
