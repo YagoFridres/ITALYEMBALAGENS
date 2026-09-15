@@ -12565,6 +12565,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         function _sop(pageId){
           Array.prototype.slice.call(document.querySelectorAll('[id^="page-"], [data-page]')).forEach(function(pg){
             try {
+              if (pg && pg.id === 'patch-page-host') return;
               var id = String((pg.getAttribute&&pg.getAttribute('data-page')) || pg.id || '').replace(/^page-/,'');
               var ativo = id === String(pageId);
               pg.style.display = ativo ? '' : 'none';
@@ -13239,6 +13240,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'ramos')    { try { renderRamosPage();   return; } catch (_) {} }
               if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
               if (r === 'simulador' || r === 'simd' || r === 'desperdicio' || r === 'simulador-desperdicio') { try { if (typeof window.renderSimuladorPage === 'function') window.renderSimuladorPage(); return; } catch (_) {} }
+              // Páginas NÃO gerenciadas por este wrapper: NÃO chamar _cad_showOnlyPage(r)
+              // (isso apagava patch-page-host da Central de Custos / Estoques / etc e deixava tela em branco)
+              // APENAS delegue para o wrapper anterior (origGo), que pode ser tanto o go() nativo
+              // quanto patchEstoqueRotas / rrGoWrapper / patchGoClientesEstoques.
               return _origGo.apply(this, arguments);
             };
             window.go.__cadAuxPatched = true;
@@ -13261,6 +13266,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'ramos')   return renderRamosPage();
               if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
               if (r === 'simulador' || r === 'simd' || r === 'desperdicio' || r === 'simulador-desperdicio') { try { if (typeof window.renderSimuladorPage === 'function') window.renderSimuladorPage(); return; } catch (_) {} }
+              // Fallback showOnlyPage APENAS se o go() nativo não existir. Páginas como central-custos
+              // não tem page-id padrão 'page-central-custos' em todas as situações (usam patch-page-host),
+              // então mostramos uma mensagem amigável ao invés de deixar tela totalmente em branco.
+              var hostPatch = document.getElementById('patch-page-host');
+              if (r === 'central-custos' || r === 'centralcustos' || r.indexOf('custo') >= 0) {
+                if (typeof window.renderPageCentralCustos === 'function') {
+                  try {
+                    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fin_ok') !== '1') {
+                      alert('Senha Financeiro obrigatória.');
+                      try { abrirMenuFinanceiro(); } catch (_) {}
+                      return;
+                    }
+                  } catch (_) {}
+                  var host = null;
+                  try { host = getMainPatchHost('central-custos', '💸 Central de Custos'); } catch (_) {}
+                  if (host) window.renderPageCentralCustos(host);
+                  return;
+                }
+              }
               _cad_showOnlyPage(r);
             };
           }
@@ -45817,7 +45841,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function patchGo() {
     var orig = window.go;
-    if (typeof orig !== 'function' || orig._patchClientesEstoquesCustom) return;
+    if (typeof orig === 'function' && orig._patchClientesEstoquesCustom) return;
+    if (typeof orig !== 'function') {
+      orig = function() {};
+    }
     var wrapped = async function(tela) {
       var page = String(tela || '');
       if (page === 'checklist-recebimento') {
@@ -45846,6 +45873,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           }
         } catch (_) {}
         var hostCC = getMainPatchHost('central-custos', '💸 Central de Custos');
+        try { var hostPatch = document.getElementById('patch-page-host'); if(hostPatch) { hostPatch.style.display = 'block'; hostPatch.removeAttribute('hidden'); } } catch(_){}
         if (typeof window.renderPageCentralCustos === 'function') {
           window.renderPageCentralCustos(hostCC);
         } else {
@@ -62540,7 +62568,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           render();
           if (state.aba === 1) try { setTimeout(renderGrafCategoria, 40); } catch(_){}
           return j;
-        }).catch(function(){ state.loading.visao = false; render(); });
+        }).catch(function(e){ console.error('[CCUSTOS-LOAD-VISAO]', e); state.loading.visao = false; render(); });
     }
     function loadLancamentos(competencia, opts) {
       state.loading.lanc = true; render();

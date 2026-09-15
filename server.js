@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260914434104';
-const SW_RUNTIME_VERSION = '20260914434104';
+const PATCH_RUNTIME_VERSION = '20260915434105';
+const SW_RUNTIME_VERSION = '20260915434105';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -35293,6 +35293,8 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
       of_raw: of
     };
   });
+  console.log('[CCUSTOS-VISAO] CalcularOFs comp=%s emp=%s ofsRaw.length=%d totalCusto=%.2f totalReceita=%.2f primeiraOF=%j',
+    compAlvo, empIdAll, ofsRaw.length, totalCusto, totalReceita, ofsRaw[0] || null);
   return { total_custo: Math.round(totalCusto * 100) / 100, total_receita: Math.round(totalReceita * 100) / 100, ofs: ofs };
 }
 async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofsResult) {
@@ -35450,25 +35452,24 @@ async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
   return resumo;
 }
 async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
-  const ofs = await _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll);
-  const [papelao, perdas, lancs] = await Promise.all([
-    _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofs),
-    _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofs),
-    _ccustosCalcularLancamentosCompetencia(competencia, empIdAll),
-  ]);
-  const despesasFabrica = Math.round((lancs.total + perdas.valor) * 100) / 100;
-  const custoTotalMes = Math.round((ofs.total_custo + papelao + despesasFabrica) * 100) / 100;
-  const categorias = JSON.parse(JSON.stringify(lancs.por_categoria));
-  if (!categorias.PAPELAO) categorias.PAPELAO = 0;
-  categorias.PAPELAO = Math.round((categorias.PAPELAO + papelao) * 100) / 100;
-  if (!categorias.OUTROS) categorias.OUTROS = 0;
-  categorias.OUTROS = Math.round((categorias.OUTROS + perdas.valor) * 100) / 100;
-  const grafico = _CCUSTOS_CATEGORIAS_ORDEM.map(function(key) {
-    return { key: key, label: _CCUSTOS_CATEGORIAS_LABEL[key] || key, valor: Math.round(Number(categorias[key] || 0) * 100) / 100 };
-  });
-  return {
-    competencia,
-    cards_5: {
+  try {
+    const ofs = await _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll);
+    const [papelao, perdas, lancs] = await Promise.all([
+      _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofs),
+      _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofs),
+      _ccustosCalcularLancamentosCompetencia(competencia, empIdAll),
+    ]);
+    const despesasFabrica = Math.round((lancs.total + perdas.valor) * 100) / 100;
+    const custoTotalMes = Math.round((ofs.total_custo + papelao + despesasFabrica) * 100) / 100;
+    const categorias = JSON.parse(JSON.stringify(lancs.por_categoria));
+    if (!categorias.PAPELAO) categorias.PAPELAO = 0;
+    categorias.PAPELAO = Math.round((categorias.PAPELAO + papelao) * 100) / 100;
+    if (!categorias.OUTROS) categorias.OUTROS = 0;
+    categorias.OUTROS = Math.round((categorias.OUTROS + perdas.valor) * 100) / 100;
+    const grafico = _CCUSTOS_CATEGORIAS_ORDEM.map(function(key) {
+      return { key: key, label: _CCUSTOS_CATEGORIAS_LABEL[key] || key, valor: Math.round(Number(categorias[key] || 0) * 100) / 100 };
+    });
+    const cards_5 = {
       custo_total_mes: custoTotalMes,
       despesas_fabrica: despesasFabrica,
       custo_papelao: papelao,
@@ -35476,15 +35477,23 @@ async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
       perdas: perdas.qtd,
       perdas_valor: perdas.valor,
       receita_ofs: Math.round(ofs.total_receita * 100) / 100,
-    },
-    grafico_categorias_10: grafico,
-    resumo_auto_vs_manual: {
-      custos_automaticos: Math.round((ofs.total_custo + papelao + perdas.valor) * 100) / 100,
-      custos_manuais: Math.round(lancs.manual * 100) / 100,
-    },
-    por_centro: lancs.por_centro,
-    __lancs_rows: lancs.rows,
-  };
+    };
+    console.log('[CCUSTOS-VISAO] comp=%s cards=%j papelao=%.2f perdasVal=%.2f perdasQtd=%d', competencia, cards_5, papelao, perdas?.valor, perdas?.qtd);
+    return {
+      competencia,
+      cards_5,
+      grafico_categorias_10: grafico,
+      resumo_auto_vs_manual: {
+        custos_automaticos: Math.round((ofs.total_custo + papelao + perdas.valor) * 100) / 100,
+        custos_manuais: Math.round(lancs.manual * 100) / 100,
+      },
+      por_centro: lancs.por_centro,
+      __lancs_rows: lancs.rows,
+    };
+  } catch (e) {
+    console.error('[CCUSTOS-VISAO-ERROR] comp=%s emp=%s error=%s stack=%s', competencia, empIdAll, e?.message || e, e?.stack || '');
+    throw e;
+  }
 }
 function _ccustosMesAnterior(compStr) {
   if (!/^\d{4}-\d{2}$/.test(compStr || '')) return null;
