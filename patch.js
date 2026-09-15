@@ -25137,6 +25137,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return escH(v).replace(/`/g, '&#96;');
     }
 
+    function escHLocal(v) {
+      return escH(v);
+    }
+
+    function escAttrLocal(v) {
+      return escAttr(v);
+    }
+
     function getPage() {
       return document.getElementById('page-ofmaq');
     }
@@ -27335,6 +27343,41 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       } catch (_) {}
       if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
       return state.rowsData;
+    }
+
+    function normMachine(row) {
+      try {
+        var r = row && typeof row === 'object' ? row : null;
+        var raw = String(
+          (r && (r.maquina_atual || r.maquina || r.maq_nome || r.maquina_nome)) ||
+          (r && r.maquina_agendada && (typeof r.maquina_agendada === 'string' ? r.maquina_agendada : (Array.isArray(r.maquina_agendada) ? r.maquina_agendada[0] : r.maquina_agendada?.nome))) ||
+          (r && r.fluxo_maquinas && (typeof r.fluxo_maquinas === 'string' ? '' : (Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas[0] : r.fluxo_maquinas?.[0]?.nome))) ||
+          ''
+        ).trim();
+        if (raw) return raw;
+        var maqRaw = r ? (r.maq || r.maquina || '') : '';
+        if (Array.isArray(maqRaw)) maqRaw = maqRaw[0];
+        if (maqRaw && typeof maqRaw === 'object') maqRaw = maqRaw.nome || maqRaw.label || '';
+        var maq = String(maqRaw || '').trim();
+        if (!maq) return 'Pendente';
+        if (/^[0-9a-fA-F-]{36}$/.test(maq)) return 'Pendente';
+        try {
+          var parsed;
+          try { parsed = JSON.parse(maq); } catch (_) { parsed = null; }
+          if (parsed && (parsed.nome || parsed.label || parsed.name || parsed.maquina)) {
+            maq = String(parsed.nome || parsed.label || parsed.name || parsed.maquina || '').trim();
+          } else if (Array.isArray(parsed)) {
+            var first = parsed.find(function(x) { return x && typeof x === 'string' && !/^[0-9a-fA-F-]{36}$/.test(x); })
+              || parsed.find(function(x) { return x && (x.nome || x.label); });
+            if (typeof first === 'string') maq = first;
+            else if (first) maq = String(first?.nome || first?.label || '').trim();
+          }
+        } catch (_) {}
+        if (!maq || /^[0-9a-fA-F-]{36}$/.test(maq)) return 'Pendente';
+        return maq;
+      } catch (_) {
+        return 'Pendente';
+      }
     }
 
     function renderOfmaqEmergency(shell, err) {
