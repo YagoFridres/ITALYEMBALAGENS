@@ -62387,9 +62387,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var ensureChart = (typeof window.ensureChartJsLoaded === 'function') ? window.ensureChartJsLoaded : function(){ return Promise.resolve(); };
 
     var CATEGORIAS_OFICIAIS = [
-      { key:'PAPELAO_CHAPAS', label:'Papelão / Chapas', cor:'#f59e0b', tipo:'auto' },
-      { key:'FOLHA_PAGAMENTO', label:'Folha de Pagamento', cor:'#3b82f6', tipo:'manual' },
-      { key:'ENERGIA_ELETRICA', label:'Energia Elétrica', cor:'#eab308', tipo:'manual' },
+      { key:'PAPELAO', label:'Papelão / Chapas', cor:'#f59e0b', tipo:'auto' },
+      { key:'FOLHA_PAGTO', label:'Folha de Pagamento', cor:'#3b82f6', tipo:'manual' },
+      { key:'ENERGIA', label:'Energia Elétrica', cor:'#eab308', tipo:'manual' },
       { key:'AGUA', label:'Água', cor:'#06b6d4', tipo:'manual' },
       { key:'TELEFONE_INTERNET', label:'Telefone / Internet', cor:'#8b5cf6', tipo:'manual' },
       { key:'COMBUSTIVEL', label:'Combustível / Gasolina', cor:'#ef4444', tipo:'manual' },
@@ -62397,6 +62397,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       { key:'FRETES', label:'Fretes', cor:'#10b981', tipo:'manual' },
       { key:'INSUMOS', label:'Insumos', cor:'#ec4899', tipo:'manual' },
       { key:'OUTROS', label:'Outros', cor:'#64748b', tipo:'manual' }
+    ];
+    var EMPRESAS_OFICIAIS = [
+      { id:'df5f7672-0a6b-402d-ae65-296554236c31', sigla:'E1', nome:'Italy Embalagens' },
+      { id:'e9b734dc-c7d5-4b04-898d-1ec7affa721e', sigla:'E2', nome:'Cartoeste' },
+      { id:'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', sigla:'E3', nome:'Oestepack' }
     ];
     var CATEGORIAS_MAP = {};
     CATEGORIAS_OFICIAIS.forEach(function(c){ CATEGORIAS_MAP[c.key] = c; });
@@ -62503,6 +62508,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       visao: null,
       lancamentos: [],
       centros: [],
+      operadores: [],
       historico: [],
       ofsCustos: null,
       loading: {},
@@ -62605,6 +62611,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           state.loading.ofs = false; render();
           return j;
         }).catch(function(){ state.loading.ofs = false; render(); });
+    }
+    function loadOperadores() {
+      state.loading.operadores = true; render();
+      return ccustosFetch('/api/operadores')
+        .then(function(r){ try { return r.json(); } catch(_){ return { ok:false }; } })
+        .then(function(j){
+          var arr = [];
+          if (Array.isArray(j)) arr = j;
+          else if (j && Array.isArray(j.operadores)) arr = j.operadores;
+          else if (j && Array.isArray(j.data)) arr = j.data;
+          else if (j && Array.isArray(j.rows)) arr = j.rows;
+          state.operadores = arr.filter(function(o){ return o && (o.nome || o.nome_completo || o.name || o.id); });
+          state.loading.operadores = false; render();
+          return state.operadores;
+        }).catch(function(){ state.loading.operadores = false; render(); return []; });
     }
 
     function renderGrafCategoria() {
@@ -62983,13 +63004,28 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var compEditar = p.competencia || state.competencia;
       var dataEditar = (p.data_lancamento||'').slice(0,10) || compEditar + '-01';
       var nat = p.natureza || 'DESPESA';
+      var catAtual = p.categoria || 'PAPELAO';
+      var empSel = p.empresa_id || ccustosNormEmpId(state.emp_id);
+      var optsEmp = EMPRESAS_OFICIAIS.map(function(e){ return '<option value="'+escA(e.id)+'" ' + (String(empSel)===String(e.id)?'selected':'') + '>' + esc(e.sigla + ' · ' + e.nome) + '</option>'; }).join('');
       var optsCat = CATEGORIAS_OFICIAIS.map(function(c){ return '<option value="'+escA(c.key)+'" ' + ((p.categoria||'')===c.key?'selected':'') + '>' + esc(c.label) + '</option>'; }).join('');
       var optsCen = state.centros.map(function(cc){ return '<option value="'+escA(cc.id||'')+'" ' + (String(p.centro_custo_id||'')===String(cc.id||'')?'selected':'') + '>' + esc((cc.codigo?cc.codigo+' · ':'') + (cc.nome||'—')) + '</option>'; }).join('');
       var optsNat = NATUREZAS.map(function(n){ return '<option value="'+escA(n)+'" ' + (nat===n?'selected':'') + '>' + esc(n==='DESPESA'?'DESPESA (saída)':'RECEITA (entrada)') + '</option>'; }).join('');
       var optsPgto = FORMAS_PAGAMENTO.map(function(f){ return '<option value="'+escA(f)+'" ' + ((p.forma_pagamento||'')===f?'selected':'') + '>' + esc(f) + '</option>'; }).join('');
+      var fornHtmlDefault = '<input id="ccf-forn" type="text" value="' + escA(p.fornecedor_beneficiario||'') + '">';
+      var fornHtml = fornHtmlDefault;
+      if (catAtual === 'FOLHA_PAGTO') {
+        var optsOper = (state.operadores||[]).map(function(o){
+          var idO = String(o.id||o.uuid||o.codigo||'').trim();
+          var nomeO = String(o.nome||o.nome_completo||o.name||'—').trim();
+          var sel = String(p.fornecedor_beneficiario||'') === nomeO ? 'selected' : '';
+          return '<option value="'+escA(idO)+'" ' + sel + ' data-nome="'+escA(nomeO)+'">' + esc(nomeO) + '</option>';
+        }).join('');
+        fornHtml = '<select id="ccf-forn-oper"><option value="">Selecione o operador...</option>' + optsOper + '</select>';
+      }
       return ''
         + '<h3>' + (idEditar ? '✏ Editar Lançamento' : '➕ Novo Lançamento') + '</h3>'
         + '<div class="ccustos-form-grid">'
+        + '  <div class="ccustos-form-field"><label>Empresa *</label><select id="ccf-emp">' + optsEmp + '</select></div>'
         + '  <div class="ccustos-form-field"><label>Descrição *</label><input id="ccf-desc" type="text" value="' + escA(p.descricao||'') + '" placeholder="Ex.: Conta de energia setembro"></div>'
         + '  <div class="ccustos-form-field"><label>Categoria *</label><select id="ccf-cat">' + optsCat + '</select></div>'
         + '  <div class="ccustos-form-field"><label>Natureza</label><select id="ccf-nat">' + optsNat + '</select></div>'
@@ -62997,7 +63033,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <div class="ccustos-form-field"><label>Valor (R$) *</label><input id="ccf-valor" type="number" step="0.01" min="0" value="' + escA(Number(p.valor||0).toFixed(2)) + '"></div>'
         + '  <div class="ccustos-form-field"><label>Data Lançamento</label><input id="ccf-data" type="date" value="' + escA(dataEditar) + '"></div>'
         + '  <div class="ccustos-form-field"><label>Competência (YYYY-MM) *</label><input id="ccf-comp" type="month" value="' + escA(compEditar) + '"></div>'
-        + '  <div class="ccustos-form-field"><label>Fornecedor / Beneficiário</label><input id="ccf-forn" type="text" value="' + escA(p.fornecedor_beneficiario||'') + '"></div>'
+        + '  <div class="ccustos-form-field"><label id="ccf-forn-label">Fornecedor / Beneficiário</label><div id="ccf-forn-wrap">' + fornHtml + '</div></div>'
         + '  <div class="ccustos-form-field"><label>Forma Pagamento</label><select id="ccf-pgto"><option value="">—</option>' + optsPgto + '</select></div>'
         + '  <div class="ccustos-form-field"><label>Anexo URL (MVP)</label><input id="ccf-anexo" type="text" placeholder="https://..." value="' + escA(p.anexo_url||'') + '"></div>'
         + '</div>'
@@ -63070,8 +63106,32 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         var inner = montarHtmlLancForm(editarPayload || {}, idEditar || null);
         openModalCCustos(inner, function(bd){
           try {
+            function trocarFornPorCategoria(catKey) {
+              try {
+                var wrap = document.getElementById('ccf-forn-wrap');
+                var label = document.getElementById('ccf-forn-label');
+                if (!wrap) return;
+                if (catKey === 'FOLHA_PAGTO') {
+                  if (label) label.textContent = 'Operador / Funcionário';
+                  var optsOper = (state.operadores||[]).map(function(o){
+                    var idO = String(o.id||o.uuid||o.codigo||'').trim();
+                    var nomeO = String(o.nome||o.nome_completo||o.name||'—').trim();
+                    return '<option value="'+escA(idO)+'" data-nome="'+escA(nomeO)+'">' + esc(nomeO) + '</option>';
+                  }).join('');
+                  wrap.innerHTML = '<select id="ccf-forn-oper"><option value="">Selecione o operador...</option>' + optsOper + '</select>';
+                } else {
+                  if (label) label.textContent = 'Fornecedor / Beneficiário';
+                  wrap.innerHTML = '<input id="ccf-forn" type="text" placeholder="Nome do fornecedor ou beneficiário">';
+                }
+              } catch(_){}
+            }
             var cancelar = document.getElementById('ccf-cancelar');
             if (cancelar) cancelar.onclick = fecharModaisCCustos;
+            var catSel = document.getElementById('ccf-cat');
+            if (catSel) {
+              catSel.addEventListener('change', function(){ trocarFornPorCategoria(String(catSel.value||'').trim()); }, false);
+              trocarFornPorCategoria(String(catSel.value||'').trim());
+            }
             var salvar = document.getElementById('ccf-salvar');
             if (salvar) salvar.onclick = function() {
               try {
@@ -63083,7 +63143,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                 var val = Number(fv('ccf-valor')||0) || 0;
                 var dt = String(fv('ccf-data')||'').trim();
                 var comp = String(fv('ccf-comp')||'').trim();
-                var forn = String(fv('ccf-forn')||'').trim();
+                var empSel = String(fv('ccf-emp')||'').trim();
+                var forn = '';
+                if (cat === 'FOLHA_PAGTO') {
+                  try {
+                    var selOper = document.getElementById('ccf-forn-oper');
+                    if (selOper && selOper.options && selOper.selectedIndex >= 0) {
+                      var opt = selOper.options[selOper.selectedIndex];
+                      forn = String(opt && opt.getAttribute ? (opt.getAttribute('data-nome') || opt.textContent || '') : (opt ? opt.text : '')).trim();
+                    }
+                  } catch(_){ forn = ''; }
+                } else {
+                  forn = String(fv('ccf-forn')||'').trim();
+                }
                 var pgto = String(fv('ccf-pgto')||'').trim();
                 var anexo = String(fv('ccf-anexo')||'').trim();
                 var obs = String((document.getElementById('ccf-obs')||{}).value||'').trim();
@@ -63096,7 +63168,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                   descricao: desc, categoria: cat, natureza: nat2, centro_custo_id: centro,
                   valor: val, data_lancamento: dt || (comp+'-01'), competencia: comp,
                   fornecedor_beneficiario: forn, forma_pagamento: pgto, anexo_url: anexo,
-                  observacao: obs, empresa_id: ccustosNormEmpId(state.emp_id)
+                  observacao: obs, empresa_id: empSel || ccustosNormEmpId(state.emp_id)
                 };
                 var methodL = idEditar ? 'PUT' : 'POST';
                 var urlL = idEditar ? ('/api/central-custos/lancamentos/' + encodeURIComponent(idEditar)) : '/api/central-custos/lancamentos';
@@ -63338,7 +63410,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           loadLancamentos(),
           loadCentros(),
           loadHistorico(),
-          loadCustoOFs()
+          loadCustoOFs(),
+          loadOperadores()
         ]).then(function(){ render(); }).catch(function(){});
       } catch (e) {
         try { console.error('[renderPageCentralCustos] fatal:', e); } catch(_){}

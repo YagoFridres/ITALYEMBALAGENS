@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260914434102';
-const SW_RUNTIME_VERSION = '20260914434102';
+const PATCH_RUNTIME_VERSION = '20260914434103';
+const SW_RUNTIME_VERSION = '20260914434103';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -35466,7 +35466,11 @@ app.get('/api/centros-custo', authMiddleware, async (req, res) => {
     }
     const empId = String(req.query.emp_id || req.query.empresa_id || '').trim();
     const uuids = _ccustosGetEmpresaFilterUuids(empId);
-    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    if (Array.isArray(uuids) && uuids.length) {
+      try { q = q.or(`empresa_id.is.null,empresa_id.in.(${uuids.join(',')})`); } catch (_) { q = q.in('empresa_id', uuids); }
+    } else {
+      try { q = q.or(`empresa_id.is.null,empresa_id.not.is.null`); } catch (_) {}
+    }
     const { data, error } = await q;
     if (error) throw error;
     return res.json(Array.isArray(data) ? data : []);
@@ -35602,7 +35606,11 @@ app.get('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
     }
     const empId = String(req.query.emp_id || req.query.empresa_id || '').trim();
     const uuids = _ccustosGetEmpresaFilterUuids(empId);
-    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    if (Array.isArray(uuids) && uuids.length) {
+      try { q = q.or(`empresa_id.is.null,empresa_id.in.(${uuids.join(',')})`); } catch (_) { q = q.in('empresa_id', uuids); }
+    } else {
+      try { q = q.or(`empresa_id.is.null,empresa_id.not.is.null`); } catch (_) {}
+    }
     const { data, error } = await q;
     if (error) throw error;
     return res.json({ ok: true, rows: Array.isArray(data) ? data : [] });
@@ -35706,7 +35714,11 @@ app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req
     const empId = String(req.body?.emp_id || req.query?.emp_id || '').trim();
     let q = supabase.from('lancamentos_recorrentes').select('*').eq('ativo', true).limit(5000);
     const uuids = _ccustosGetEmpresaFilterUuids(empId);
-    if (Array.isArray(uuids) && uuids.length) q = q.in('empresa_id', uuids);
+    if (Array.isArray(uuids) && uuids.length) {
+      try { q = q.or(`empresa_id.is.null,empresa_id.in.(${uuids.join(',')})`); } catch (_) { q = q.in('empresa_id', uuids); }
+    } else {
+      try { q = q.or(`empresa_id.is.null,empresa_id.not.is.null`); } catch (_) {}
+    }
     const { data: recsRaw, error: eRec } = await q;
     if (eRec) throw eRec;
     const recs = Array.isArray(recsRaw) ? recsRaw.filter(function(r) { return _ccustosPeriodicidadeMatch(r, comp); }) : [];
@@ -35718,7 +35730,9 @@ app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req
       .not('recorrencia_id', 'is', null)
       .limit(5000);
     const uuids2 = _ccustosGetEmpresaFilterUuids(empId);
-    if (Array.isArray(uuids2) && uuids2.length) jaExistemQuery.in('empresa_id', uuids2);
+    if (Array.isArray(uuids2) && uuids2.length) {
+      try { jaExistemQuery.or(`empresa_id.is.null,empresa_id.in.(${uuids2.join(',')})`); } catch (_) { jaExistemQuery.in('empresa_id', uuids2); }
+    }
     const { data: jaExistem } = await jaExistemQuery.catch(function() { return { data: [] }; });
     const existemIds = new Set((Array.isArray(jaExistem) ? jaExistem : []).map(function(x) { return String(x?.recorrencia_id || '').trim(); }).filter(Boolean));
     let criados = 0;
@@ -35795,15 +35809,56 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
       };
     });
     gastosPorCentro.sort(function(a, b) { return Number(b.valor_mes_atual || 0) - Number(a.valor_mes_atual || 0); });
+
+    const a5 = atual.cards_5 || {};
+    const b5 = anterior ? (anterior.cards_5 || {}) : {};
+    const cardsFrontend = {
+      custo_total: Number(a5.custo_total_mes || 0),
+      custo_total_anterior: Number(b5.custo_total_mes || 0),
+      despesas_fabrica: Number(a5.despesas_fabrica || 0),
+      despesas_fabrica_anterior: Number(b5.despesas_fabrica || 0),
+      custo_papelao: Number(a5.custo_papelao || 0),
+      custo_papelao_anterior: Number(b5.custo_papelao || 0),
+      custo_ofs: Number(a5.custo_ofs || 0),
+      custo_ofs_anterior: Number(b5.custo_ofs || 0),
+      perdas: Number(a5.perdas || 0),
+      perdas_anterior: Number(b5.perdas || 0),
+      receita_ofs: Number(a5.receita_ofs || 0),
+      receita_ofs_anterior: Number(b5.receita_ofs || 0),
+      lanc_automaticos: Number(atual.resumo_auto_vs_manual?.custos_automaticos || 0),
+      lanc_manuais: Number(atual.resumo_auto_vs_manual?.custos_manuais || 0),
+    };
+    const graficoFrontend = Array.isArray(atual.grafico_categorias_10)
+      ? atual.grafico_categorias_10.map(function (g) {
+          return { categoria: String(g?.key || ''), label: String(g?.label || g?.key || ''), valor: Number(g?.valor || 0) };
+        })
+      : [];
+    const gastosFrontend = gastosPorCentro.map(function (gc) {
+      return {
+        id: String(gc?.centro_custo_id || ''),
+        centro_custo_id: gc?.centro_custo_id || null,
+        codigo: gc?.codigo || null,
+        nome: gc?.nome || 'Sem nome',
+        ativo: gc?.ativo !== false,
+        valor: Number(gc?.valor_mes_atual || 0),
+        valor_mes_atual: Number(gc?.valor_mes_atual || 0),
+        valor_anterior: Number(gc?.valor_mes_anterior || 0),
+        valor_mes_anterior: Number(gc?.valor_mes_anterior || 0),
+        cor_visual: null,
+      };
+    });
     return res.json({
       ok: true,
       competencia: comp,
       competencia_anterior: compAnt,
       cards_5: atual.cards_5,
+      cards: cardsFrontend,
       variacoes_vs_mes_anterior: variacoes,
       grafico_categorias_10: atual.grafico_categorias_10,
+      grafico_categorias: graficoFrontend,
       resumo_auto_vs_manual: atual.resumo_auto_vs_manual,
       gastos_por_centro: gastosPorCentro,
+      gastos_por_centro_front: gastosFrontend,
       cards_5_mes_anterior: anterior ? anterior.cards_5 : null,
     });
   } catch (e) {
@@ -35845,6 +35900,7 @@ app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
         despesas_manuais: Number(d.resumo_auto_vs_manual?.custos_manuais || 0),
         perdas: Number(cards.perdas || 0),
         receita_ofs: receita,
+        receita: receita,
         resultado_liq: resultado,
         margem_pct: margem,
         variacao_vs_anterior_pct: variacao,
@@ -35858,6 +35914,7 @@ app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
       consolidado_12m: {
         custo_total: Math.round(total12Custo * 100) / 100,
         receita_ofs: Math.round(total12Receita * 100) / 100,
+        receita: Math.round(total12Receita * 100) / 100,
         resultado_liq: Math.round((total12Receita - total12Custo) * 100) / 100,
         margem_pct: total12Receita > 0 ? Math.round(((total12Receita - total12Custo) / total12Receita) * 10000) / 100 : 0,
       },
