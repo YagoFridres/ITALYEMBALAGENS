@@ -5351,17 +5351,93 @@ try {
     }
   } catch (_) {}
   try {
+    var _uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+    function _procuraOfIdRealNoSheet(rootEl, ofNumHint) {
+      try {
+        var ofNumStr = String(ofNumHint || '').trim();
+        var uuidAttrs = ['data-of-id', 'data-ofid', 'data-uuid', 'data-id', 'data-key', 'of-id', 'uuid'];
+        var allEls = rootEl.querySelectorAll('*');
+        var found = null;
+        for (var i = 0; i < Math.min(allEls.length, 600); i++) {
+          var el = allEls[i];
+          for (var j = 0; j < uuidAttrs.length; j++) {
+            var attr = uuidAttrs[j];
+            var v = null;
+            try { v = el.getAttribute && el.getAttribute(attr); } catch(_){}
+            if (!v && el.dataset && el.dataset[attr.replace('data-','').replace(/-./g, function(m){return m.slice(1).toUpperCase();})]) {
+              v = el.dataset[attr.replace('data-','').replace(/-./g, function(m){return m.slice(1).toUpperCase();})];
+            }
+            if (!v) continue;
+            var vs = String(v);
+            var mUid = vs.match(_uuidRegex);
+            if (mUid && mUid[0]) { found = mUid[0]; break; }
+          }
+          if (found) break;
+          var evHandlers = ['onclick', 'onmousedown', 'onmouseup', 'data-action-raw', 'data-raw', 'data-params'];
+          for (var k = 0; k < evHandlers.length; k++) {
+            var hv = null;
+            try { hv = el.getAttribute && el.getAttribute(evHandlers[k]); } catch(_){}
+            if (!hv && el.dataset && evHandlers[k].indexOf('data-')===0) {
+              try { hv = el.getAttribute(evHandlers[k]); } catch(_){}
+            }
+            if (!hv) continue;
+            var mUid2 = String(hv).match(_uuidRegex);
+            if (mUid2 && mUid2[0]) { found = mUid2[0]; break; }
+          }
+          if (found) break;
+        }
+        if (!found && ofNumStr) {
+          try {
+            if (typeof window.getOfmaqByNumero === 'function') {
+              var ofByNum = window.getOfmaqByNumero(ofNumStr);
+              if (ofByNum && (ofByNum.id || ofByNum.uuid || ofByNum.of_id)) {
+                var potId = ofByNum.id || ofByNum.uuid || ofByNum.of_id;
+                if (_uuidRegex.test(String(potId))) found = String(potId);
+              }
+            }
+            if (!found && typeof window.getOfmaqLista === 'function') {
+              var lista = window.getOfmaqLista();
+              if (Array.isArray(lista)) {
+                for (var li = 0; li < lista.length; li++) {
+                  var row = lista[li] || {};
+                  var n = String(row.numero || row.of || row.n_of || row.nOf || '').trim();
+                  var pid = row.id || row.uuid || row.of_id;
+                  if (n === ofNumStr && pid && _uuidRegex.test(String(pid))) { found = String(pid); break; }
+                }
+              }
+            }
+            if (!found && typeof window.getOfmaqById !== 'function' && Array.isArray(window.__OFMAQ_ROWS__)) {
+              for (var li2 = 0; li2 < window.__OFMAQ_ROWS__.length; li2++) {
+                var row2 = window.__OFMAQ_ROWS__[li2] || {};
+                var n2 = String(row2.numero || row2.of || row2.n_of || '').trim();
+                var pid2 = row2.id || row2.uuid || row2.of_id;
+                if (n2 === ofNumStr && pid2 && _uuidRegex.test(String(pid2))) { found = String(pid2); break; }
+              }
+            }
+          } catch(_){}
+        }
+        return found || null;
+      } catch(_){ return null; }
+    }
     function _procuraOfNumeroNoSheet(rootEl) {
       if (!rootEl) return { ofId:'', ofNum:'' };
       try {
         var txt = String(rootEl.textContent || '').replace(/\s+/g, ' ').slice(0, 2000);
         var m = txt.match(/OF\s*(?:#|Nº|N°|No|numero|nº)?\s*(\d{2,8})/i);
-        if (m && m[1]) return { ofNum: String(m[1]).trim(), ofId: String(m[1]).trim() };
-        var titleEl = rootEl.querySelector('[role="heading"], h1, h2, h3, h4, .modal-title, .sheet-title, .titulo, .title');
-        if (titleEl) {
-          var m2 = String(titleEl.textContent || '').match(/(\d{2,8})/);
-          if (m2 && m2[1]) return { ofNum: String(m2[1]).trim(), ofId: String(m2[1]).trim() };
+        var ofNum = '', ofId = '';
+        if (m && m[1]) ofNum = String(m[1]).trim();
+        if (!ofNum) {
+          var titleEl = rootEl.querySelector('[role="heading"], h1, h2, h3, h4, .modal-title, .sheet-title, .titulo, .title');
+          if (titleEl) {
+            var m2 = String(titleEl.textContent || '').match(/(\d{2,8})/);
+            if (m2 && m2[1]) ofNum = String(m2[1]).trim();
+          }
         }
+        if (ofNum) {
+          var idReal = _procuraOfIdRealNoSheet(rootEl, ofNum);
+          ofId = idReal || ofNum;
+        }
+        return { ofId: ofId, ofNum: ofNum };
       } catch(_){}
       return { ofId:'', ofNum:'' };
     }
@@ -5437,7 +5513,9 @@ try {
               }
             };
             try { host.insertBefore(btn, host.firstChild); } catch(_ih){ try { host.appendChild(btn); } catch(_ap){} }
-            console.log('[SEMPAPEL-BOTTOM-SHEET] INJETADO para OF=%j hostTag=%j sheetIndex=%s', inf.ofNum || inf.ofId, host && host.tagName || null, i);
+            var idReal = String(inf.ofId || '');
+            var idIsUuid = _uuidRegex.test(idReal);
+            console.log('[SEMPAPEL-BOTTOM-SHEET] INJETADO para OF=%s id=%s idIsUuid=%s semAtual=%s hostTag=%j sheetIndex=%s', inf.ofNum || inf.ofId, inf.ofId || '', idIsUuid ? '1-UUID-REAL' : '0-FALLBACK-NUMERO', semAtual ? 'SIM' : 'NAO', host && host.tagName || null, i);
           } catch(_e){}
         }
       } catch(_global){}

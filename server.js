@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260915434111';
-const SW_RUNTIME_VERSION = '20260915434111';
+const PATCH_RUNTIME_VERSION = '20260915434112';
+const SW_RUNTIME_VERSION = '20260915434112';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -35458,158 +35458,197 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
   return { total_custo: Math.round(totalCusto * 100) / 100, total_receita: Math.round(totalReceita * 100) / 100, ofs: ofs };
 }
 async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofsResult) {
-  if (ofsResult && Array.isArray(ofsResult.ofs) && ofsResult.ofs.length) {
-    var _totalPapelao = 0;
-    ofsResult.ofs.forEach(function(of) { _totalPapelao += Number(of?.papelao || 0) || 0; });
-    return Math.round(_totalPapelao * 100) / 100;
-  }
-  if (!supabase) return 0;
   const compAlvo = String(competencia || '').trim();
-  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return 0;
-  const inicio = compAlvo + '-01';
-  const aux = new Date(compAlvo + '-01T12:00:00');
-  aux.setMonth(aux.getMonth() + 1);
-  const fimExclusivo = aux.toISOString().slice(0, 10);
-  let table = 'chapas_estoque_v2';
-  try { table = await _chapasPreferV2Table(); } catch (_) { table = 'chapas_estoque_v2'; }
-  const valorCol = table === 'chapas_estoque_v2' ? 'valor_unitario' : 'coalesce(valor_unitario, val) as valor_unitario';
-  const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'coalesce(quantidade_atual, quantidade, qtd) as quantidade_atual';
-  const cols = `id,${valorCol},${qtdCol},empresa_id,created_at`;
-  let q = supabase.from(table).select(cols).limit(10000);
-  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-  if (Array.isArray(uuids) && uuids.length) {
-    try { q = q.in('empresa_id', uuids); } catch (_) {}
+  try {
+    if (ofsResult && Array.isArray(ofsResult.ofs) && ofsResult.ofs.length) {
+      var _totalPapelao = 0;
+      ofsResult.ofs.forEach(function(of) { _totalPapelao += Number(of?.papelao || 0) || 0; });
+      const r = Math.round(_totalPapelao * 100) / 100;
+      console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s emp=%s fonte=OFs_CALCULADAS ofsQtd=%d total=%.2f', compAlvo, empIdAll, ofsResult.ofs.length, r);
+      return r;
+    }
+    if (!supabase) { console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s FALHA=sem-supabase', compAlvo); return 0; }
+    if (!/^\d{4}-\d{2}$/.test(compAlvo)) return 0;
+    const inicio = compAlvo + '-01';
+    const aux = new Date(compAlvo + '-01T12:00:00');
+    aux.setMonth(aux.getMonth() + 1);
+    const fimExclusivo = aux.toISOString().slice(0, 10);
+    let table = 'chapas_estoque_v2';
+    try { table = await _chapasPreferV2Table(); } catch (_) { table = 'chapas_estoque_v2'; }
+    const valorCol = table === 'chapas_estoque_v2' ? 'valor_unitario' : 'coalesce(valor_unitario, val) as valor_unitario';
+    const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'coalesce(quantidade_atual, quantidade, qtd) as quantidade_atual';
+    const cols = `id,${valorCol},${qtdCol},empresa_id,created_at`;
+    let q = supabase.from(table).select(cols).limit(10000);
+    const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+    if (Array.isArray(uuids) && uuids.length) {
+      try { q = q.in('empresa_id', uuids); } catch (_) {}
+    }
+    const sel = await q;
+    if (sel?.error) {
+      console.error('[CCUSTOS-VISAO-PAPELAO] comp=%s QUERY_ERROR msg=%j details=%j hint=%j code=%j', compAlvo, sel.error.message || null, sel.error.details || null, sel.error.hint || null, sel.error.code || null);
+    }
+    const rows = Array.isArray(sel?.data) ? sel.data : [];
+    let _totalChapas = 0;
+    let rowsConsideradas = 0;
+    rows.forEach(function(r) {
+      const dr = String(r?.data_recebimento || '').slice(0, 10);
+      const cr = String(r?.created_at || '').slice(0, 10);
+      const d = dr || cr;
+      if (!d) return;
+      if (d < inicio || d >= fimExclusivo) return;
+      const v = Number(r?.valor_unitario || 0) || 0;
+      const qnt = Math.trunc(Number(r?.quantidade_atual || 0) || 0);
+      if (v > 0 && qnt > 0) { _totalChapas += v * qnt; rowsConsideradas++; }
+    });
+    const resultado = Math.round(_totalChapas * 100) / 100;
+    console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s emp=%s fonte=CHAPAS_ESTOQUE table=%s rowsTotal=%d rowsConsideradas=%d total=%.2f range=[%s,%s)', compAlvo, empIdAll, table, rows.length, rowsConsideradas, resultado, inicio, fimExclusivo);
+    return resultado;
+  } catch (e) {
+    console.error('[CCUSTOS-VISAO-PAPELAO] comp=%s ERRO=%s stack=%s', compAlvo, e?.message || e, e?.stack || '');
+    return 0;
   }
-  const sel = await q;
-  const rows = Array.isArray(sel?.data) ? sel.data : [];
-  let _totalChapas = 0;
-  rows.forEach(function(r) {
-    const dr = String(r?.data_recebimento || '').slice(0, 10);
-    const cr = String(r?.created_at || '').slice(0, 10);
-    const d = dr || cr;
-    if (!d) return;
-    if (d < inicio || d >= fimExclusivo) return;
-    const v = Number(r?.valor_unitario || 0) || 0;
-    const qnt = Math.trunc(Number(r?.quantidade_atual || 0) || 0);
-    if (v > 0 && qnt > 0) _totalChapas += v * qnt;
-  });
-  return Math.round(_totalChapas * 100) / 100;
 }
 async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResult) {
-  if (!supabase) return { valor: 0, qtd: 0 };
   const compAlvo = String(competencia || '').trim();
-  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return { valor: 0, qtd: 0 };
-  const inicio = compAlvo + '-01';
-  const aux = new Date(compAlvo + '-01T12:00:00');
-  aux.setMonth(aux.getMonth() + 1);
-  const fimExclusivo = aux.toISOString().slice(0, 10);
-  const baseCols = 'id,of_id,of_numero,valor_unitario,qtd_perdida,valor_perdido,data,created_at,emp_id,empresa_id,quantidade,caixas_perdidas';
-  const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
-  let data = [];
-  for (var ti = 0; ti < tabelas.length; ti++) {
-    try {
-      let q = supabase.from(tabelas[ti])
-        .select(baseCols)
-        .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
-      const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-      if (Array.isArray(uuids) && uuids.length) {
-        try { q = q.or(`emp_id.in.(${uuids.join(',')}),empresa_id.in.(${uuids.join(',')})`); } catch (_) {}
-      }
-      const r = await q;
-      if (!r?.error && Array.isArray(r?.data) && r.data.length) { data = r.data; break; }
-      if (!r?.error && Array.isArray(r?.data)) { data = r.data; break; }
-    } catch (_) {}
-  }
-  if (!Array.isArray(data)) return { valor: 0, qtd: 0 };
-  const ofIds = Array.from(new Set(data.map(function(p){ return String(p?.of_id || '').trim(); }).filter(Boolean)));
-  const ofsMap = new Map();
-  if (ofsResult && Array.isArray(ofsResult.ofs)) {
-    ofsResult.ofs.forEach(function(of) {
-      var k = String(of?.of_id || '').trim();
-      if (k) ofsMap.set(k, of);
-    });
-  }
-  if (ofIds.length && ofIds.some(function(id){ return !ofsMap.has(id); }) && supabase) {
-    try {
-      const idsFaltantes = ofIds.filter(function(id){ return !ofsMap.has(id); });
-      for (var li = 0; li < idsFaltantes.length; li += 200) {
-        var chunk = idsFaltantes.slice(li, li + 200);
-        var sel2 = await supabase.from('ofs')
-          .select('id,numero,of,quantidade,qtd,valor_total,valor_venda,total,custo_total')
-          .in('id', chunk).limit(200);
-        (Array.isArray(sel2?.data) ? sel2.data : []).forEach(function(ofr) {
-          ofsMap.set(String(ofr?.id || '').trim(), { of_id: ofr.id, of_raw: ofr });
-        });
-      }
-    } catch (_) {}
-  }
-  let qtdTotal = 0;
-  let valorTotal = 0;
-  data.forEach(function(p) {
-    const qtd = Math.trunc(Number(p?.qtd_perdida ?? p?.quantidade ?? p?.caixas_perdidas ?? 0) || 0);
-    qtdTotal += qtd;
-    var valPer = Number(p?.valor_perdido ?? 0) || 0;
-    if (valPer > 0) { valorTotal += valPer; return; }
-    var vUnit = Number(p?.valor_unitario ?? 0) || 0;
-    if (vUnit > 0 && qtd > 0) { valorTotal += vUnit * qtd; return; }
-    var ofData = null;
-    const ofId = String(p?.of_id || '').trim();
-    if (ofId) ofData = ofsMap.get(ofId);
-    if (ofData) {
-      const raw = ofData.of_raw || ofData;
-      const qtdProduzida = Number(raw?.qtd_produzida ?? raw?.qtd ?? raw?.quantidade ?? 0) || 0;
-      var receitaOf = Number(raw?.valor_total ?? 0) || 0;
-      if (!receitaOf) receitaOf = Number(raw?.valor_venda ?? 0) || 0;
-      if (!receitaOf) receitaOf = Number(raw?.total ?? 0) || 0;
-      if (!receitaOf && Number(ofData?.venda ?? 0) > 0) receitaOf = Number(ofData.venda);
-      if (qtdProduzida > 0 && receitaOf > 0 && qtd > 0) {
-        valorTotal += (receitaOf / qtdProduzida) * qtd;
-      }
+  try {
+    if (!supabase) { console.log('[CCUSTOS-VISAO-PERDAS] comp=%s FALHA=sem-supabase', compAlvo); return { valor: 0, qtd: 0 }; }
+    if (!/^\d{4}-\d{2}$/.test(compAlvo)) return { valor: 0, qtd: 0 };
+    const inicio = compAlvo + '-01';
+    const aux = new Date(compAlvo + '-01T12:00:00');
+    aux.setMonth(aux.getMonth() + 1);
+    const fimExclusivo = aux.toISOString().slice(0, 10);
+    const baseCols = 'id,of_id,of_numero,valor_unitario,qtd_perdida,valor_perdido,data,created_at,emp_id,empresa_id,quantidade,caixas_perdidas';
+    const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
+    let data = [];
+    let tabelaUsada = null;
+    for (var ti = 0; ti < tabelas.length; ti++) {
+      try {
+        let q = supabase.from(tabelas[ti])
+          .select(baseCols)
+          .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
+        const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+        if (Array.isArray(uuids) && uuids.length) {
+          try { q = q.or(`emp_id.in.(${uuids.join(',')}),empresa_id.in.(${uuids.join(',')})`); } catch (_) {}
+        }
+        const r = await q;
+        if (r?.error) {
+          console.error('[CCUSTOS-VISAO-PERDAS] comp=%s QUERY_ERROR tabela=%s msg=%j details=%j', compAlvo, tabelas[ti], r.error.message || null, r.error.details || null);
+          continue;
+        }
+        if (Array.isArray(r?.data) && r.data.length) { data = r.data; tabelaUsada = tabelas[ti]; break; }
+        if (Array.isArray(r?.data)) { data = r.data; tabelaUsada = tabelas[ti]; break; }
+      } catch (_) {}
     }
-  });
-  return { valor: Math.round(valorTotal * 100) / 100, qtd: qtdTotal };
+    if (!Array.isArray(data)) return { valor: 0, qtd: 0 };
+    const ofIds = Array.from(new Set(data.map(function(p){ return String(p?.of_id || '').trim(); }).filter(Boolean)));
+    const ofsMap = new Map();
+    if (ofsResult && Array.isArray(ofsResult.ofs)) {
+      ofsResult.ofs.forEach(function(of) {
+        var k = String(of?.of_id || '').trim();
+        if (k) ofsMap.set(k, of);
+      });
+    }
+    if (ofIds.length && ofIds.some(function(id){ return !ofsMap.has(id); }) && supabase) {
+      try {
+        const idsFaltantes = ofIds.filter(function(id){ return !ofsMap.has(id); });
+        for (var li = 0; li < idsFaltantes.length; li += 200) {
+          var chunk = idsFaltantes.slice(li, li + 200);
+          var sel2 = await supabase.from('ofs')
+            .select('id,numero,of,quantidade,qtd,valor_total,valor_venda,total,custo_total')
+            .in('id', chunk).limit(200);
+          (Array.isArray(sel2?.data) ? sel2.data : []).forEach(function(ofr) {
+            ofsMap.set(String(ofr?.id || '').trim(), { of_id: ofr.id, of_raw: ofr });
+          });
+        }
+      } catch (_) {}
+    }
+    let qtdTotal = 0;
+    let valorTotal = 0;
+    let rowsConsideradas = 0;
+    data.forEach(function(p) {
+      const qtd = Math.trunc(Number(p?.qtd_perdida ?? p?.quantidade ?? p?.caixas_perdidas ?? 0) || 0);
+      qtdTotal += qtd;
+      var valPer = Number(p?.valor_perdido ?? 0) || 0;
+      if (valPer > 0) { valorTotal += valPer; rowsConsideradas++; return; }
+      var vUnit = Number(p?.valor_unitario ?? 0) || 0;
+      if (vUnit > 0 && qtd > 0) { valorTotal += vUnit * qtd; rowsConsideradas++; return; }
+      var ofData = null;
+      const ofId = String(p?.of_id || '').trim();
+      if (ofId) ofData = ofsMap.get(ofId);
+      if (ofData) {
+        const raw = ofData.of_raw || ofData;
+        const qtdProduzida = Number(raw?.qtd_produzida ?? raw?.qtd ?? raw?.quantidade ?? 0) || 0;
+        var receitaOf = Number(raw?.valor_total ?? 0) || 0;
+        if (!receitaOf) receitaOf = Number(raw?.valor_venda ?? 0) || 0;
+        if (!receitaOf) receitaOf = Number(raw?.total ?? 0) || 0;
+        if (!receitaOf && Number(ofData?.venda ?? 0) > 0) receitaOf = Number(ofData.venda);
+        if (qtdProduzida > 0 && receitaOf > 0 && qtd > 0) {
+          valorTotal += (receitaOf / qtdProduzida) * qtd;
+          rowsConsideradas++;
+        }
+      }
+    });
+    const resFinal = { valor: Math.round(valorTotal * 100) / 100, qtd: qtdTotal };
+    console.log('[CCUSTOS-VISAO-PERDAS] comp=%s emp=%s tabela=%s rowsTotal=%d rowsConsideradas=%d ofIds=%d qtdTotal=%d valorTotal=%.2f range=[%s,%s)', compAlvo, empIdAll, tabelaUsada || 'nenhuma', data.length, rowsConsideradas, ofIds.length, qtdTotal, resFinal.valor, inicio, fimExclusivo);
+    return resFinal;
+  } catch (e) {
+    console.error('[CCUSTOS-VISAO-PERDAS] comp=%s ERRO=%s stack=%s', compAlvo, e?.message || e, e?.stack || '');
+    return { valor: 0, qtd: 0 };
+  }
 }
 async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
-  const resumo = { total: 0, por_categoria: {}, por_centro: {}, automatico: 0, manual: 0, rows: [] };
-  _CCUSTOS_CATEGORIAS_ORDEM.forEach(function(c) { resumo.por_categoria[c] = 0; });
-  if (!supabase) return resumo;
   const compAlvo = String(competencia || '').trim();
-  if (!/^\d{4}-\d{2}$/.test(compAlvo)) return resumo;
-  let q = supabase.from('lancamentos_custos')
-    .select('*')
-    .eq('competencia', compAlvo)
-    .limit(10000);
-  const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
-  if (Array.isArray(uuids) && uuids.length) {
-    try { q = q.in('empresa_id', uuids); } catch (_) {}
-  }
-  const { data, error } = await q;
-  if (error || !Array.isArray(data)) return resumo;
-  data.forEach(function(row) {
-    const v = Number(row?.valor || 0) || 0;
-    if (v === 0) return;
-    const cat = String(row?.categoria || 'OUTROS').toUpperCase();
-    const centro = String(row?.centro_custo_id || '').trim();
-    const sinal = String(row?.natureza || 'DESPESA') === 'RECEITA' ? -1 : 1;
-    const valor = Math.round(v * sinal * 100) / 100;
-    resumo.total += valor;
-    resumo.manual += valor;
-    if (_CCUSTOS_CATEGORIAS_ORDEM.includes(cat)) resumo.por_categoria[cat] += valor;
-    else resumo.por_categoria['OUTROS'] += valor;
-    if (centro) {
-      resumo.por_centro[centro] = (resumo.por_centro[centro] || 0) + valor;
+  const resumo = { total: 0, por_categoria: {}, por_centro: {}, automatico: 0, manual: 0, rows: [] };
+  try {
+    _CCUSTOS_CATEGORIAS_ORDEM.forEach(function(c) { resumo.por_categoria[c] = 0; });
+    if (!supabase) { console.log('[CCUSTOS-VISAO-LANC] comp=%s FALHA=sem-supabase', compAlvo); return resumo; }
+    if (!/^\d{4}-\d{2}$/.test(compAlvo)) return resumo;
+    let q = supabase.from('lancamentos_custos')
+      .select('*')
+      .eq('competencia', compAlvo)
+      .limit(10000);
+    const uuids = _ccustosGetEmpresaFilterUuids(empIdAll);
+    if (Array.isArray(uuids) && uuids.length) {
+      try { q = q.in('empresa_id', uuids); } catch (_) {}
     }
-    resumo.rows.push(row);
-  });
-  Object.keys(resumo.por_categoria).forEach(function(k) {
-    resumo.por_categoria[k] = Math.round(resumo.por_categoria[k] * 100) / 100;
-  });
-  Object.keys(resumo.por_centro).forEach(function(k) {
-    resumo.por_centro[k] = Math.round(resumo.por_centro[k] * 100) / 100;
-  });
-  resumo.total = Math.round(resumo.total * 100) / 100;
-  resumo.manual = Math.round(resumo.manual * 100) / 100;
-  return resumo;
+    const { data, error } = await q;
+    if (error) {
+      console.error('[CCUSTOS-VISAO-LANC] comp=%s QUERY_ERROR msg=%j details=%j hint=%j code=%j', compAlvo, error.message || null, error.details || null, error.hint || null, error.code || null);
+      return resumo;
+    }
+    if (!Array.isArray(data)) return resumo;
+    let rowsConsideradas = 0;
+    data.forEach(function(row) {
+      const v = Number(row?.valor || 0) || 0;
+      if (v === 0) return;
+      const cat = String(row?.categoria || 'OUTROS').toUpperCase();
+      const centro = String(row?.centro_custo_id || '').trim();
+      const sinal = String(row?.natureza || 'DESPESA') === 'RECEITA' ? -1 : 1;
+      const valor = Math.round(v * sinal * 100) / 100;
+      resumo.total += valor;
+      resumo.manual += valor;
+      if (_CCUSTOS_CATEGORIAS_ORDEM.includes(cat)) resumo.por_categoria[cat] += valor;
+      else resumo.por_categoria['OUTROS'] += valor;
+      if (centro) {
+        resumo.por_centro[centro] = (resumo.por_centro[centro] || 0) + valor;
+      }
+      rowsConsideradas++;
+      resumo.rows.push(row);
+    });
+    Object.keys(resumo.por_categoria).forEach(function(k) {
+      resumo.por_categoria[k] = Math.round(resumo.por_categoria[k] * 100) / 100;
+    });
+    Object.keys(resumo.por_centro).forEach(function(k) {
+      resumo.por_centro[k] = Math.round(resumo.por_centro[k] * 100) / 100;
+    });
+    resumo.total = Math.round(resumo.total * 100) / 100;
+    resumo.manual = Math.round(resumo.manual * 100) / 100;
+    console.log('[CCUSTOS-VISAO-LANC] comp=%s emp=%s rowsTotal=%d rowsConsideradas=%d total=%.2f total_manual=%.2f centrosQtd=%d categorias=%j', compAlvo, empIdAll, data.length, rowsConsideradas, resumo.total, resumo.manual, Object.keys(resumo.por_centro || {}).length, resumo.por_categoria || {});
+    return resumo;
+  } catch (e) {
+    console.error('[CCUSTOS-VISAO-LANC] comp=%s ERRO=%s stack=%s', compAlvo, e?.message || e, e?.stack || '');
+    return resumo;
+  }
 }
 async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
   try {
@@ -36086,6 +36125,7 @@ app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req
 });
 
 app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
+  const t0 = Date.now();
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -36095,6 +36135,8 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
       comp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
     const empId = String(req.query.emp_id || '').trim();
+    const userEmail = String(req.user?.email || req.user?.user?.email || req.user?.id || 'anon').slice(0, 60);
+    console.log('[CCUSTOS-VISAO-GERAL] ENTRY competencia=%s empId=%j user=%s query=%j', comp, empId || 'todas', userEmail, JSON.stringify(req.query || {}));
     const compAnt = _ccustosMesAnterior(comp);
     const [atual, anterior] = await Promise.all([
       _ccustosCalcularVisaoGeralCompetencia(comp, empId),
@@ -36165,6 +36207,15 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
         cor_visual: null,
       };
     });
+    const dt = Date.now() - t0;
+    console.log('[CCUSTOS-VISAO-GERAL] RESULT comp=%s compAnt=%s cardsAtual=%j cardsAnterior=%j resumoAutoManual=%j categoriasPrimeiros=%j centrosQtd=%d tempoMs=%d',
+      comp, compAnt || null,
+      a5 || null,
+      b5 || null,
+      atual.resumo_auto_vs_manual || null,
+      (atual.grafico_categorias_10 || []).slice(0, 5),
+      gastosPorCentro.length,
+      dt);
     return res.json({
       ok: true,
       competencia: comp,
@@ -36185,11 +36236,14 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
   }
 });
 app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
+  const t0 = Date.now();
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
     const empId = String(req.query.emp_id || '').trim();
     const nMeses = Math.max(3, Math.min(12, Math.trunc(Number(req.query?.meses || 12) || 12)));
+    const userEmail = String(req.user?.email || req.user?.user?.email || req.user?.id || 'anon').slice(0, 60);
+    console.log('[CCUSTOS-HISTORICO] ENTRY nMeses=%d empId=%j user=%s query=%j', nMeses, empId || 'todas', userEmail, JSON.stringify(req.query || {}));
     const meses = [];
     const hoje = new Date();
     for (let i = nMeses - 1; i >= 0; i--) {
@@ -36226,6 +36280,9 @@ app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
     });
     let total12Custo = 0, total12Receita = 0;
     mesesRows.forEach(function(m) { total12Custo += Number(m.custo_total || 0); total12Receita += Number(m.receita_ofs || 0); });
+    const dt = Date.now() - t0;
+    console.log('[CCUSTOS-HISTORICO] RESULT meses=%j mesesRowsLen=%d total12Custo=%.2f total12Receita=%.2f tempoMs=%d',
+      meses.join(','), mesesRows.length, total12Custo, total12Receita, dt);
     return res.json({
       ok: true,
       meses: mesesRows,
