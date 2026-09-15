@@ -63789,6 +63789,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
     window.renderPageCentralCustos = function(hostParam) {
       try {
+        try {
+          var _patchHost = !!document.getElementById('patch-page-host');
+          var _mainHost = !!document.getElementById('patch-main-host');
+          var _hostId = (typeof hostParam === 'object' && hostParam && hostParam.id) ? hostParam.id : null;
+          var _hostCls = (typeof hostParam === 'object' && hostParam && hostParam.className) ? String(hostParam.className).slice(0,80) : null;
+          console.log('[CCUSTOS-RENDER] ENTRY chamada hostParam=%s patchHostExiste=%s mainHostExiste=%s hostParam.id=%s hostParam.cls=%s abaAtual=%s competencia=%s empId=%s',
+            (typeof hostParam === 'object' && hostParam ? 'object' : typeof hostParam), _patchHost ? 'SIM' : 'NAO', _mainHost ? 'SIM' : 'NAO', _hostId || 'null', _hostCls || 'null',
+            state && state.aba ? state.aba : 'null', state && state.competencia ? state.competencia : 'null', state && state.emp_id ? state.emp_id : 'null');
+          if (!_patchHost && !_mainHost) console.warn('[CCUSTOS-RENDER] AVISO: nenhum host (#patch-page-host nem #patch-main-host) existe no DOM!');
+        } catch (_logErr) {}
         if (typeof hostParam === 'object' && hostParam) {
           try { hostParam.id = 'patch-main-host'; } catch(_){}
         }

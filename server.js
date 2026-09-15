@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260915434109';
-const SW_RUNTIME_VERSION = '20260915434109';
+const PATCH_RUNTIME_VERSION = '20260915434110';
+const SW_RUNTIME_VERSION = '20260915434110';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -17387,9 +17387,6 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
     const buildQuery = (applyEmpFilter, applyDeletedFilter, selectCols) => {
       const sel = selectCols || colunasCandidatas[0];
       let q = supabase.from('orcamentos').select(sel).order('criado_em', { ascending: false });
-      if (applyDeletedFilter) {
-        try { q = q.is('deleted_at', null); } catch (_) {}
-      }
       if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
       if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
       if (applyEmpFilter && empFiltro) {
@@ -17763,7 +17760,7 @@ app.delete('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
       const clear = await supabase.from('orcamentos').update({ pasta_id: null }).in('id', ids);
       if (clear.error) return res.status(500).json({ ok: false, error: clear.error.message });
 
-      const verificados = await supabase.from('orcamentos').select('id,pasta_id,deleted_at').in('id', ids);
+      const verificados = await supabase.from('orcamentos').select('id,pasta_id').in('id', ids);
       if (verificados.error) return res.status(500).json({ ok: false, error: verificados.error.message });
       const mapa = new Map((Array.isArray(verificados.data) ? verificados.data : []).map((row) => [String(row?.id || '').trim(), row]));
       const sumidos = ids.filter((rowId) => !mapa.has(rowId));
@@ -26308,6 +26305,11 @@ function _comprasChapasLog(stage, error) {
 function _comprasChapasStr(v) {
   return String(v == null ? '' : v).trim();
 }
+function _comprasChapasDateOrNull(v) {
+  var s = String(v == null ? '' : v).trim();
+  if (!s) return null;
+  return s;
+}
 
 function _comprasChapasNum(v) {
   const n = Number(String(v == null ? '' : v).replace(',', '.'));
@@ -26468,6 +26470,8 @@ function _comprasChapasBuildHeaderPayload(body, req, opts = {}) {
   b.pasta_id = b.pasta_id ? _comprasChapasStr(b.pasta_id) : null;
   b.emp_id = _comprasChapasStr(opts.empId || b.emp_id || b.empId);
   b.empresa_id = _comprasChapasStr(opts.empresaId || b.empresa_id || b.empresaId || b.emp_id || b.empId) || null;
+  b.data_compra = _comprasChapasDateOrNull(b.data_compra);
+  b.previsao_chegada = _comprasChapasDateOrNull(b.previsao_chegada);
   const nowIso = new Date().toISOString();
   const usuario = _comprasChapasUser(req);
   if (opts.isInsert) {
@@ -26506,7 +26510,7 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   item.seq = Math.max(1, Math.trunc(_comprasChapasNum(seq)));
   item.ped_cliente = _comprasChapasStr(item.ped_cliente);
   item.pedido_fornecedor = _comprasChapasStr(item.pedido_fornecedor ?? item.ped_fornecedor ?? item.po ?? item.pedForn);
-  item.data_entrega = _comprasChapasStr(item.data_entrega);
+  item.data_entrega = _comprasChapasDateOrNull(item.data_entrega);
   item.nomenclatura = _comprasChapasStr(item.nomenclatura ?? item.po);
   item.largura = largura;
   item.comprimento = comprimento;
@@ -35806,18 +35810,33 @@ app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => 
       ? raw.data_lancamento
       : new Date().toISOString().slice(0, 10);
     console.log('[CCUSTOS-LANC-POST] before-insert payload=%j insertKeys=%j', raw, Object.keys(raw || {}));
-    const { data, error } = await supabase.from('lancamentos_custos').insert([raw]).select().maybeSingle();
+    const insOut = await _comprasChapasInsertCompat('lancamentos_custos', [raw], '*');
+    const data = Array.isArray(insOut?.data) ? insOut.data[0] : (insOut?.data || null);
+    const error = insOut?.error || null;
     if (error) {
-      console.error('[CCUSTOS-LANC-POST] insert error=%j details=%j hint=%j code=%j',
-        error?.message || null, error?.details || null, error?.hint || null, error?.code || null);
-      throw error;
+      console.error('[CCUSTOS-LANC-POST] insert error=%j details=%j hint=%j code=%j droppedCols=%j',
+        error?.message || null, error?.details || null, error?.hint || null, error?.code || null,
+        (insOut && insOut._removedColumns) ? insOut._removedColumns : null);
+      return res.status(500).json({
+        ok: false,
+        error: String(error?.message || error),
+        details: error?.details || null,
+        hint: error?.hint || null,
+        code: error?.code || null,
+      });
     }
     console.log('[CCUSTOS-LANC-POST] SUCESSO id=%j categoria=%j valor=%d', data?.id || null, data?.categoria || null, Number(data?.valor || 0));
     return res.json({ ok: true, data: data || {} });
   } catch (e) {
     console.error('[CCUSTOS-LANC-POST] unhandled error=%s stack=%s bodyDump=%j',
       e?.message || e, e?.stack || '', JSON.stringify(req.body || {}));
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.status(500).json({
+      ok: false,
+      error: String(e?.message || e),
+      details: e?.details || null,
+      hint: e?.hint || null,
+      code: e?.code || null,
+    });
   }
 });
 app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
@@ -35835,17 +35854,31 @@ app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) 
     if (raw.valor !== undefined) raw.valor = Math.round((Number(raw.valor || 0) || 0) * 100) / 100;
     raw.updated_at = new Date().toISOString();
     console.log('[CCUSTOS-LANC-PUT] id=%j payload=%j', id, raw);
-    const { data, error } = await supabase.from('lancamentos_custos').update(raw).eq('id', id).select().maybeSingle();
+    const updOut = await _comprasChapasUpdateCompat('lancamentos_custos', id, raw, '*');
+    const data = updOut?.data || null;
+    const error = updOut?.error || null;
     if (error) {
       console.error('[CCUSTOS-LANC-PUT] update error=%j details=%j hint=%j code=%j',
         error?.message || null, error?.details || null, error?.hint || null, error?.code || null);
-      throw error;
+      return res.status(500).json({
+        ok: false,
+        error: String(error?.message || error),
+        details: error?.details || null,
+        hint: error?.hint || null,
+        code: error?.code || null,
+      });
     }
     return res.json({ ok: true, data: data || {} });
   } catch (e) {
     console.error('[CCUSTOS-LANC-PUT] unhandled error=%s stack=%s id=%j body=%j',
       e?.message || e, e?.stack || '', req.params?.id || null, JSON.stringify(req.body || {}));
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.status(500).json({
+      ok: false,
+      error: String(e?.message || e),
+      details: e?.details || null,
+      hint: e?.hint || null,
+      code: e?.code || null,
+    });
   }
 });
 app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
@@ -35858,12 +35891,24 @@ app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, re
     if (error) {
       console.error('[CCUSTOS-LANC-DEL] delete error=%j details=%j hint=%j id=%j',
         error?.message || null, error?.details || null, error?.hint || null, id);
-      throw error;
+      return res.status(500).json({
+        ok: false,
+        error: String(error?.message || error),
+        details: error?.details || null,
+        hint: error?.hint || null,
+        code: error?.code || null,
+      });
     }
     return res.json({ ok: true, id, excluido: true });
   } catch (e) {
     console.error('[CCUSTOS-LANC-DEL] unhandled error=%s stack=%s id=%j', e?.message || e, e?.stack || '', req.params?.id || null);
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.status(500).json({
+      ok: false,
+      error: String(e?.message || e),
+      details: e?.details || null,
+      hint: e?.hint || null,
+      code: e?.code || null,
+    });
   }
 });
 
