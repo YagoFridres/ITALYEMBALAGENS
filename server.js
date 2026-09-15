@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260915434107';
-const SW_RUNTIME_VERSION = '20260915434107';
+const PATCH_RUNTIME_VERSION = '20260915434108';
+const SW_RUNTIME_VERSION = '20260915434108';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9579,24 +9579,45 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (!antesConcluida && agoraConcluida) {
         const hoje = new Date().toISOString().slice(0, 10);
         const maquina = String(data?.maquina || data?.maquina_agendada || (Array.isArray(data?.maq) ? data.maq[0] : data?.maq) || data?.passou_maquina_nome || '').trim() || null;
+        const ofNumero = String(data?.numero || data?.of_num || data?.of || '').trim() || null;
         console.log('[PASSAGENS-MAQUINA] [CALLER-1] PATCH /api/ofs/:id (mudanca status concluida): of_id=%j of_numero=%j maquina=%j',
-          id, String(data?.numero || data?.of_num || data?.of || '').trim() || null, maquina);
-        const upsertResult = await _upsertPassagemMaquinaRegistro({
-          of_id: id,
-          of_numero: String(data?.numero || data?.of_num || data?.of || '').trim() || null,
-          cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
-          produto: String(data?.produto || data?.descricao || data?.produto_desc || '').trim() || null,
-          referencia: String(data?.referencia || data?.ref || '').trim() || null,
-          imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
-          maquina,
-          operador: String(req.usuario?.nome || 'Sistema').trim(),
-          quantidade: Number(data?.qtd_produzida ?? data?.quantidade ?? data?.qtd ?? 0) || 0,
-          data_passagem: hoje,
-          hora_passagem: new Date().toISOString(),
-          status: 'Despachada',
-          empresa: String(data?.empresa || 'Italy Embalagens'),
-        }, { status: 'Despachada' });
-        try { console.debug('[PASSAGENS] patch OF concluiu upsert:', { id, maquina, mode: upsertResult?.mode || 'none' }); } catch (_) {}
+          id, ofNumero, maquina);
+        let upsertResult = null;
+        let caller1Ok = false;
+        let caller1Err = null;
+        try {
+          upsertResult = await _upsertPassagemMaquinaRegistro({
+            of_id: id,
+            of_numero: ofNumero,
+            cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
+            produto: String(data?.produto || data?.descricao || data?.produto_desc || '').trim() || null,
+            referencia: String(data?.referencia || data?.ref || '').trim() || null,
+            imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
+            maquina,
+            operador: String(req.usuario?.nome || 'Sistema').trim(),
+            quantidade: Number(data?.qtd_produzida ?? data?.quantidade ?? data?.qtd ?? 0) || 0,
+            data_passagem: hoje,
+            hora_passagem: new Date().toISOString(),
+            status: 'Despachada',
+            empresa: String(data?.empresa || 'Italy Embalagens'),
+          }, { status: 'Despachada' });
+          caller1Ok = !!(upsertResult && upsertResult.ok);
+          caller1Err = String(upsertResult?.lastError || upsertResult?.motivo || (upsertResult && upsertResult.ok === false ? 'ok_false_sem_motivo' : '') || '').trim() || null;
+          if (caller1Ok) {
+            try { console.log('[PASSOU-MAQUINA] [CALLER-1] upsert SUCESSO: of_id=%j of_numero=%j modo=%j id_row=%j', id, ofNumero, (upsertResult?.mode || '?'), (upsertResult?.id || null)); } catch (_) {}
+          } else {
+            try { console.error('[PASSOU-MAQUINA] [CALLER-1] upsert FALHOU: of_id=%j of_numero=%j modo=%j lastError=%j resultKeys=%j', id, ofNumero, (upsertResult?.mode || null), (caller1Err || 'null'), (upsertResult && typeof upsertResult === 'object') ? Object.keys(upsertResult).sort().join(',') : 'not_obj'); } catch (_) {}
+          }
+        } catch (eUpsert) {
+          caller1Err = String(eUpsert?.message || eUpsert);
+          try { console.warn('[PASSOU-MAQUINA] [CALLER-1] upsert EXCEPTION:', caller1Err); } catch (_) {}
+        }
+        try { console.debug('[PASSAGENS] patch OF concluiu upsert:', { id, maquina, mode: upsertResult?.mode || 'none', ok: caller1Ok, lastError: caller1Err }); } catch (_) {}
+        if (!caller1Ok) {
+          try { console.error('[PASSOU-MAQUINA] [CALLER-1] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(caller1Err || '?') + ' retornando HTTP 500 para nao enganar UI.'); } catch (_) {}
+          _clearOfsCaches();
+          return res.status(500).json({ ok: false, error: 'falha_ao_registrar_passagem_maquina: ' + String(caller1Err || 'falha_desconhecida'), of_atualizada: true, data, passagem_registrada: false, passagem_erro: caller1Err || null });
+        }
       }
     } catch (_) {}
     try {
@@ -9822,20 +9843,27 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         emp_id: String(of?.emp_id || of?.empId || '').trim() || null,
       }, { status: 'Passou pela máquina' });
       passagemUpsertOk = !!(upsertResult && upsertResult.ok);
+      passagemUpsertErr = String(upsertResult?.lastError || upsertResult?.motivo || (upsertResult && upsertResult.ok === false ? 'ok_false_sem_motivo' : '') || '').trim() || null;
       if (!passagemUpsertOk) {
-        passagemUpsertErr = String(upsertResult?.lastError || upsertResult?.motivo || 'falha_desconhecida');
-        try { console.error('[PASSOU-MAQUINA] upsert retornou ok=false:', JSON.stringify(upsertResult || {}).slice(0, 300)); } catch (_) {}
+        try { console.error('[PASSOU-MAQUINA] upsert retornou ok=false: of_id=%j of_numero=%j modo=%j lastError=%j resultKeys=%j',
+          id, ofNumero, (upsertResult?.mode || null), (passagemUpsertErr || 'null'),
+          (upsertResult && typeof upsertResult === 'object') ? Object.keys(upsertResult).sort().join(',') : 'not_obj'); } catch (_) {}
+      } else {
+        try { console.log('[PASSOU-MAQUINA] upsert SUCESSO: of_id=%j of_numero=%j modo=%j id_row=%j',
+          id, ofNumero, (upsertResult?.mode || '?'), (upsertResult?.id || null)); } catch (_) {}
       }
     } catch (eUpsert) {
       passagemUpsertErr = String(eUpsert?.message || eUpsert);
-      console.warn('[PASSOU-MAQUINA] upsert passagem falhou (OF atualizada mesmo assim):', passagemUpsertErr);
+      console.warn('[PASSOU-MAQUINA] upsert passagem EXCEPTION (OF atualizada mesmo assim):', passagemUpsertErr);
     }
     if (!passagemUpsertOk) {
-      try { console.error('[PASSOU-MAQUINA] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(passagemUpsertErr || '?')); } catch (_) {}
+      try { console.error('[PASSOU-MAQUINA] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(passagemUpsertErr || '?') + ' retornando HTTP 500 para nao enganar UI.'); } catch (_) {}
+      _clearOfsCaches();
+      return res.status(500).json({ ok: false, error: 'falha_ao_registrar_passagem_maquina: ' + String(passagemUpsertErr || 'falha_desconhecida'), of_atualizada: true, data: upd.data || updatePayload, passagem_registrada: false, passagem_erro: passagemUpsertErr || null });
     }
 
     _clearOfsCaches();
-    return res.json({ ok: true, data: upd.data || updatePayload, passagem_registrada: !!passagemUpsertOk, passagem_erro: passagemUpsertErr || null });
+    return res.json({ ok: true, data: upd.data || updatePayload, passagem_registrada: true, passagem_erro: null, passagem_modo: (upsertResult?.mode || null), passagem_row_id: (upsertResult?.id || null) });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -9971,24 +9999,45 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
         const maquinaNome = String(atual || maqBody || maquinaRef || of?.passou_maquina_nome || of?.maquina || (Array.isArray(of?.maq) ? of.maq[0] : of?.maq) || '').trim() || null;
         if (maquinaNome) {
           const ofRef = (upd && upd.data) ? upd.data : of;
+          const ofNumero = String(ofRef?.numero || ofRef?.of_num || ofRef?.of || '').trim() || null;
           console.log('[PASSAGENS-MAQUINA] [CALLER-3] POST /api/ofs/:id/concluir (concluir modal acao): of_id=%j of_numero=%j maquina=%j',
-            id, String(ofRef?.numero || ofRef?.of_num || ofRef?.of || '').trim() || null, maquinaNome);
-          await _upsertPassagemMaquinaRegistro({
-            of_id: id,
-            of_numero: String(ofRef?.numero || ofRef?.of_num || ofRef?.of || '').trim() || null,
-            cliente: String(ofRef?.cliente || ofRef?.cliente_nome || '').trim() || null,
-            produto: String(ofRef?.produto || ofRef?.descricao || ofRef?.produto_desc || '').trim() || null,
-            referencia: String(ofRef?.referencia || ofRef?.ref || '').trim() || null,
-            imagem_url: ofRef?.imagem_url || ofRef?.imagem || ofRef?.img || null,
-            maquina: maquinaNome,
-            operador: String(req.usuario?.nome || usuario || 'Sistema').trim(),
-            quantidade: Number(qtdReal ?? ofRef?.qtd_produzida ?? ofRef?.quantidade ?? ofRef?.qtd ?? 0) || 0,
-            data_passagem: hoje,
-            hora_passagem: nowIso,
-            status: 'Despachada',
-            empresa: String(ofRef?.empresa || 'Italy Embalagens'),
-          }, { status: 'Despachada' });
-          try { console.debug('[PASSAGENS] baixa-of concluida upsert:', { id, maquina: maquinaNome }); } catch (_) {}
+            id, ofNumero, maquinaNome);
+          let upsertResult = null;
+          let caller3Ok = false;
+          let caller3Err = null;
+          try {
+            upsertResult = await _upsertPassagemMaquinaRegistro({
+              of_id: id,
+              of_numero: ofNumero,
+              cliente: String(ofRef?.cliente || ofRef?.cliente_nome || '').trim() || null,
+              produto: String(ofRef?.produto || ofRef?.descricao || ofRef?.produto_desc || '').trim() || null,
+              referencia: String(ofRef?.referencia || ofRef?.ref || '').trim() || null,
+              imagem_url: ofRef?.imagem_url || ofRef?.imagem || ofRef?.img || null,
+              maquina: maquinaNome,
+              operador: String(req.usuario?.nome || usuario || 'Sistema').trim(),
+              quantidade: Number(qtdReal ?? ofRef?.qtd_produzida ?? ofRef?.quantidade ?? ofRef?.qtd ?? 0) || 0,
+              data_passagem: hoje,
+              hora_passagem: nowIso,
+              status: 'Despachada',
+              empresa: String(ofRef?.empresa || 'Italy Embalagens'),
+            }, { status: 'Despachada' });
+            caller3Ok = !!(upsertResult && upsertResult.ok);
+            caller3Err = String(upsertResult?.lastError || upsertResult?.motivo || (upsertResult && upsertResult.ok === false ? 'ok_false_sem_motivo' : '') || '').trim() || null;
+            if (caller3Ok) {
+              try { console.log('[PASSOU-MAQUINA] [CALLER-3] upsert SUCESSO: of_id=%j of_numero=%j modo=%j id_row=%j', id, ofNumero, (upsertResult?.mode || '?'), (upsertResult?.id || null)); } catch (_) {}
+            } else {
+              try { console.error('[PASSOU-MAQUINA] [CALLER-3] upsert FALHOU: of_id=%j of_numero=%j modo=%j lastError=%j resultKeys=%j', id, ofNumero, (upsertResult?.mode || null), (caller3Err || 'null'), (upsertResult && typeof upsertResult === 'object') ? Object.keys(upsertResult).sort().join(',') : 'not_obj'); } catch (_) {}
+            }
+          } catch (eUpsert) {
+            caller3Err = String(eUpsert?.message || eUpsert);
+            try { console.warn('[PASSOU-MAQUINA] [CALLER-3] upsert EXCEPTION:', caller3Err); } catch (_) {}
+          }
+          try { console.debug('[PASSAGENS] baixa-of concluida upsert:', { id, maquina: maquinaNome, mode: upsertResult?.mode || 'none', ok: caller3Ok, lastError: caller3Err }); } catch (_) {}
+          if (!caller3Ok) {
+            try { console.error('[PASSOU-MAQUINA] [CALLER-3] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(caller3Err || '?') + ' retornando HTTP 500 para nao enganar UI.'); } catch (_) {}
+            _clearOfsCaches();
+            return res.status(500).json({ ok: false, error: 'falha_ao_registrar_passagem_maquina: ' + String(caller3Err || 'falha_desconhecida'), of_atualizada: true, data: _sanitizeOfImagesForResponse(upd?.data || { id }), passagem_registrada: false, passagem_erro: caller3Err || null });
+          }
         }
       } catch (_) {}
     }
@@ -10491,24 +10540,62 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         (Array.isArray(of.maq) ? of.maq[0] : of.maq) ||
         ''
       ).trim() || 'Sem máquina';
+      const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
       console.log('[PASSAGENS-MAQUINA] [CALLER-4] POST /api/ofs/:id/concluir (concluir operador endpoint L10052): of_id=%j of_numero=%j maquina=%j',
-        sid, String(of?.numero || of?.of_num || of?.of || '').trim() || null, maquinaNome);
-      const upsertResult = await _upsertPassagemMaquinaRegistro({
-        of_id: sid,
-        of_numero: String(of?.numero || of?.of_num || of?.of || '').trim() || null,
-        cliente: String(of?.cliente || '').trim() || null,
-        produto: String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null,
-        referencia: String(of?.referencia || of?.ref || '').trim() || null,
-        imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
-        maquina: maquinaNome,
-        operador: String(req.usuario?.nome || 'Sistema').trim(),
-        quantidade: Number(qtdFinal || 0) || 0,
-        data_passagem: hoje,
-        hora_passagem: nowIso,
-        status: 'Despachada',
-        empresa: String(of?.empresa || 'Italy Embalagens'),
-      }, { status: 'Despachada' });
-      try { console.debug('[PASSAGENS] concluir OF upsert:', { ofId: sid, maquinaNome, mode: upsertResult?.mode || 'none' }); } catch (_) {}
+        sid, ofNumero, maquinaNome);
+      let upsertResult = null;
+      let caller4Ok = false;
+      let caller4Err = null;
+      try {
+        upsertResult = await _upsertPassagemMaquinaRegistro({
+          of_id: sid,
+          of_numero: ofNumero,
+          cliente: String(of?.cliente || '').trim() || null,
+          produto: String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null,
+          referencia: String(of?.referencia || of?.ref || '').trim() || null,
+          imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
+          maquina: maquinaNome,
+          operador: String(req.usuario?.nome || 'Sistema').trim(),
+          quantidade: Number(qtdFinal || 0) || 0,
+          data_passagem: hoje,
+          hora_passagem: nowIso,
+          status: 'Despachada',
+          empresa: String(of?.empresa || 'Italy Embalagens'),
+        }, { status: 'Despachada' });
+        caller4Ok = !!(upsertResult && upsertResult.ok);
+        caller4Err = String(upsertResult?.lastError || upsertResult?.motivo || (upsertResult && upsertResult.ok === false ? 'ok_false_sem_motivo' : '') || '').trim() || null;
+        if (caller4Ok) {
+          try { console.log('[PASSOU-MAQUINA] [CALLER-4] upsert SUCESSO: of_id=%j of_numero=%j modo=%j id_row=%j', sid, ofNumero, (upsertResult?.mode || '?'), (upsertResult?.id || null)); } catch (_) {}
+        } else {
+          try { console.error('[PASSOU-MAQUINA] [CALLER-4] upsert FALHOU: of_id=%j of_numero=%j modo=%j lastError=%j resultKeys=%j', sid, ofNumero, (upsertResult?.mode || null), (caller4Err || 'null'), (upsertResult && typeof upsertResult === 'object') ? Object.keys(upsertResult).sort().join(',') : 'not_obj'); } catch (_) {}
+        }
+      } catch (eUpsert) {
+        caller4Err = String(eUpsert?.message || eUpsert);
+        try { console.warn('[PASSOU-MAQUINA] [CALLER-4] upsert EXCEPTION:', caller4Err); } catch (_) {}
+      }
+      try { console.debug('[PASSAGENS] concluir OF upsert:', { ofId: sid, maquinaNome, mode: upsertResult?.mode || 'none', ok: caller4Ok, lastError: caller4Err }); } catch (_) {}
+      if (!caller4Ok) {
+        try { console.error('[PASSOU-MAQUINA] [CALLER-4] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + sid + ' motivo=' + String(caller4Err || '?') + ' retornando HTTP 500 para nao enganar UI.'); } catch (_) {}
+        _clearOfsCaches();
+        const dataOutFallback = upd?.data ? { ...upd.data, ...updateSeguro } : { id: sid, ...updateSeguro };
+        return res.status(500).json({
+          ok: false,
+          error: 'falha_ao_registrar_passagem_maquina: ' + String(caller4Err || 'falha_desconhecida'),
+          of_atualizada: true,
+          data: { ..._sanitizeOfImagesForResponse(dataOutFallback), maquina_producao: maquinaProducaoOut || null },
+          passagem_registrada: false,
+          passagem_erro: caller4Err || null,
+          concluida: true,
+          proxima: null,
+          status: 'Concluído',
+          excedente,
+          novo_valor_total: novoValor,
+          ignored_columns: colunasDescartadas,
+          ignored_columns_perda: Array.isArray(updateData.__ignored_columns_perda) ? updateData.__ignored_columns_perda : [],
+          caixas_perdidas_erro: updateData.__caixas_perdidas_erro || null,
+          mensagem: `OF concluída mas passagem nao gravada.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
+        });
+      }
     } catch (_) {}
 
     try {

@@ -7064,21 +7064,39 @@ window._compraPapelaoCompraSortValue = function(compra) {
 window._compraPapelaoLoadCompras = async function() {
   var ids = window._compraPapelaoEmpresaIdsConsulta();
   var filtro = String(window._compraPapelaoStateRef().filtroCard || 'all');
+  console.log('[COMPRA-PAPELAO] [LOAD-COMPRAS-ENTRY] idsEmpresa=%j filtro=%j idsLen=%s',
+    JSON.stringify(ids), filtro, (ids || []).length);
   var rows = await Promise.all(ids.map(async function(empId) {
     if (filtro.indexOf('folder:') === 0) {
       var parts = filtro.split(':');
       if (String(parts[1] || '') !== String(empId || '')) return [];
     }
-    var data = await window._compraPapelaoApi(window._compraPapelaoBuildComprasUrl(empId), { method: 'GET' });
-    return (Array.isArray(data) ? data : []).map(function(row) {
-      return Object.assign({}, row, { _emp_id_consulta: empId });
-    });
+    var url = window._compraPapelaoBuildComprasUrl(empId);
+    try {
+      console.log('[COMPRA-PAPELAO] [LOAD-COMPRAS-FETCH] empId=%j url=%s', empId, url);
+      var data = await window._compraPapelaoApi(url, { method: 'GET' });
+      var dataLen = Array.isArray(data) ? data.length : -1;
+      console.log('[COMPRA-PAPELAO] [LOAD-COMPRAS-FETCH-OK] empId=%j dataIsArray=%s dataLen=%s firstRow=%j',
+        empId, Array.isArray(data), dataLen,
+        (dataLen > 0 && Array.isArray(data)) ? JSON.stringify(data[0]).slice(0, 300) : 'vazio');
+      return (Array.isArray(data) ? data : []).map(function(row) {
+        return Object.assign({}, row, { _emp_id_consulta: empId });
+      });
+    } catch (fetchErr) {
+      console.error('[COMPRA-PAPELAO] [LOAD-COMPRAS-FETCH-ERRO] empId=%j err=%s', empId, String(fetchErr && fetchErr.message || fetchErr));
+      throw fetchErr;
+    }
   }));
-  window._compraPapelaoStateRef().compras = rows.flat().sort(function(a, b) {
+  var flatRows = rows.flat();
+  window._compraPapelaoStateRef().compras = flatRows.sort(function(a, b) {
     var diff = window._compraPapelaoCompraSortValue(b) - window._compraPapelaoCompraSortValue(a);
     if (diff) return diff;
     return String(b && b.numero_compra || '').localeCompare(String(a && a.numero_compra || ''), 'pt-BR', { numeric: true });
   });
+  console.log('[COMPRA-PAPELAO] [LOAD-COMPRAS-FIM] flatRowsLen=%s stateLen=%s numeros=%j',
+    flatRows.length,
+    (Array.isArray(window._compraPapelaoStateRef().compras) ? window._compraPapelaoStateRef().compras.length : -1),
+    JSON.stringify(flatRows.slice(0, 10).map(function(r) { return String(r && r.numero_compra || '?'); })));
   return window._compraPapelaoStateRef().compras;
 };
 window._compraPapelaoEnsureStyles = function() {
@@ -7693,6 +7711,17 @@ window._compraPapelaoRenderPage = async function() {
     if (window.__compraPapelaoOrigRenderCompras) return window.__compraPapelaoOrigRenderCompras.apply(this, arguments);
     return null;
   }
+  try {
+    var empAtualRaw = '';
+    var empAtualResolved = '';
+    var empIds = [];
+    try { empAtualRaw = window._compraPapelaoEmpresaAtual(); } catch (_) {}
+    try { empAtualResolved = window._compraPapelaoEmpresaAtualUuid(); } catch (_) {}
+    try { empIds = window._compraPapelaoEmpresaIdsConsulta() || []; } catch (_) {}
+    console.log('[COMPRA-PAPELAO] [RENDER-ENTRY] renderPageCentralCustos chamado. isActive=%s empAtual=%j empUuid=%j idsConsulta=%j idsLen=%s hostExiste=%s',
+      window._compraPapelaoIsActive(), empAtualRaw, empAtualResolved, JSON.stringify(empIds), empIds.length,
+      !!document.getElementById('cmp-body'));
+  } catch (_) {}
   try {
     console.log('[COMPRA-PAPELAO] render iniciado, empresa:', window._compraPapelaoEmpresaAtual() || 'todas', 'uuid:', window._compraPapelaoEmpresaAtualUuid() || 'multi');
   } catch (_) {}
@@ -9318,7 +9347,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     var empId = cEmpId();
     if (!empId) return [];
     var data = await cApi('/api/compras-chapas/pastas?emp_id=' + encodeURIComponent(empId));
-    cState().pastas = Array.isArray(data) ? data : [];
+    var unwrapped = data && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+    console.log('[COMPRA-PAPELAO-V2] [LOAD-PASTAS] empId=%s rawIsArr=%s dataHasData=%s unwrappedLen=%s',
+      String(empId || '').slice(0,8), Array.isArray(data), !!(data && Array.isArray(data.data)), unwrapped.length);
+    cState().pastas = unwrapped;
     return cState().pastas;
   }
   async function cLoadCompras() {
@@ -9330,7 +9362,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     if (state.pastaFiltro === '__sem_pasta') qs.push('sem_pasta=true');
     else if (state.pastaFiltro && state.pastaFiltro.indexOf('id:') === 0) qs.push('pasta_id=' + encodeURIComponent(state.pastaFiltro.slice(3)));
     var data = await cApi('/api/compras-chapas?' + qs.join('&'));
-    state.compras = Array.isArray(data) ? data : [];
+    var unwrapped = data && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+    console.log('[COMPRA-PAPELAO-V2] [LOAD-COMPRAS] empId=%s rawIsArr=%s dataHasData=%s unwrappedLen=%s numeros=%j',
+      String(empId || '').slice(0,8), Array.isArray(data), !!(data && Array.isArray(data.data)), unwrapped.length,
+      JSON.stringify(unwrapped.slice(0, 10).map(function(r) { return String(r && r.numero_compra || '?'); })));
+    state.compras = unwrapped;
     state.lastEmpId = empId;
     return state.compras;
   }
