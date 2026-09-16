@@ -673,6 +673,13 @@ try {
     try { host.style.display = 'block'; } catch (_) {}
     try { document.getElementById('patch-page-title').textContent = '🖨 Central de Relatórios'; } catch (_) {}
     try { window._PAGE_ATUAL = 'relatorios'; } catch (_) {}
+    try {
+      var _body = document.getElementById('patch-page-body');
+      if (_body) {
+        while (_body.firstChild) { _body.removeChild(_body.firstChild); }
+        _body.innerHTML = '';
+      }
+    } catch (_) {}
     return document.getElementById('patch-page-body');
   }
 
@@ -42173,6 +42180,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { host.style.display = 'block'; } catch (_) {}
     try { document.getElementById('patch-page-title').textContent = title || ''; } catch (_) {}
     try { window._PAGE_ATUAL = pageKey; } catch (_) {}
+    try {
+      var body = document.getElementById('patch-page-body');
+      if (body) {
+        while (body.firstChild) { body.removeChild(body.firstChild); }
+        body.innerHTML = '';
+      }
+    } catch (_) {}
     return document.getElementById('patch-page-body');
   }
 
@@ -62076,6 +62090,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (typeof origGo === 'function') {
       window.go = function wrappedGo(){
         try { fecharTodosModaisAbertos(); } catch (_){}
+        try {
+          var idArg = String(arguments && arguments[0] || '').trim().toLowerCase();
+          var pagDinamicas = ['centralcustos','central-custos','custos','ccustos','relatorios','operadores','funcionarios','colaboradores','compras-papelao','compra-papelao','compraspapelao','wireframe','estoque','ofmaquina','ofs-maquina','of-por-maquina','passagens','historico-passagens'];
+          var ehDinamica = pagDinamicas.indexOf(idArg) >= 0;
+          if (!ehDinamica) {
+            try {
+              var ph = document.getElementById('patch-page-host');
+              if (ph) ph.style.display = 'none';
+              var pb = document.getElementById('patch-page-body');
+              if (pb) { while (pb.firstChild) pb.removeChild(pb.firstChild); pb.innerHTML = ''; }
+            } catch (_lc){}
+          }
+        } catch (_pre){}
         try { return origGo.apply(this, arguments); } catch (e1){ try { return origGo(arguments[0]); } catch(e2){ throw e1||e2;} }
       };
     }
