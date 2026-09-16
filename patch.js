@@ -26537,7 +26537,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           try {
             var gridErr = shell && shell.amostrasSemanaGrid;
             if (gridErr) {
-              var _btnRetry = '<br><button type="button" onclick="try{var sh=document.getElementById(\'ofmaq-final-shell\');if(sh&&sh._amostrasRendering)sh._amostrasRendering=false;var s=typeof window.__ofmaqFinalShell===\'function\'?window.__ofmaqFinalShell():null;if(s){renderAmostrasSemana(s);}else{document.querySelectorAll(\'[data-ofmaq-amostras-refresh]\').forEach(function(b){try{b.click();}catch(_){});}}catch(_){}" style="margin-top:12px;padding:10px 18px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.15);color:#fecaca;font-weight:800;cursor:pointer;">🔄 Tentar Novamente</button>';
+              var _btnRetry = '<br><button type="button" onclick="try{var sh=document.getElementById(\'ofmaq-final-root\');if(sh&&sh._amostrasRendering)sh._amostrasRendering=false;var s=typeof window.__ofmaqFinalShell===\'function\'?window.__ofmaqFinalShell():null;if(s){renderAmostrasSemana(s);}else{document.querySelectorAll(\'[data-ofmaq-amostras-refresh]\').forEach(function(b){try{b.click();}catch(_){});}}catch(_){}" style="margin-top:12px;padding:10px 18px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.15);color:#fecaca;font-weight:800;cursor:pointer;">🔄 Tentar Novamente</button>';
               gridErr.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + _btnRetry + '</div>';
             }
           } catch (_f) {}
@@ -26591,6 +26591,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       renderAlert(shell);
       renderSummary(shell);
       renderRedistribuicao(shell);
+      try { if (typeof renderAmostrasSemana === 'function') renderAmostrasSemana(shell); else if (typeof window.renderAmostrasSemana === 'function') window.renderAmostrasSemana(shell); } catch (_) {}
     }
 
     function rowHtml(item) {
@@ -27395,6 +27396,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     };
 
     function bindShell(shell) {
+      if (!shell) return;
+      try {
+        if (shell && shell.root && typeof shell.root.setAttribute === 'function') {
+          shell.root.setAttribute('data-ofmaq-final-shell', '1');
+        }
+        if (shell && shell.root && !shell.root.id) shell.root.id = 'ofmaq-final-root';
+        window.__ofmaqFinalShell = function() { return shell; };
+        window.__shellRef = shell;
+      } catch (_) {}
       if (!shell || shell.root.getAttribute('data-ofmaq-final-bound') === '1') return;
       shell.root.setAttribute('data-ofmaq-final-bound', '1');
       shell.root.addEventListener('click', function(ev) {
@@ -27690,6 +27700,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         await loadCanonicalRows(!!options.forceReload);
         updateToolbar(shell);
         renderRows(shell);
+        try { if (typeof renderAmostrasSemana === 'function') renderAmostrasSemana(shell); else if (typeof window.renderAmostrasSemana === 'function') window.renderAmostrasSemana(shell); } catch (_) {}
       } catch (err) {
         var shellErr = ensureShell();
         if (!renderOfmaqEmergency(shellErr, err) && shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="15" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
