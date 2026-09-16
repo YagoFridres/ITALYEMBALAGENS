@@ -63205,6 +63205,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var v = state.visao;
       if (!v || !v.cards) return '<div class="ccustos-empty">Carregando Visão Geral...</div>';
       var c = v.cards;
+      var desp = Number(c.despesas_total ?? c.custo_total ?? 0) || 0;
+      var ganh = Number(c.ganhos_total ?? c.receita_total ?? 0) || 0;
+      var lucr = Number(c.lucro_total ?? 0) || 0;
+      var lucroPos = lucr >= 0;
+      var perdQtd = Number(c.perdas_qtd ?? 0) || 0;
+      var perdVl = Number(c.perdas_valor ?? c.perdas ?? 0) || 0;
+      var recOf = Number(c.receita_ofs ?? 0) || 0;
+      var pap = Number(c.custo_papelao ?? 0) || 0;
+      var cofs = Number(c.custo_ofs ?? 0) || 0;
       var html = ''
         + '<div class="ccustos-row" style="margin-bottom:12px">'
         + '  <div><div class="ccustos-panel-title" style="margin:0">📊 Visão Geral · ' + esc(nomeComp(state.competencia)) + '</div><div class="ccustos-panel-sub" style="margin:4px 0 0">Cards consolidados + gráfico de categorias</div></div>'
@@ -63212,11 +63221,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <button class="ccustos-btn" id="cc-btn-imprimir-visao">🖨 Imprimir</button>'
         + '</div>'
         + '<div class="ccustos-cards">'
-        + '  <div class="ccustos-card is-blue"><div class="ccustos-card-label">Custo Total Mês</div><div class="ccustos-card-val">' + fmt1(c.custo_total||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_total, ant:c.custo_total_anterior}, false) + '<span style="color:var(--text2)">vs mês anterior</span></div></div>'
-        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Despesas da Fábrica</div><div class="ccustos-card-val">' + fmt1(c.despesas_fabrica||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.despesas_fabrica, ant:c.despesas_fabrica_anterior}, false) + '<span style="color:var(--text2)">Manuais + Automáticas</span></div></div>'
-        + '  <div class="ccustos-card is-yellow"><div class="ccustos-card-label">Custo Papelão</div><div class="ccustos-card-val">' + fmt1(c.custo_papelao||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_papelao, ant:c.custo_papelao_anterior}, false) + '<span class="ccustos-badge is-auto">🔵 Automático</span></div></div>'
-        + '  <div class="ccustos-card"><div class="ccustos-card-label">Custo das OFs</div><div class="ccustos-card-val">' + fmt1(c.custo_ofs||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_ofs, ant:c.custo_ofs_anterior}, false) + '<span class="ccustos-badge is-auto">🔵 OFs Concluídas</span></div></div>'
-        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Perdas</div><div class="ccustos-card-val">' + fmt1(c.perdas||0) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.perdas, ant:c.perdas_anterior}, false) + '<span style="color:var(--text2)">Caixas perdidas estimadas</span></div></div>'
+        + '  <div class="ccustos-card is-blue"><div class="ccustos-card-label">Despesas</div><div class="ccustos-card-val">' + fmt1(desp) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.despesas_total, ant:c.despesas_total_anterior}, false) + '<span style="color:var(--text2)">vs mês anterior</span></div></div>'
+        + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Ganhos</div><div class="ccustos-card-val">' + fmt1(ganh) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.ganhos_total, ant:c.ganhos_total_anterior}, true) + '<span style="color:var(--text2)">Vendas + receitas manuais</span></div></div>'
+        + '  <div class="ccustos-card ' + (lucroPos ? 'is-green' : 'is-red') + '"><div class="ccustos-card-label">' + (lucroPos ? 'Lucro' : 'Prejuízo') + '</div><div class="ccustos-card-val">' + fmt1(Math.abs(lucr)) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.lucro_total, ant:c.lucro_total_anterior}, true) + '<span style="color:var(--text2)">Ganhos − Despesas</span></div></div>'
+        + '  <div class="ccustos-card is-yellow"><div class="ccustos-card-label">Custo Papelão</div><div class="ccustos-card-val">' + fmt1(pap) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_papelao, ant:c.custo_papelao_anterior}, false) + '<span class="ccustos-badge is-auto">🔵 Compras reais</span></div></div>'
+        + '  <div class="ccustos-card"><div class="ccustos-card-label">Custo das OFs</div><div class="ccustos-card-val">' + fmt1(cofs) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.custo_ofs, ant:c.custo_ofs_anterior}, false) + '<span class="ccustos-badge is-auto">🔵 OFs Concluídas</span></div></div>'
+        + '  <div class="ccustos-card is-green"><div class="ccustos-card-label">Receita OFs</div><div class="ccustos-card-val">' + fmt1(recOf) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.receita_ofs, ant:c.receita_ofs_anterior}, true) + '<span style="color:var(--text2)">Venda das OFs do mês</span></div></div>'
+        + '  <div class="ccustos-card is-red"><div class="ccustos-card-label">Perdas</div><div class="ccustos-card-val">' + fmt1(perdVl) + '</div><div class="ccustos-card-sub">' + varHtml({atual:c.perdas_valor, ant:c.perdas_valor_anterior}, false) + '<span style="color:var(--text2)">' + (perdQtd ? perdQtd.toLocaleString('pt-BR') + ' caixas perdidas' : 'Sem perdas lançadas') + '</span></div></div>'
         + '</div>';
       var compAuto = c.lanc_automaticos||0, compMan = c.lanc_manuais||0;
       html += ''

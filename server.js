@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260916434137';
-const SW_RUNTIME_VERSION = '20260916434137';
+const PATCH_RUNTIME_VERSION = '20260916434138';
+const SW_RUNTIME_VERSION = '20260916434138';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -35965,7 +35965,7 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResul
 }
 async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
   const compAlvo = String(competencia || '').trim();
-  const resumo = { total: 0, por_categoria: {}, por_centro: {}, automatico: 0, manual: 0, rows: [] };
+  const resumo = { total: 0, despesas: 0, receitas: 0, por_categoria: {}, por_centro: {}, automatico: 0, manual: 0, rows: [] };
   try {
     _CCUSTOS_CATEGORIAS_ORDEM.forEach(function(c) { resumo.por_categoria[c] = 0; });
     if (!supabase) { console.log('[CCUSTOS-VISAO-LANC] comp=%s FALHA=sem-supabase', compAlvo); return resumo; }
@@ -35987,14 +35987,18 @@ async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
       if (v === 0) return;
       const cat = String(row?.categoria || 'OUTROS').toUpperCase();
       const centro = String(row?.centro_custo_id || '').trim();
-      const sinal = String(row?.natureza || 'DESPESA') === 'RECEITA' ? -1 : 1;
+      const nat = String(row?.natureza || 'DESPESA');
+      const isReceita = nat === 'RECEITA';
+      const sinal = isReceita ? -1 : 1;
       const valor = Math.round(v * sinal * 100) / 100;
+      const vAbs = Math.abs(v);
       resumo.total += valor;
       resumo.manual += valor;
-      if (_CCUSTOS_CATEGORIAS_ORDEM.includes(cat)) resumo.por_categoria[cat] += valor;
-      else resumo.por_categoria['OUTROS'] += valor;
+      if (isReceita) resumo.receitas += vAbs; else resumo.despesas += vAbs;
+      if (_CCUSTOS_CATEGORIAS_ORDEM.includes(cat)) resumo.por_categoria[cat] += (isReceita ? 0 : vAbs);
+      else resumo.por_categoria['OUTROS'] += (isReceita ? 0 : vAbs);
       if (centro) {
-        resumo.por_centro[centro] = (resumo.por_centro[centro] || 0) + valor;
+        resumo.por_centro[centro] = (resumo.por_centro[centro] || 0) + (isReceita ? 0 : vAbs);
       }
       rowsConsideradas++;
       resumo.rows.push(row);
@@ -36007,7 +36011,9 @@ async function _ccustosCalcularLancamentosCompetencia(competencia, empIdAll) {
     });
     resumo.total = Math.round(resumo.total * 100) / 100;
     resumo.manual = Math.round(resumo.manual * 100) / 100;
-    console.log('[CCUSTOS-VISAO-LANC] comp=%s emp=%s rowsTotal=%d rowsConsideradas=%d total=%.2f total_manual=%.2f centrosQtd=%d categorias=%j', compAlvo, empIdAll, data.length, rowsConsideradas, resumo.total, resumo.manual, Object.keys(resumo.por_centro || {}).length, resumo.por_categoria || {});
+    resumo.despesas = Math.round(resumo.despesas * 100) / 100;
+    resumo.receitas = Math.round(resumo.receitas * 100) / 100;
+    console.log('[CCUSTOS-VISAO-LANC] comp=%s emp=%s rowsTotal=%d rowsConsideradas=%d total=%.2f despesas=%.2f receitas=%.2f manual=%.2f centrosQtd=%d categorias=%j', compAlvo, empIdAll, data.length, rowsConsideradas, resumo.total, resumo.despesas, resumo.receitas, resumo.manual, Object.keys(resumo.por_centro || {}).length, resumo.por_categoria || {});
     return resumo;
   } catch (e) {
     console.error('[CCUSTOS-VISAO-LANC] comp=%s ERRO=%s stack=%s', compAlvo, e?.message || e, e?.stack || '');
@@ -36022,13 +36028,18 @@ async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
       _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofs),
       _ccustosCalcularLancamentosCompetencia(competencia, empIdAll),
     ]);
-    const despesasFabrica = Math.round((lancs.total + perdas.valor) * 100) / 100;
+    const lancsDespesas = Number(lancs?.despesas || 0);
+    const lancsReceitas = Number(lancs?.receitas || 0);
+    const perdasValor = Number(perdas?.valor || 0);
+    const despesasFabrica = Math.round((lancsDespesas + perdasValor) * 100) / 100;
     const custoTotalMes = Math.round((ofs.total_custo + papelao + despesasFabrica) * 100) / 100;
-    const categorias = JSON.parse(JSON.stringify(lancs.por_categoria));
+    const ganhosTotal = Math.round((ofs.total_receita + lancsReceitas) * 100) / 100;
+    const lucroTotal = Math.round((ganhosTotal - custoTotalMes) * 100) / 100;
+    const categorias = JSON.parse(JSON.stringify(lancs.por_categoria || {}));
     if (!categorias.PAPELAO) categorias.PAPELAO = 0;
     categorias.PAPELAO = Math.round((categorias.PAPELAO + papelao) * 100) / 100;
     if (!categorias.OUTROS) categorias.OUTROS = 0;
-    categorias.OUTROS = Math.round((categorias.OUTROS + perdas.valor) * 100) / 100;
+    categorias.OUTROS = Math.round((categorias.OUTROS + perdasValor) * 100) / 100;
     const grafico = _CCUSTOS_CATEGORIAS_ORDEM.map(function(key) {
       return { key: key, label: _CCUSTOS_CATEGORIAS_LABEL[key] || key, valor: Math.round(Number(categorias[key] || 0) * 100) / 100 };
     });
@@ -36038,18 +36049,26 @@ async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
       custo_papelao: papelao,
       custo_ofs: Math.round(ofs.total_custo * 100) / 100,
       perdas: perdas.qtd,
-      perdas_valor: perdas.valor,
+      perdas_valor: perdasValor,
+      perdas_qtd: perdas.qtd,
       receita_ofs: Math.round(ofs.total_receita * 100) / 100,
+      receita_lancamentos: lancsReceitas,
+      receita_total: ganhosTotal,
+      ganhos_total: ganhosTotal,
+      despesas_total: custoTotalMes,
+      lucro_total: lucroTotal,
       ofs_count: (Array.isArray(ofs.ofs) ? ofs.ofs.length : 0),
     };
-    console.log('[CCUSTOS-VISAO] comp=%s cards=%j papelao=%.2f perdasVal=%.2f perdasQtd=%d', competencia, cards_5, papelao, perdas?.valor, perdas?.qtd);
+    console.log('[CCUSTOS-VISAO] comp=%s emp=%s cards=%j papelao=%.2f perdasVal=%.2f perdasQtd=%d lancsDesp=%.2f lancsRec=%.2f ganhos=%.2f lucro=%.2f',
+      competencia, empIdAll, cards_5, papelao, perdasValor, perdas?.qtd || 0, lancsDespesas, lancsReceitas, ganhosTotal, lucroTotal);
     return {
       competencia,
       cards_5,
       grafico_categorias_10: grafico,
       resumo_auto_vs_manual: {
-        custos_automaticos: Math.round((ofs.total_custo + papelao + perdas.valor) * 100) / 100,
-        custos_manuais: Math.round(lancs.manual * 100) / 100,
+        custos_automaticos: Math.round((ofs.total_custo + papelao + perdasValor) * 100) / 100,
+        custos_manuais: Math.round(lancsDespesas * 100) / 100,
+        receitas_manuais: lancsReceitas,
       },
       por_centro: lancs.por_centro,
       __lancs_rows: lancs.rows,
@@ -36510,7 +36529,7 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
       compAnt ? _ccustosCalcularVisaoGeralCompetencia(compAnt, empId) : null,
     ]);
     const variacoes = {};
-    ['custo_total_mes','despesas_fabrica','custo_papelao','custo_ofs','receita_ofs'].forEach(function(k) {
+    ['custo_total_mes','despesas_fabrica','custo_papelao','custo_ofs','receita_ofs','perdas_valor','despesas_total','ganhos_total','lucro_total','receita_total'].forEach(function(k) {
       const a = Number(atual?.cards_5?.[k] || 0);
       const b = anterior ? Number(anterior?.cards_5?.[k] || 0) : 0;
       variacoes[k] = { mes_anterior_valor: b, variacao_pct: _ccustosVariacaoPct(a, b) };
@@ -36550,12 +36569,28 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
       custo_papelao_anterior: Number(b5.custo_papelao || 0),
       custo_ofs: Number(a5.custo_ofs || 0),
       custo_ofs_anterior: Number(b5.custo_ofs || 0),
-      perdas: Number(a5.perdas || 0),
-      perdas_anterior: Number(b5.perdas || 0),
+      perdas: Number(a5.perdas_valor || 0),
+      perdas_qtd: Number(a5.perdas_qtd || a5.perdas || 0),
+      perdas_valor: Number(a5.perdas_valor || 0),
+      perdas_anterior: Number(b5.perdas_valor || 0),
+      perdas_qtd_anterior: Number(b5.perdas_qtd || b5.perdas || 0),
+      perdas_valor_anterior: Number(b5.perdas_valor || 0),
       receita_ofs: Number(a5.receita_ofs || 0),
       receita_ofs_anterior: Number(b5.receita_ofs || 0),
+      receita_lancamentos: Number(a5.receita_lancamentos || 0),
+      receita_lancamentos_anterior: Number(b5.receita_lancamentos || 0),
+      receita_total: Number(a5.receita_total || 0),
+      receita_total_anterior: Number(b5.receita_total || 0),
+      ganhos_total: Number(a5.ganhos_total || 0),
+      ganhos_total_anterior: Number(b5.ganhos_total || 0),
+      despesas_total: Number(a5.despesas_total || 0),
+      despesas_total_anterior: Number(b5.despesas_total || 0),
+      lucro_total: Number(a5.lucro_total || 0),
+      lucro_total_anterior: Number(b5.lucro_total || 0),
       lanc_automaticos: Number(atual.resumo_auto_vs_manual?.custos_automaticos || 0),
       lanc_manuais: Number(atual.resumo_auto_vs_manual?.custos_manuais || 0),
+      receitas_manuais: Number(atual.resumo_auto_vs_manual?.receitas_manuais || 0),
+      ofs_count: Number(a5.ofs_count || 0),
     };
     const graficoFrontend = Array.isArray(atual.grafico_categorias_10)
       ? atual.grafico_categorias_10.map(function (g) {
