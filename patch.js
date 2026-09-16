@@ -25222,7 +25222,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var tbody = shell && shell.tbody;
       if (!tbody) return;
       if (!state.rowsData.length) {
-        tbody.innerHTML = '<tr class="ofmaq-empty-row-zero"><td colspan="11">Nenhuma OF encontrada.</td></tr>';
+        tbody.innerHTML = '<tr class="ofmaq-empty-row-zero"><td colspan="15">Nenhuma OF encontrada.</td></tr>';
       } else {
         tbody.innerHTML = state.rowsData.map(rowHtml).join('');
       }
@@ -26595,30 +26595,44 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function rowHtml(item) {
+      var raw = item && item.ofRaw ? item.ofRaw : (item || {});
       var img = item.imagemUrl
         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
       var sp = !!(item && (item.sem_papel === true || item.sem_papelao === true || String(item.sem_papel || '').trim() === '1' || item.sem_papel === 1 || item.sem_papelao === 1 || String(item.sem_papelao || '').trim() === '1'));
-      var statusTone = sp ? 'warn' : (item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok'));
-      var statusBase = item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal');
+      var urg = item.urgencia || (typeof urgenciaTipo === 'function' ? urgenciaTipo(raw, item.prazoIso || '') : '') || 'normal';
+      var statusTone = sp ? 'warn' : (urg === 'urgente' ? 'danger' : (urg === 'atrasada' ? 'warn' : 'ok'));
+      var statusBase = urg === 'urgente' ? 'Urgente' : (urg === 'atrasada' ? 'Atrasada' : 'Normal');
       var statusText = sp ? 'Sem Papelão' : statusBase;
-      if (sp && item.urgencia && item.urgencia !== 'normal') statusText = 'Sem Papelão • ' + statusBase;
+      if (sp && urg && urg !== 'normal') statusText = 'Sem Papelão • ' + statusBase;
+      var num = item.numero || (raw && (raw.numero || raw.of_num || raw.of_numero || raw.of)) || '—';
+      var prazo = item.prazoIso || (raw && (raw.data_entrega || raw.ent || raw.dia_programacao || raw.dia || raw.data_producao || '')) || '';
+      var cli = item.cliente || (raw && (raw.cliente_nome || raw.cliente || raw.cliNome || raw.clinome || raw.nome_cliente)) || '—';
+      var prod = item.produto || (raw && (raw.produto || raw.descricao || raw.prodDesc || raw.nome_produto)) || '—';
+      var qtd = item.quantidade != null ? item.quantidade : (raw && (raw.quantidade != null ? raw.quantidade : (raw.qtd != null ? raw.qtd : raw.qtd_pedida)));
+      var tam = item.tamanho || (raw && (raw.tamanho || raw.medidas || raw.dimensoes || '')) || '—';
+      var cols = Array.isArray(item.cores) && item.cores.length ? item.cores : (typeof parseColors === 'function' ? parseColors(raw) : []);
+      var facas = item.facasResumo || (raw && (raw.facas || raw.faca || raw.faca_resumo || '')) || '—';
+      var maq = (item && item.maquina && String(item.maquina).trim()) || (typeof normalizeMachine === 'function' ? normalizeMachine(typeof resolveMachine === 'function' ? resolveMachine(raw) : '') : '') || 'Pendente';
+      var tmp = Number(item.tempoMin || 0) || 0;
       return ''
-        + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '" data-sem-papel="' + (sp ? '1' : '0') + '">'
+        + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(urg) + '" data-sem-papel="' + (sp ? '1' : '0') + '">'
         + '<td class="ofmaq-final-seq"><input class="ofmaq-final-seq-input" type="number" min="1" step="1" data-ofmaq-final-seq="' + escAttr(item.id) + '" value="' + escAttr(String(item.displaySeq || item.order || 1)) + '"></td>'
         + '<td>' + img + '</td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong></td>'
-        + '<td>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(num) + '</strong></td>'
+        + '<td>' + escH(prazo ? fmtDateBR(String(prazo).slice(0,10)) : 'Sem data') + '</td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(cli) + '</strong></td>'
         + '<td><span class="ofmaq-final-status" data-tone="' + escAttr(statusTone) + '">' + escH(statusText) + '</span></td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong></td>'
-        + '<td>' + escH(fmtInt(item.quantidade)) + '</td>'
-        + '<td>' + escH(item.tamanho) + '</td>'
-        + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(item.cores) + '</div></td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.facasResumo || '—') + '</strong></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(prod) + '</strong></td>'
+        + '<td>' + escH(fmtInt(qtd)) + '</td>'
+        + '<td>' + escH(tam) + '</td>'
+        + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(cols) + '</div></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(facas) + '</strong></td>'
         + (function() {
             var papelRaw = item && (item.papel_comprado != null ? item.papel_comprado : (item.papelComprado != null ? item.papelComprado : null));
+            if (papelRaw == null) papelRaw = raw && (raw.papel_comprado != null ? raw.papel_comprado : (raw.papelComprado != null ? raw.papelComprado : null));
             var prevRaw = item && (item.previsao_entrega_papel != null ? item.previsao_entrega_papel : (item.previsaoEntregaPapel != null ? item.previsaoEntregaPapel : ''));
+            if (prevRaw == null || prevRaw === '') prevRaw = raw && (raw.previsao_entrega_papel != null ? raw.previsao_entrega_papel : (raw.previsaoEntregaPapel != null ? raw.previsaoEntregaPapel : ''));
             var isBoolComprado = !!(papelRaw === true || papelRaw === 1 || String(papelRaw || '').trim() === '1' || String(papelRaw || '').toLowerCase() === 'true');
             var papelTexto = '';
             if (papelRaw != null && typeof papelRaw !== 'boolean' && papelRaw !== 0 && papelRaw !== 1) {
@@ -26637,9 +26651,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             }
             return '<td><div class="ofmaq-final-cell"><strong style="font-size:12px;color:#64748b">—</strong><small style="display:block;color:#94a3b8;font-size:11px;line-height:1.35;margin-top:2px;">Aguardando</small></div></td>';
           })()
-        + '<td>' + escH((item && item.maquina && String(item.maquina).trim()) || 'Pendente') + '</td>'
-        + '<td><span class="ofmaq-final-time">' + escH(fmtTempo(item.tempoMin)) + '</span></td>'
-        + '<td class="ofmaq-final-actions"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (item.urgencia === 'urgente' ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttr(item.id) + '">' + (item.urgencia === 'urgente' ? '🚨 ' : '⚡ ') + 'Ações</button></td>'
+        + '<td>' + escH(maq) + '</td>'
+        + '<td><span class="ofmaq-final-time">' + escH(fmtTempo(tmp)) + '</span></td>'
+        + '<td class="ofmaq-final-actions"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (urg === 'urgente' ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttr(item.id) + '">' + (urg === 'urgente' ? '🚨 ' : '⚡ ') + 'Ações</button></td>'
         + '</tr>';
     }
 
@@ -27651,25 +27665,55 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       shell.tbody.innerHTML = rows.length
         ? rows.map(function(row, idx) {
             var id = String(row && row.id || '').trim();
-            var numero = String(row && (row.numero || row.of) || '—').trim() || '—';
-            var cliente = String(row && (row.cliente_nome || row.cliNome || row.clinome || row.cliente) || '—').trim() || '—';
-            var produto = String(row && (row.descricao || row.produto || row.nome) || '—').trim() || '—';
+            var numero = String(row && (row.numero || row.of || row.of_num || row.of_numero) || '—').trim() || '—';
+            var cliente = String(row && (row.cliente_nome || row.cliNome || row.clinome || row.cliente || row.nome_cliente) || '—').trim() || '—';
+            var produto = String(row && (row.descricao || row.produto || row.nome || row.prodDesc || row.nome_produto) || '—').trim() || '—';
             var qtd = Number(row && (row.quantidade != null ? row.quantidade : (row.qtd != null ? row.qtd : row.qtd_pedida)) || 0) || 0;
             var entrega = String(row && (row.data_entrega || row.ent || row.dia_programacao || row.dia || row.data_producao || '') || '').slice(0, 10);
-            var maquina = normMachine(row);
+            var maquina = normMachine(row) || 'Pendente';
+            var tamanho = String(row && (row.tamanho || row.medidas || row.dimensoes || '') || '').trim() || '—';
+            var urgU = row && (row.urg || row.urgente);
+            var urgCell = urgU ? 'Urgente' : 'Normal';
+            var urgTone = urgU ? 'danger' : 'ok';
+            var cores = typeof parseColors === 'function' ? parseColors(row) : [];
+            var coresHtml = Array.isArray(cores) && cores.length
+              ? '<div class="ofmaq-final-color-wrap">' + (typeof colorHtml === 'function' ? colorHtml(cores) : escHLocal(cores.join(' / '))) + '</div>'
+              : '—';
+            var facas = String(row && (row.facas || row.faca || row.faca_resumo || '') || '').trim() || '—';
+            var papelRaw = row && (row.papel_comprado != null ? row.papel_comprado : (row.papelComprado != null ? row.papelComprado : null));
+            var prevRaw = row && (row.previsao_entrega_papel != null ? row.previsao_entrega_papel : (row.previsaoEntregaPapel != null ? row.previsaoEntregaPapel : ''));
+            var isBoolC = !!(papelRaw === true || papelRaw === 1 || String(papelRaw || '').trim() === '1' || String(papelRaw || '').toLowerCase() === 'true');
+            var papelTxt = '';
+            if (papelRaw != null && typeof papelRaw !== 'boolean' && papelRaw !== 0 && papelRaw !== 1) {
+              var sP = String(papelRaw || '').trim();
+              if (sP && sP !== '0' && sP.toLowerCase() !== 'false') papelTxt = sP;
+            }
+            if (!papelTxt && isBoolC) papelTxt = '✅ Comprado';
+            var pS = String(prevRaw || '').trim();
+            if (pS) papelTxt = papelTxt ? (papelTxt + ' | ' + pS) : pS;
+            if (!papelTxt) papelTxt = '—';
+            var tMin = Number(row && (row.tempo_estimado || row.tempo_min || row.tempo || 0) || 0) || 0;
+            var tmpTxt = tMin > 0 && typeof fmtTempo === 'function' ? fmtTempo(tMin) : (tMin > 0 ? (String(tMin) + ' min') : '—');
             return ''
               + '<tr class="ofmaq-final-row ofmaq-final-row-emergency">'
               + '  <td>' + escHLocal(String(idx + 1)) + '</td>'
+              + '  <td><span class="ofmaq-final-thumb-fallback">📦</span></td>'
               + '  <td><strong>' + escHLocal(numero) + '</strong></td>'
+              + '  <td>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</td>'
               + '  <td>' + escHLocal(cliente) + '</td>'
+              + '  <td><span class="ofmaq-final-status" data-tone="' + escAttrLocal(urgTone) + '" style="display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:800;">' + escHLocal(urgCell) + '</span></td>'
               + '  <td>' + escHLocal(produto) + '</td>'
               + '  <td>' + escHLocal(String(qtd)) + '</td>'
+              + '  <td>' + escHLocal(tamanho) + '</td>'
+              + '  <td>' + coresHtml + '</td>'
+              + '  <td>' + escHLocal(facas) + '</td>'
+              + '  <td><strong style="font-size:12px;color:#64748b;white-space:normal;line-height:1.3;">' + escHLocal(papelTxt) + '</strong></td>'
               + '  <td>' + escHLocal(maquina) + '</td>'
-              + '  <td>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</td>'
-              + '  <td colspan="4" style="text-align:right"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (((row && (row.urg || row.urgente)) ? '1' : '0')) + '" data-ofmaq-final-actions="' + escAttrLocal(id) + '">⚡ Ações</button></td>'
+              + '  <td><span class="ofmaq-final-time">' + escHLocal(tmpTxt) + '</span></td>'
+              + '  <td class="ofmaq-final-actions" style="text-align:right"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (urgU ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttrLocal(id) + '">⚡ Ações</button></td>'
               + '</tr>';
           }).join('')
-        : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada na visualização de contingência.</td></tr>';
+        : '<tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada na visualização de contingência.</td></tr>';
       try {
         var meta = shell.root && shell.root.querySelector ? shell.root.querySelector('[data-ofmaq-final-meta]') : null;
         if (meta) meta.textContent = 'Visualização de contingência ativa';
