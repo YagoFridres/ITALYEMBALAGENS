@@ -4900,30 +4900,12 @@ try {
   }
 
   window.toggleSemPapelOf = async function(ofId, ofNum, cardElHint) {
-    logOfmaq('clique ação Sem Papelão', { ofId: ofId, ofNum: ofNum });
+    logOfmaq('clique ação Sem Papelão (1 clique direto T7)', { ofId: ofId, ofNum: ofNum });
     var of = getOfmaqById(ofId);
     var id = String(ofId || '').trim();
     if (!id || !of) return;
     var atual = !!(of.sem_papel);
     var novo = !atual;
-    if (novo === true) {
-      logOfmaq('Sem Papelão: abrindo modal alterar data com motivo Falta de Papelão (pré-selecionado)', { ofId: id, ofNum: ofNum });
-      try {
-        if (typeof openAlterarDataPatched === 'function') {
-          var dataEnt = String(of.data_entrega || of.ent || '').slice(0, 10);
-          var aberto = openAlterarDataPatched(ofId, ofNum, dataEnt);
-          setTimeout(function() {
-            try {
-              var sel = document.getElementById('patch-ofmaq-data-motivo');
-              if (sel) sel.value = 'Falta de Papelão';
-            } catch (_) {}
-          }, 60);
-          return aberto || true;
-        }
-      } catch (eModal) {
-        logOfmaq('erro abrir modal Sem Papelão', String(eModal && eModal.message || eModal));
-      }
-    }
     try {
       var payload = { sem_papel: novo };
       var row = await persistPatch(id, payload);
