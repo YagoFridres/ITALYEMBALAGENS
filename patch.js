@@ -63322,6 +63322,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<div class="ccustos-row">'
         + '  <button class="ccustos-btn is-primary" id="cc-btn-novo-lanc">➕ Novo Lançamento</button>'
         + '  <button class="ccustos-btn is-warn" id="cc-btn-gerar-recorr">🔁 Gerar Recorrentes do Mês</button>'
+        + '  <button class="ccustos-btn" id="cc-btn-imprimir-lanc">🖨 Imprimir</button>'
         + '  <div style="flex:1"></div>'
         + '  <input class="ccustos-input" id="cc-busca-lanc" type="text" placeholder="🔍 Buscar descrição, fornecedor, obs..." value="' + escA(state.filtro.busca) + '" style="min-width:260px">'
         + '</div>'
@@ -64081,6 +64082,77 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                 if (typeof rrOpenPrint === 'function') rrOpenPrint(cfgVis);
                 else alert('Módulo impressão rrOpenPrint não carregado.');
               } catch(ePrint2){ toastFn('Erro ao montar relatório: ' + String(ePrint2.message||ePrint2), 'err'); }
+              return;
+            }
+          } catch(_){}
+          try {
+            var impLanc = document.getElementById('cc-btn-imprimir-lanc');
+            if (impLanc && ev.target === impLanc) {
+              try {
+                var lancs = Array.isArray(state.lancamentos) ? state.lancamentos.slice() : [];
+                lancs.sort(function(a,b){ return cmpDt(b && b.data_lancamento||b && b.created_at, a && a.data_lancamento||a && a.created_at); });
+                var totDesp = 0, totRec = 0, qtAuto = 0, qtManual = 0;
+                var catMap = new Map();
+                var centrosNm = {};
+                state.centros.forEach(function(cc){ centrosNm[String(cc.id||'')] = ((cc.codigo?cc.codigo+' · ':'') + (cc.nome||'—')); });
+                lancs.forEach(function(l){
+                  var nat = String(l && l.natureza||'DESPESA');
+                  var v = Number(l && l.valor||0)||0;
+                  if (nat === 'RECEITA') { totRec += Math.abs(v); } else { totDesp += Math.abs(v); }
+                  var catK = String(l && l.categoria||'');
+                  var cat = CATEGORIAS_MAP[catK];
+                  var chave = catK || '_sem_categoria_';
+                  var label = (cat?cat.label:(catK||'Sem categoria'));
+                  if (!catMap.has(chave)) catMap.set(chave, {label:label,valor:0});
+                  var row = catMap.get(chave);
+                  row.valor += Math.abs(v);
+                  var temRec = String(l && l.recorrencia_id||'').trim() !== '';
+                  var auto = temRec || (cat && cat.tipo === 'auto');
+                  if (auto) qtAuto++; else qtManual++;
+                });
+                var saldo = totRec - totDesp;
+                var catRows = Array.from(catMap.values()).sort(function(a,b){return b.valor-a.valor;}).slice(0,20).map(function(c){return [esc(c.label),fmt1(c.valor)];});
+                var detailRows = lancs.slice(0,2000).map(function(l){
+                  var desc = String(l && l.descricao||'Sem descrição');
+                  var catK = String(l && l.categoria||'');
+                  var cat = CATEGORIAS_MAP[catK];
+                  var nat = String(l && l.natureza||'DESPESA');
+                  var v = Number(l && l.valor||0)||0;
+                  if (nat === 'RECEITA') v = -Math.abs(v); else v = Math.abs(v);
+                  var centroId = String(l && l.centro_custo_id||'');
+                  var centroNm = centrosNm[centroId] || (l && l.centro_custo_nome || '—');
+                  var forn = String(l && l.fornecedor_beneficiario||'—');
+                  var pgto = String(l && l.forma_pagamento||'—');
+                  var dt = String(l && l.data_lancamento||'-').slice(0,10);
+                  var comp = String(l && l.competencia||'-');
+                  var temRec = String(l && l.recorrencia_id||'').trim() !== '';
+                  var auto = temRec || (cat && cat.tipo === 'auto');
+                  var tipoTxt = (temRec ? 'Recorrente' : (auto ? 'Automático' : 'Manual'));
+                  return [esc(dt),esc(comp),esc(desc),esc(cat?cat.label:catK||'—'),esc(centroNm),esc(forn),fmt1(Math.abs(v)) + (v<0?' CR':' DR'),esc(pgto),esc(tipoTxt)];
+                });
+                var cfgLanc = {
+                  title: 'Lançamentos · ' + nomeComp(state.competencia),
+                  periodo: 'Competência: ' + nomeComp(state.competencia),
+                  cards: [
+                    { label: 'Despesas (DR)', value: fmt1(totDesp), sub: 'Saídas no período' },
+                    { label: 'Receitas (CR)', value: fmt1(totRec), sub: 'Entradas no período' },
+                    { label: 'Saldo Líquido', value: fmt1(saldo), sub: (saldo>=0?'Lucro (R$)':'Prejuízo (R$)') },
+                    { label: 'Lançamentos', value: String(lancs.length), sub: 'Qtde total no período' },
+                    { label: 'Automáticos', value: String(qtAuto), sub: 'Recorrentes + Categ. Auto' },
+                    { label: 'Manuais', value: String(qtManual), sub: 'Digitados pelo usuário' }
+                  ],
+                  summaryTitle: 'Valores por Categoria (' + catMap.size + ' categorias)',
+                  summaryHeaders: ['Categoria', 'Valor (R$)'],
+                  summaryRows: catRows,
+                  emptySummaryCols: 2,
+                  detailTitle: 'Detalhamento de Lançamentos (' + detailRows.length + ' itens' + (lancs.length>detailRows.length?' — primeiros '+detailRows.length:'') + ')',
+                  detailHeaders: ['Data','Competência','Descrição','Categoria','Centro','Fornecedor','Valor','Forma Pgto','Tipo'],
+                  detailRows: detailRows,
+                  emptyDetailCols: 9
+                };
+                if (typeof rrOpenPrint === 'function') rrOpenPrint(cfgLanc);
+                else alert('Módulo impressão rrOpenPrint não carregado.');
+              } catch(ePrintLanc){ toastFn('Erro ao montar relatório: ' + String(ePrintLanc.message||ePrintLanc), 'err'); }
               return;
             }
           } catch(_){}
