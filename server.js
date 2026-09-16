@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260916434128';
-const SW_RUNTIME_VERSION = '20260916434128';
+const PATCH_RUNTIME_VERSION = '20260916434129';
+const SW_RUNTIME_VERSION = '20260916434129';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9897,6 +9897,51 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       return res.status(500).json({ ok: false, error: 'falha_ao_registrar_passagem_maquina: ' + String(passagemUpsertErr || 'falha_desconhecida'), of_atualizada: false, data: null, passagem_registrada: false, passagem_erro: passagemUpsertErr || null, __dbg });
     }
 
+    // CORREÇÃO 434129 🔴1-A: Gravar também na coluna JSON ofs.passagens_maquina (fonte usada pelo histórico GET)
+    // Garante que novas passagens apareçam no histórico mesmo sem merge de fontes.
+    try {
+      const colJsonRaw = (of && typeof of === 'object') ? (of.passagens_maquina || of.passagens_por_maquina || []) : [];
+      const arrJson = (typeof colJsonRaw === 'string')
+        ? (function(){ try { return JSON.parse(colJsonRaw); } catch(_pe){ return []; } })()
+        : (Array.isArray(colJsonRaw) ? colJsonRaw : []);
+      const qtd = Number(of?.qtd_produzida || of?.caixas_boas || of?.quantidade || of?.qtd || of?.qtd_pedida || 0) || 0;
+      const novaPassagemJson = {
+        maquina_nome: String(maquinaNome || (_payloadUpsert && _payloadUpsert.maquina) || '').trim(),
+        maquina: String(maquinaNome || (_payloadUpsert && _payloadUpsert.maquina) || '').trim(),
+        nome: String(maquinaNome || (_payloadUpsert && _payloadUpsert.maquina) || '').trim(),
+        hora_passagem: nowIso,
+        passou_em: nowIso,
+        criado_em: nowIso,
+        created_at: nowIso,
+        data_passagem: hojeIso,
+        status: 'Passou pela máquina',
+        operador_nome: String(operador || (_payloadUpsert && _payloadUpsert.operador) || 'Sistema').trim(),
+        operador: String(operador || (_payloadUpsert && _payloadUpsert.operador) || 'Sistema').trim(),
+        usuario_nome: String(operador || (_payloadUpsert && _payloadUpsert.operador) || 'Sistema').trim(),
+        quantidade: qtd,
+        qtd_produzida: qtd,
+        qtd: qtd,
+        id_passagem_tabela_fisica: (upsertResult && upsertResult.id) || null,
+        rowid_tabela_fisica: (upsertResult && upsertResult.id) || null,
+      };
+      if (!Array.isArray(arrJson)) arrJson = [];
+      arrJson.push(novaPassagemJson);
+      updatePayload.passagens_maquina = arrJson;
+      try {
+        __dbg.coluna_json_of_passagens_maquina_atualizada = {
+          antes_len: Math.max(0, (Array.isArray(arrJson) ? arrJson.length - 1 : 0)),
+          depois_len: Array.isArray(arrJson) ? arrJson.length : -1,
+          adicionado_id_passagem_tabela_fisica: (upsertResult && upsertResult.id) || null,
+          campos: Object.keys(novaPassagemJson).sort().join(','),
+        };
+      } catch(_) {}
+      try { console.log('[PASSOU-MAQUINA] coluna JSON ofs.passagens_maquina ATUALIZADA: of_id=%j of_numero=%j antes_len=%d novo_len=%d maquina=%j',
+        id, ((of && (of.numero || of.of_numero || of.of)) || ofNumero || ''), Math.max(0, (Array.isArray(arrJson)?arrJson.length:0)-1), (Array.isArray(arrJson)?arrJson.length:0), maquinaNome); } catch(_) {}
+    } catch (eColJson) {
+      try { console.warn('[PASSOU-MAQUINA] falha AO ATUALIZAR coluna JSON ofs.passagens_maquina (passagem tabela fisica SALVA mesmo assim): of_id=%j err=%j', id, String((eColJson && eColJson.message) || eColJson)); } catch(_) {}
+      try { __dbg.coluna_json_of_passagens_maquina_erro = String((eColJson && eColJson.message) || eColJson); } catch(_) {}
+    }
+
     // ⛔ PASSO 2 (NOVA ORDEM): SÓ AGORA, DEPOIS que a passagem_maquina foi salva com sucesso,
     // atualizar a OF para passou_maquina=true. Garante consistência entre OF e tabela passagens_maquina.
     var upd = null;
@@ -12580,6 +12625,106 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     });
     __dbg_hist.pair_rows_from__buscarPassagensHistoricoFromOfs_len = Array.isArray(pair?.rows) ? pair.rows.length : -1;
     __dbg_hist.pair_count_from__buscarPassagensHistoricoFromOfs = Number(pair?.count ?? 0) || 0;
+
+    __dbg_hist.fonte_dados_atuais = 'MERGE 2 fontes: (1) ofs.passagens_maquina COLUNA JSON (historico anterior) + (2) TABELA FISICA passagens_maquina (julho/2026+) + amostras. Correcao 434129 🔴1.';
+    __dbg_hist.causa_raiz_hipotese_debug = '[RESOLVIDO 434129 🔴1] BUG dupla face: (A) POST gravava so tabela fisica SEM atualizar col JSON ofs.passagens_maquina; (B) GET lia so col JSON SEM consultar tabela fisica. AMBAS corrigidas neste commit.';
+
+    // CORREÇÃO 434129 🔴1-B: Consultar TABELA FÍSICA passagens_maquina no mesmo intervalo e MERGEAR com pair.rows (fonte coluna JSON)
+    // Garante que passagens desde julho/2026 gravadas direto na tabela fisica aparecem no histórico; dedup depois remove duplicatas.
+    let fisicaMergeRows = []; let fisicaMergeCountExact = -1; let fisicaMergeErr = null;
+    try {
+      const hoje = new Date();
+      const hojeFim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999).toISOString().slice(0,10);
+      let inicioPadrao = new Date(hoje); inicioPadrao.setMonth(inicioPadrao.getMonth() - 5); inicioPadrao.setDate(1);
+      const inicioUsar = (range && range.inicio) ? String(range.inicio).slice(0,10) : inicioPadrao.toISOString().slice(0,10);
+      const fimUsar = (range && range.fim) ? String(range.fim).slice(0,10) : hojeFim;
+      __dbg_hist.merge_fisica_range_inicio = inicioUsar;
+      __dbg_hist.merge_fisica_range_fim = fimUsar;
+      let qFis = supabase
+        .from('passagens_maquina')
+        .select('*', { count: 'exact' })
+        .gte('data_passagem', inicioUsar)
+        .lte('data_passagem', fimUsar)
+        .order('hora_passagem', { ascending: false })
+        .limit(3000);
+      const empIdVal = String(empresaId || '').trim();
+      const isUuidEmp = empIdVal && /^[0-9a-fA-F]{8}-/.test(empIdVal);
+      if (isUuidEmp) {
+        qFis = qFis.eq('empresa_id', empIdVal);
+      } else if (empIdVal && empIdVal.length <= 3) {
+        qFis = qFis.or('emp_id.eq.' + empIdVal + ',empresa_id.is.null,emp_id.is.null');
+      }
+      const rFis = await qFis;
+      if (rFis?.error) throw rFis.error;
+      fisicaMergeCountExact = Number(rFis?.count ?? 0) || 0;
+      const rawArr = Array.isArray(rFis?.data) ? rFis.data : [];
+      fisicaMergeRows = rawArr.map(function (pf) {
+        var ofNumero = String(pf?.of_numero ?? pf?.ofnumero ?? pf?.of_num ?? pf?.of ?? '').trim();
+        var cli = String(pf?.cliente || pf?.cliente_nome || pf?.nome_cliente || '').trim();
+        var prod = String(pf?.produto || pf?.produto_nome || pf?.produto_desc || pf?.descricao_produto || pf?.descricao || '').trim();
+        var qtdN = Number(pf?.quantidade ?? pf?.qtd ?? pf?.qtd_produzida ?? pf?.caixas_boas ?? pf?.produzido ?? 0) || 0;
+        var maqBr = String(pf?.maquina ?? pf?.maquina_nome ?? pf?.maq ?? '').trim();
+        var maqCanon = _canonMaqNome(maqBr) || maqBr;
+        var dtIso = String(pf?.data_passagem || pf?.data || pf?.dia || pf?.dt_passagem || pf?.created_at || '').slice(0, 10);
+        var hrIso = String(pf?.hora_passagem || pf?.hora || pf?.horario || pf?.created_at || pf?.updated_at || '').trim() || (dtIso ? dtIso + 'T12:00:00' : '');
+        var vlT = Number(pf?.valor_total ?? pf?.valor_venda ?? pf?.total ?? 0) || 0;
+        var vlU = Number(pf?.valor_unitario ?? pf?.preco ?? 0) || 0;
+        return {
+          of_id: String(pf?.of_id || '').trim() || null,
+          of_numero: ofNumero,
+          numero: ofNumero,
+          of: ofNumero,
+          cliente: cli,
+          cliente_nome: cli,
+          nome_cliente: cli,
+          produto: prod,
+          produto_nome: prod,
+          descricao_produto: prod,
+          quantidade: qtdN,
+          qtd_produzida: qtdN,
+          qtd: qtdN,
+          valor_total: vlT,
+          valor_venda: vlT,
+          total: vlT,
+          valor_unitario: vlU,
+          preco: vlU,
+          referencia: String(pf?.referencia || pf?.ref || pf?.referencia_produto || '').trim() || null,
+          imagem_url: pf?.imagem_url || pf?.imagem || pf?.img || pf?.foto || null,
+          maquina: maqCanon,
+          maquina_nome: maqCanon,
+          maq: maqCanon,
+          operador: String(pf?.operador ?? pf?.operador_nome ?? pf?.usuario ?? pf?.usuario_nome ?? pf?.oper ?? '').trim() || null,
+          operador_nome: String(pf?.operador ?? pf?.operador_nome ?? pf?.usuario ?? pf?.usuario_nome ?? pf?.oper ?? '').trim() || null,
+          data_passagem: dtIso || null,
+          hora_passagem: hrIso || null,
+          status: String(pf?.status || pf?.tipo || pf?.evento || pf?.situacao || 'Passou pela máquina').trim(),
+          empresa: String(pf?.empresa || pf?.empresa_nome || pf?.emp_nome || pf?.nome_empresa || '').trim() || null,
+          empresa_nome: String(pf?.empresa || pf?.empresa_nome || pf?.emp_nome || pf?.nome_empresa || '').trim() || null,
+          empresa_id: String(pf?.empresa_id || '').trim() || null,
+          emp_id: String(pf?.emp_id || '').trim() || null,
+          observacao: String(pf?.observacao || pf?.obs || pf?.obs2 || pf?.observacoes || pf?.comentario || '').trim() || null,
+          perda: Number(pf?.perda ?? pf?.perdido ?? pf?.qtd_perdida ?? 0) || 0,
+          qtd_perdida: Number(pf?.perda ?? pf?.perdido ?? pf?.qtd_perdida ?? 0) || 0,
+          motivo_perda: String(pf?.motivo_perda || '').trim() || null,
+          _origem: 'TABELA_FISICA_passagens_maquina_correcao_434129',
+          _id_tabela_fisica: String(pf?.id || '').trim() || null,
+        };
+      });
+      __dbg_hist.merge_fisica_raw_count_db = rawArr.length;
+      __dbg_hist.merge_fisica_mapeadas_count = fisicaMergeRows.length;
+      __dbg_hist.merge_fisica_count_exact_query = fisicaMergeCountExact;
+      // MERGE pair.rows (FONTE 1: col JSON OF) + fisicaMergeRows (FONTE 2: tabela fisica)
+      const origRows = Array.isArray(pair?.rows) ? pair.rows.slice() : [];
+      pair.rows = origRows.concat(fisicaMergeRows);
+      pair.count = (Number(pair?.count || 0) || 0) + fisicaMergeCountExact;
+      __dbg_hist.merge_total_depois_merge_antes_dedup = (Array.isArray(pair?.rows) ? pair.rows.length : -1);
+      __dbg_hist.merge_fonte1_coljson_rows_originais_len = origRows.length;
+      __dbg_hist.merge_fonte2_tabelafisica_rows_adicionadas_len = fisicaMergeRows.length;
+    } catch (eFisM) {
+      fisicaMergeErr = String((eFisM && eFisM.message) || eFisM);
+      __dbg_hist.merge_fisica_erro = fisicaMergeErr;
+      try { console.error('[passagens/historico] merge tabela fisica ERRO (continuando apenas com fonte 1 coluna JSON OF):', fisicaMergeErr); } catch(_) {}
+    }
 
     // #region debug-point A:hist-source-passagens-table
     try {
