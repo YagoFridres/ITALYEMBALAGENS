@@ -52193,6 +52193,115 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return {}; }
   }
 
+  function _dedupeTodosSelectsVendedorDOM() {
+    try {
+      var selTodos = document.querySelectorAll(
+        'select[id*="vendedor"], select[name*="vendedor"], select[data-campo*="vendedor"]'
+      );
+      Array.prototype.forEach.call(selTodos, function(sel) {
+        try {
+          if (!sel || sel.tagName !== 'SELECT') return;
+          var curVal = String(sel.value || '').trim();
+          var seenIds = {};
+          var seenNomes = {};
+          var manter = [];
+          for (var i = 0; i < sel.options.length; i++) {
+            var opt = sel.options[i];
+            var vId = String(opt.value || '').trim();
+            var vNm = String(opt.textContent || opt.text || '').trim().toLowerCase();
+            var txtRaw = String(opt.textContent || opt.text || '').trim();
+            var isPlc = (!vId && !vNm) || (!vId && /Seleciona|Sem vende|Carregando vende|—$/.test(txtRaw)) || opt.disabled;
+            if (isPlc) { manter.push(opt); continue; }
+            if (vId && seenIds[vId]) continue;
+            if (vNm && seenNomes[vNm]) continue;
+            if (vId) seenIds[vId] = true;
+            if (vNm) seenNomes[vNm] = true;
+            manter.push(opt);
+          }
+          if (manter.length === sel.options.length) return;
+          while (sel.firstChild) sel.removeChild(sel.firstChild);
+          manter.forEach(function(o) { try { sel.appendChild(o); } catch (_) {} });
+          if (curVal) {
+            try { sel.value = curVal; } catch (_) {
+              if (curVal) Array.prototype.some.call(sel.options, function(o) {
+                if (String(o.value || '').trim() === curVal) { sel.selectedIndex = o.index; return true; }
+                if (String(o.textContent || '').trim().toLowerCase() === curVal.toLowerCase()) { sel.selectedIndex = o.index; return true; }
+                return false;
+              });
+            }
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+  try { window._dedupeTodosSelectsVendedorDOM = _dedupeTodosSelectsVendedorDOM; } catch (_) {}
+  (function _bindDedupeVend() {
+    if (window.__bindDedupeVendDone) return;
+    window.__bindDedupeVendDone = true;
+    [0, 400, 1200, 2400, 4000].forEach(function(d) {
+      setTimeout(_dedupeTodosSelectsVendedorDOM, d);
+    });
+    try {
+      var obs = new MutationObserver(function() {
+        clearTimeout(window.__dedupeVendDeb);
+        window.__dedupeVendDeb = setTimeout(_dedupeTodosSelectsVendedorDOM, 120);
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    } catch (_) {}
+    try {
+      if (typeof window.abrirNovaOfRapida === 'function' && !window.abrirNovaOfRapida._dedupeVendWrap) {
+        var origAbrir = window.abrirNovaOfRapida;
+        window.abrirNovaOfRapida = function() {
+          var r = origAbrir.apply(this, arguments);
+          [20, 200, 600, 1400].forEach(function(d) {
+            setTimeout(_dedupeTodosSelectsVendedorDOM, d);
+          });
+          return r;
+        };
+        window.abrirNovaOfRapida._dedupeVendWrap = true;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.abrirModalOF === 'function' && !window.abrirModalOF._dedupeVendWrap) {
+        var origAbrirOf = window.abrirModalOF;
+        window.abrirModalOF = function() {
+          var r = origAbrirOf.apply(this, arguments);
+          [30, 250, 700, 1500].forEach(function(d) {
+            setTimeout(_dedupeTodosSelectsVendedorDOM, d);
+          });
+          return r;
+        };
+        window.abrirModalOF._dedupeVendWrap = true;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.renderOrcamentos === 'function' && !window.renderOrcamentos._dedupeVendWrap) {
+        var origRenderOrc = window.renderOrcamentos;
+        window.renderOrcamentos = function() {
+          var r = origRenderOrc.apply(this, arguments);
+          [60, 300, 900].forEach(function(d) {
+            setTimeout(_dedupeTodosSelectsVendedorDOM, d);
+          });
+          return r;
+        };
+        window.renderOrcamentos._dedupeVendWrap = true;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.renderClientes === 'function' && !window.renderClientes._dedupeVendWrap) {
+        var origRenderCli = window.renderClientes;
+        window.renderClientes = function() {
+          var r = origRenderCli.apply(this, arguments);
+          [60, 300, 900].forEach(function(d) {
+            setTimeout(_dedupeTodosSelectsVendedorDOM, d);
+          });
+          return r;
+        };
+        window.renderClientes._dedupeVendWrap = true;
+      }
+    } catch (_) {}
+  })();
+
   function _resolverVendedor(of) {
     try {
       if (!window._vendedoresMap) return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim() || '—';
@@ -54134,9 +54243,19 @@ function _ocultarGraficoComissoes() {
         var vendHidden = document.getElementById('com-of-vend-id');
         if (vendSelect && Array.isArray(vendList)) {
           var arrV = vendList.map(function(v) {
-            return { id: String(v && v.id || '').trim(), nome: String(v && v.nome || '').trim() };
+            return { id: String(v && v.id || '').trim(), nome: String(v && (v.nome || v.vendedor || v.vendedor_nome) || '').trim() };
           }).filter(function(x) { return x.id && x.nome; });
-          arrV.sort(function(a, b) { return a.nome.localeCompare(b.nome); });
+          var _idsV = {}, _nomesV = {};
+          arrV = arrV.filter(function(x) {
+            if (!x || !x.id) return false;
+            if (_idsV[x.id]) return false;
+            _idsV[x.id] = true;
+            var nk = String(x.nome || '').trim().toLowerCase();
+            if (nk && _nomesV[nk]) return false;
+            if (nk) _nomesV[nk] = true;
+            return true;
+          });
+          arrV.sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
           vendSelect.innerHTML = arrV.map(function(x) {
             return '<option value="' + x.id.replace(/"/g, '&quot;') + '">' + x.nome.replace(/</g, '&lt;') + '</option>';
           }).join('');
