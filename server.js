@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260915434126';
-const SW_RUNTIME_VERSION = '20260915434126';
+const PATCH_RUNTIME_VERSION = '20260916434127';
+const SW_RUNTIME_VERSION = '20260916434127';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9823,13 +9823,9 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     __dbg.maquina_resolvida = maquinaNome || null;
     try { __dbg.fluxoArr_preview = (Array.isArray(fluxoArr)?fluxoArr.slice(0,2):fluxoArr||null); } catch(_){}
 
-    const upd = await ofsUpdateWithRetry(id, updatePayload);
-    if (upd.error) { __dbg.ofsUpdateResult = { error: String(upd.error?.message||upd.error||'?') }; throw upd.error; }
-    try {
-      __dbg.ofsUpdateResult = { ok: true, data_preview: Object.keys(upd?.data||{}).slice(0,10) };
-      __dbg.passou_maquina_nome_salvo_of = (upd?.data?.passou_maquina_nome||updatePayload.passou_maquina_nome||null);
-    } catch(_){}
-
+    // ⛔ PASSO 1 (NOVA ORDEM, CORREÇÃO BUG3): PRIMEIRO gravar a passagem_maquina.
+    // SÓ DEPOIS (se insert deu certo) atualizar a OF para passou=true.
+    // Se o insert falhar, a OF NÃO é marcada (evita UI "passou" mas tabela vazia).
     let passagemUpsertOk = false;
     let passagemUpsertErr = null;
     var upsertResult = null;
@@ -9857,7 +9853,7 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         status: 'Passou pela máquina',
         empresa: String(of?.empresa || of?.empNome || 'Italy Embalagens'),
         empresa_id: empresaIdUuid,
-        emp_id: String(of?.emp_id || of?.empId || '').trim() || null,
+        emp_id: String(of?.emp_id || '').trim() || null,
       };
       try { __dbg.payloadUpsertPreviewKeys = Object.keys(_payloadUpsert||{}).sort().join(','); } catch(_){}
       upsertResult = await _upsertPassagemMaquinaRegistro(_payloadUpsert, { status: 'Passou pela máquina' });
@@ -9885,10 +9881,10 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     } catch (eUpsert) {
       passagemUpsertErr = String(eUpsert?.message || eUpsert);
       try { __dbg.upsertResult = { ok:false, exception: passagemUpsertErr }; } catch(_){}
-      console.warn('[PASSOU-MAQUINA] upsert passagem EXCEPTION (OF atualizada mesmo assim):', passagemUpsertErr);
+      console.warn('[PASSOU-MAQUINA] upsert passagem EXCEPTION (OF NAO sera atualizada):', passagemUpsertErr);
     }
 
-    // AFTER COUNT: provar count > afterCount
+    // AFTER COUNT (precisa rodar mesmo se falhou para ter debug)
     try {
       var _after = await supabase.from('passagens_maquina').select('id,hora_passagem',{count:'exact'}).eq('of_id',id).order('hora_passagem',{ascending:false}).limit(50);
       __dbg.afterCount = (typeof _after?.count === 'number') ? _after.count : (Array.isArray(_after?.data)?_after.data.length:null);
@@ -9896,13 +9892,31 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     } catch (_eAfter) { try { __dbg.afterCount = 'ERR:'+String(_eAfter?.message||_eAfter); } catch(_){} }
 
     if (!passagemUpsertOk) {
-      try { console.error('[PASSOU-MAQUINA] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(passagemUpsertErr || '?') + ' retornando HTTP 500 para nao enganar UI.'); } catch (_) {}
+      try { console.error('[PASSOU-MAQUINA] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + id + ' motivo=' + String(passagemUpsertErr || '?') + ' retornando HTTP 500. OF NÃO FOI ATUALIZADA (correção ordem).'); } catch (_) {}
       _clearOfsCaches();
-      return res.status(500).json({ ok: false, error: 'falha_ao_registrar_passagem_maquina: ' + String(passagemUpsertErr || 'falha_desconhecida'), of_atualizada: true, data: upd.data || updatePayload, passagem_registrada: false, passagem_erro: passagemUpsertErr || null, __dbg });
+      return res.status(500).json({ ok: false, error: 'falha_ao_registrar_passagem_maquina: ' + String(passagemUpsertErr || 'falha_desconhecida'), of_atualizada: false, data: null, passagem_registrada: false, passagem_erro: passagemUpsertErr || null, __dbg });
+    }
+
+    // ⛔ PASSO 2 (NOVA ORDEM): SÓ AGORA, DEPOIS que a passagem_maquina foi salva com sucesso,
+    // atualizar a OF para passou_maquina=true. Garante consistência entre OF e tabela passagens_maquina.
+    var upd = null;
+    try {
+      upd = await ofsUpdateWithRetry(id, updatePayload);
+      if (upd.error) { __dbg.ofsUpdateResult = { error: String(upd.error?.message||upd.error||'?') }; throw upd.error; }
+      try {
+        __dbg.ofsUpdateResult = { ok: true, data_preview: Object.keys(upd?.data||{}).slice(0,10) };
+        __dbg.passou_maquina_nome_salvo_of = (upd?.data?.passou_maquina_nome||updatePayload.passou_maquina_nome||null);
+      } catch(_){}
+    } catch (eUpdOfs) {
+      // Raro: upsert da passagem deu CERTO, mas atualização da OF falhou.
+      // A passagem está salva, então não retornamos erro 500 — só logamos e seguimos.
+      try { console.warn('[PASSOU-MAQUINA] upsert PASSAGEM OK, mas atualizacao OF falhou (passagem salva mesmo assim):', String(eUpdOfs?.message||eUpdOfs||'')); } catch(_){}
+      try { __dbg.ofsUpdateResult = __dbg.ofsUpdateResult || { error: String(eUpdOfs?.message||eUpdOfs||'ofs_update_failed_mas_passagem_ok') }; } catch(_){}
+      upd = { data: updatePayload };
     }
 
     _clearOfsCaches();
-    return res.json({ ok: true, data: upd.data || updatePayload, passagem_registrada: true, passagem_erro: null, passagem_modo: (upsertResult?.mode || null), passagem_row_id: (upsertResult?.id || null), __dbg });
+    return res.json({ ok: true, data: upd?.data || updatePayload, passagem_registrada: true, passagem_erro: null, passagem_modo: (upsertResult?.mode || null), passagem_row_id: (upsertResult?.id || null), __dbg });
   } catch (e) {
     try { __dbg.errGeral = String(e?.message||e); } catch(_){}
     return res.status(500).json({ ok: false, error: String(e?.message || e), __dbg });
@@ -11634,19 +11648,19 @@ function _dedupePassagensMaquinaRows(rows) {
 }
 
 const PASSAGENS_MAQUINA_WHITELIST = new Set([
-  'id','of_id','of_numero','ofnumero','ofId',
+  'id','of_id','of_numero','ofnumero',
   'cliente',
-  'produto','produto_nome','produtoNome','produto_desc','descricao_produto',
+  'produto','produto_nome','produto_desc','descricao_produto',
   'referencia','ref','referencia_produto',
-  'imagem','imagem_url','imgUrl','img','foto',
-  'maquina','maquina_nome','maquinaNome','maq',
+  'imagem','imagem_url','img','foto',
+  'maquina','maquina_nome','maq',
   'operador','operador_nome','usuario','usuario_nome','oper',
   'quantidade','qtd','qtd_produzida','caixas_boas','produzido',
   'data_passagem','data','dia','dt_passagem',
   'hora_passagem','hora','horario','created_at','updated_at',
   'status','tipo','evento','situacao',
-  'empresa','empresa_nome','empresaNome','emp_nome','nome_empresa',
-  'empresa_id','empId','emp_id',
+  'empresa','empresa_nome','emp_nome','nome_empresa',
+  'empresa_id','emp_id',
   'observacao','obs','obs2','observacoes','comentario',
   'perda','perdido','qtd_perdida','motivo_perda'
 ]);
@@ -11739,7 +11753,6 @@ function _limparPayloadPassagens(raw) {
     if (!temNome) temNome = __nomeByUuid[temUuid.toLowerCase()] || (temSigla === 'E2' ? 'Cartoeste' : temSigla === 'E3' ? 'Oestepack' : 'Italy Embalagens');
     if (!mapped.empresa_id || String(mapped.empresa_id).trim() === '') mapped.empresa_id = temUuid;
     if (!mapped.emp_id || String(mapped.emp_id).trim() === '') mapped.emp_id = temSigla;
-    if (!mapped.empId) mapped.empId = temSigla;
     if (!mapped.empresa_nome || String(mapped.empresa_nome).trim() === '') mapped.empresa_nome = temNome;
     if (!mapped.empresa || String(mapped.empresa).trim() === '') mapped.empresa = temNome;
     if (!mapped.status || String(mapped.status).trim() === '') mapped.status = 'Passou pela máquina';
@@ -11857,7 +11870,7 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
       }
       try { console.warn('[PASSAGENS-MAQUINA] update tentativa #' + i + ' falhou:', lastUpdateErr.slice(0, 300)); } catch (_) {}
       const msg = String(upd.error.message || '').toLowerCase();
-      const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i);
+      const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i) || msg.match(/find\s+the\s+['"]([^'"]+)['"]\s+column\s+(?:of|in)\s+/i);
       const col = (m && m[1]) ? String(m[1]).trim() : '';
       if (col && Object.prototype.hasOwnProperty.call(toUpdate, col)) { delete toUpdate[col]; continue; }
       if (i === 0) {
@@ -11910,7 +11923,7 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
     }
     try { console.warn('[PASSAGENS-MAQUINA] insert tentativa #' + i + ' falhou:', lastInsertErr.slice(0, 300)); } catch (_) {}
     const msg = String(ins.error.message || '').toLowerCase();
-    const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i);
+    const m = msg.match(/column\s+\"([^\"]+)\"\s+of\s+relation/i) || msg.match(/column\s+([a-zA-Z0-9_]+)\s+(does|do)\s+not\s+exist/i) || msg.match(/coluna\s+[\"']?([a-zA-Z0-9_]+)[\"']?\s+(não|nao)\s+existe/i) || msg.match(/find\s+the\s+['"]([^'"]+)['"]\s+column\s+(?:of|in)\s+/i);
     const col = (m && m[1]) ? String(m[1]).trim() : '';
     if (col && Object.prototype.hasOwnProperty.call(toInsert, col)) { delete toInsert[col]; continue; }
     if (i === 0) {
