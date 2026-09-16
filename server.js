@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260916434127';
-const SW_RUNTIME_VERSION = '20260916434127';
+const PATCH_RUNTIME_VERSION = '20260916434128';
+const SW_RUNTIME_VERSION = '20260916434128';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12491,7 +12491,7 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
 
 app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
   try { 
-    const { cliente, maquina, data_inicio, data_fim, mes, ano } = req.query; 
+    const { cliente, maquina, data_inicio, data_fim, mes, ano, meses } = req.query; 
     // #region debug-point C:passagens-historico-entry
     try {
       _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:entry', '[DEBUG] /api/passagens/historico request received', {
@@ -12502,6 +12502,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
         data_fim: String(data_fim || ''),
         mes: String(mes || ''),
         ano: String(ano || ''),
+        meses: String(meses || ''),
       });
     } catch (_) {}
     // #endregion
@@ -12510,6 +12511,61 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     const pageReq = Math.max(1, parseInt(String(req.query.page || ''), 10) || 1); 
     const offset = Number.isFinite(offsetReq) ? Math.max(0, offsetReq) : ((pageReq - 1) * limit); 
     const page = Math.max(1, Math.floor(offset / limit) + 1);
+
+    const __dbg_hist = {
+      fonte_dados_atuais: 'APENAS ofs.passagens_maquina COLUNA JSON + amostras. TABELA FISICA passagens_maquina NAO EH CONSULTADA NESTE HANDLER.',
+      causa_raiz_hipotese_debug: 'POST /api/ofs/:id/passou-maquina GRAVA NA TABELA FISICA passagens_maquina mas NAO ATUALIZA a coluna JSON ofs.passagens_maquina da OF correspondente. Handler GET le APENAS a coluna JSON, entao passagens novas nao aparecem no historico.',
+      meses_param: String(meses || ''),
+      mes_param: String(mes || ''),
+      ano_param: String(ano || ''),
+      data_inicio_query: String(data_inicio || ''),
+      data_fim_query: String(data_fim || ''),
+    };
+
+    const range = _relatoriosResolveDateRange(req.query || {}, {});
+    __dbg_hist.range_inicio_calculado = range?.inicio ? String(range.inicio) : null;
+    __dbg_hist.range_fim_calculado = range?.fim ? String(range.fim) : null;
+
+    let fisicaCount1Mes = -1, fisicaCount3Meses = -1, fisicaAmostra = [], fisicaErro = null;
+    try {
+      const hoje = new Date();
+      const fimISO = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999).toISOString().slice(0,10);
+      const inicio1Mes = new Date(hoje); inicio1Mes.setDate(1); const inicio1ISO = inicio1Mes.toISOString().slice(0,10);
+      const inicio3Meses = new Date(hoje); inicio3Meses.setMonth(inicio3Meses.getMonth() - 2); inicio3Meses.setDate(1); const inicio3ISO = inicio3Meses.toISOString().slice(0,10);
+      __dbg_hist.tabela_fisica_filtro_1mes_inicio = inicio1ISO;
+      __dbg_hist.tabela_fisica_filtro_1mes_fim = fimISO;
+      __dbg_hist.tabela_fisica_filtro_3meses_inicio = inicio3ISO;
+      __dbg_hist.tabela_fisica_filtro_3meses_fim = fimISO;
+
+      const r1 = await supabase.from('passagens_maquina').select('id', { count: 'exact' }).gte('data_passagem', inicio1ISO).lte('data_passagem', fimISO).limit(1);
+      if (r1?.error) throw r1.error;
+      fisicaCount1Mes = Number(r1?.count ?? 0) || 0;
+      const r3 = await supabase.from('passagens_maquina').select('id,hora_passagem,of_id,of_numero,maquina', { count: 'exact' }).gte('data_passagem', inicio3ISO).lte('data_passagem', fimISO).order('hora_passagem',{ascending:false}).limit(10);
+      if (r3?.error) throw r3.error;
+      fisicaCount3Meses = Number(r3?.count ?? 0) || 0;
+      fisicaAmostra = Array.isArray(r3?.data) ? r3.data.slice(0,5) : [];
+    } catch (eFis) {
+      fisicaErro = String(eFis?.message || eFis);
+    }
+    __dbg_hist.tabela_fisica_passagens_maquina_count_1mes = fisicaCount1Mes;
+    __dbg_hist.tabela_fisica_passagens_maquina_count_3meses = fisicaCount3Meses;
+    __dbg_hist.tabela_fisica_amostra_5_rows = fisicaAmostra;
+    __dbg_hist.tabela_fisica_query_erro = fisicaErro;
+
+    let ofsJsonNaoNulasCount = -1, ofsJsonErro = null;
+    try {
+      const rOfs = await supabase.from('ofs').select('id',{count:'exact'}).not('passagens_maquina','is',null).limit(1);
+      if (rOfs?.error) throw rOfs.error;
+      ofsJsonNaoNulasCount = Number(rOfs?.count ?? 0) || 0;
+    } catch (eOfs) {
+      ofsJsonErro = String(eOfs?.message || eOfs);
+    }
+    __dbg_hist.ofs_coluna_json_passagens_maquina_nao_nulas_count = ofsJsonNaoNulasCount;
+    __dbg_hist.ofs_coluna_json_query_erro = ofsJsonErro;
+
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    __dbg_hist.filtro_empresa_aplicado_uuid_ou_sigla = empresaId || '(nenhum/vazio)';
+
     const pair = await _buscarPassagensHistoricoFromOfs(req, {
       cliente,
       maquina,
@@ -12517,10 +12573,14 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       data_fim,
       mes,
       ano,
+      meses,
       limit,
       offset,
       count: true
     });
+    __dbg_hist.pair_rows_from__buscarPassagensHistoricoFromOfs_len = Array.isArray(pair?.rows) ? pair.rows.length : -1;
+    __dbg_hist.pair_count_from__buscarPassagensHistoricoFromOfs = Number(pair?.count ?? 0) || 0;
+
     // #region debug-point A:hist-source-passagens-table
     try {
       (() => {
@@ -12552,6 +12612,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
             maquina: String(maquina || '').slice(0, 120),
             rawRows: Array.isArray(pair?.rows) ? pair.rows.length : -1,
             rawCount: Number(pair?.count || 0) || 0,
+            fisicaCount1Mes, fisicaCount3Meses, ofsJsonNaoNulasCount,
           },
           ts: Date.now()
         });
@@ -12571,17 +12632,35 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     // #endregion
 
     let passagens = Array.isArray(pair?.rows) ? pair.rows : [];
-    const range = _relatoriosResolveDateRange(req.query || {}, {});
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    __dbg_hist.raw_rows_len_apos_buscar_from_ofs_antes_enriquecer = passagens.length;
+
     const resumoOficial = (range && range.inicio)
       ? await _resumirVendasOficiais(range, empresaId)
       : { total_vendido: 0, total_ofs: 0 };
-    try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
-    try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
-    try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
+    let enrOk = false, enrErr = null;
+    try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); enrOk = true; } catch (e) { enrErr = String(e?.message||e); }
+    __dbg_hist.enriquecer_ok = enrOk; __dbg_hist.enriquecer_erro = enrErr;
+    __dbg_hist.rows_len_depois_enriquecer = passagens.length;
+
+    let normOk = false, normErr = null;
+    try { passagens = await _normalizarMaquinasPassagens(passagens); normOk = true; } catch (e) { normErr = String(e?.message||e); }
+    __dbg_hist.normalizar_maquinas_ok = normOk; __dbg_hist.normalizar_maquinas_erro = normErr;
+    __dbg_hist.rows_len_depois_normalizar = passagens.length;
+
+    let dedupOk = false, dedupErr = null, antesDedup = passagens.length;
+    try { passagens = _dedupePassagensMaquinaRows(passagens); dedupOk = true; } catch (e) { dedupErr = String(e?.message||e); }
+    __dbg_hist.dedup_ok = dedupOk; __dbg_hist.dedup_erro = dedupErr;
+    __dbg_hist.rows_len_antes_dedup = antesDedup;
+    __dbg_hist.rows_len_depois_dedup = passagens.length;
+
     try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
     const totalFull = Number((Array.isArray(passagens) ? passagens.length : 0) || 0) || 0;
     const paged = (Array.isArray(passagens) ? passagens.slice(offset, offset + limit) : []);
+    __dbg_hist.total_full_antes_paginacao = totalFull;
+    __dbg_hist.paged_len_depois_paginacao = paged.length;
+    __dbg_hist.page_atual = page;
+    __dbg_hist.limit_atual = limit;
+    __dbg_hist.offset_atual = offset;
     // #region debug-point C:passagens-historico-success
     try {
       _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:success', '[DEBUG] /api/passagens/historico response ok', {
@@ -12590,6 +12669,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
         page,
         limit,
         offset,
+        fisicaCount1Mes, fisicaCount3Meses, ofsJsonNaoNulasCount,
       });
     } catch (_) {}
     // #endregion
@@ -12603,7 +12683,8 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       data_inicio: _relatoriosIsoDateOnly(data_inicio),
       data_fim: _relatoriosIsoDateOnly(data_fim),
       total_vendido_oficial: Number(resumoOficial?.total_vendido || 0) || 0,
-      total_ofs_oficial: Number(resumoOficial?.total_ofs || 0) || 0
+      total_ofs_oficial: Number(resumoOficial?.total_ofs || 0) || 0,
+      __query_real: __dbg_hist,
     }); 
   } catch(e) { 
     // #region debug-point C:passagens-historico-error
@@ -12616,7 +12697,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     } catch (_) {}
     // #endregion
     console.error('[passagens/historico]', e.message); 
-    res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
+    res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message, __query_real: { excecao_geral: String(e?.message||e) } }); 
   } 
 }); 
 
