@@ -37046,7 +37046,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td style="padding:10px 14px">' + String(v && v.nome || '—') + '</td>'
         + '<td style="text-align:center;padding:10px 14px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
         + '<td style="text-align:right;padding:10px 14px">' + fmt(v && v.total) + '</td>'
-        + '<td style="text-align:center;padding:10px 14px">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + (Number(v && (v.comissao_pct ?? v.comissao ?? 0)) || 0).toFixed(2) + '%</td>'
         + '<td style="text-align:right;padding:10px 14px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
         + '<td style="padding:10px 14px;text-align:center">'
         + '<button onclick="window._editarComissaoPct && window._editarComissaoPct(' + JSON.stringify(String(v && v.id || '')) + ',' + JSON.stringify(String(v && v.nome || '')) + ',' + String(Number(v && v.comissao_pct || 0) || 0) + ')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:11px">✏️</button>'
@@ -37144,7 +37144,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td style="padding:7px 12px;text-align:center">' + String((of && of.qtd) != null ? (of.qtd || 0) : '—') + '</td>'
         + '<td style="padding:7px 12px">' + String(of && of.vendedor || '—') + '</td>'
         + '<td style="padding:7px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
-        + '<td style="padding:7px 12px;text-align:center">' + (Number(of && of.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+        + '<td style="padding:7px 12px;text-align:center">' + (Number(of && (of.comissao_pct ?? of.comissao ?? 0)) || 0).toFixed(2) + '%</td>'
         + '<td style="padding:7px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
         + '<td style="padding:7px 12px">' + fmtData(of && of.created_at) + '</td>'
         + '<td style="padding:7px 12px">' + fmtData(of && of.data_conclusao) + '</td>'
@@ -37640,7 +37640,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '<h3 style="margin-bottom:8px;font-size:13px">Resumo por Vendedor</h3>'
       + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">%</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
       + vends.map(function(v) {
-        return '<tr><td>' + String(v && v.nome || '—') + '</td><td>' + String(v && v.ofs || 0) + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td style="text-align:center">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td></tr>';
+        return '<tr><td>' + String(v && v.nome || '—') + '</td><td>' + String(v && v.ofs || 0) + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td style="text-align:center">' + (Number(v && (v.comissao_pct ?? v.comissao ?? 0)) || 0).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td></tr>';
       }).join('')
       + '<tr class="tf"><td>TOTAL</td><td>' + String(vends.reduce(function(s, v) { return s + (Number(v && v.ofs || 0) || 0); }, 0)) + '</td><td style="text-align:right">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.total || 0) || 0); }, 0)) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.comissao_rs || 0) || 0); }, 0)) + '</td></tr>'
       + '</tbody></table>'
@@ -37664,14 +37664,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             bodyLinhas += ''
               + '<tr><td colspan="7"><div class="ch">🏢 ' + String(cliNome) + ' · ' + String(cliOfs.length) + ' OF(s) · Subtotal ' + fmtLocal(cliVend) + ' · Comissão ' + fmtLocal(cliCom) + '</div></td></tr>'
               + cliOfs.map(function(o) {
-                  return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && o.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
+                  return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && (o.comissao_pct ?? o.comissao ?? 0)) || 0).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
                 }).join('')
               + '<tr class="ct"><td colspan="2">Total ' + String(cliNome) + '</td><td style="text-align:right">' + fmtLocal(cliVend) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(cliCom) + '</td><td colspan="2"></td></tr>';
           });
         } else {
           var vOfsOrdenados = vOfs.slice().sort(sortD);
           bodyLinhas = vOfsOrdenados.map(function(o) {
-            return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && o.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
+            return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && (o.comissao_pct ?? o.comissao ?? 0)) || 0).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
           }).join('');
         }
         return '<div class="vh">📋 ' + String(v && v.nome || '—') + ' — ' + String(vOfs.length) + ' OFs — ' + fmtLocal(v && v.total) + '</div>'
@@ -50761,7 +50761,7 @@ function _renderTabelaVendedores(json) {
         + '<td style="padding:10px 14px 10px 16px;text-align:left">' + String(v && v.nome || '—') + '</td>'
         + '<td style="text-align:center;padding:10px 14px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
         + '<td style="text-align:center;padding:10px 14px">' + fmt(v && v.total) + '</td>'
-        + '<td style="text-align:center;padding:10px 14px">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + (Number(v && (v.comissao_pct ?? v.comissao ?? 0)) || 0).toFixed(2) + '%</td>'
         + '<td style="text-align:center;padding:10px 14px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
         + '<td style="padding:10px 14px">—</td>'
         + '</tr>';
@@ -50932,7 +50932,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
     totaisPorVendedor[nome].count += 1;
     totaisPorVendedor[nome].vendas += _comResolverValorTotal(of);
     totaisPorVendedor[nome].comissao += _comResolverValorTotal(of)
-      * ((Number(of && (of.comissao_pct || 1) || 1) || 1) / 100);
+      * ((Number(of && (of.comissao_pct ?? of.comissao ?? 0)) || 0) / 100);
   });
 
   var cores = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
@@ -50951,7 +50951,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
     var valorTotal = _comResolverValorTotal(of);
     var vu = Number(of && of.valor_unitario || 0) || 0;
     if (!vu && valorTotal && quantidade > 0) vu = valorTotal / quantidade;
-    var comPct = Number(of && (of.comissao_pct || 1) || 1) || 1;
+    var comPct = Number(of && (of.comissao_pct ?? of.comissao ?? 0)) || 0;
     var comissaoRS = valorTotal * (comPct / 100);
     var nomeVend = getNomeVend(of);
     var idxVend = ordemVendedores.indexOf(nomeVend);
@@ -51030,7 +51030,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
             var qtd = Number(of && (of.quantidade ?? of.qtd ?? 0) || 0) || 0;
             var valor = _comResolverValorTotal(of);
             var vu = Number(of && (of.valor_unitario ?? 0) || 0) || (qtd > 0 ? (valor / qtd) : 0);
-            var pct = Number(of && (of.comissao_pct ?? 1) || 1) || 1;
+            var pct = Number(of && (of.comissao_pct ?? of.comissao ?? 0)) || 0;
             var rs = valor * (pct / 100);
             return [
               String(of && (of.numero || of.of_numero) || ''),
