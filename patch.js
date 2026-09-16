@@ -63140,13 +63140,39 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var dfinal = yy + '-' + (mm<10?'0'+mm:mm) + '-' + dFimM;
       var emp = ccustosNormEmpId(state.emp_id);
       var url = '/api/relatorios/custos?data_inicio=' + encodeURIComponent(dinicial) + '&data_fim=' + encodeURIComponent(dfinal) + '&emp_id=' + encodeURIComponent(emp);
-      return ccustosFetch(url)
-        .then(function(r){ try { return r.json(); } catch(_){ return { ok:false }; } })
+      var ctrl = null;
+      var toHandle = null;
+      try {
+        if (typeof AbortController === 'function') {
+          ctrl = new AbortController();
+          toHandle = setTimeout(function(){ try { if (ctrl) ctrl.abort(); } catch(_){} }, 28000);
+        }
+      } catch (_) { ctrl = null; toHandle = null; }
+      var fetchOpts = {};
+      if (ctrl && ctrl.signal) fetchOpts.signal = ctrl.signal;
+      return ccustosFetch(url, fetchOpts)
+        .then(function(r){
+          try { if (toHandle) clearTimeout(toHandle); } catch (_) {}
+          try { return r.json(); } catch(_){ return { ok:false, error:'resposta_invalida' }; }
+        })
         .then(function(j){
-          state.ofsCustos = (j && j.ok) ? j : null;
+          if (j && j.ok) {
+            state.ofsCustos = j;
+          } else {
+            var msg = String((j && (j.error || j.message)) || 'Erro desconhecido').trim() || 'Erro desconhecido';
+            var etapa = (j && j.ultima_etapa) ? String(j.ultima_etapa) : null;
+            state.ofsCustos = { ok:false, error:msg, etapa:etapa, tracer:(j && j.tracer) ? j.tracer : null };
+          }
           state.loading.ofs = false; render();
           return j;
-        }).catch(function(){ state.loading.ofs = false; render(); });
+        }).catch(function(err){
+          try { if (toHandle) clearTimeout(toHandle); } catch (_) {}
+          var isAbort = !!(err && (err.name === 'AbortError' || (err.message && String(err.message).toLowerCase().includes('abort'))));
+          var msg = isAbort ? 'Tempo limite excedido (28s). Tente um período menor.' : String((err && err.message) || 'Falha na conexão').trim() || 'Falha ao carregar';
+          state.ofsCustos = { ok:false, error:msg, etapa:null, tracer:null, timeout:isAbort };
+          state.loading.ofs = false; render();
+          return state.ofsCustos;
+        });
     }
     function loadOperadores() {
       state.loading.operadores = true; render();
@@ -63436,6 +63462,30 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '</div>';
       if (state.loading.ofs && (!j || !j.rows)) {
         html += '<div class="ccustos-empty"><span class="ccustos-spinner"></span>Carregando OFs concluídas do mês...</div>';
+        return html;
+      }
+      if (j && j.ok === false) {
+        var erroMsg = String(j.error || 'Erro ao carregar').trim() || 'Erro desconhecido';
+        var etapaStr = j.etapa ? String(j.etapa) : null;
+        var timeoutBadge = j.timeout ? '<span class="ccustos-badge is-auto">⏰ Timeout (28s)</span>' : '<span class="ccustos-badge is-manual">❌ Erro</span>';
+        var etapaHtml = etapaStr ? ('<div class="ccustos-panel-sub" style="margin-top:8px;color:#fca5a5"><b>Última etapa processada:</b> ' + esc(etapaStr) + '</div>') : '';
+        var tracerText = '';
+        try {
+          if (j.tracer && typeof j.tracer === 'object') {
+            var partes = [];
+            ['range','ofs','clientes','gramaturas','map','reduce'].forEach(function(k){ if (j.tracer.etapa_ms && j.tracer.etapa_ms[k] != null) partes.push(k + '=' + j.tracer.etapa_ms[k] + 'ms'); });
+            if (j.tracer.ofs_count != null) partes.push('ofs=' + j.tracer.ofs_count);
+            if (j.tracer.total_ms != null) partes.push('total=' + j.tracer.total_ms + 'ms');
+            if (partes.length) tracerText = '<div class="ccustos-panel-sub" style="margin-top:6px;color:#94a3b8;font-size:11px"><b>Debug (etapas):</b> ' + esc(partes.join(' · ')) + '</div>';
+          }
+        } catch (_) { tracerText = ''; }
+        html += '<div class="ccustos-panel" style="border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.05)">';
+        html += '<div class="ccustos-panel-title" style="color:#fca5a5">' + timeoutBadge + ' Falha ao carregar Custo por OF</div>';
+        html += '<div class="ccustos-panel-sub" style="margin-top:6px;color:#fed7aa"><b>Mensagem:</b> ' + esc(erroMsg) + '</div>';
+        if (etapaHtml) html += etapaHtml;
+        if (tracerText) html += tracerText;
+        html += '<div style="margin-top:14px"><button class="ccustos-btn is-primary" id="cc-btn-recarregar-ofs-err">🔄 Tentar novamente</button> <button class="ccustos-btn" id="cc-btn-mudar-mes" style="margin-left:8px">📅 Mudar competência / período</button></div>';
+        html += '</div>';
         return html;
       }
       var rows = (j && Array.isArray(j.rows)) ? j.rows.slice() : [];
@@ -63944,6 +63994,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           try {
             var recOf = document.getElementById('cc-btn-recarregar-ofs');
             if (recOf && ev.target === recOf) { loadCustoOFs(); return; }
+          } catch(_){}
+          try {
+            var recOfErr = document.getElementById('cc-btn-recarregar-ofs-err');
+            if (recOfErr && ev.target === recOfErr) { loadCustoOFs(); return; }
+          } catch(_){}
+          try {
+            var mudarMes = document.getElementById('cc-btn-mudar-mes');
+            if (mudarMes && ev.target === mudarMes) {
+              try {
+                var selC = document.getElementById('cc-select-competencia');
+                if (selC && typeof selC.scrollIntoView === 'function') selC.scrollIntoView({behavior:'smooth',block:'center'});
+                if (selC && typeof selC.focus === 'function') try { selC.focus(); } catch(_){}
+              } catch(_){}
+              return;
+            }
           } catch(_){}
           try {
             var impOfs = document.getElementById('cc-btn-imprimir-ofs');

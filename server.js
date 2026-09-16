@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260916434139';
-const SW_RUNTIME_VERSION = '20260916434139';
+const PATCH_RUNTIME_VERSION = '20260916434140';
+const SW_RUNTIME_VERSION = '20260916434140';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -16855,10 +16855,29 @@ app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, 
 });
 
 app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
+  const t0 = Date.now();
+  const tracer = { etapa_ms: {} };
+  let etapaAtual = 'inicio';
+  let timeoutHandler = null;
+  const sentRef = { value: false };
+  const timeoutMs = 25000;
   try {
+    timeoutHandler = setTimeout(() => {
+      try {
+        if (sentRef.value) return;
+        sentRef.value = true;
+        console.error('[RELATORIOS][CUSTOS] TIMEOUT ' + timeoutMs + 'ms | ultima_etapa=' + etapaAtual + ' | tracer=' + JSON.stringify(tracer.etapa_ms));
+        if (!res.headersSent) {
+          res.status(504).json({ ok: false, error: 'Tempo limite excedido ao calcular custos. Tente um período menor.', ultima_etapa: etapaAtual, tracer: tracer.etapa_ms });
+        }
+      } catch (_) {}
+    }, timeoutMs);
     setNoCache(res);
+    etapaAtual = 'resolve_date_range';
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    tracer.etapa_ms.range = Date.now() - t0;
     if (!range?.inicio || !range?.fim_exclusivo) {
+      if (timeoutHandler) clearTimeout(timeoutHandler);
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
     const empId = String(req.query.emp_id || req.query.empId || '').trim();
@@ -16870,6 +16889,7 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
       'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida',
       'valor_total', 'valor_venda', 'total'
     ].join(',');
+    etapaAtual = 'select_ofs';
     const sel = await _selectCompatRows('ofs', cols, (q) => {
       let query = q
         .ilike('status', '%conclu%')
@@ -16877,23 +16897,50 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
         .lt('data_conclusao', range.fim_exclusivo)
         .order('data_conclusao', { ascending: false });
       if (empId && _isUuid(empId)) query = query.eq('empresa_id', empId);
-      return query.limit(10000);
+      return query.limit(900);
     });
-    if (sel?.error) throw sel.error;
+    tracer.etapa_ms.ofs = Date.now() - t0;
+    if (sel?.error) {
+      console.error('[RELATORIOS][CUSTOS][OFSEL]', { message: sel.error?.message, details: sel.error?.details, hint: sel.error?.hint, code: sel.error?.code });
+      throw sel.error;
+    }
     const ofs = Array.isArray(sel?.data) ? sel.data : [];
+    tracer.ofs_count = ofs.length;
+    etapaAtual = 'clientes';
     const cliIds = Array.from(new Set(ofs.map((of) => String(of?.cli_id || '').trim()).filter(_isUuid)));
     const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
+    tracer.etapa_ms.clientes = Date.now() - t0 - tracer.etapa_ms.ofs;
+    etapaAtual = 'gramaturas';
     const gramIds = Array.from(new Set(ofs.map((of) => String(of?.gramatura_id || '').trim()).filter(_isUuid)));
     const gramMap = new Map();
-    for (let i = 0; i < gramIds.length; i += 200) {
-      const chunk = gramIds.slice(i, i + 200);
-      const { data, error } = await supabase.from('gramaturas').select('id,nome,gramatura,valor_unitario,fornecedor_id').in('id', chunk);
-      if (error) throw error;
-      (Array.isArray(data) ? data : []).forEach((g) => {
-        const id = String(g?.id || '').trim();
-        if (id) gramMap.set(id, g);
-      });
-    }
+    const gramChunks = [];
+    for (let i = 0; i < gramIds.length; i += 200) gramChunks.push(gramIds.slice(i, i + 200));
+    tracer.gram_chunks = gramChunks.length;
+    const gramResults = await Promise.allSettled(gramChunks.map(async (chunk) => {
+      try {
+        const { data, error } = await supabase.from('gramaturas').select('id,nome,gramatura,valor_unitario,fornecedor_id').in('id', chunk);
+        if (error) {
+          console.error('[RELATORIOS][CUSTOS][GRAM]', { message: error?.message, details: error?.details, hint: error?.hint, code: error?.code });
+          return { ok: false, rows: [] };
+        }
+        return { ok: true, rows: Array.isArray(data) ? data : [] };
+      } catch (e) {
+        console.error('[RELATORIOS][CUSTOS][GRAMEX]', { message: e?.message, details: e?.details, hint: e?.hint });
+        return { ok: false, rows: [] };
+      }
+    }));
+    gramResults.forEach((resItem) => {
+      try {
+        if (!resItem || resItem.status !== 'fulfilled' || !resItem.value?.ok) return;
+        const rows = Array.isArray(resItem.value.rows) ? resItem.value.rows : [];
+        rows.forEach((g) => {
+          const id = String(g?.id || '').trim();
+          if (id) gramMap.set(id, g);
+        });
+      } catch (_) {}
+    });
+    tracer.etapa_ms.gramaturas = Date.now() - t0 - tracer.etapa_ms.clientes - tracer.etapa_ms.ofs;
+    etapaAtual = 'map_rows';
     const pickQtd = (of) => Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
     const rows = ofs.map((of) => {
       const comp = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
@@ -16939,8 +16986,19 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
       if (vA !== vB) return vA - vB;
       return String(a?.cliente || '').localeCompare(String(b?.cliente || ''), 'pt-BR');
     });
+    tracer.rows_count = rows.length;
+    tracer.etapa_ms.map = Date.now() - t0 - tracer.etapa_ms.gramaturas - tracer.etapa_ms.clientes - tracer.etapa_ms.ofs;
+    etapaAtual = 'reduce_totais';
     const totalCustosConsolidado = rows.reduce((s, r) => s + Number(r?.custo_total || 0), 0);
     const totalVendaConsolidado = rows.reduce((s, r) => s + Number(_pickCanonicalValorTotal(r) || 0), 0);
+    tracer.etapa_ms.reduce = Date.now() - t0 - tracer.etapa_ms.map - tracer.etapa_ms.gramaturas - tracer.etapa_ms.clientes - tracer.etapa_ms.ofs;
+    tracer.total_ms = Date.now() - t0;
+    if (tracer.total_ms > 8000 || tracer.ofs_count > 700) {
+      console.log('[RELATORIOS][CUSTOS][SLOW] tracer=' + JSON.stringify(tracer));
+    }
+    if (timeoutHandler) clearTimeout(timeoutHandler);
+    if (sentRef.value) return;
+    sentRef.value = true;
     return res.json({
       ok: true,
       data_inicio: range.inicio,
@@ -16948,11 +17006,24 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
       rows,
       total_custos_consolidado_competencia: Math.round(totalCustosConsolidado * 100) / 100,
       total_venda_consolidado_competencia: Math.round(totalVendaConsolidado * 100) / 100,
-      ofs_completo_para_central: true
+      ofs_completo_para_central: true,
+      _debug: tracer
     });
   } catch (e) {
-    console.error('[RELATORIOS][CUSTOS]', e?.message || e);
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    if (timeoutHandler) clearTimeout(timeoutHandler);
+    tracer.total_ms = Date.now() - t0;
+    console.error('[RELATORIOS][CUSTOS][FATAL]', {
+      message: e?.message,
+      details: e?.details,
+      hint: e?.hint,
+      code: e?.code,
+      stack: e?.stack ? String(e.stack).slice(0, 800) : null,
+      ultima_etapa: etapaAtual,
+      tracer: tracer.etapa_ms
+    });
+    if (sentRef.value) return;
+    sentRef.value = true;
+    return res.status(500).json({ ok: false, error: String(e?.message || e), ultima_etapa: etapaAtual, tracer });
   }
 });
 
