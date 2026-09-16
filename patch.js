@@ -8428,7 +8428,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '<div class="topline"><div><div class="brand">' + window._compraPapelaoEsc(empresa || 'Italy Embalagens') + '</div><div class="title">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(data.fornecedor || 'FORNECEDOR') + '</div><div class="subtitle">Gerado em ' + window._compraPapelaoEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</div></div>'
     + '<div class="box"><table><tr><td class="label">Pedido</td><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</td></tr><tr><td class="label">Data</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</td></tr><tr><td class="label">Fornecedor</td><td>' + window._compraPapelaoEsc(data.fornecedor || '—') + '</td></tr></table></div></div>'
     + '<div class="meta"><div class="meta-card"><div class="label">Pedido do Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Status</div><div class="value">' + window._compraPapelaoEsc(String(data.status || 'Aberto')) + '</div></div><div class="meta-card"><div class="label">Pasta</div><div class="value">' + window._compraPapelaoEsc(String(data.pasta_id && data.pasta_nome ? data.pasta_nome : (data.pasta_id ? data.pasta_id : 'Sem pasta'))) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
-    + '<table class="planilha"><colgroup><col style="width:3.0%"><col style="width:7.6%"><col style="width:7.0%"><col style="width:8.8%"><col style="width:14.0%"><col style="width:5.4%"><col style="width:6.4%"><col style="width:7.2%"><col style="width:7.2%"><col style="width:7.4%"><col style="width:8.0%"><col style="width:8.4%"><col style="width:9.6%"></colgroup><thead><tr><th style="width:3.0%!important">Nº Item</th><th style="width:7.6%!important">Data de Entrega</th><th style="width:7.0%!important">PO / Nomenclatura</th><th style="width:8.8%!important">Medidas Largura × Comprimento (mm)</th><th style="width:14.0%!important">Posições dos Vincos (mm)</th><th style="width:5.4%!important">Quantidade de Chapas</th><th style="width:6.4%!important">Lote Mínimo (un)</th><th style="width:7.2%!important">Área em m²</th><th style="width:7.2%!important">Valor por m²</th><th style="width:7.4%!important">Valor por Milheiro</th><th style="width:8.0%!important">Valor Total do Item</th><th style="width:8.4%!important">Observação</th><th style="width:9.6%!important">Pedido do Fornecedor</th></tr></thead><tbody>'
+    + '<table class="planilha"><colgroup><col style="width:3.0%"><col style="width:7.6%"><col style="width:7.0%"><col style="width:8.8%"><col style="width:18.0%"><col style="width:5.4%"><col style="width:6.4%"><col style="width:7.2%"><col style="width:7.2%"><col style="width:7.4%"><col style="width:8.0%"><col style="width:4.4%"><col style="width:9.6%"></colgroup><thead><tr><th style="width:3.0%!important">Nº Item</th><th style="width:7.6%!important">Data de Entrega</th><th style="width:7.0%!important">PO / Nomenclatura</th><th style="width:8.8%!important">Medidas Largura × Comprimento (mm)</th><th style="width:18.0%!important">Posições dos Vincos (mm)</th><th style="width:5.4%!important">Quantidade de Chapas</th><th style="width:6.4%!important">Lote Mínimo (un)</th><th style="width:7.2%!important">Área em m²</th><th style="width:7.2%!important">Valor por m²</th><th style="width:7.4%!important">Valor por Milheiro</th><th style="width:8.0%!important">Valor Total do Item</th><th style="width:4.4%!important">Observação</th><th style="width:9.6%!important">Pedido do Fornecedor</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="13">Nenhum item informado.</td></tr>')
     + '</tbody></table>'
     + '<div class="totais"><div class="total-chip"><div class="label">Quantidade Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</div></div><div class="total-chip"><div class="label">Área Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + ' m²</div></div><div class="total-chip"><div class="label">Valor Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</div></div></div>'
@@ -8657,11 +8657,15 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     };
     var saveBtn = overlay.querySelector('#ccpx-save-compra');
     if (saveBtn) saveBtn.onclick = async function() {
+      if (overlay.__ccpxSaveRunning) return;
       var payload = window._compraPapelaoCollectCompraPayload(overlay, compra);
       payload.numero_compra = compra && compra.numero_compra || window._compraPapelaoNextNumeroPreview();
       if (!payload.fornecedor) return alert('Informe o fornecedor da compra.');
       if (!payload.itens.length) return alert('Adicione pelo menos um item.');
+      overlay.__ccpxSaveRunning = true;
       saveBtn.disabled = true;
+      saveBtn.style.setProperty('pointer-events', 'none', 'important');
+      saveBtn.style.setProperty('opacity', '0.6', 'important');
       try {
         console.log('[COMPRA-PAPELAO] salvar compra:', compraId ? 'edicao' : 'nova', window._compraPapelaoNumeroLabel(payload.numero_compra), 'itens:', payload.itens.length);
         if (compraId) await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
@@ -8675,7 +8679,10 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         try { if (typeof window.toast === 'function') window.toast(msg, 'var(--red)'); } catch (_) {}
         alert(msg);
       } finally {
+        overlay.__ccpxSaveRunning = false;
         saveBtn.disabled = false;
+        saveBtn.style.removeProperty('pointer-events');
+        saveBtn.style.removeProperty('opacity');
       }
     };
     setTimeout(function() {
@@ -9786,7 +9793,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
             var _chs = '';
             _ex.forEach(function(v, vi) {
               if (!String(v||'').trim()) return;
-              _chs += '<div style="position:relative;display:grid;grid-template-columns:minmax(0,1fr) 22px;gap:4px;align-items:center"><input data-ccpx-vinco="' + (5 + vi) + '" value="' + cAttr(v) + '" placeholder="V' + (5 + vi) + '"><button type="button" data-ccpx-vinco-del="' + (5 + vi) + '" style="width:22px;height:22px;border-radius:999px;border:1px solid rgba(148,163,184,.22);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900;padding:0">×</button></div>';
+              _chs += '<div style="position:relative;display:grid;grid-template-columns:minmax(0,1fr) 12px;gap:4px;align-items:center"><input data-ccpx-vinco="' + (5 + vi) + '" value="' + cAttr(v) + '" placeholder="V' + (5 + vi) + '"><button type="button" data-ccpx-vinco-del="' + (5 + vi) + '" style="width:12px;height:12px;border-radius:999px;border:1px solid rgba(148,163,184,.22);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900;padding:0;font-size:9px;line-height:1">×</button></div>';
             });
             return '<input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4">' + _chs;
           })()
