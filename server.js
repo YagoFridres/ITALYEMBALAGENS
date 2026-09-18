@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260916434144';
-const SW_RUNTIME_VERSION = '20260916434144';
+const PATCH_RUNTIME_VERSION = '20260916434145';
+const SW_RUNTIME_VERSION = '20260916434145';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -3259,42 +3259,51 @@ app.get('/api/ofs/vendedores-unicos', authMiddleware, async (req, res) => {
       req.user?.empId ??
       ''
     ).trim();
-    const empresaCandidates = [
-      empresaUuid ? { col: 'empresa_id', val: empresaUuid } : null,
-      empLegacy ? { col: 'emp_id', val: empLegacy } : null,
-      empLegacy ? { col: 'empId', val: empLegacy } : null,
-    ].filter((x, i, arr) => x && arr.findIndex((y) => y.col === x.col && String(y.val) === String(x.val)) === i);
+    _ensureSchemaColumnsForTable('ofs').catch(() => {});
+    const empColCandidates = ['empresa_id','emp_id','empId'];
+    let empCol = null;
+    let empVal = null;
+    for (const cc of empColCandidates) {
+      if (_tableHasColumn('ofs', cc) !== true) continue;
+      if (cc === 'empresa_id' && empresaUuid) { empCol = cc; empVal = empresaUuid; break; }
+      if ((cc === 'emp_id' || cc === 'empId') && empLegacy) { empCol = cc; empVal = empLegacy; break; }
+    }
+    if (!empCol) {
+      const colsCache = await _ensureSchemaColumnsForTable('ofs').catch(() => null);
+      if (colsCache instanceof Set) {
+        for (const cc of empColCandidates) {
+          if (!colsCache.has(cc)) continue;
+          if (cc === 'empresa_id' && empresaUuid) { empCol = cc; empVal = empresaUuid; break; }
+          if ((cc === 'emp_id' || cc === 'empId') && empLegacy) { empCol = cc; empVal = empLegacy; break; }
+        }
+      }
+    }
 
     const isMissingColumnErr = (error) => {
       const msg = String(error?.message || error || '').toLowerCase();
       return msg.includes('column') || msg.includes('could not find');
     };
 
-    const trySelects = [
-      'vendedor,vendNome,vendId,vendedor_id,status,created_at',
-      'vendNome,vendId,vendedor,status,created_at',
-      '*',
-    ];
-
+    const rawSel = 'vendedor,vendNome,vendId,vendedor_id,vendedor_nome,representante,status,created_at';
+    const safeSel = _filterColsForTable('ofs', rawSel) || rawSel;
     let rows = [];
-    let lastError = null;
-    for (const sel of trySelects) {
-      for (const cand of (empresaCandidates.length ? empresaCandidates : [null])) {
-        try {
-          let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).limit(20000);
-          if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
-          const { data, error } = await q;
-          if (!error) { rows = Array.isArray(data) ? data : []; lastError = null; break; }
-          if (isMissingColumnErr(error)) { lastError = error; continue; }
-          throw error;
-        } catch (e) {
-          if (isMissingColumnErr(e)) { lastError = e; continue; }
-          throw e;
-        }
+    let firstError = null;
+    for (const selUni of [safeSel, '*']) {
+      try {
+        let q = supabase.from('ofs').select(selUni).order('created_at', { ascending: false }).limit(20000);
+        if (empCol && empVal) q = q.eq(empCol, empVal);
+        const { data, error } = await q;
+        if (!error) { rows = Array.isArray(data) ? data : []; firstError = null; break; }
+        firstError = error;
+        const msg = String(error?.message || error || '').toLowerCase();
+        if (!(msg.includes('column') || msg.includes('could not find'))) throw error;
+      } catch (e) {
+        const msg = String(e?.message || e || '').toLowerCase();
+        if (!(msg.includes('column') || msg.includes('could not find'))) throw e;
+        firstError = e;
       }
-      if (rows.length) break;
     }
-    if (!rows.length && lastError) throw lastError;
+    if (!rows.length && firstError) throw firstError;
 
     const set = new Set();
     const norm = (v) => String(v || '').trim();
@@ -7572,8 +7581,91 @@ app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) =>
   }
 });
 
+const _SCHEMA_COLUMNS_CACHE = Object.create(null);
+async function _ensureSchemaColumnsForTable(table) {
+  if (!table) return null;
+  const t = String(table || '').trim();
+  if (!t) return null;
+  if (_SCHEMA_COLUMNS_CACHE[t] && (_SCHEMA_COLUMNS_CACHE[t] instanceof Set)) return _SCHEMA_COLUMNS_CACHE[t];
+  if (_SCHEMA_COLUMNS_CACHE[t] && typeof _SCHEMA_COLUMNS_CACHE[t].then === 'function') return _SCHEMA_COLUMNS_CACHE[t];
+  const p = (async () => {
+    try {
+      if (!supabase) return new Set();
+      const knownProbes = [
+        'id,of,numero,of_num,of_seq,seq,status,created_at,updated_at,criado_em,ultimo_acesso,deletado_em,excluido_em,deleted_at,empresa_id,emp_id,empId,empNome,empresa_nome,empresa,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendedor_id,vendid,vendId,vendNome,vendedor_nome,representante,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,onda,medidas,pasta_id,subtotal,frete,codigo,cnpj,tel,telefone,email,cidade,uf,rs,ie,ramo,pagto,rep,endereco,observacoes,ativo,perfil,permissoes,canais_chat,senha_hash,avatar_iniciais,avatar_cor,avatar_url,pin_qtd_sugerida,pin_tamanho_de,pin_tamanho_ate,valor,val,custo,passagens_maquina'
+      ];
+      let curCols = knownProbes.slice();
+      let lastErr = null;
+      for (let attempt = 0; attempt < 24; attempt++) {
+        const probeSel = curCols.join(',') || 'id';
+        let r;
+        try { r = await supabase.from(t).select(probeSel).limit(1); } catch (pe) { lastErr = pe; break; }
+        if (!r || !r.error) {
+          const cols = new Set(curCols.map((c) => String(c || '').trim().split('.').pop()).filter(Boolean));
+          try {
+            const anyRow = (r && r.data && r.data[0]) ? r.data[0] : null;
+            if (anyRow && typeof anyRow === 'object') Object.keys(anyRow).forEach((k) => cols.add(String(k || '').trim()));
+          } catch (_) {}
+          _SCHEMA_COLUMNS_CACHE[t] = cols;
+          try {
+            console.log('[BOOT SCHEMA] tabela=' + t + ' cols_validas=' + cols.size + ' probe_ok=' + attempt);
+          } catch (_) {}
+          return cols;
+        }
+        lastErr = r.error;
+        const msg = String(lastErr?.message || lastErr || '');
+        const m1 = msg.match(/Could not find the '([^']+)' column/i);
+        const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+        const m3 = msg.match(/column\s+([a-z0-9_.]+)\s+does not exist/i);
+        const bad = String((m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || '').trim().split('.').pop();
+        if (!bad || !curCols.includes(bad)) break;
+        curCols = curCols.filter((c) => String(c || '').trim().split('.').pop() !== bad);
+      }
+      try { console.warn('[BOOT SCHEMA] tabela=' + t + ' fallback probe falhou, usando Set vazio. Ultimo erro:', String(lastErr?.message || lastErr || '').slice(0, 180)); } catch (_) {}
+      _SCHEMA_COLUMNS_CACHE[t] = new Set();
+      return _SCHEMA_COLUMNS_CACHE[t];
+    } catch (e) {
+      try { console.error('[BOOT SCHEMA] ERRO inesperado tabela=' + t + ':', String(e?.message || e).slice(0, 200)); } catch (_) {}
+      _SCHEMA_COLUMNS_CACHE[t] = new Set();
+      return _SCHEMA_COLUMNS_CACHE[t];
+    }
+  })();
+  _SCHEMA_COLUMNS_CACHE[t] = p;
+  return p;
+}
+function _filterColsForTable(table, colsCsv) {
+  try {
+    const t = String(table || '').trim();
+    const cache = (t && _SCHEMA_COLUMNS_CACHE[t] && (_SCHEMA_COLUMNS_CACHE[t] instanceof Set)) ? _SCHEMA_COLUMNS_CACHE[t] : null;
+    if (!cache || !cache.size) return colsCsv;
+    const parts = String(colsCsv || '').split(',').map((s) => String(s || '').trim()).filter(Boolean);
+    if (!parts.length) return colsCsv;
+    const out = parts.filter((p) => {
+      const bare = String(p || '').trim().split('.').pop();
+      return cache.has(bare);
+    });
+    return out.length ? out.join(',') : colsCsv;
+  } catch (_) { return colsCsv; }
+}
+function _tableHasColumn(table, colName) {
+  try {
+    const t = String(table || '').trim();
+    const c = String(colName || '').trim().split('.').pop();
+    const cache = (t && c && _SCHEMA_COLUMNS_CACHE[t] && (_SCHEMA_COLUMNS_CACHE[t] instanceof Set)) ? _SCHEMA_COLUMNS_CACHE[t] : null;
+    return cache ? cache.has(c) : null;
+  } catch (_) { return null; }
+}
+
 async function _selectCompatRows(table, columns, applyQuery) {
   let cur = String(columns || '*');
+  const filtered = _filterColsForTable(table, cur);
+  if (filtered && filtered !== cur) { cur = filtered; }
+  if (cur && cur !== '*') {
+    const t0 = String(table || '').trim();
+    if (t0 && !(_SCHEMA_COLUMNS_CACHE[t0] && (_SCHEMA_COLUMNS_CACHE[t0] instanceof Set))) {
+      _ensureSchemaColumnsForTable(t0).catch(() => {});
+    }
+  }
   for (let tentativa = 0; tentativa < 16; tentativa += 1) {
     let q = supabase.from(table).select(cur);
     if (typeof applyQuery === 'function') q = applyQuery(q) || q;
@@ -9106,6 +9198,8 @@ app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/amostras', authMiddleware, async (req, res) => {
   try {
+    _ensureSchemaColumnsForTable('amostras').catch(() => {});
+    const hasAmostrasDeletedAt = (_tableHasColumn('amostras', 'deleted_at') === true) ? true : null;
     let q = supabase.from('amostras').select('*').order('created_at', { ascending: false });
     const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
     const empRawReq = String(req.query.empId ?? req.query.emp_id ?? '').trim();
@@ -9134,19 +9228,26 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         console.warn('[AMOSTRAS] filtro empresa veio VAZIO (erro stringify): empRawReq=', empRawReq, 'empResolvido=', empResolvido, 'empLegacy=', empLegacy, 'usuario=', req.usuario?.email || null);
       }
     }
-    async function _aplicarFiltros(qBase, tentaDeletedAt, ignoraEmpresa) {
+    async function _aplicarFiltros(qBase, usarDeletedAt, ignoraEmpresa) {
       let qF = qBase;
       if (!ignoraEmpresa && empFiltroRaw) {
         try { qF = qF.or('emp_id.eq.' + empFiltroRaw + ',emp_id.is.null'); } catch (_noOr) { qF = qF.eq('emp_id', empFiltroRaw); }
       }
       if (filtroStatus) qF = qF.eq('status', filtroStatus);
       if (filtroCliente) qF = qF.eq('cliente_id', filtroCliente);
-      if (tentaDeletedAt && !incluirCanceladas) {
-        try { qF = qF.is('deleted_at', null); } catch (_noCol) {}
+      if (usarDeletedAt && !incluirCanceladas) {
+        qF = qF.is('deleted_at', null);
       }
       return await qF;
     }
-    let { data, error } = await _aplicarFiltros(q, true);
+    let usarDA = hasAmostrasDeletedAt === true;
+    if (usarDA === null) {
+      try {
+        const cacheCols = await _ensureSchemaColumnsForTable('amostras').catch(() => null);
+        usarDA = (cacheCols instanceof Set && cacheCols.has('deleted_at'));
+      } catch (_) { usarDA = false; }
+    }
+    let { data, error } = await _aplicarFiltros(q, usarDA);
     const errMsg = String(error?.message || error || '').toLowerCase();
     const errCode = String(error?.code || '').trim();
     const colunaFaltando = (errCode === '42703') ||
@@ -13626,9 +13727,16 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     ].join('|');
     const cachedClientes = cacheGet(cacheKey);
     if (cachedClientes) return res.json(cachedClientes);
-    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    _ensureSchemaColumnsForTable('clientes').catch(() => {});
+    const empColCandidatesCli = ['empresa_id','emp_id','empId','empresa'];
+    let cliEmpCol = null;
+    for (const cc of empColCandidatesCli) {
+      if (_tableHasColumn('clientes', cc) === true) { cliEmpCol = cc; break; }
+    }
+    let cols = !empId ? [null] : (cliEmpCol ? [cliEmpCol] : empColCandidatesCli);
     let lastErr = null;
-    let selectSlim = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
+    let selectSlimRaw = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
+    let selectSlim = _filterColsForTable('clientes', selectSlimRaw) || selectSlimRaw;
     const logClientes = (rows) => {
       try {
         console.debug('[GET CLIENTES]', {
@@ -20535,19 +20643,36 @@ app.get('/api/fornecedores/:id/detalhes', authMiddleware, async (req, res) => {
 app.get('/api/fornecedores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
-    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
-    let lastErr = null;
-    for (const col of cols) {
-      let q = supabase.from('fornecedores').select('*').order('nome');
-      if (col) q = q.eq(col, empId);
-      const { data, error } = await q;
-      if (!error) return ok(res, data || []);
-      lastErr = error;
-      const msg = String(error.message || error);
-      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+    _ensureSchemaColumnsForTable('fornecedores').catch(() => {});
+    const colCandidates = ['empresa_id','emp_id','empId','empresa'];
+    let empCol = null;
+    for (const cc of colCandidates) {
+      if (_tableHasColumn('fornecedores', cc) === true) { empCol = cc; break; }
+    }
+    if (!empCol && empId) {
+      const colsCache = await _ensureSchemaColumnsForTable('fornecedores').catch(() => null);
+      if (colsCache instanceof Set) {
+        for (const cc of colCandidates) { if (colsCache.has(cc)) { empCol = cc; break; } } }
+    }
+    let q = supabase.from('fornecedores').select('*').order('nome');
+    if (empCol && empId) q = q.eq(empCol, empId);
+    const { data, error } = await q;
+    if (!error) return ok(res, data || []);
+    if (error) {
+      const msg = String(error.message || error || '');
+      const isColErr = msg.includes('column') || msg.includes('Could not find');
+      if (isColErr && empId) {
+        for (const cc of colCandidates) {
+          if (cc === empCol) continue;
+          try {
+            let q2 = supabase.from('fornecedores').select('*').order('nome').eq(cc, empId);
+            const { data: d2, error: e2 } = await q2;
+            if (!e2) return ok(res, d2 || []);
+          } catch (_) {}
+        }
+      }
       throw error;
     }
-    throw lastErr;
   } catch (e) {
     console.error('[FORNECEDORES] catch:', String(e?.message || e));
     return ok(res, []);
@@ -36865,6 +36990,7 @@ app.listen(PORT, () => {
   _ensureCentralCustosSchema().catch((e) => {
     console.error('[BOOT][CENTRAL_CUSTOS_SCHEMA] ERRO inesperado:', String(e?.message || e));
   });
+  ['ofs','clientes','orcamentos'].forEach((t) => _ensureSchemaColumnsForTable(t).catch(() => {}));
   setTimeout(() => {
     _ensureRamosAtividadeSeedFromClientes().catch((e) => {
       console.error('[BOOT][SEED-RAMOS] ERRO inesperado:', String(e?.message || e));
@@ -36872,6 +36998,13 @@ app.listen(PORT, () => {
     _ensureEstadosCidadesSeedFromClientes().catch((e) => {
       console.error('[BOOT][SEED-UF/CID] ERRO inesperado:', String(e?.message || e));
     });
-  }, 3000);
+    const FR20_TABLES = ['ofs','clientes','fornecedores','usuarios','amostras','maquinas','chapas_estoque_v2','chapas_estoque','orcamentos','vw_comissoes','operadores','centros_custo','lancamentos_custos','contas_pagar','contas_receber'];
+    Promise.all(FR20_TABLES.map((t) => _ensureSchemaColumnsForTable(t).catch(() => null))).then((arr) => {
+      try {
+        const okN = arr.filter((x) => x instanceof Set && x.size > 0).length;
+        console.log('[BOOT SCHEMA FR20] tabelas=' + okN + '/' + FR20_TABLES.length + ' cache_colunas_populado');
+      } catch (_) {}
+    }).catch(() => {});
+  }, 2500);
 });
 
