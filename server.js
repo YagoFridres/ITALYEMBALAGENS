@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260916434145';
-const SW_RUNTIME_VERSION = '20260916434145';
+const PATCH_RUNTIME_VERSION = '20260918434146';
+const SW_RUNTIME_VERSION = '20260918434146';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5179,21 +5179,52 @@ function fornecedoresPayload(p) {
   else if (!out.razao_social) out.razao_social = nome;
 
   if (b.cnpj !== undefined) out.cnpj = b.cnpj;
+  else if (b.cpf !== undefined) out.cnpj = b.cpf;
   if (b.telefone !== undefined) out.telefone = b.telefone;
+  else if (b.tel !== undefined) out.telefone = b.tel;
   if (b.email !== undefined) out.email = b.email;
   if (b.contato !== undefined) out.contato = b.contato;
   else if (b.representante !== undefined) out.contato = b.representante;
   if (b.endereco !== undefined) out.endereco = b.endereco;
+  else if (b.end !== undefined) out.endereco = b.end;
   if (b.tipo !== undefined) out.tipo = b.tipo;
+  else if (b.classificacao !== undefined) out.tipo = b.classificacao;
+  else if (b.categoria !== undefined) out.tipo = b.categoria;
   if (b.cidade !== undefined) out.cidade = b.cidade;
   if (b.uf !== undefined) out.uf = b.uf;
   if (b.estado !== undefined && out.uf === undefined) out.uf = b.estado;
   if (b.obs !== undefined) out.obs = b.obs;
-  if (b.observacoes !== undefined) out.observacoes = b.observacoes;
+  if (b.observacoes !== undefined && !('obs' in out)) out.observacoes = b.observacoes;
 
   const emp = b.empresa_id ?? b.empresaId ?? b.emp_id ?? b.empId ?? null;
   if (isUuid(emp)) out.empresa_id = emp;
+  else if (b.emp_id !== undefined) out.emp_id = b.emp_id;
 
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === null) && delete out[k]);
+  try {
+    _ensureSchemaColumnsForTable('fornecedores').catch(() => {});
+    const allCandidateCols = ['nome','razao_social','rs','cnpj','cpf','telefone','tel','email','contato','representante','endereco','end','tipo','classificacao','categoria','cidade','uf','estado','obs','observacoes','empresa_id','emp_id'];
+    allCandidateCols.forEach(function(colCheck) {
+      if (!(colCheck in out)) return;
+      var tableKey = colCheck;
+      if (colCheck === 'cpf' && !_tableHasColumn('fornecedores','cpf') && _tableHasColumn('fornecedores','cnpj')) {
+        out.cnpj = out.cnpj || out.cpf; delete out.cpf; return;
+      }
+      if (colCheck === 'tel' && !_tableHasColumn('fornecedores','tel') && _tableHasColumn('fornecedores','telefone')) return;
+      if (colCheck === 'end' && !_tableHasColumn('fornecedores','end') && _tableHasColumn('fornecedores','endereco')) return;
+      if (colCheck === 'rs' && !_tableHasColumn('fornecedores','rs') && _tableHasColumn('fornecedores','razao_social')) return;
+      if (colCheck === 'classificacao' && !_tableHasColumn('fornecedores','classificacao') && _tableHasColumn('fornecedores','tipo')) return;
+      if (colCheck === 'categoria' && !_tableHasColumn('fornecedores','categoria') && _tableHasColumn('fornecedores','tipo')) return;
+      if (colCheck === 'estado' && !_tableHasColumn('fornecedores','estado') && _tableHasColumn('fornecedores','uf')) return;
+      if (colCheck === 'observacoes' && !_tableHasColumn('fornecedores','observacoes') && _tableHasColumn('fornecedores','obs')) {
+        out.obs = out.obs || out.observacoes; delete out.observacoes; return;
+      }
+      if (colCheck === 'emp_id' && !_tableHasColumn('fornecedores','emp_id') && _tableHasColumn('fornecedores','empresa_id')) return;
+      if (!_tableHasColumn('fornecedores', tableKey)) {
+        delete out[tableKey];
+      }
+    });
+  } catch (_schemaErr) {}
   Object.keys(out).forEach(k => (out[k] === undefined || out[k] === null) && delete out[k]);
   return out;
 }
@@ -12538,6 +12569,185 @@ function _buildPassagensResumoTop5(rows, extractor, keyName) {
     .slice(0, 5);
 }
 
+async function _calcularAggMaquinasComDistinctOf(req, passagensRows) {
+  const rowsIn = Array.isArray(passagensRows) ? passagensRows.slice() : [];
+  const out = {
+    agg_por_maquina: [],
+    total_geral_caixas_distinct_ofs: 0,
+    total_geral_valor_distinct_ofs: 0,
+    total_geral_ofs_distintas: 0,
+    _oficial_ofs_carregados: 0,
+    _meta_colunas_of: {}
+  };
+  try {
+    await _ensureSchemaColumnsForTable('ofs').catch(() => {});
+    const candidateValor = ['valor_total', 'valor_venda', 'total_venda', 'valor_producao', 'preco_total'];
+    let ofValueCol = null;
+    for (const c of candidateValor) {
+      if (_tableHasColumn('ofs', c) === true) { ofValueCol = c; break; }
+    }
+    const candidateQtd = ['qtd_produzida', 'quantidade', 'qtd'];
+    let ofQtdCol = null;
+    for (const c of candidateQtd) {
+      if (_tableHasColumn('ofs', c) === true) { ofQtdCol = c; break; }
+    }
+    const hasValorUnit = _tableHasColumn('ofs', 'valor_unitario') === true;
+    out._meta_colunas_of = { ofValueCol, ofQtdCol, hasValorUnit };
+    const ofIdsValid = new Set();
+    const ofNumerosSet = new Set();
+    rowsIn.forEach((p) => {
+      const id = String(p?.of_id || '').trim();
+      if (id && /^[0-9a-fA-F]{8}-/.test(id)) ofIdsValid.add(id);
+      const n = String(p?.of_numero ?? p?.numero ?? p?.of ?? '').trim();
+      if (n) ofNumerosSet.add(n);
+    });
+    const ofById = new Map();
+    const ofByNumero = new Map();
+    try {
+      const idsArr = Array.from(ofIdsValid);
+      const numerosArr = Array.from(ofNumerosSet);
+      const selectCols = ['id', 'numero'];
+      if (ofValueCol) selectCols.push(ofValueCol);
+      if (hasValorUnit && !ofValueCol) selectCols.push('valor_unitario');
+      if (ofQtdCol) selectCols.push(ofQtdCol);
+      if (!ofQtdCol) selectCols.push('quantidade', 'qtd');
+      const safeSelect = _filterColsForTable ? _filterColsForTable('ofs', Array.from(new Set(selectCols)).join(',')) : Array.from(new Set(selectCols)).join(',');
+      if (idsArr.length) {
+        for (let i = 0; i < idsArr.length; i += 900) {
+          const chunk = idsArr.slice(i, i + 900);
+          const r = await supabase.from('ofs').select(safeSelect).in('id', chunk).limit(900);
+          if (r?.error) console.warn('[agg-distinct-of] ids chunk erro:', String(r.error.message || r.error).slice(0,120));
+          const arr = Array.isArray(r?.data) ? r.data : [];
+          out._oficial_ofs_carregados += arr.length;
+          arr.forEach((ofRow) => {
+            const id = String(ofRow?.id || '').trim();
+            const num = String(ofRow?.numero ?? ofRow?.of ?? '').trim();
+            let valor = 0;
+            if (ofValueCol && ofRow[ofValueCol] != null) valor = Number(ofRow[ofValueCol]) || 0;
+            if (!valor && hasValorUnit && !ofValueCol) {
+              const vu = Number(ofRow?.valor_unitario || 0) || 0;
+              const qx = Number(ofRow?.[ofQtdCol || 'quantidade'] ?? ofRow?.quantidade ?? ofRow?.qtd ?? 0) || 0;
+              if (vu > 0 && qx > 0) valor = vu * qx;
+            }
+            let qtd = 0;
+            if (ofQtdCol && ofRow[ofQtdCol] != null) qtd = Number(ofRow[ofQtdCol]) || 0;
+            if (!qtd) qtd = Number(ofRow?.quantidade ?? ofRow?.qtd ?? 0) || 0;
+            const payload = { valor: Number(valor) || 0, qtd_oficial: Number(qtd) || 0 };
+            if (id) ofById.set(id, payload);
+            if (num) ofByNumero.set(num, payload);
+          });
+        }
+      }
+      if (numerosArr.length && !(idsArr.length && ofById.size > 0 && ofById.size === idsArr.length)) {
+        for (let i = 0; i < numerosArr.length; i += 900) {
+          const chunk = numerosArr.slice(i, i + 900);
+          const r = await supabase.from('ofs').select(safeSelect).in('numero', chunk).limit(900);
+          if (r?.error) console.warn('[agg-distinct-of] numeros chunk erro:', String(r.error.message || r.error).slice(0,120));
+          const arr = Array.isArray(r?.data) ? r.data : [];
+          out._oficial_ofs_carregados += arr.length;
+          arr.forEach((ofRow) => {
+            const id = String(ofRow?.id || '').trim();
+            const num = String(ofRow?.numero ?? ofRow?.of ?? '').trim();
+            let valor = 0;
+            if (ofValueCol && ofRow[ofValueCol] != null) valor = Number(ofRow[ofValueCol]) || 0;
+            if (!valor && hasValorUnit && !ofValueCol) {
+              const vu = Number(ofRow?.valor_unitario || 0) || 0;
+              const qx = Number(ofRow?.[ofQtdCol || 'quantidade'] ?? ofRow?.quantidade ?? ofRow?.qtd ?? 0) || 0;
+              if (vu > 0 && qx > 0) valor = vu * qx;
+            }
+            let qtd = 0;
+            if (ofQtdCol && ofRow[ofQtdCol] != null) qtd = Number(ofRow[ofQtdCol]) || 0;
+            if (!qtd) qtd = Number(ofRow?.quantidade ?? ofRow?.qtd ?? 0) || 0;
+            const payload = { valor: Number(valor) || 0, qtd_oficial: Number(qtd) || 0 };
+            if (num && !ofByNumero.has(num)) ofByNumero.set(num, payload);
+            if (id && !ofById.has(id)) ofById.set(id, payload);
+          });
+        }
+      }
+    } catch (eOF) {
+      console.warn('[agg-distinct-of] carregar OFs ERRO (continuando com passagem row inline):', String(eOF.message || eOF).slice(0,180));
+    }
+    const pegarOf = (pRow) => {
+      const id = String(pRow?.of_id || '').trim();
+      if (id && ofById.has(id)) return ofById.get(id);
+      const num = String(pRow?.of_numero ?? pRow?.numero ?? pRow?.of ?? '').trim();
+      if (num && ofByNumero.has(num)) return ofByNumero.get(num);
+      let inlineValor = Number(pRow?.valor_total ?? pRow?.valor_venda ?? pRow?.total ?? pRow?.valor_producao ?? 0) || 0;
+      if (!inlineValor) {
+        const vu = Number(pRow?.valor_unitario ?? pRow?.preco ?? 0) || 0;
+        const qx = Number(pRow?.qtd_produzida ?? pRow?.quantidade ?? pRow?.qtd ?? 0) || 0;
+        if (vu > 0 && qx > 0) inlineValor = vu * qx;
+      }
+      const inlineQtd = Number(pRow?.qtd_produzida ?? pRow?.quantidade ?? pRow?.qtd ?? pRow?.caixas_produzidas ?? 0) || 0;
+      return { valor: Number(inlineValor) || 0, qtd_oficial: Number(inlineQtd) || 0, inline: true };
+    };
+    const byMaq = new Map();
+    rowsIn.forEach((p) => {
+      const maq = String(p?.maquina ?? p?.maquina_nome ?? p?.maq ?? 'Sem máquina').trim() || 'Sem máquina';
+      if (!byMaq.has(maq)) {
+        byMaq.set(maq, {
+          maquina: maq,
+          total_ofs: 0,
+          qtd_ofs_distinct: 0,
+          caixas_produzidas: 0,
+          valor_total_producao: 0,
+          _ofs_ids: new Set(),
+          _ofs_numeros: new Set()
+        });
+      }
+      const bucket = byMaq.get(maq);
+      const ofId = String(p?.of_id || '').trim();
+      const ofNum = String(p?.of_numero ?? p?.numero ?? p?.of ?? '').trim();
+      const ofData = pegarOf(p);
+      const qtdRow = Number(p?.qtd_produzida ?? p?.quantidade ?? p?.qtd ?? p?.caixas_produzidas ?? ofData.qtd_oficial ?? 0) || 0;
+      bucket.caixas_produzidas += qtdRow;
+      let chaveDistintaNaMaq = '';
+      if (ofId && /^[0-9a-fA-F]{8}-/.test(ofId)) chaveDistintaNaMaq = 'id:' + ofId;
+      else if (ofNum) chaveDistintaNaMaq = 'num:' + ofNum;
+      if (chaveDistintaNaMaq && !bucket._ofs_ids.has(chaveDistintaNaMaq)) {
+        bucket._ofs_ids.add(chaveDistintaNaMaq);
+        bucket.qtd_ofs_distinct += 1;
+        bucket.total_ofs = bucket.qtd_ofs_distinct;
+        bucket.valor_total_producao += Number(ofData.valor || 0) || 0;
+      } else if (!chaveDistintaNaMaq) {
+        bucket.total_ofs += 1;
+        bucket.qtd_ofs_distinct = bucket.total_ofs;
+        bucket.valor_total_producao += Number(ofData.valor || 0) || 0;
+      }
+    });
+    out.agg_por_maquina = Array.from(byMaq.values()).map((b) => {
+      const clean = { ...b };
+      delete clean._ofs_ids;
+      delete clean._ofs_numeros;
+      return clean;
+    }).sort((a, b) => (Number(b.total_ofs || 0) - Number(a.total_ofs || 0)) || String(a.maquina || '').localeCompare(String(b.maquina || ''), 'pt-BR'));
+    const ofsDistintasPeriodo = new Map();
+    rowsIn.forEach((p) => {
+      const ofId = String(p?.of_id || '').trim();
+      const ofNum = String(p?.of_numero ?? p?.numero ?? p?.of ?? '').trim();
+      let chave = '';
+      if (ofId && /^[0-9a-fA-F]{8}-/.test(ofId)) chave = 'id:' + ofId;
+      else if (ofNum) chave = 'num:' + ofNum;
+      if (!chave) return;
+      if (ofsDistintasPeriodo.has(chave)) return;
+      const ofData = pegarOf(p);
+      ofsDistintasPeriodo.set(chave, ofData);
+    });
+    let tCaixas = 0;
+    let tValor = 0;
+    ofsDistintasPeriodo.forEach((ofData) => {
+      tCaixas += Number(ofData.qtd_oficial || 0) || 0;
+      tValor += Number(ofData.valor || 0) || 0;
+    });
+    out.total_geral_ofs_distintas = ofsDistintasPeriodo.size;
+    out.total_geral_caixas_distinct_ofs = Number(tCaixas) || 0;
+    out.total_geral_valor_distinct_ofs = Number(tValor) || 0;
+  } catch (e) {
+    console.error('[agg-distinct-of] FALHA GERAL:', String(e?.message || e).slice(0, 200));
+  }
+  return out;
+}
+
 async function _agruparPassagensRelatorioMensalBackend(req, opts) {
   const cfg = opts && typeof opts === 'object' ? opts : {};
   const cliente = String(cfg.cliente || '').trim();
@@ -12545,7 +12755,7 @@ async function _agruparPassagensRelatorioMensalBackend(req, opts) {
   const data_inicio = String(cfg.data_inicio || '').trim();
   const data_fim = String(cfg.data_fim || '').trim();
   if (!data_inicio || !data_fim) {
-    return { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
+    return { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [], agg_por_maquina: [], total_geral_caixas_distinct_ofs: 0, total_geral_valor_distinct_ofs: 0, total_geral_ofs_distintas: 0 };
   }
 
   const batchSize = 1000;
@@ -12575,6 +12785,8 @@ async function _agruparPassagensRelatorioMensalBackend(req, opts) {
   }
 
   const deduped = Array.from(dedupeMap.values()).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a));
+  let aggDistinct = { agg_por_maquina: [], total_geral_caixas_distinct_ofs: 0, total_geral_valor_distinct_ofs: 0, total_geral_ofs_distintas: 0 };
+  try { aggDistinct = await _calcularAggMaquinasComDistinctOf(req, deduped); } catch (_) {}
   return {
     agg: _agruparPassagensRelatorioMensal(deduped),
     totalRows: deduped.length,
@@ -12584,7 +12796,13 @@ async function _agruparPassagensRelatorioMensalBackend(req, opts) {
     top_tamanhos: _buildPassagensResumoTop5(deduped, (row) => {
       const tamanho = _passagensResumoFormatTamanho(row);
       return tamanho ? [tamanho] : [];
-    }, 'tamanho')
+    }, 'tamanho'),
+    agg_por_maquina: Array.isArray(aggDistinct?.agg_por_maquina) ? aggDistinct.agg_por_maquina : [],
+    total_geral_caixas_distinct_ofs: Number(aggDistinct?.total_geral_caixas_distinct_ofs || 0) || 0,
+    total_geral_valor_distinct_ofs: Number(aggDistinct?.total_geral_valor_distinct_ofs || 0) || 0,
+    total_geral_ofs_distintas: Number(aggDistinct?.total_geral_ofs_distintas || 0) || 0,
+    _meta_agg_ofs: aggDistinct?._meta_colunas_of || null,
+    _ofs_carregados_count: Number(aggDistinct?._oficial_ofs_carregados || 0) || 0
   };
 }
 
@@ -13020,6 +13238,8 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     __dbg_hist.page_atual = page;
     __dbg_hist.limit_atual = limit;
     __dbg_hist.offset_atual = offset;
+    let aggHist = { agg_por_maquina: [], total_geral_caixas_distinct_ofs: 0, total_geral_valor_distinct_ofs: 0, total_geral_ofs_distintas: 0 };
+    try { aggHist = await _calcularAggMaquinasComDistinctOf(req, passagens); } catch (_) {}
     // #region debug-point C:passagens-historico-success
     try {
       _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:success', '[DEBUG] /api/passagens/historico response ok', {
@@ -13043,6 +13263,11 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       data_fim: _relatoriosIsoDateOnly(data_fim),
       total_vendido_oficial: Number(resumoOficial?.total_vendido || 0) || 0,
       total_ofs_oficial: Number(resumoOficial?.total_ofs || 0) || 0,
+      agg_por_maquina: Array.isArray(aggHist?.agg_por_maquina) ? aggHist.agg_por_maquina : [],
+      total_geral_caixas_distinct_ofs: Number(aggHist?.total_geral_caixas_distinct_ofs || 0) || 0,
+      total_geral_valor_distinct_ofs: Number(aggHist?.total_geral_valor_distinct_ofs || 0) || 0,
+      total_geral_ofs_distintas: Number(aggHist?.total_geral_ofs_distintas || 0) || 0,
+      _meta_agg_historico: aggHist?._meta_colunas_of || null,
       __query_real: __dbg_hist,
     }); 
   } catch(e) { 
@@ -13102,8 +13327,10 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
           data_fim: refAnterior.fim
         })
       : { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
-    const atualAgg = Array.isArray(atualResumo?.agg) ? atualResumo.agg : [];
-    const anteriorAgg = Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : [];
+    const atualAggFonte = Array.isArray(atualResumo?.agg_por_maquina) && atualResumo.agg_por_maquina.length ? atualResumo.agg_por_maquina : (Array.isArray(atualResumo?.agg) ? atualResumo.agg : []);
+    const anteriorAggFonte = Array.isArray(anteriorResumo?.agg_por_maquina) && anteriorResumo.agg_por_maquina.length ? anteriorResumo.agg_por_maquina : (Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : []);
+    const atualAgg = atualAggFonte.slice();
+    const anteriorAgg = anteriorAggFonte.slice();
     // #region debug-point C:relatorio-mensal-resumo
     _debugRuntimeWrite({
       runId: 'pre-fix',
@@ -13129,35 +13356,67 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
 
     const rows = atualAgg.map((item) => {
       const prev = prevMap.get(String(item?.maquina || '')) || null;
-      const prevOfs = Number(prev?.total_ofs || 0) || 0;
+      const prevOfs = Number(prev?.total_ofs ?? prev?.qtd_ofs_distinct ?? 0) || 0;
       const prevValor = Number(prev?.valor_total_producao || 0) || 0;
       const prevCaixas = Number(prev?.caixas_produzidas || 0) || 0;
       return {
         ...item,
+        total_ofs: Number(item?.total_ofs ?? item?.qtd_ofs_distinct ?? 0) || 0,
+        qtd_ofs_distinct: Number(item?.qtd_ofs_distinct ?? item?.total_ofs ?? 0) || 0,
         ofs_mes_anterior: prevOfs,
         valor_mes_anterior: prevValor,
         caixas_mes_anterior: prevCaixas,
-        variacao_ofs_pct: prevOfs > 0 ? (((Number(item.total_ofs || 0) - prevOfs) / prevOfs) * 100) : null,
+        variacao_ofs_pct: prevOfs > 0 ? (((Number(item.total_ofs ?? item.qtd_ofs_distinct ?? 0) - prevOfs) / prevOfs) * 100) : null,
         variacao_valor_pct: prevValor > 0 ? (((Number(item.valor_total_producao || 0) - prevValor) / prevValor) * 100) : null,
         variacao_caixas_pct: prevCaixas > 0 ? (((Number(item.caixas_produzidas || 0) - prevCaixas) / prevCaixas) * 100) : null
       };
     });
 
-    const resumoAtual = rows.reduce((acc, item) => {
-      acc.total_maquinas += 1;
-      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
-      acc.valor_total_producao += Number(item?.valor_total_producao || 0) || 0;
-      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
-      return acc;
-    }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 });
+    const qtdMaquinasAtual = rows.length;
+    const qtdMaquinasAnterior = anteriorAgg.length;
+    const totalGeralOfsAtual = Number(atualResumo?.total_geral_ofs_distintas ?? (atualResumo?.total_geral_ofs_distintas === 0 ? 0 : null)) ?? qtdMaquinasAtual ? null : null;
+    const totalGeralCaixasAtual = Number(atualResumo?.total_geral_caixas_distinct_ofs ?? 0) || 0;
+    const totalGeralValorAtual = Number(atualResumo?.total_geral_valor_distinct_ofs ?? 0) || 0;
+    const totalGeralOfsAnterior = Number(anteriorResumo?.total_geral_ofs_distintas ?? 0) || 0;
+    const totalGeralCaixasAnterior = Number(anteriorResumo?.total_geral_caixas_distinct_ofs ?? 0) || 0;
+    const totalGeralValorAnterior = Number(anteriorResumo?.total_geral_valor_distinct_ofs ?? 0) || 0;
 
-    const resumoAnterior = anteriorAgg.reduce((acc, item) => {
-      acc.total_maquinas += 1;
-      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
-      acc.valor_total_producao += Number(item?.valor_total_producao || 0) || 0;
-      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
-      return acc;
-    }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 });
+    let resumoAtual;
+    if ((totalGeralOfsAtual ?? null) !== null && (totalGeralCaixasAtual > 0 || totalGeralValorAtual > 0 || totalGeralOfsAtual > 0)) {
+      resumoAtual = {
+        total_maquinas: qtdMaquinasAtual,
+        total_ofs: totalGeralOfsAtual,
+        valor_total_producao: totalGeralValorAtual,
+        caixas_produzidas: totalGeralCaixasAtual,
+        observacao: 'Cards gerais usam OF ÚNICA (distinct) para não duplicar quando a mesma OF passa por múltiplas máquinas. A soma das linhas da tabela por máquina pode ser maior por este motivo.'
+      };
+    } else {
+      resumoAtual = rows.reduce((acc, item) => {
+        acc.total_maquinas += 1;
+        acc.total_ofs += Number(item?.total_ofs ?? item?.qtd_ofs_distinct ?? 0) || 0;
+        acc.valor_total_producao += Number(item?.valor_total_producao || 0) || 0;
+        acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
+        return acc;
+      }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 });
+    }
+
+    let resumoAnterior;
+    if (totalGeralOfsAnterior > 0 || totalGeralCaixasAnterior > 0 || totalGeralValorAnterior > 0) {
+      resumoAnterior = {
+        total_maquinas: qtdMaquinasAnterior,
+        total_ofs: totalGeralOfsAnterior,
+        valor_total_producao: totalGeralValorAnterior,
+        caixas_produzidas: totalGeralCaixasAnterior
+      };
+    } else {
+      resumoAnterior = anteriorAgg.reduce((acc, item) => {
+        acc.total_maquinas += 1;
+        acc.total_ofs += Number(item?.total_ofs ?? item?.qtd_ofs_distinct ?? 0) || 0;
+        acc.valor_total_producao += Number(item?.valor_total_producao || 0) || 0;
+        acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
+        return acc;
+      }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 });
+    }
 
     return res.json({
       ok: true,
@@ -13179,7 +13438,11 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       resumo_mes_anterior: resumoAnterior,
       rows,
       top_cores: Array.isArray(atualResumo?.top_cores) ? atualResumo.top_cores : [],
-      top_tamanhos: Array.isArray(atualResumo?.top_tamanhos) ? atualResumo.top_tamanhos : []
+      top_tamanhos: Array.isArray(atualResumo?.top_tamanhos) ? atualResumo.top_tamanhos : [],
+      total_geral_caixas_distinct_ofs: totalGeralCaixasAtual,
+      total_geral_valor_distinct_ofs: totalGeralValorAtual,
+      total_geral_ofs_distintas: totalGeralOfsAtual,
+      _meta_agg_ofs: atualResumo?._meta_agg_ofs || null
     });
   } catch (e) {
     console.error('[maquinas/relatorio-mensal]', e.message);

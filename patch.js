@@ -4313,6 +4313,7 @@ try {
   setTimeout(rrBoot, 0);
   setTimeout(rrBoot, 400);
   setTimeout(rrBoot, 1200);
+  try { window.__patchRelatoriosReInit = function() { try { rrEnsureFreshPage(true); } catch(_) { try { rrRenderPage(); } catch(__){} } }; } catch (_) {}
 })();
 ;(function() {
   if (window.__simdBoxPlannerTailApplied) return;
@@ -7070,10 +7071,23 @@ window._compraPapelaoFindFornecedor = function(rawName) {
   }
   return null;
 };
+window._compraPapelaoFiltroTipoPapelao = function(rows) {
+  var full = Array.isArray(rows) ? rows.slice() : [];
+  function norm(txt) { return String(txt || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+  function ehPapelao(row) {
+    if (!row) return false;
+    var tipo = norm(row.tipo || row.classificacao || row.categoria || '');
+    return tipo.indexOf('papelao') !== -1 || tipo.indexOf('papelao') === 0;
+  }
+  var temTipoDefinido = full.some(function(r) { return norm(r && (r.tipo || r.classificacao || r.categoria || '')).length > 0; });
+  if (!temTipoDefinido) return full;
+  var filtrados = full.filter(ehPapelao);
+  return filtrados.length ? filtrados : full;
+};
 window._compraPapelaoFornecedorOptionsHtml = function(selectedName) {
   var selected = String(selectedName || '').trim().toLowerCase();
   var lista = Array.isArray(window._compraPapelaoStateRef().fornecedores) ? window._compraPapelaoStateRef().fornecedores : [];
-  lista = lista.slice().sort(function(a, b) {
+  lista = window._compraPapelaoFiltroTipoPapelao(lista).sort(function(a, b) {
     return String(a && a.nome || '').localeCompare(String(b && b.nome || ''), 'pt-BR');
   });
   return '<option value="">Selecionar fornecedor...</option>' + lista.map(function(row) {
@@ -7085,6 +7099,8 @@ window._compraPapelaoFornecedorPromptOptionsHtml = function(selectedName) {
   var selected = String(selectedName || '').trim().toLowerCase();
   var seen = {};
   var lista = [];
+  var allForn = Array.isArray(window._compraPapelaoStateRef().fornecedores) ? window._compraPapelaoStateRef().fornecedores : [];
+  allForn = window._compraPapelaoFiltroTipoPapelao(allForn);
   function push(nome) {
     var txt = String(nome || '').trim();
     var key = txt.toLowerCase();
@@ -7092,9 +7108,7 @@ window._compraPapelaoFornecedorPromptOptionsHtml = function(selectedName) {
     seen[key] = true;
     lista.push(txt);
   }
-  (Array.isArray(window._compraPapelaoStateRef().fornecedores) ? window._compraPapelaoStateRef().fornecedores : []).forEach(function(row) {
-    push(row && row.nome);
-  });
+  allForn.forEach(function(row) { push(row && row.nome); });
   (Array.isArray(window._compraPapelaoStateRef().compras) ? window._compraPapelaoStateRef().compras : []).forEach(function(row) {
     push(row && row.fornecedor);
   });
@@ -7103,6 +7117,79 @@ window._compraPapelaoFornecedorPromptOptionsHtml = function(selectedName) {
     return '<option value="' + window._compraPapelaoAttr(nome) + '"' + (nome.toLowerCase() === selected ? ' selected' : '') + '>' + window._compraPapelaoEsc(nome) + '</option>';
   }).join('');
 };
+window.abrirModalFornecedor = (function(originalFn) {
+  return async function __patchAbrirModalFornecedor(id) {
+    try {
+      if (!Array.isArray(window.FORNECEDORES) || window.FORNECEDORES.length === 0) {
+        try {
+          if (typeof window.carregarFornecedores === 'function') await window.carregarFornecedores(true);
+        } catch (_) {}
+      }
+    } catch (_) {}
+    var f = null;
+    if (id && Array.isArray(window.FORNECEDORES)) {
+      var idStr = String(id).trim();
+      f = window.FORNECEDORES.find(function(x) { return x && String(x.id) === idStr; }) || null;
+    }
+    if (id && !f) {
+      try {
+        var token = (localStorage.getItem('token') || '') || (sessionStorage.getItem('token') || '');
+        var base = '';
+        try { base = (window.location && window.location.protocol === 'file:') ? (window.API_BASE || '') : ''; } catch (_) {}
+        var raw = await fetch(base + '/api/fornecedores/' + encodeURIComponent(String(id)), {
+          method: 'GET',
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        });
+        var j = await raw.json().catch(function() { return null; });
+        if (j) {
+          if (Array.isArray(j)) f = j[0] || null;
+          else if (j.ok && j.data) f = Array.isArray(j.data) ? j.data[0] : j.data;
+          else if (j.id || j.nome) f = j;
+          if (f && Array.isArray(window.FORNECEDORES)) {
+            var jaTem = window.FORNECEDORES.some(function(x) { return x && x.id && f.id && String(x.id) === String(f.id); });
+            if (!jaTem) window.FORNECEDORES.push(f);
+          }
+        }
+      } catch (e) {
+        console.warn('[FORN] fallback GET por id falhou:', e && e.message || e);
+      }
+    }
+    try {
+      if (typeof originalFn === 'function') return originalFn.call(window, id);
+    } catch (_) {}
+    try {
+      var el = { id: '' };
+      if (f && f.id) el.id = f.id;
+      var fid = document.getElementById('forn-edit-id');
+      if (fid) fid.value = f ? (f.id || '') : '';
+      var mapCampos = [
+        ['forn-e-nome', 'nome', ''],
+        ['forn-e-tipo', 'tipo', 'Papelão'],
+        ['forn-e-cnpj', 'cnpj', ''],
+        ['forn-e-tel', 'tel', ''],
+        ['forn-e-email', 'email', ''],
+        ['forn-e-cidade', 'cidade', ''],
+        ['forn-e-uf', 'uf', 'SC'],
+        ['forn-e-end', 'end', ''],
+        ['forn-e-contato', 'contato', ''],
+        ['forn-e-obs', 'obs', '']
+      ];
+      mapCampos.forEach(function(par) {
+        var el = document.getElementById(par[0]);
+        if (!el) return;
+        var val = f ? (f[par[1]] || '') : '';
+        if (val === '' || val == null) val = par[2];
+        el.value = val;
+      });
+      var esel = document.getElementById('forn-e-emp');
+      if (esel) esel.value = f ? (f.empId || f.emp_id || (window.EMP_FILTRO || 'E1')) : (window.EMP_FILTRO || 'E1');
+      if (typeof window.abrir === 'function') window.abrir('modal-fornecedor');
+    } catch (e) { console.error('[FORN] wrapper abrir falhou:', e); }
+  };
+})(window.abrirModalFornecedor);
+window.abrirFornecedor = window.abrirModalFornecedor;
+window.editarFornecedor = window.abrirModalFornecedor;
+
 window._compraPapelaoStatusOptionsHtml = function(selected) {
   var current = String(selected || '').trim();
   return window._compraPapelaoStatusOptions().map(function(opt) {
@@ -15136,17 +15223,26 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   function _histComputeResumoFromRows(rows) {
     var list = Array.isArray(rows) ? rows : [];
     var ofsSet = new Set();
-    var valorProducao = 0;
-    var caixas = 0;
+    var ofChaveMap = new Map();
+    var valorProducaoPorMaquina = 0;
+    var caixasPorMaquina = 0;
     var coresMap = new Map();
     var tamanhosMap = new Map();
     list.forEach(function(row) {
+      var ofIdVal = String(row && row.of_id || '').trim();
       var ofNum = String(row && (row.of_numero || row.numero || row.of) || '').trim();
-      if (ofNum) ofsSet.add(ofNum);
-      var vlr = Number(row && (row.valor_total_producao != null ? row.valor_total_producao : (row.valor_total != null ? row.valor_total : _histPassagemValorTotal(row))) || 0) || 0;
-      valorProducao += vlr;
-      var qtd = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : (row.caixas_produzidas != null ? row.caixas_produzidas : _histPassagemQuantidade(row)))) || 0) || 0;
-      caixas += qtd;
+      var isUuid = /^[0-9a-fA-F]{8}-/.test(ofIdVal);
+      var chaveOf = isUuid ? ('id:' + ofIdVal) : (ofNum ? ('num:' + ofNum) : '');
+      if (chaveOf) ofsSet.add(chaveOf);
+      var vlrRow = Number(row && (row.valor_total_producao != null ? row.valor_total_producao : (row.valor_total != null ? row.valor_total : _histPassagemValorTotal(row))) || 0) || 0;
+      var qtdRow = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : (row.caixas_produzidas != null ? row.caixas_produzidas : _histPassagemQuantidade(row)))) || 0) || 0;
+      caixasPorMaquina += qtdRow;
+      valorProducaoPorMaquina += vlrRow;
+      if (chaveOf && !ofChaveMap.has(chaveOf)) {
+        var ofValorOficial = Number(row && (row.valor_total_oficial_of != null ? row.valor_total_oficial_of : (row.of_valor != null ? row.of_valor : (row.valor_total_producao_of != null ? row.valor_total_producao_of : vlrRow))) || 0) || 0;
+        var ofQtdOficial = Number(row && (row.qtd_oficial_of != null ? row.qtd_oficial_of : (row.of_qtd != null ? row.of_qtd : (row.qtd_produzida_of != null ? row.qtd_produzida_of : qtdRow))) || 0) || 0;
+        ofChaveMap.set(chaveOf, { valor: ofValorOficial || vlrRow, qtd: ofQtdOficial || qtdRow });
+      }
       var coresArr = _histParseCoresResumo(row && (row.cor_impressao || row.cores_impressao || row.cores_of || row.especificacao_cores || row.impressao || row.tinta || row.cores || row.cor || row.especificacao));
       coresArr.forEach(function(c) {
         var key = String(c || '').trim().toUpperCase();
@@ -15158,17 +15254,30 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         tamanhosMap.set(tam, (Number(tamanhosMap.get(tam)) || 0) + 1);
       }
     });
+    var valorDistinctOf = 0;
+    var caixasDistinctOf = 0;
+    ofChaveMap.forEach(function(v) {
+      valorDistinctOf += Number(v && v.valor || 0) || 0;
+      caixasDistinctOf += Number(v && v.qtd || 0) || 0;
+    });
     var topCores = Array.from(coresMap.entries())
       .map(function(e) { return { cor: String(e[0] || '').trim(), total_ofs: Number(e[1] || 0) }; })
       .sort(function(a, b) { return (b.total_ofs - a.total_ofs) || String(a.cor || '').localeCompare(String(b.cor || ''), 'pt-BR'); });
     var topTamanhos = Array.from(tamanhosMap.entries())
       .map(function(e) { return { tamanho: String(e[0] || '').trim(), total_ofs: Number(e[1] || 0) }; })
       .sort(function(a, b) { return (b.total_ofs - a.total_ofs) || String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR'); });
+    var totalOfs = ofsSet.size || list.length;
+    var outValor = totalOfs > 0 && valorDistinctOf > 0 ? valorDistinctOf : valorProducaoPorMaquina;
+    var outCaixas = totalOfs > 0 && caixasDistinctOf > 0 ? caixasDistinctOf : caixasPorMaquina;
     return {
-      total_ofs: ofsSet.size || list.length,
-      valor_total_producao: Number(valorProducao) || 0,
-      caixas_produzidas: Number(caixas) || 0,
+      total_ofs: totalOfs,
+      valor_total_producao: Number(outValor) || 0,
+      caixas_produzidas: Number(outCaixas) || 0,
       total_passagens: list.length,
+      _valor_soma_por_maquina: Number(valorProducaoPorMaquina) || 0,
+      _caixas_soma_por_maquina: Number(caixasPorMaquina) || 0,
+      _valor_distinct_of: Number(valorDistinctOf) || 0,
+      _caixas_distinct_of: Number(caixasDistinctOf) || 0,
       _top_cores: topCores,
       _top_tamanhos: topTamanhos
     };
@@ -16442,8 +16551,41 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var sorted = _histSortMonthlyRows(rows);
     window.__histMonthlyRowsSorted = sorted.slice();
 
+    var temBackendDistinct = false;
+    try {
+      var bkOfs = Number(data && data.total_geral_ofs_distintas);
+      var bkCx = Number(data && data.total_geral_caixas_distinct_ofs);
+      var bkVl = Number(data && data.total_geral_valor_distinct_ofs);
+      if (bkOfs > 0 || bkCx > 0 || bkVl > 0 || (data && (data.total_geral_ofs_distintas === 0))) {
+        temBackendDistinct = true;
+        resumo = {
+          total_maquinas: Number(resumo && resumo.total_maquinas || 0) || 0,
+          total_ofs: Number(bkOfs || 0) || (Number(resumo && resumo.total_ofs || 0) || 0),
+          valor_total_producao: Number(bkVl || 0) || (Number(resumo && resumo.valor_total_producao || 0) || 0),
+          caixas_produzidas: Number(bkCx || 0) || (Number(resumo && resumo.caixas_produzidas || 0) || 0),
+          _fonte: 'backend_distinct_ofs'
+        };
+        if (data && data.resumo_mes_atual && typeof data.resumo_mes_atual === 'object') {
+          resumo.total_maquinas = Number(data.resumo_mes_atual.total_maquinas || 0) || resumo.total_maquinas || 0;
+          if (!bkOfs && Number(data.resumo_mes_atual.total_ofs || 0)) resumo.total_ofs = Number(data.resumo_mes_atual.total_ofs || 0);
+          if (!bkVl && Number(data.resumo_mes_atual.valor_total_producao || 0)) resumo.valor_total_producao = Number(data.resumo_mes_atual.valor_total_producao || 0);
+          if (!bkCx && Number(data.resumo_mes_atual.caixas_produzidas || 0)) resumo.caixas_produzidas = Number(data.resumo_mes_atual.caixas_produzidas || 0);
+        }
+      }
+      var bkAntOfs = Number(data && data.resumo_mes_anterior && data.resumo_mes_anterior.total_ofs);
+      var bkAntCx = Number(data && data.resumo_mes_anterior && data.resumo_mes_anterior.caixas_produzidas);
+      var bkAntVl = Number(data && data.resumo_mes_anterior && data.resumo_mes_anterior.valor_total_producao);
+      if (bkAntOfs || bkAntCx || bkAntVl) {
+        anterior = {
+          total_maquinas: Number(data.resumo_mes_anterior.total_maquinas || 0) || 0,
+          total_ofs: Number(bkAntOfs || 0) || Number(anterior.total_ofs || 0),
+          valor_total_producao: Number(bkAntVl || 0) || Number(anterior.valor_total_producao || 0),
+          caixas_produzidas: Number(bkAntCx || 0) || Number(anterior.caixas_produzidas || 0)
+        };
+      }
+    } catch (_bkDistinct) {}
     var detalhamentoRows = Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows : [];
-    if (detalhamentoRows.length) {
+    if (!temBackendDistinct && detalhamentoRows.length) {
       var computed = _histComputeResumoFromRows(detalhamentoRows);
       resumo = {
         total_ofs: Number(computed.total_ofs) || Number(resumo.total_ofs) || 0,
@@ -16477,7 +16619,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var tamanhoTop = topTamanhos[0] || null;
     var refLabel = String(ref && ref.titulo || '').trim() || _histRangeLabel(ref, ref);
     var refTitle = ref && (ref.inicio || ref.fim) ? 'Período de Referência' : 'Mês de Referência';
-    var valorDesbloqueado = !!(window.__histValorProducaoDesbloqueado === true);
+    var valorDesbloqueado = !!(window.__histValorProducaoDesbloqueado === true) || temBackendDistinct;
     var cardValorProducaoHtml;
     if (valorDesbloqueado) {
       cardValorProducaoHtml = '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>';
@@ -16762,6 +16904,20 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         window.__histPassagensLoadedKey = key;
         window.__histPassagensOfficialTotal = Number(data && data.total_vendido_oficial || 0) || 0;
         window.__histPassagensOfficialCount = Number(data && data.total_ofs_oficial || 0) || 0;
+        try {
+          var histTemAggDistinct = (data && (Number(data.total_geral_ofs_distintas > 0) || Number(data.total_geral_caixas_distinct_ofs > 0) || Number(data.total_geral_valor_distinct_ofs > 0)));
+          if (histTemAggDistinct && window.__histMonthlyData && typeof window.__histMonthlyData === 'object') {
+            window.__histMonthlyData.total_geral_ofs_distintas = Number(data.total_geral_ofs_distintas || 0);
+            window.__histMonthlyData.total_geral_caixas_distinct_ofs = Number(data.total_geral_caixas_distinct_ofs || 0);
+            window.__histMonthlyData.total_geral_valor_distinct_ofs = Number(data.total_geral_valor_distinct_ofs || 0);
+            if (!window.__histMonthlyData.resumo_mes_atual || typeof window.__histMonthlyData.resumo_mes_atual !== 'object') {
+              window.__histMonthlyData.resumo_mes_atual = {};
+            }
+            window.__histMonthlyData.resumo_mes_atual.total_ofs = Number(data.total_geral_ofs_distintas || window.__histMonthlyData.resumo_mes_atual.total_ofs || 0);
+            window.__histMonthlyData.resumo_mes_atual.valor_total_producao = Number(data.total_geral_valor_distinct_ofs || window.__histMonthlyData.resumo_mes_atual.valor_total_producao || 0);
+            window.__histMonthlyData.resumo_mes_atual.caixas_produzidas = Number(data.total_geral_caixas_distinct_ofs || window.__histMonthlyData.resumo_mes_atual.caixas_produzidas || 0);
+          }
+        } catch (_mergeAgg) {}
 
         try {
           container.style.display = 'grid';
@@ -26043,7 +26199,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-amostras-semana-head h3{margin:0;font-size:18px;line-height:1.15;font-weight:900;color:#f5f3ff;letter-spacing:.01em;display:inline-flex;align-items:center;gap:10px}'
         + '#page-ofmaq .ofmaq-amostras-semana-head h3 small{display:block;margin-top:3px;color:#c4b5fd;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}'
         + '#page-ofmaq .ofmaq-amostras-semana-count{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(168,85,247,.2);border:1px solid rgba(192,132,252,.4);color:#e9d5ff;letter-spacing:.05em;text-transform:uppercase}'
-        + '#page-ofmaq .ofmaq-amostras-semana-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}'
+        + '#page-ofmaq .ofmaq-amostras-semana-grid{display:block;width:100%;gap:12px}'
         + '#page-ofmaq .ofmaq-amostra-card{display:grid;gap:10px;padding:14px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.9));border:1px solid rgba(148,163,184,.22)}'
         + '#page-ofmaq .ofmaq-amostra-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
         + '#page-ofmaq .ofmaq-amostra-card-tit{display:grid;gap:4px;min-width:0}'
@@ -26565,6 +26721,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       } finally {
         try { shell._amostrasRendering = false; } catch (_) {}
         try { shell._amostrasRenderingTimestamp = 0; } catch (_) {}
+        try {
+          var _g = (shell && shell.amostrasSemanaGrid) ? shell.amostrasSemanaGrid : (document.querySelector && document.querySelector('.ofmaq-amostras-semana-grid'));
+          var _hasTbl = !!( _g && _g.querySelector && _g.querySelector('table') && _g.querySelector('table th') );
+          if (_hasTbl) window.__oficialAmostrasSemanaLastSuccess = Date.now();
+        } catch (_flag) {}
       }
     }
 
@@ -58312,6 +58473,18 @@ function _ocultarGraficoComissoes() {
       });
       if (targetId) {
         try { window._PAGE_ATUAL = targetId.replace(/^page-/, ''); } catch (_) {}
+        try {
+          var rawPid = targetId.replace(/^page-/, '');
+          if (rawPid === 'central-custos' && typeof window.renderPageCentralCustos === 'function') {
+            setTimeout(function(){ try { window.renderPageCentralCustos(); } catch(_){} }, 40);
+            setTimeout(function(){ try { window.renderPageCentralCustos(); } catch(_){} }, 300);
+          } else if ((rawPid === 'historico-passagens' || rawPid === 'passagens-hist' || rawPid === 'maquinas-periodo' || rawPid === 'historico') && typeof window._histBuscarHistoricoPassagens === 'function') {
+            setTimeout(function(){ try { window._histBuscarHistoricoPassagens(true); } catch(_){} }, 40);
+            setTimeout(function(){ try { window._histBuscarHistoricoPassagens(true); } catch(_){} }, 300);
+          } else if (rawPid === 'relatorios' && typeof window.__patchRelatoriosReInit === 'function') {
+            setTimeout(function(){ try { window.__patchRelatoriosReInit(); } catch(_){} }, 40);
+          }
+        } catch (_) {}
       }
     } catch (_) {}
   }
@@ -62190,8 +62363,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function varrerCorrigir(){
     try {
-      var todos = document.querySelectorAll('body *');
       var agora = Date.now();
+      var lastOk = Number(window.__oficialAmostrasSemanaLastSuccess || 0) || 0;
+      if (lastOk && (agora - lastOk) < 90000) return;
+      var containerOficial = document.querySelector ? document.querySelector('.ofmaq-amostras-semana-grid') : null;
+      if (containerOficial) {
+        var tbl = containerOficial.querySelector && containerOficial.querySelector('table');
+        if (tbl) {
+          var ths = tbl.querySelectorAll ? tbl.querySelectorAll('th') : [];
+          if (ths && ths.length >= 4) return;
+        }
+      }
+      var todos = document.querySelectorAll('body *');
       for (var i = 0; i < todos.length; i++) {
         var el = todos[i];
         var tag = (el.tagName || '').toUpperCase();
