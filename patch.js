@@ -18900,25 +18900,30 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   function bindJarvisOverlayGuard() {
     try {
       var overlay = document.getElementById('assist-overlay');
-      if (!overlay || overlay.dataset.patchJarvisOverlayBound === '1') return;
-      overlay.dataset.patchJarvisOverlayBound = '1';
+      if (!overlay) return;
+      try { overlay.removeEventListener('click', closeJarvisBackdrop, true); } catch (_) {}
       try { overlay.onclick = null; } catch (_) {}
       overlay.addEventListener('click', closeJarvisBackdrop, true);
+      overlay.dataset.patchJarvisOverlayBound = '1';
     } catch (_) {}
   }
 
   function bindJarvisEscClose() {
     try {
-      if (document.dataset.patchJarvisEscBound === '1') return;
-      document.dataset.patchJarvisEscBound = '1';
-      document.addEventListener('keydown', function(ev) {
+      try {
+        if (document._patchJarvisEscListener) {
+          document.removeEventListener('keydown', document._patchJarvisEscListener, true);
+          document._patchJarvisEscListener = null;
+        }
+      } catch (_) {}
+      var escHandler = function(ev) {
         try {
           var k = (ev && ev.key) ? String(ev.key) : '';
           var kc = (ev && typeof ev.keyCode === 'number') ? Number(ev.keyCode) : 0;
           if (k !== 'Escape' && k !== 'Esc' && kc !== 27) return;
           var overlay = document.getElementById('assist-overlay');
           var panel = document.getElementById('assist-panel');
-          var aberto = !!(overlay && (overlay.style.display === '' || overlay.style.display === 'block' || (panel && panel.classList && panel.classList.contains('open'))));
+          var aberto = !!(overlay && (getComputedStyle(overlay).display === 'block' || overlay.style.display === '' || overlay.style.display === 'block' || (panel && panel.classList && panel.classList.contains('open'))));
           if (!aberto) return;
           if (ev && typeof ev.preventDefault === 'function') try { ev.preventDefault(); } catch (_) {}
           if (ev && typeof ev.stopPropagation === 'function') try { ev.stopPropagation(); } catch (_) {}
@@ -18930,7 +18935,10 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           if (overlay) overlay.style.display = 'none';
           if (panel && panel.classList) panel.classList.remove('open');
         } catch (_) {}
-      }, true);
+      };
+      document._patchJarvisEscListener = escHandler;
+      document.addEventListener('keydown', escHandler, true);
+      document.dataset.patchJarvisEscBound = '1';
     } catch (_) {}
   }
 
@@ -18961,9 +18969,14 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       ['assist-close', 'assist-min'].forEach(function(id) {
         try {
           var btn = document.getElementById(id);
-          if (!btn || btn.dataset.patchJarvisCloseBound === '1') return;
-          btn.dataset.patchJarvisCloseBound = '1';
-          btn.addEventListener('click', function(ev) {
+          if (!btn) return;
+          try {
+            if (btn._patchJarvisCloseBtnListener) {
+              btn.removeEventListener('click', btn._patchJarvisCloseBtnListener, true);
+              btn._patchJarvisCloseBtnListener = null;
+            }
+          } catch (_) {}
+          var clickHandler = function(ev) {
             try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
             forceJarvisFullyClosed();
             try { cleanupJarvisFullscreenOverlay(); } catch (_) {}
@@ -18972,7 +18985,10 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
             var panel = document.getElementById('assist-panel');
             try { if (overlay) overlay.style.setProperty('display', 'none', 'important'); } catch (_) {}
             try { if (panel && panel.classList) panel.classList.remove('open'); } catch (_) {}
-          }, true);
+          };
+          btn._patchJarvisCloseBtnListener = clickHandler;
+          btn.addEventListener('click', clickHandler, true);
+          btn.dataset.patchJarvisCloseBound = '1';
         } catch (_) {}
       });
     } catch (_) {}
@@ -19031,12 +19047,12 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       var overlay = document.getElementById('assist-overlay');
       var panel = document.getElementById('assist-panel');
       if (overlay && panel) {
-        var ovDisplay = String(overlay.style.display || getComputedStyle(overlay).display || '').trim();
+        var ovDisplay = String(getComputedStyle(overlay).display || overlay.style.display || '').trim();
         var panelOpen = !!(panel.classList && panel.classList.contains('open'));
         if ((ovDisplay === '' || ovDisplay === 'block') && panelOpen) {
           var cssp = getComputedStyle(panel);
-          var opacityRaw = parseFloat(panel.style.opacity || cssp.opacity || '0');
-          var transformRaw = String(panel.style.transform || cssp.transform || '').trim();
+          var opacityRaw = parseFloat(cssp.opacity || panel.style.opacity || '0');
+          var transformRaw = String(cssp.transform || panel.style.transform || '').trim();
           var isInvisible = (Number.isFinite(opacityRaw) && opacityRaw < 0.5) || (transformRaw && transformRaw !== 'none' && !/^\s*matrix\(1,\s*0,\s*0,\s*1,\s*0,\s*0\s*\)\s*$/.test(transformRaw));
           if (isInvisible) {
             try { forceJarvisPanelVisible(); } catch (_) {}
