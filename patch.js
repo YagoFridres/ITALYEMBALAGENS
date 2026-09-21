@@ -42172,22 +42172,54 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function _iniciarClientes() {
+  function _getTotalClientes() {
+    var t = 0;
+    try {
+      var opts = [];
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) opts.push(CLIENTES.length);
+      if (typeof window !== 'undefined') {
+        if (Array.isArray(window.CLIENTES)) opts.push(window.CLIENTES.length);
+        if (Array.isArray(window._CLIENTES)) opts.push(window._CLIENTES.length);
+      }
+      for (var i = 0; i < opts.length; i++) { if (Number(opts[i]) > t) t = Number(opts[i]); }
+    } catch (_) {}
+    return Number(t) || 0;
+  }
+  function _aplicarArrayClientes(outArr) {
+    try {
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
+        try { CLIENTES.length = 0; outArr.forEach(function(c) { CLIENTES.push(c); }); } catch (_) {}
+      } else {
+        try { CLIENTES = outArr; } catch (_) {}
+      }
+    } catch (_) {}
+    try {
+      if (typeof window !== 'undefined') {
+        if (Array.isArray(window._CLIENTES)) {
+          try { window._CLIENTES.length = 0; outArr.forEach(function(c) { window._CLIENTES.push(c); }); } catch (_) {}
+        } else {
+          try { window._CLIENTES = outArr; } catch (_) {}
+        }
+        try { window.CLIENTES = outArr; } catch (_) {}
+      }
+    } catch (_) {}
+  }
   async function run(extraLogLabel) {
     try {
       var label = extraLogLabel ? '[' + extraLogLabel + '] ' : '';
+      var isSecondCheck = extraLogLabel === '2ND-CHECK';
       await new Promise(function(r) { setTimeout(r, extraLogLabel ? 0 : 4000); });
 
       if (typeof carregarClientes === 'function') {
         try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
       }
 
-      var total = 0;
-      try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { total = 0; }
-      console.log(label + '[PATCH CLIENTES TOTAL]', total);
+      var total = _getTotalClientes();
+      console.log(label + '[PATCH CLIENTES TOTAL]', total, isSecondCheck ? '(2ND ignora early return)' : '');
 
       if (total > 0 && typeof renderClientes === 'function') {
         try { renderClientes(); } catch (_) {}
-        if (total > 500) return;
+        if (!isSecondCheck && total > 500) return;
       }
 
       try {
@@ -42201,10 +42233,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
       }
 
-      try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : 0; } catch (_) { total = 0; }
+      total = _getTotalClientes();
       if (total > 0) {
         try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-        if (total > 500) return;
+        if (!isSecondCheck && total > 500) return;
       }
 
       var token = '';
@@ -42215,16 +42247,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (arr && arr.length) {
         var out = arr;
         try { if (typeof normalizeCli === 'function') out = arr.map(function(c) { return normalizeCli(c); }); } catch (_) {}
-        try {
-          if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
-            CLIENTES.length = 0;
-            out.forEach(function(c) { CLIENTES.push(c); });
-          } else {
-            try { CLIENTES = out; } catch (_) {}
-          }
-        } catch (_) {}
-        try { window._CLIENTES = out; } catch (_) {}
-        try { window.CLIENTES = out; } catch (_) {}
+        _aplicarArrayClientes(out);
         console.log(label + '[PATCH CLIENTES FORÇADO]', out.length);
         if (typeof renderClientes === 'function') {
           try { renderClientes(); } catch (_) {}
