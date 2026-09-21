@@ -902,8 +902,8 @@ try {
       summaryTitle: 'Ranking consolidado',
       summaryHeaders: ['Tipo', 'Nome', 'Caixas Perdidas'],
       summaryRows: []
-        .concat(rankingMaq.slice(0, 5).map(function(item) { return ['Máquina', item && item.maquina || '—', rrFmtNum(item && (item.total || item.valor || item.qtd) || 0, 0)]; }))
-        .concat(rankingOps.slice(0, 5).map(function(item) { return ['Operador', item && item.operador || '—', rrFmtNum(item && (item.total || item.valor || item.qtd) || 0, 0)]; })),
+        .concat(rankingMaq.slice(0, 5).map(function(item) { return ['Máquina', item && item.maquina || '—', rrFmtNum(item && (item.total_caixas || item.total || item.qtd) || 0, 0)]; }))
+        .concat(rankingOps.slice(0, 5).map(function(item) { return ['Operador', item && item.operador || '—', rrFmtNum(item && (item.total_caixas || item.total || item.qtd) || 0, 0)]; })),
       detailTitle: 'Detalhamento',
       detailHeaders: ['Data', 'OF', 'Cliente', 'Produto', 'Máquinas', 'Operadores', 'Qtd Perdida', 'Valor'],
       detailRows: rows.map(function(r) {
