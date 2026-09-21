@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260921171000';
-const SW_RUNTIME_VERSION = '20260921171000';
+const PATCH_RUNTIME_VERSION = '20260921181000';
+const SW_RUNTIME_VERSION = '20260921181000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -36372,8 +36372,22 @@ async function _ccustosCalcularCustoOfsPorCompetencia(competencia, empIdAll) {
 async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, ofsResult) {
   const compAlvo = String(competencia || '').trim();
   try {
-    if (!supabase) { console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s FALHA=sem-supabase', compAlvo); return 0; }
     if (!/^\d{4}-\d{2}$/.test(compAlvo)) return 0;
+    let totalOfsPapelao = 0;
+    let ofsConsiderados = 0;
+    try {
+      const listaOfs = Array.isArray(ofsResult && ofsResult.ofs) ? ofsResult.ofs : [];
+      listaOfs.forEach(function(of) {
+        const p = Number((of && (of.papelao != null ? of.papelao : (of.custo_papelao != null ? of.custo_papelao : 0))) || 0) || 0;
+        if (p > 0) { totalOfsPapelao += p; ofsConsiderados++; }
+      });
+    } catch (_) { totalOfsPapelao = 0; ofsConsiderados = 0; }
+    if (totalOfsPapelao > 0) {
+      const rOfs = Math.round(totalOfsPapelao * 100) / 100;
+      console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s emp=%s fonte=OFS_PAPELAO ofsConsiderados=%d total=%.2f (prioridade 1/2)', compAlvo, empIdAll, ofsConsiderados, rOfs);
+      return rOfs;
+    }
+    if (!supabase) { console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s FALHA=sem-supabase fallback', compAlvo); return 0; }
     const inicio = compAlvo + '-01';
     const aux = new Date(compAlvo + '-01T12:00:00');
     aux.setMonth(aux.getMonth() + 1);
@@ -36393,17 +36407,17 @@ async function _ccustosCalcularCustoPapelaoCompetencia(competencia, empIdAll, of
     let _totalChapas = 0;
     let rowsConsideradas = 0;
     rows.forEach(function(r) {
-      const dr = String(r?.data_recebimento || '').slice(0, 10);
+      const dr = String(r?.data_recebimento || r?.data_compra || '').slice(0, 10);
       const cr = String(r?.created_at || '').slice(0, 10);
       const d = dr || cr;
       if (!d) return;
       if (d < inicio || d >= fimExclusivo) return;
       const v = Number(r?.valor_unitario || 0) || 0;
-      const qnt = Math.trunc(Number(r?.quantidade_atual || 0) || 0);
+      const qnt = Math.trunc(Number(r?.quantidade_atual || r?.quantidade || r?.qtd || 0) || 0);
       if (v > 0 && qnt > 0) { _totalChapas += v * qnt; rowsConsideradas++; }
     });
     const resultado = Math.round(_totalChapas * 100) / 100;
-    console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s emp=%s fonte=CHAPAS_ESTOQUE table=%s rowsTotal=%d rowsConsideradas=%d total=%.2f range=[%s,%s)', compAlvo, empIdAll, table, rows.length, rowsConsideradas, resultado, inicio, fimExclusivo);
+    console.log('[CCUSTOS-VISAO-PAPELAO] comp=%s emp=%s fonte=CHAPAS_ESTOQUE_FALLBACK table=%s rowsTotal=%d rowsConsideradas=%d total=%.2f range=[%s,%s)', compAlvo, empIdAll, table, rows.length, rowsConsideradas, resultado, inicio, fimExclusivo);
     return resultado;
   } catch (e) {
     console.error('[CCUSTOS-VISAO-PAPELAO] comp=%s ERRO=%s stack=%s', compAlvo, e?.message || e, e?.stack || '');
@@ -36571,7 +36585,7 @@ async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
     const lancsReceitas = Number(lancs?.receitas || 0);
     const perdasValor = Number(perdas?.valor || 0);
     const despesasFabrica = Math.round((lancsDespesas + perdasValor) * 100) / 100;
-    const custoTotalMes = Math.round((ofs.total_custo + papelao + despesasFabrica) * 100) / 100;
+    const custoTotalMes = Math.round((ofs.total_custo + despesasFabrica) * 100) / 100;
     const ganhosTotal = Math.round((ofs.total_receita + lancsReceitas) * 100) / 100;
     const lucroTotal = Math.round((ganhosTotal - custoTotalMes) * 100) / 100;
     const categorias = JSON.parse(JSON.stringify(lancs.por_categoria || {}));
@@ -36605,7 +36619,7 @@ async function _ccustosCalcularVisaoGeralCompetencia(competencia, empIdAll) {
       cards_5,
       grafico_categorias_10: grafico,
       resumo_auto_vs_manual: {
-        custos_automaticos: Math.round((ofs.total_custo + papelao + perdasValor) * 100) / 100,
+        custos_automaticos: Math.round((ofs.total_custo + perdasValor) * 100) / 100,
         custos_manuais: Math.round(lancsDespesas * 100) / 100,
         receitas_manuais: lancsReceitas,
       },
