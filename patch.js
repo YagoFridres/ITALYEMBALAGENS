@@ -18948,12 +18948,13 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       var originalClose = window._jarvisFechar;
       var wrappedClose = function() {
         forceJarvisFullyClosed();
-        try { return originalClose.apply(this, arguments); } catch (_) {}
+        var _ret; try { _ret = originalClose.apply(this, arguments); } catch (_) {}
         try { forceJarvisFullyClosed(); } catch (_) {}
         var overlay = document.getElementById('assist-overlay');
         var panel = document.getElementById('assist-panel');
         try { if (overlay) overlay.style.setProperty('display', 'none', 'important'); } catch (_) {}
         try { if (panel && panel.classList) panel.classList.remove('open'); } catch (_) {}
+        return _ret;
       };
       wrappedClose.__patchFullscreenSafe = true;
       wrappedClose.__patchOriginal = originalClose;
