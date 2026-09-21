@@ -42172,9 +42172,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function _iniciarClientes() {
-  async function run() {
+  async function run(extraLogLabel) {
     try {
-      await new Promise(function(r) { setTimeout(r, 2000); });
+      var label = extraLogLabel ? '[' + extraLogLabel + '] ' : '';
+      await new Promise(function(r) { setTimeout(r, extraLogLabel ? 0 : 4000); });
 
       if (typeof carregarClientes === 'function') {
         try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
@@ -42182,11 +42183,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       var total = 0;
       try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { total = 0; }
-      console.log('[PATCH CLIENTES TOTAL]', total);
+      console.log(label + '[PATCH CLIENTES TOTAL]', total);
 
       if (total > 0 && typeof renderClientes === 'function') {
         try { renderClientes(); } catch (_) {}
-        return;
+        if (total > 500) return;
       }
 
       try {
@@ -42203,21 +42204,28 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : 0; } catch (_) { total = 0; }
       if (total > 0) {
         try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-        return;
+        if (total > 500) return;
       }
 
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-      var resp = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var resp = await fetch('/api/clientes?limit=2000&order=nome&dir=asc&incluir_inativos=true&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
       var arr = json && json.ok && Array.isArray(json.data) ? json.data : null;
       if (arr && arr.length) {
         var out = arr;
         try { if (typeof normalizeCli === 'function') out = arr.map(function(c) { return normalizeCli(c); }); } catch (_) {}
-        try { CLIENTES = out; } catch (_) {}
+        try {
+          if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
+            CLIENTES.length = 0;
+            out.forEach(function(c) { CLIENTES.push(c); });
+          } else {
+            try { CLIENTES = out; } catch (_) {}
+          }
+        } catch (_) {}
         try { window._CLIENTES = out; } catch (_) {}
         try { window.CLIENTES = out; } catch (_) {}
-        console.log('[PATCH CLIENTES FORÇADO]', out.length);
+        console.log(label + '[PATCH CLIENTES FORÇADO]', out.length);
         if (typeof renderClientes === 'function') {
           try { renderClientes(); } catch (_) {}
         }
@@ -42226,9 +42234,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { console.error('[PATCH CLIENTES INIT]', e); } catch (_) {}
     }
   }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { run(); });
-  else run();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(run, 0);
+      setTimeout(function() { run('2ND-CHECK'); }, 10000);
+    });
+  } else {
+    setTimeout(run, 0);
+    setTimeout(function() { run('2ND-CHECK'); }, 10000);
+  }
 })();
 
 (function patchMenuEstoques() {
