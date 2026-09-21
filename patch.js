@@ -54726,7 +54726,7 @@ function _ocultarGraficoComissoes() {
       if (!v) return 0;
       if (v.indexOf('MEIA') >= 0) return 0.5;
       if (v.indexOf('ELEOMAR') >= 0 || v.indexOf('CHEIA') >= 0 || v.indexOf('RONI') >= 0) return 1.0;
-      return 1.0;
+      return 0;
     };
   }
 
@@ -54747,8 +54747,9 @@ function _ocultarGraficoComissoes() {
   function _obterPctComissaoSync(of, vendedorFallback) {
     var pct = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao)));
     if (pct > 0) return pct;
+    var vendidVal = '';
     try {
-      var vendidVal = String(
+      vendidVal = String(
         of && (
           of.vendid ||
           of.vendedor_id ||
@@ -54759,9 +54760,7 @@ function _ocultarGraficoComissoes() {
           of.vendedor_nome
         ) || vendedorFallback || ''
       ).trim();
-      var pctVendid = Number(window._obterPercComissao(vendidVal) || 0) || 0;
-      if (pctVendid > 0) return pctVendid;
-    } catch (_) {}
+    } catch (_) { vendidVal = ''; }
     try {
       var dataCom = window._comissoesSqlData;
       var lista = Array.isArray(dataCom && dataCom.vendedores) ? dataCom.vendedores : [];
@@ -54785,7 +54784,11 @@ function _ocultarGraficoComissoes() {
       var pctLista = Number(hit && (hit.comissao_pct ?? hit.comissao ?? hit.comissaoPct) || 0) || 0;
       if (pctLista > 0) return pctLista;
     } catch (_) {}
-    return 0;
+    try {
+      var pctVendid = Number(window._obterPercComissao(vendidVal) || 0) || 0;
+      if (pctVendid > 0) return pctVendid;
+    } catch (_) {}
+    return 1.0;
   }
 
   function _fmtDataComDetalhamento(v) {
