@@ -1,0 +1,24 @@
+# Pastas de backup e arquivos temporários não devem entrar no build Railway Nixpacks
+# Previne falhas stream did not contain valid UTF-8 de arquivos corrompidos ou de encoding diferente
+
+_patch_*_orig/
+_patch_*_backup/
+_server_*_orig/
+_server_*_backup/
+backup*/
+.orig/
+.trae/documents/
+.trae/
+*.orig
+*.bak
+*.tmp
+*.temp
+*.patch.bak
+*.diff.bak
+# Outros que já estão em .gitignore mas manter redundância Railway
+node_modules/
+.dbg/
+.env
+.env.*
+.vercel/
+vercel.json
