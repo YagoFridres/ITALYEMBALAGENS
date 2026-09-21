@@ -63619,21 +63619,22 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  </div>'
         + '  <div class="ccustos-graf-wrap"><canvas id="ccustos-graf-cat"></canvas></div>'
         + '</div>';
-      var gcentros = (v && Array.isArray(v.gastos_por_centro)) ? v.gastos_por_centro : [];
+      var gcentros = (v && Array.isArray(v.gastos_por_centro_front)) ? v.gastos_por_centro_front : ((v && Array.isArray(v.gastos_por_centro)) ? v.gastos_por_centro.map(function(g){ return { id: g && (g.id || g.centro_custo_id), centro_custo_id: g && g.centro_custo_id, codigo: g && g.codigo, nome: g && g.nome, ativo: g && g.ativo !== false, valor: Number(g && (g.valor != null ? g.valor : g.valor_mes_atual)) || 0, valor_mes_atual: Number(g && (g.valor_mes_atual != null ? g.valor_mes_atual : g.valor)) || 0, valor_anterior: Number(g && (g.valor_anterior != null ? g.valor_anterior : g.valor_mes_anterior)) || 0, valor_mes_anterior: Number(g && (g.valor_mes_anterior != null ? g.valor_mes_anterior : g.valor_anterior)) || 0, cor_visual: g && g.cor_visual }; }) : []);
       if (gcentros.length) {
-        var totalG = 0; for (var i = 0; i < gcentros.length; i++) totalG += Number(gcentros[i].valor||0) || 0;
-        html += '<div class="ccustos-panel"><div class="ccustos-panel-title">Gastos por Centro de Custo</div><div class="ccustos-panel-sub">Clique num centro para filtrar lançamentos</div><div style="display:flex;flex-direction:column;gap:10px">';
+        gcentros.sort(function(a, b) { var va = Number(a && a.valor || 0); var vb = Number(b && b.valor || 0); if (vb !== va) return vb - va; var na = String(a && a.nome || ''); var nb = String(b && b.nome || ''); return na.localeCompare(nb, 'pt-BR'); });
+        var totalG = 0; for (var i = 0; i < gcentros.length; i++) totalG += Number(gcentros[i] && (gcentros[i].valor != null ? gcentros[i].valor : (gcentros[i].valor_mes_atual != null ? gcentros[i].valor_mes_atual : 0))) || 0;
+        html += '<div class="ccustos-panel"><div class="ccustos-panel-title">Gastos por Centro de Custo</div><div class="ccustos-panel-sub">Clique num centro para filtrar lançamentos · <b style="color:var(--text)">' + gcentros.length + ' centros cadastrados</b></div><div style="display:flex;flex-direction:column;gap:10px">';
         gcentros.forEach(function(gc){
-          var nome = String(gc.nome||gc.codigo||'Sem nome');
-          var cod = String(gc.codigo||'').trim();
-          var cor = String(gc.cor_visual||'#64748b');
-          var val = Number(gc.valor||0) || 0;
+          var nome = String(gc && (gc.nome || gc.codigo || 'Sem nome'));
+          var cod = String(gc && gc.codigo || '').trim();
+          var cor = String(gc && gc.cor_visual || '#64748b');
+          var val = Number(gc && (gc.valor != null ? gc.valor : (gc.valor_mes_atual != null ? gc.valor_mes_atual : 0))) || 0;
           var pct = totalG > 0 ? (val / totalG * 100) : 0;
           html += ''
-            + '<div data-centro-row data-centro="' + escA(gc.id||'') + '" style="display:flex;gap:12px;align-items:center;cursor:pointer;padding:8px 10px;border-radius:10px;transition:background .15s" onmouseover="this.style.background=\'rgba(14,165,233,.08)\'" onmouseout="this.style.background=\'\'">'
+            + '<div data-centro-row data-centro="' + escA(gc && (gc.id || gc.centro_custo_id || '')) + '" style="display:flex;gap:12px;align-items:center;cursor:pointer;padding:8px 10px;border-radius:10px;transition:background .15s" onmouseover="this.style.background=\'rgba(14,165,233,.08)\'" onmouseout="this.style.background=\'\'">'
             + '  <div style="min-width:240px;display:flex;align-items:center"><span class="ccustos-cor" style="background:' + esc(cor) + ';display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid rgba(255,255,255,.2)"></span><b style="font-size:13px">' + esc(nome) + '</b>' + (cod ? (' <span style="color:var(--text2);font-size:11px;margin-left:6px">[&nbsp;' + esc(cod) + '&nbsp;]</span>') : '') + '</div>'
             + '  <div class="ccustos-bar-wrap" style="height:8px;border-radius:999px;background:rgba(0,0,0,.22);overflow:hidden;min-width:100px;flex:1"><div class="ccustos-bar-fill" style="height:100%;background:linear-gradient(90deg,var(--g1),var(--g3));border-radius:999px;transition:width .4s;width:' + Math.max(0, Math.min(100, pct)).toFixed(1) + '%"></div></div>'
-            + '  <div style="min-width:180px;text-align:right"><b style="font-size:13px">' + fmt1(val) + '</b><span style="color:var(--text2);font-size:11px;margin-left:8px">' + fmtN(pct,1) + '%</span></div>'
+            + '  <div style="min-width:180px;text-align:right"><b style="font-size:13px">' + fmt1(val) + '</b><span style="color:var(--text2);font-size:11px;margin-left:8px">' + fmtN(pct, 1) + '%</span></div>'
             + '</div>';
         });
         html += '</div></div>';
