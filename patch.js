@@ -18801,6 +18801,59 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     return '';
   }
 
+  function cleanupJarvisFullscreenOverlay() {
+    try {
+      var fullscreen = document.getElementById('painel-jarvis-grande');
+      if (fullscreen && fullscreen.remove) fullscreen.remove();
+    } catch (_) {}
+    try {
+      var panel = document.getElementById('assist-panel');
+      if (panel && panel.dataset && panel.dataset.prevCssTextJarvis != null) {
+        panel.style.cssText = panel.dataset.prevCssTextJarvis;
+        delete panel.dataset.prevCssTextJarvis;
+      }
+    } catch (_) {}
+  }
+
+  function forceJarvisPanelVisible() {
+    try {
+      var panel = document.getElementById('assist-panel');
+      var overlay = document.getElementById('assist-overlay');
+      if (panel) {
+        try { panel.style.removeProperty('opacity'); } catch (_) {}
+        try { panel.style.removeProperty('transform'); } catch (_) {}
+        try { panel.style.removeProperty('visibility'); } catch (_) {}
+        panel.style.setProperty('opacity', '1', 'important');
+        panel.style.setProperty('transform', 'none', 'important');
+        panel.style.setProperty('visibility', 'visible', 'important');
+        panel.style.setProperty('z-index', '10003', 'important');
+        try { panel.classList.add('open'); } catch (_) {}
+      }
+      if (overlay) {
+        overlay.style.setProperty('z-index', '10002', 'important');
+        try { overlay.style.setProperty('display', 'block', 'important'); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  function forceJarvisFullyClosed() {
+    try {
+      var panel = document.getElementById('assist-panel');
+      var overlay = document.getElementById('assist-overlay');
+      cleanupJarvisFullscreenOverlay();
+      try {
+        if (overlay) overlay.style.setProperty('display', 'none', 'important');
+      } catch (_) {}
+      try {
+        if (panel) {
+          try { panel.classList.remove('open'); } catch (_) {}
+          try { panel.style.removeProperty('opacity'); } catch (_) {}
+          try { panel.style.removeProperty('transform'); } catch (_) {}
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
+
   window._jarvisAbrirRelatorio = function(htmlContent) {
     return openReportHtml(htmlContent);
   };
@@ -18832,12 +18885,13 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       if (!ev || ev.target !== this) return;
       ev.preventDefault();
       ev.stopPropagation();
-      var overlay = document.getElementById('assist-overlay');
-      var panel = document.getElementById('assist-panel');
+      forceJarvisFullyClosed();
       if (typeof window._jarvisFechar === 'function') {
         try { cleanupJarvisFullscreenOverlay(); } catch (_) {}
         try { return window._jarvisFechar(); } catch (_) {}
       }
+      var overlay = document.getElementById('assist-overlay');
+      var panel = document.getElementById('assist-panel');
       if (overlay) overlay.style.display = 'none';
       if (panel && panel.classList) panel.classList.remove('open');
     } catch (_) {}
@@ -18849,7 +18903,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       if (!overlay || overlay.dataset.patchJarvisOverlayBound === '1') return;
       overlay.dataset.patchJarvisOverlayBound = '1';
       try { overlay.onclick = null; } catch (_) {}
-      overlay.addEventListener('click', closeJarvisBackdrop, false);
+      overlay.addEventListener('click', closeJarvisBackdrop, true);
     } catch (_) {}
   }
 
@@ -18860,12 +18914,15 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       document.addEventListener('keydown', function(ev) {
         try {
           var k = (ev && ev.key) ? String(ev.key) : '';
-          if (k !== 'Escape' && k !== 'Esc') return;
+          var kc = (ev && typeof ev.keyCode === 'number') ? Number(ev.keyCode) : 0;
+          if (k !== 'Escape' && k !== 'Esc' && kc !== 27) return;
           var overlay = document.getElementById('assist-overlay');
           var panel = document.getElementById('assist-panel');
           var aberto = !!(overlay && (overlay.style.display === '' || overlay.style.display === 'block' || (panel && panel.classList && panel.classList.contains('open'))));
           if (!aberto) return;
           if (ev && typeof ev.preventDefault === 'function') try { ev.preventDefault(); } catch (_) {}
+          if (ev && typeof ev.stopPropagation === 'function') try { ev.stopPropagation(); } catch (_) {}
+          forceJarvisFullyClosed();
           if (typeof window._jarvisFechar === 'function') {
             try { cleanupJarvisFullscreenOverlay(); } catch (_) {}
             try { return window._jarvisFechar(); } catch (_) {}
@@ -18873,21 +18930,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           if (overlay) overlay.style.display = 'none';
           if (panel && panel.classList) panel.classList.remove('open');
         } catch (_) {}
-      }, false);
-    } catch (_) {}
-  }
-
-  function cleanupJarvisFullscreenOverlay() {
-    try {
-      var fullscreen = document.getElementById('painel-jarvis-grande');
-      if (fullscreen && fullscreen.remove) fullscreen.remove();
-    } catch (_) {}
-    try {
-      var panel = document.getElementById('assist-panel');
-      if (panel && panel.dataset && panel.dataset.prevCssTextJarvis != null) {
-        panel.style.cssText = panel.dataset.prevCssTextJarvis;
-        delete panel.dataset.prevCssTextJarvis;
-      }
+      }, true);
     } catch (_) {}
   }
 
@@ -18896,8 +18939,13 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       if (typeof window._jarvisFechar !== 'function' || window._jarvisFechar.__patchFullscreenSafe === true) return;
       var originalClose = window._jarvisFechar;
       var wrappedClose = function() {
-        cleanupJarvisFullscreenOverlay();
-        return originalClose.apply(this, arguments);
+        forceJarvisFullyClosed();
+        try { return originalClose.apply(this, arguments); } catch (_) {}
+        try { forceJarvisFullyClosed(); } catch (_) {}
+        var overlay = document.getElementById('assist-overlay');
+        var panel = document.getElementById('assist-panel');
+        try { if (overlay) overlay.style.setProperty('display', 'none', 'important'); } catch (_) {}
+        try { if (panel && panel.classList) panel.classList.remove('open'); } catch (_) {}
       };
       wrappedClose.__patchFullscreenSafe = true;
       wrappedClose.__patchOriginal = originalClose;
@@ -18915,11 +18963,16 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           var btn = document.getElementById(id);
           if (!btn || btn.dataset.patchJarvisCloseBound === '1') return;
           btn.dataset.patchJarvisCloseBound = '1';
-          btn.onclick = function(ev) {
+          btn.addEventListener('click', function(ev) {
             try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
-            cleanupJarvisFullscreenOverlay();
-            return closeFn();
-          };
+            forceJarvisFullyClosed();
+            try { cleanupJarvisFullscreenOverlay(); } catch (_) {}
+            try { closeFn(); } catch (_) {}
+            var overlay = document.getElementById('assist-overlay');
+            var panel = document.getElementById('assist-panel');
+            try { if (overlay) overlay.style.setProperty('display', 'none', 'important'); } catch (_) {}
+            try { if (panel && panel.classList) panel.classList.remove('open'); } catch (_) {}
+          }, true);
         } catch (_) {}
       });
     } catch (_) {}
@@ -18938,10 +18991,15 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
             if (fullscreen && !panelAberto) cleanupJarvisFullscreenOverlay();
           } catch (_) {}
           var result = originalOpen.apply(this, arguments);
-          setTimeout(function() {
-            try { wrapJarvisClose(); } catch (_) {}
-            try { bindJarvisCloseButtons(); } catch (_) {}
-          }, 20);
+          [15, 40, 90, 180, 320].forEach(function(delay) {
+            setTimeout(function() {
+              try { forceJarvisPanelVisible(); } catch (_) {}
+              try { bindJarvisOverlayGuard(); } catch (_) {}
+              try { bindJarvisEscClose(); } catch (_) {}
+              try { wrapJarvisClose(); } catch (_) {}
+              try { bindJarvisCloseButtons(); } catch (_) {}
+            }, delay);
+          });
           return result;
         };
         wrappedOpen.__patchFullscreenSafe = true;
