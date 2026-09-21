@@ -18979,7 +18979,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   }
 
   function wrapJarvisOpeners() {
-    ['_jarvisAbrir', 'abrirJarvis'].forEach(function(name) {
+    ['_jarvisAbrir', 'abrirJarvis', 'fabAbrirJarvis', 'abrirPainelJarvis'].forEach(function(name) {
       try {
         if (typeof window[name] !== 'function' || window[name].__patchFullscreenSafe === true) return;
         var originalOpen = window[name];
@@ -19023,6 +19023,39 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       try { wrapJarvisOpeners(); } catch (_) {}
     }, delay);
   });
+
+  var watchdogTentativas = 0;
+  function jarvisDeadlockWatchdog() {
+    try {
+      watchdogTentativas += 1;
+      var overlay = document.getElementById('assist-overlay');
+      var panel = document.getElementById('assist-panel');
+      if (overlay && panel) {
+        var ovDisplay = String(overlay.style.display || getComputedStyle(overlay).display || '').trim();
+        var panelOpen = !!(panel.classList && panel.classList.contains('open'));
+        if ((ovDisplay === '' || ovDisplay === 'block') && panelOpen) {
+          var cssp = getComputedStyle(panel);
+          var opacityRaw = parseFloat(panel.style.opacity || cssp.opacity || '0');
+          var transformRaw = String(panel.style.transform || cssp.transform || '').trim();
+          var isInvisible = (Number.isFinite(opacityRaw) && opacityRaw < 0.5) || (transformRaw && transformRaw !== 'none' && !/^\s*matrix\(1,\s*0,\s*0,\s*1,\s*0,\s*0\s*\)\s*$/.test(transformRaw));
+          if (isInvisible) {
+            try { forceJarvisPanelVisible(); } catch (_) {}
+            try { bindJarvisOverlayGuard(); } catch (_) {}
+            try { bindJarvisEscClose(); } catch (_) {}
+            try { wrapJarvisClose(); } catch (_) {}
+            try { bindJarvisCloseButtons(); } catch (_) {}
+          }
+        }
+        if (watchdogTentativas > 30) {
+          if ((ovDisplay === '' || ovDisplay === 'block') && !panelOpen) {
+            try { forceJarvisFullyClosed(); } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+    if (watchdogTentativas < 60) setTimeout(jarvisDeadlockWatchdog, 500);
+  }
+  setTimeout(jarvisDeadlockWatchdog, 400);
 })();
 
 (function() {
