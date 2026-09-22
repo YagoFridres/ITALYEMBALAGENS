@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260922021000';
-const SW_RUNTIME_VERSION = '20260922021000';
+const PATCH_RUNTIME_VERSION = '20260922150000';
+const SW_RUNTIME_VERSION = '20260922150000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -7520,6 +7520,133 @@ app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) =>
     });
   } catch (e) {
     console.error('[CLIENTES INATIVOS]', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/frequencia-compra-clientes', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+
+    const visaoRaw = String(req.query.visao || 'dia').trim().toLowerCase();
+    const visao = ['dia','semana','mes'].includes(visaoRaw) ? visaoRaw : 'dia';
+    const limiteFuturoDias = visao === 'dia' ? 0 : visao === 'semana' ? 7 : 30;
+
+    const hoje = new Date();
+    hoje.setHours(12,0,0,0);
+    const msDia = 86400000;
+
+    const ofsHistorico = await _relatoriosFetchOfsConcluidas({
+      inicio: '2000-01-01',
+      fim: '2100-01-01',
+      fim_exclusivo: '2100-01-02'
+    }, { companyIds: [empresa_id] });
+
+    const grupos = new Map();
+    for (const of of ofsHistorico) {
+      let cliId = _assistPickOfClienteId(of) || null;
+      if (!cliId) cliId = '__fallback__' + String(of?.cliente_nome || of?.cliNome || of?.clinome || '').trim();
+      if (!grupos.has(cliId)) {
+        grupos.set(cliId, {
+          cliente_id: cliId && _isUuid(String(cliId)) ? String(cliId) : null,
+          cliente_nome: String(of?.cliente_nome || of?.cliNome || of?.clinome || 'Cliente Sem Nome').trim() || 'Cliente Sem Nome',
+          datas: [],
+          total_pedidos: 0
+        });
+      }
+      const g = grupos.get(cliId);
+      const dataRef = _vendasOficialDataRef(of);
+      if (dataRef) {
+        g.datas.push(dataRef);
+        g.total_pedidos += 1;
+      }
+    }
+
+    const rows = [];
+    for (const g of grupos.values()) {
+      if (!g.total_pedidos || g.total_pedidos < 3) continue;
+      const datasOrdenadas = g.datas.slice().sort();
+      let somaIntervalos = 0;
+      let qtdeIntervalos = 0;
+      for (let i = 1; i < datasOrdenadas.length; i++) {
+        const dAnt = new Date(`${datasOrdenadas[i-1]}T12:00:00`);
+        const dAt = new Date(`${datasOrdenadas[i]}T12:00:00`);
+        const diff = Math.round((dAt.getTime() - dAnt.getTime()) / msDia);
+        if (diff >= 0) {
+          somaIntervalos += diff;
+          qtdeIntervalos += 1;
+        }
+      }
+      const frequencia_media = qtdeIntervalos > 0 ? Math.max(0.5, +(somaIntervalos / qtdeIntervalos).toFixed(1)) : null;
+      const ultimo_pedido_data = datasOrdenadas[datasOrdenadas.length - 1];
+      const dias_desde_ultimo = ultimo_pedido_data
+        ? Math.max(0, Math.round((hoje.getTime() - new Date(`${ultimo_pedido_data}T12:00:00`).getTime()) / msDia))
+        : null;
+      const atrasado = frequencia_media != null && dias_desde_ultimo != null ? dias_desde_ultimo > frequencia_media : false;
+
+      rows.push({
+        cliente_id: g.cliente_id,
+        cliente_nome: g.cliente_nome,
+        total_pedidos: g.total_pedidos,
+        frequencia_media_dias: frequencia_media,
+        ultimo_pedido_data,
+        dias_desde_ultimo,
+        atrasado,
+        _score: frequencia_media != null && dias_desde_ultimo != null && frequencia_media > 0
+          ? +(dias_desde_ultimo / frequencia_media).toFixed(2)
+          : 0
+      });
+    }
+
+    let filtradas = rows;
+    if (visao === 'dia') {
+      filtradas = rows.filter(r => r.atrasado);
+    } else {
+      filtradas = rows.filter(r => {
+        return r.atrasado || (
+          r.frequencia_media_dias != null && r.dias_desde_ultimo != null &&
+          (r.dias_desde_ultimo + limiteFuturoDias) > r.frequencia_media_dias
+        );
+      });
+    }
+
+    filtradas.sort((a, b) => {
+      if (b._score !== a._score) return b._score - a._score;
+      if ((b.dias_desde_ultimo ?? -1) !== (a.dias_desde_ultimo ?? -1))
+        return (b.dias_desde_ultimo ?? -1) - (a.dias_desde_ultimo ?? -1);
+      return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
+    });
+
+    const totalClientesFreqCalculada = rows.filter(r => r.frequencia_media_dias != null).length;
+    const totalAtrasados = rows.filter(r => r.atrasado).length;
+    const totalNoPeriodo = filtradas.length;
+    const totalAtrasadosNoPeriodo = filtradas.filter(r => r.atrasado).length;
+
+    const rowsOut = filtradas.map(r => {
+      const { _score, ...resto } = r;
+      return resto;
+    });
+
+    return res.json({
+      ok: true,
+      visao,
+      limite_futuro_dias: limiteFuturoDias,
+      criterio_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at) — OFs status Concluído',
+      criterio_min_pedidos: 3,
+      resumo: {
+        total_clientes_com_pedidos: rows.length,
+        total_clientes_frequencia_calculada: totalClientesFreqCalculada,
+        total_atrasados_geral: totalAtrasados,
+        total_exibidos_no_periodo: totalNoPeriodo,
+        total_atrasados_no_periodo: totalAtrasadosNoPeriodo,
+        total_a_vencer_no_periodo: totalNoPeriodo - totalAtrasadosNoPeriodo
+      },
+      rows: rowsOut
+    });
+  } catch (e) {
+    console.error('[FREQ-COMPRA-CLIENTES]', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });

@@ -93,6 +93,9 @@ end $$;
 
 alter table if exists public.maquinas add column if not exists meta_perda_pct numeric;
 
+alter table if exists public.ofs add column if not exists tempo_setup_real integer;
+alter table if exists public.ofs add column if not exists tempo_producao_real integer;
+
 create table if not exists public.estoque_tintas (
   id uuid default gen_random_uuid() primary key,
   empresa_id uuid references public.empresas(id),
