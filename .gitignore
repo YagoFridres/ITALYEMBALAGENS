@@ -6,3 +6,8 @@ node_modules/
 .vercel/
 .vercelignore
 vercel.json
+# Italy Embalagens local dev/tools
+_poll_*.js
+_smoke_*.js
+_debug_patch/
+*_BACKUP.*
