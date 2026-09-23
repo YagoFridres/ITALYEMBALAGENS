@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -16847,21 +16847,23 @@ app.get('/api/relatorios/v2/resumo-anual', authMiddleware, async (req, res) => {
     try { cacheClearPrefix('rel_'); } catch (_) {}
     const anoRaw = Number(req.query?.ano || 0);
     const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : new Date().getFullYear();
-    const empParam = String(req.query.emp_id || '').trim().toUpperCase();
-    let companyIds;
+    const empParamRaw = String(req.query.emp_id || req.query.empId || '').trim().toUpperCase();
+    const temFiltroEmpresaManual = !!empParamRaw;
+    let empresa_id = null;
+    let companyIds = [];
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
     let filtroRetorno = null;
-    if (empParam === 'ALL') {
-      companyIds = [
-        'df5f7672-0a6b-402d-ae65-296554236c31',
-        'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
-      ];
-      filtroRetorno = 'ALL';
+    if (temFiltroEmpresaManual && (empParamRaw === 'E1' || empParamRaw === 'E2' || empParamRaw === 'E3')) {
+      if (empParamRaw === 'E1') companyIds = ['df5f7672-0a6b-402d-ae65-296554236c31'];
+      else if (empParamRaw === 'E2') companyIds = ['e9b734dc-c7d5-4b04-898d-1ec7affa721e'];
+      else companyIds = ['a6e5f5d8-4743-4ebe-885e-c2f0f741a667'];
+      filtroRetorno = empParamRaw;
+    } else if (temFiltroEmpresaManual && empresa_id) {
+      companyIds = [empresa_id];
+      filtroRetorno = empresa_id;
     } else {
-      let empresa_id = null;
-      try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-      companyIds = empresa_id ? [empresa_id] : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
-      filtroRetorno = empParam || empresa_id || null;
+      companyIds = [];
+      filtroRetorno = 'ALL';
     }
     const range = {
       inicio: `${ano}-01-01`,
@@ -16869,8 +16871,6 @@ app.get('/api/relatorios/v2/resumo-anual', authMiddleware, async (req, res) => {
       fim_exclusivo: `${ano + 1}-01-01`
     };
     const ofs = await _relatoriosFetchOfsConcluidas(range, { companyIds });
-    const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(Boolean);
-    const clientesMap = await _relatoriosLoadClientesDetails(cliIds);
 
     const mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const porMes = new Map();
@@ -16894,18 +16894,21 @@ app.get('/api/relatorios/v2/resumo-anual', authMiddleware, async (req, res) => {
     const clientesIdsAno = new Set();
 
     ofs.forEach((of) => {
-      const dt = _vendasOficialDateObj(of);
-      if (!dt) return;
-      const mes_ref = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      const dataRef = _vendasOficialDataRef(of);
+      if (!dataRef) return;
+      const dt = new Date(`${dataRef}T12:00:00`);
+      if (!Number.isFinite(dt.getTime())) return;
+      if (dt.getFullYear() !== ano) return;
+      const mes_ref = `${ano}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
       if (!porMes.has(mes_ref)) return;
       const mes = porMes.get(mes_ref);
-      const valor = _relatoriosPickValorOf(of);
-      const qtd = _relatoriosPickQtdOf(of);
-      const perda = _relatoriosPickPerdaOf(of);
-      const ton = _relatoriosPickTonOf(of);
+      const valor = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+      const qtd = Math.max(0, Math.trunc(Number(of?.caixas_boas ?? of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0));
+      const perda = Math.max(0, Math.trunc(Number(of?.caixas_perdidas ?? of?.qtd_perdida ?? 0) || 0));
+      const ton = _relatoriosPickTonOf ? Number(_relatoriosPickTonOf(of) || 0) : 0;
       const denominador = qtd + perda;
       const valorPerda = denominador > 0 ? Number(((perda / denominador) * valor).toFixed(2)) : 0;
-      mes.valor_vendido += valor;
+      mes.valor_vendido += valor > 0 ? valor : 0;
       mes.caixas_produzidas += qtd;
       mes.toneladas += ton;
       mes.caixas_perdidas += perda;
@@ -16915,20 +16918,6 @@ app.get('/api/relatorios/v2/resumo-anual', authMiddleware, async (req, res) => {
       if (cliId) {
         mes.clientes_ids.add(cliId);
         clientesIdsAno.add(cliId);
-        if (!porCliente.has(cliId)) {
-          porCliente.set(cliId, {
-            cli_id: cliId,
-            nome: _relatoriosPickClienteNomeOf(of, clientesMap) || 'Cliente não identificado',
-            valor_total: 0,
-            total_ofs: 0
-          });
-        }
-        const cli = porCliente.get(cliId);
-        cli.valor_total += valor;
-        cli.total_ofs += 1;
-        if (!cli.nome || cli.nome === 'Cliente não identificado') {
-          cli.nome = _relatoriosPickClienteNomeOf(of, clientesMap) || cli.nome;
-        }
       }
     });
 
@@ -17116,7 +17105,7 @@ app.get('/api/relatorios/v2/frequencia-compra-clientes', authMiddleware, async (
       return String(a.cliente || '').localeCompare(String(b.cliente || ''), 'pt-BR');
     });
 
-    const res = {
+    const retorno = {
       ok: true,
       mes, ano,
       periodo: `${String(mes).padStart(2,'0')}/${ano}`,
@@ -17131,7 +17120,7 @@ app.get('/api/relatorios/v2/frequencia-compra-clientes', authMiddleware, async (
       },
       clientes
     };
-    return res.json(res);
+    return res.json(retorno);
   } catch (e) {
     console.error('[RELATORIOS][V2-FREQUENCIA-COMPRA]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -17171,9 +17160,10 @@ app.get('/api/relatorios/v2/perdas-operador', authMiddleware, async (req, res) =
 
     const mesSeguinte = mes === 12 ? 1 : mes + 1;
     const anoSeguinte = mes === 12 ? ano + 1 : ano;
+    const ultimoDiaMes = (new Date(ano, mes, 0)).getDate();
     const range = {
       inicio: `${ano}-${String(mes).padStart(2, '0')}-01`,
-      fim: `${ano}-${String(mes).padStart(2, '0')}-31`,
+      fim: `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDiaMes).padStart(2, '0')}`,
       fim_exclusivo: `${anoSeguinte}-${String(mesSeguinte).padStart(2, '0')}-01`
     };
     const inicioIso = range.inicio;
