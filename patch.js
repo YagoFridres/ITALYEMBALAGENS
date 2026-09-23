@@ -53855,16 +53855,44 @@ function _ocultarGraficoComissoes() {
       document.body.appendChild(backdrop);
 
       var shell = backdrop.querySelector('.com-conc-shell');
-      try {
-        var forbidden = backdrop.querySelectorAll('button, [role="button"], .btn');
-        for (var fi = 0; fi < forbidden.length; fi++) {
-          var fel = forbidden[fi];
-          var ftxt = String(fel.textContent || '').toLowerCase();
-          var fact = String(fel.getAttribute && fel.getAttribute('data-action') || fel.getAttribute && fel.getAttribute('data-acao') || '').toLowerCase();
-          if (/sem.?papel|sem.?papelao/.test(ftxt) || /sem.?papel/.test(fact)) {
-            try { fel.style.display = 'none'; } catch (_) {}
-            try { fel.remove(); } catch (_) {}
+      var _reSemPapelConc = /sem.?papel|sem.?papelao/i;
+      function _removerSemPapelConclusaoBackdrop() {
+        try {
+          var forbidden = backdrop.querySelectorAll('button, [role="button"], .btn');
+          for (var fi = 0; fi < forbidden.length; fi++) {
+            var fel = forbidden[fi];
+            if (!fel || !fel.parentNode) continue;
+            var ftxt = String(fel.textContent || '').toLowerCase();
+            var fact = String((fel.getAttribute && fel.getAttribute('data-action')) || (fel.getAttribute && fel.getAttribute('data-acao')) || '').toLowerCase();
+            var fcls = String(fel.className || '').toLowerCase();
+            if (_reSemPapelConc.test(ftxt) || _reSemPapelConc.test(fact) || /patch-ofmaq-sem-papel-btn|sem.?papel/.test(fcls)) {
+              try { fel.style.display = 'none'; } catch (_) {}
+              try { if (fel.parentNode) fel.parentNode.removeChild(fel); } catch (_) {}
+              try { fel.remove(); } catch (_) {}
+            }
           }
+        } catch (_) {}
+      }
+      _removerSemPapelConclusaoBackdrop();
+      [50, 180, 400].forEach(function(d) { setTimeout(_removerSemPapelConclusaoBackdrop, d); });
+      try {
+        if (typeof MutationObserver !== 'undefined') {
+          var _moConc = new MutationObserver(function(muts) {
+            try {
+              if (!muts || !muts.length) return;
+              var temAdd = false;
+              for (var mi = 0; mi < muts.length; mi++) {
+                if (muts[mi] && muts[mi].addedNodes && muts[mi].addedNodes.length) { temAdd = true; break; }
+              }
+              if (temAdd) _removerSemPapelConclusaoBackdrop();
+            } catch (_) {}
+          });
+          _moConc.observe(backdrop, { childList: true, subtree: true });
+          var _closeObsOrigConc = closeModal;
+          closeModal = function() {
+            try { _moConc.disconnect(); } catch (_) {}
+            try { return _closeObsOrigConc.apply(this, arguments); } catch (_) {}
+          };
         }
       } catch (_) {}
       var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
