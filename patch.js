@@ -3805,7 +3805,7 @@ try {
         var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
         var h = token ? { 'Authorization': 'Bearer ' + token } : {};
         var empId = selEmp && selEmp.value ? selEmp.value : 'ALL';
-        fetch('/api/relatorios/frequencia-compra-clientes?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
+        fetch('/api/relatorios/v2/frequencia-compra-clientes?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
           .then(function(r) { return r.json(); })
           .then(function(resp) {
             if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
@@ -3994,7 +3994,7 @@ try {
       if (btnPrintProj) btnPrintProj.onclick = function() {
         try {
           if (typeof window.toastMod === 'function') window.toastMod('Gerando relatório PDF...', 'info');
-          fetch('/api/relatorios/projecao-vendas?proximo_ano=0', { credentials: 'same-origin' })
+          fetch('/api/relatorios/v2/projecao-vendas?proximo_ano=0', { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(resp) {
               try {
@@ -4194,7 +4194,7 @@ try {
         var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
         var h = token ? { 'Authorization': 'Bearer ' + token } : {};
         var empId = selEmp && selEmp.value ? selEmp.value : 'ALL';
-        fetch('/api/relatorios/perdas-operador?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
+        fetch('/api/relatorios/v2/perdas-operador?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
           .then(function(r) { return r.json(); })
           .then(function(resp) {
             if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
@@ -4371,7 +4371,7 @@ try {
         var h = token ? { 'Authorization': 'Bearer ' + token } : {};
         var selEmp = card.querySelector('#rr-resumo-anual-empresa');
         var empId = selEmp && selEmp.value ? selEmp.value : 'ALL';
-        fetch('/api/relatorios/resumo-anual?ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
+        fetch('/api/relatorios/v2/resumo-anual?ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
           .then(function(r) { return r.json(); })
           .then(function(resp) {
             if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');

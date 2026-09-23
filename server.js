@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -16835,7 +16835,7 @@ app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
+app.get('/api/relatorios/v2/resumo-anual', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     try { res.removeHeader('ETag'); } catch (_) {}
@@ -17005,7 +17005,140 @@ app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
+app.get('/api/relatorios/v2/frequencia-compra-clientes', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('rel_'); } catch (_) {}
+
+    const hoje = new Date();
+    const mesRaw = Number(req.query?.mes || 0);
+    const anoRaw = Number(req.query?.ano || 0);
+    const mes = Number.isFinite(mesRaw) && mesRaw >= 1 && mesRaw <= 12 ? mesRaw : (hoje.getMonth() + 1);
+    const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : hoje.getFullYear();
+    const msDia = 86400000;
+    const mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    const empParam = String(req.query.emp_id || '').trim().toUpperCase();
+    let companyIds = [];
+    if (empParam === 'E1') companyIds = ['df5f7672-0a6b-402d-ae65-296554236c31'];
+    else if (empParam === 'E2') companyIds = ['e9b734dc-c7d5-4b04-898d-1ec7affa721e'];
+    else if (empParam === 'E3') companyIds = ['a6e5f5d8-4743-4ebe-885e-c2f0f741a667'];
+    else if (empParam === 'ALL' || !empParam) companyIds = ['df5f7672-0a6b-402d-ae65-296554236c31','e9b734dc-c7d5-4b04-898d-1ec7affa721e','a6e5f5d8-4743-4ebe-885e-c2f0f741a667'];
+
+    const range = { inicio: `${ano}-01-01`, fim: `${ano}-12-31`, fim_exclusivo: `${ano+1}-01-01` };
+    const ofsFull = await _relatoriosFetchOfsConcluidas(range, { companyIds });
+    const mesIni = `${ano}-${String(mes).padStart(2,'0')}-01`;
+    const mesFim = (new Date(ano, mes, 0)).toISOString().slice(0,10);
+    const dtHoje12 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12, 0, 0, 0).getTime();
+
+    const grupos = new Map();
+    ofsFull.forEach((of) => {
+      const dtObj = _vendasOficialDateObj(of);
+      if (!dtObj) return;
+      if (companyIds && companyIds.length) {
+        const eid = _relatoriosPickEmpresaId(of);
+        if (eid && !companyIds.includes(eid)) return;
+      }
+      let cliId = _assistPickOfClienteId(of) || null;
+      const cliNome = String(of?.cliente_nome || of?.cliNome || of?.clinome || 'Cliente Sem Nome').trim() || 'Cliente Sem Nome';
+      if (!cliId) cliId = '__fb__' + cliNome.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0, 32);
+      if (!grupos.has(cliId)) {
+        grupos.set(cliId, {
+          cliente_id: cliId && _isUuid(String(cliId)) ? String(cliId) : null,
+          cliente: cliNome,
+          datas: [],
+          total_pedidos: 0,
+          valor_total: 0,
+          qtde_pedidos: 0
+        });
+      }
+      const g = grupos.get(cliId);
+      const dataStr = _vendasOficialDataRef(of);
+      if (dataStr) g.datas.push(dataStr);
+      const v = Number(_relatoriosPickValorOf(of) || 0);
+      g.valor_total += v;
+      g.total_pedidos += 1;
+      g.qtde_pedidos += 1;
+      if (cliNome && (!g.cliente || g.cliente === 'Cliente Sem Nome')) g.cliente = cliNome;
+    });
+
+    const clientes = [];
+    let sumFreq = 0;
+    let countFreq = 0;
+    let totalTicket = 0;
+    let countTicket = 0;
+    let totalAtrasados = 0;
+    let totalClientesCompraramMes = 0;
+
+    for (const g of grupos.values()) {
+      if (!g.total_pedidos) continue;
+      const datasOrdenadas = g.datas.slice().sort();
+      const temNoMes = datasOrdenadas.some(d => d >= mesIni && d <= mesFim);
+      if (!temNoMes) continue;
+      totalClientesCompraramMes += 1;
+      let somaIntervalos = 0;
+      let qtdeIntervalos = 0;
+      for (let i = 1; i < datasOrdenadas.length; i++) {
+        const dAnt = new Date(`${datasOrdenadas[i-1]}T12:00:00`).getTime();
+        const dAt = new Date(`${datasOrdenadas[i]}T12:00:00`).getTime();
+        const diff = Math.round((dAt - dAnt) / msDia);
+        if (diff >= 0 && diff < 3650) { somaIntervalos += diff; qtdeIntervalos += 1; }
+      }
+      const freq_media = qtdeIntervalos > 0 ? Math.max(0.5, +(somaIntervalos / qtdeIntervalos).toFixed(1)) : null;
+      if (freq_media != null) { sumFreq += freq_media; countFreq += 1; }
+      const ultimo_pedido = datasOrdenadas[datasOrdenadas.length - 1];
+      const dias_desde_ultimo = ultimo_pedido ? Math.max(0, Math.round((dtHoje12 - new Date(`${ultimo_pedido}T12:00:00`).getTime()) / msDia)) : null;
+      const atrasado = freq_media != null && dias_desde_ultimo != null ? dias_desde_ultimo > Math.max(freq_media, 30) : false;
+      if (atrasado) totalAtrasados += 1;
+      const ticket_medio = g.qtde_pedidos > 0 ? Number((g.valor_total / g.qtde_pedidos).toFixed(2)) : 0;
+      if (ticket_medio > 0) { totalTicket += ticket_medio; countTicket += 1; }
+      clientes.push({
+        cliente: g.cliente,
+        cliente_id: g.cliente_id,
+        qtde_pedidos: g.qtde_pedidos,
+        total_pedidos: g.total_pedidos,
+        ultima_compra: ultimo_pedido,
+        dias_desde_ultimo,
+        freq_media_dias: freq_media,
+        freq_media: freq_media,
+        atrasado,
+        valor_total: g.valor_total,
+        ticket_medio
+      });
+    }
+
+    clientes.sort((a, b) => {
+      if (!!b.atrasado !== !!a.atrasado) return (b.atrasado ? 1 : 0) - (a.atrasado ? 1 : 0);
+      if (Number(b.qtde_pedidos || 0) !== Number(a.qtde_pedidos || 0)) return Number(b.qtde_pedidos || 0) - Number(a.qtde_pedidos || 0);
+      return String(a.cliente || '').localeCompare(String(b.cliente || ''), 'pt-BR');
+    });
+
+    const res = {
+      ok: true,
+      mes, ano,
+      periodo: `${String(mes).padStart(2,'0')}/${ano}`,
+      empresa_filtro_id: empParam || 'ALL',
+      resumo: {
+        total_clientes: clientes.length,
+        total_clientes_compraram: totalClientesCompraramMes,
+        total_atrasados: totalAtrasados,
+        freq_media_global: countFreq > 0 ? Number((sumFreq / countFreq).toFixed(1)) : 0,
+        ticket_medio: countTicket > 0 ? Number((totalTicket / countTicket).toFixed(2)) : 0,
+        total_valor_periodo: clientes.reduce((s, c) => s + Number(c.valor_total || 0), 0)
+      },
+      clientes
+    };
+    return res.json(res);
+  } catch (e) {
+    console.error('[RELATORIOS][V2-FREQUENCIA-COMPRA]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/v2/perdas-operador', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     try { res.removeHeader('ETag'); } catch (_) {}
@@ -17057,22 +17190,30 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
     ].join(',');
 
     const rows = [];
+    const dtIni = range.inicio;
+    const dtFim = range.fim;
     const pageSize = 1000;
     for (let offset = 0; offset < 50000; offset += pageSize) {
-      const result = await _selectCompatRows('ofs', columns, (q) => {
-        let b = q.or(`and(status.ilike.%conclu%,status.ilike.%cancel%)`);
-        const orParts = [
-          `and(data_faturamento.gte.${inicioIso},data_faturamento.lt.${fimExclusivoIso})`,
-          `and(data_conclusao.gte.${inicioIso},data_conclusao.lt.${fimExclusivoIso})`,
-          `and(dia.gte.${inicioIso},dia.lt.${fimExclusivoIso})`,
-          `and(created_at.gte.${inicioIso},created_at.lt.${fimExclusivoIso})`
-        ].join(',');
-        try { b = b.or(orParts); } catch (_) {}
-        try { b = b.is('deleted_at', null); } catch (_) {}
-        return b.order('created_at', { ascending: true }).range(offset, offset + pageSize - 1);
-      });
-      if (result?.error) throw result.error;
-      const chunk = Array.isArray(result?.data) ? result.data : [];
+      let filtros = ['deleted_at.is.null'];
+      const filtrosStatus = [`status.ilike.%conclu%`, `status.ilike.%cancel%`];
+      const filtrosDatas = [
+        `data_faturamento.gte.${dtIni}`, `data_faturamento.lte.${dtFim}`,
+        `data_conclusao.gte.${dtIni}`, `data_conclusao.lte.${dtFim}`,
+        `dia.gte.${dtIni}`, `dia.lte.${dtFim}`,
+        `created_at.gte.${dtIni}`, `created_at.lte.${dtFim}`
+      ];
+      if (companyIds && companyIds.length) {
+        companyIds.forEach((eid) => filtros.push(`emp_id.eq.${eid}`));
+      }
+      const orStr = [...filtros, ...filtrosStatus, ...filtrosDatas].join(',');
+      const { data, error } = await supabase
+        .from('ofs')
+        .select(columns)
+        .or(orStr)
+        .order('created_at', { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const chunk = Array.isArray(data) ? data : [];
       if (!chunk.length) break;
       rows.push(...chunk);
       if (chunk.length < pageSize) break;
@@ -17210,6 +17351,148 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.error('[RELATORIOS][PERDAS-OPERADOR]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/v2/projecao-vendas', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('rel_'); } catch (_) {}
+
+    const hoje = new Date();
+    const offsetProxAno = Number(req.query?.proximo_ano || 0) || 0;
+    const anoBase = Number(req.query?.ano || 0) || (hoje.getFullYear() + offsetProxAno);
+    const ano = Number.isFinite(anoBase) && anoBase >= 2000 && anoBase <= 2100 ? anoBase : hoje.getFullYear();
+
+    const empParam = String(req.query.emp_id || '').trim().toUpperCase();
+    let companyIds = [];
+    if (empParam === 'E1') companyIds = ['df5f7672-0a6b-402d-ae65-296554236c31'];
+    else if (empParam === 'E2') companyIds = ['e9b734dc-c7d5-4b04-898d-1ec7affa721e'];
+    else if (empParam === 'E3') companyIds = ['a6e5f5d8-4743-4ebe-885e-c2f0f741a667'];
+    else companyIds = ['df5f7672-0a6b-402d-ae65-296554236c31','e9b734dc-c7d5-4b04-898d-1ec7affa721e','a6e5f5d8-4743-4ebe-885e-c2f0f741a667'];
+
+    const rangeAno = { inicio: `${ano}-01-01`, fim: `${ano}-12-31`, fim_exclusivo: `${ano+1}-01-01` };
+    const ofsFull = await _relatoriosFetchOfsConcluidas(rangeAno, { companyIds });
+
+    const somasMes = new Map();
+    for (let m = 1; m <= 12; m++) somasMes.set(`${ano}-${String(m).padStart(2,'0')}`, { valor_concluido: 0, valor_total: 0, qtd_ofs: 0 });
+    let ofsIdsReais = new Set();
+
+    ofsFull.forEach((of) => {
+      if (companyIds && companyIds.length) {
+        const eid = _relatoriosPickEmpresaId(of);
+        if (eid && !companyIds.includes(eid)) return;
+      }
+      const dtObj = _vendasOficialDateObj(of);
+      if (!dtObj) return;
+      const anoOf = dtObj.getFullYear();
+      if (anoOf !== ano) return;
+      const mesOf = dtObj.getMonth() + 1;
+      const chave = `${ano}-${String(mesOf).padStart(2,'0')}`;
+      if (!somasMes.has(chave)) return;
+      const bucket = somasMes.get(chave);
+      const valor = _relatoriosPickValorOf(of);
+      bucket.valor_concluido += Number(valor || 0);
+      bucket.valor_total += Number(valor || 0);
+      bucket.qtd_ofs += 1;
+      const idOf = String(of?.id || '').trim();
+      if (idOf) ofsIdsReais.add(idOf);
+    });
+
+    const historico = [];
+    for (let m = 1; m <= 12; m++) {
+      const chave = `${ano}-${String(m).padStart(2,'0')}`;
+      const b = somasMes.get(chave);
+      historico.push({
+        mes: chave,
+        valor_concluido: Number(b.valor_concluido.toFixed(2)),
+        valor_total: Number(b.valor_total.toFixed(2)),
+        qtd_ofs: Number(b.qtd_ofs || 0)
+      });
+    }
+
+    const hojeAnoMes = (dt) => dt.getFullYear() * 12 + (dt.getMonth() + 1);
+    const cutoffAnoMes = hojeAnoMes(hoje);
+    const mesesReaisArr = historico.map((h, idx) => {
+      const [y, mm] = h.mes.split('-').map(Number);
+      const am = y * 12 + mm;
+      return { idx, am, valor: Number(h.valor_concluido || 0) };
+    });
+    const mesesDisponiveis = mesesReaisArr.filter((m) => m.valor > 0 && m.am <= cutoffAnoMes);
+    let media_mensal_12m = 0;
+    let total_12m_concluido = 0;
+    mesesDisponiveis.forEach((m) => { total_12m_concluido += m.valor; });
+    const nDisp = mesesDisponiveis.length;
+    if (nDisp > 0) media_mensal_12m = total_12m_concluido / nDisp;
+
+    let somaX = 0, somaY = 0, somaXY = 0, somaX2 = 0;
+    mesesDisponiveis.forEach((m, i) => {
+      const x = i + 1;
+      const y = m.valor;
+      somaX += x; somaY += y; somaXY += x * y; somaX2 += x * x;
+    });
+    const nRegr = nDisp;
+    let slope_tendencia = 0;
+    if (nRegr >= 3) {
+      const denom = (nRegr * somaX2) - (somaX * somaX);
+      if (Math.abs(denom) > 0.0001) {
+        slope_tendencia = ((nRegr * somaXY) - (somaX * somaY)) / denom;
+      }
+    }
+    if (!Number.isFinite(slope_tendencia)) slope_tendencia = 0;
+    const projecao_tendencia_mensal = Math.max(0, media_mensal_12m + slope_tendencia);
+
+    const projecao_meses = [];
+    let meses_projetados = 0;
+    for (let m = 1; m <= 12; m++) {
+      const chave = `${ano}-${String(m).padStart(2,'0')}`;
+      const am = ano * 12 + m;
+      const histBucket = historico[m - 1];
+      const valorHist = Number(histBucket?.valor_concluido || 0);
+      let projTend;
+      let projMedia;
+      if (am <= cutoffAnoMes && valorHist > 0) {
+        projTend = valorHist;
+        projMedia = valorHist;
+      } else {
+        projTend = Math.max(0, projecao_tendencia_mensal);
+        projMedia = Math.max(0, media_mensal_12m);
+        if (!(am <= cutoffAnoMes && valorHist > 0)) meses_projetados += 1;
+      }
+      projecao_meses.push({
+        mes: chave,
+        projecao_tendencia: Number(projTend.toFixed(2)),
+        projecao_media: Number(projMedia.toFixed(2))
+      });
+    }
+
+    return res.json({
+      ok: true,
+      ano,
+      data: {
+        historico,
+        projecao_meses,
+        resumo: {
+          slope_tendencia: Number(slope_tendencia.toFixed(2)),
+          media_mensal_12m: Number(media_mensal_12m.toFixed(2)),
+          projecao_tendencia_mensal: Number(projecao_tendencia_mensal.toFixed(2)),
+          total_12m_concluido: Number(total_12m_concluido.toFixed(2)),
+          meses_projetados: Number(meses_projetados || 0),
+          cards4: {
+            vendas_reais_ytd: Number(total_12m_concluido.toFixed(2)),
+            meses_corridos: Number(nDisp || 0),
+            media_mensal_base: Number(media_mensal_12m.toFixed(2)),
+            projecao_tendencia: Number(projecao_tendencia_mensal.toFixed(2))
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][V2-PROJECAO-VENDAS]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
