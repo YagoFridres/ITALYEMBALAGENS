@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -30962,7 +30962,11 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
         }).join('\n');
         if (rows.length > 20) txt += `\n\n... +${rows.length - 20} OF(s) omitidas (limite 20).`;
         return { tipo: 'dados-banco', resposta: txt, total_ofs: rows.length, total_valor: totalValor };
-      } catch (e) { console.warn('[Jarvis FC Q1/Q7 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
+      } catch (e) {
+        const pl = { msg: e.message, code: e.code, hint: e.hint, details: e.details, stack: (e.stack || '').slice(0, 800), filtros: filtros, join: filtros.join(',') };
+        console.warn('[Jarvis FC Q1/Q7 ERROR]', pl);
+        return { tipo: 'debug-erro', resposta: 'DEBUG_Q1Q7_ERR ' + JSON.stringify(pl), q: 'Q1/Q7' };
+      }
     }
 
     if (q10_estoque_min) {
@@ -30984,7 +30988,11 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
           return `${i + 1}. ${d} ${g}g ${dim} · Saldo: ${sal} un · ${v}/un`;
         }).join('\n');
         return { tipo: 'dados-banco', resposta: txt, total_itens: rows.length };
-      } catch (e) { console.warn('[Jarvis FC Q10 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
+      } catch (e) {
+        const pl = { msg: e.message, code: e.code, hint: e.hint, details: e.details, stack: (e.stack || '').slice(0, 800), filtros_join: filtros.join(',') };
+        console.warn('[Jarvis FC Q10 ERROR]', pl);
+        return { tipo: 'debug-erro', resposta: 'DEBUG_Q10_ERR ' + JSON.stringify(pl), q: 'Q10' };
+      }
     }
 
     if (q12_caixas_perdidas) {
@@ -31011,7 +31019,11 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
           return `${i + 1}. OF #${ofn} ${cli} · ${qtd} cx · ${v}`;
         }).join('\n');
         return { tipo: 'dados-banco', resposta: txt };
-      } catch (e) { console.warn('[Jarvis FC Q12 ERROR]', { msg: e.message, stack: e.stack, status: e.status, statusCode: e.statusCode }); }
+      } catch (e) {
+        const pl = { msg: e.message, status: e.status, statusCode: e.statusCode, stack: (e.stack || '').slice(0, 800), url: url };
+        console.warn('[Jarvis FC Q12 ERROR]', pl);
+        return { tipo: 'debug-erro', resposta: 'DEBUG_Q12_ERR ' + JSON.stringify(pl), q: 'Q12' };
+      }
     }
 
     if (q20_resumo) {
@@ -31033,7 +31045,11 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
         txt += `• Caixas Perdidas: ${fmtNum(ttPerd)}\n`;
         txt += `• Perda Média: ${ttCx + ttPerd > 0 ? (((ttPerd / (ttCx + ttPerd)) * 100).toFixed(2).replace('.', ',')) : '0,00'}%\n`;
         return { tipo: 'dados-banco', resposta: txt, total_valor: ttV, total_caixas: ttCx };
-      } catch (e) { console.warn('[Jarvis FC Q20 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
+      } catch (e) {
+        const pl = { msg: e.message, code: e.code, hint: e.hint, details: e.details, stack: (e.stack || '').slice(0, 800), filtrosOf_join: filtrosOf.join(',') };
+        console.warn('[Jarvis FC Q20 ERROR]', pl);
+        return { tipo: 'debug-erro', resposta: 'DEBUG_Q20_ERR ' + JSON.stringify(pl), q: 'Q20' };
+      }
     }
 
     if (q15_faturamento) {
@@ -31054,10 +31070,13 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
     }
 
     console.warn('[Jarvis FC] NENHUM IF matchou (retornando null). pergunta original=', pergunta);
+    if (pergunta && pergunta.toUpperCase().startsWith('DEBUG:')) {
+      return { tipo: 'debug-erro', resposta: 'DEBUG_NENHUM_MATCH ' + JSON.stringify({ norm: norm, pergunta: pergunta, empId: empId, q_flags: { q1_abertas, q2_caixas_cli, q3_status, q4_compras_forn, q5_sem_papel, q6_clientes_of, q7_atrasadas, q8_toneladas, q9_comissoes, q10_estoque_min, q11_top_fornecedor, q12_caixas_perdidas, q13_ticket_medio, q14_clientes_inativos, q15_faturamento, q16_ultima_of, q17_passou_maquina, q18_compras_pendentes, q19_orcamentos_status, q20_resumo } }), q: 'NO_MATCH' };
+    }
     return null;
   } catch (e) {
     console.error('[JarvisFunctionDispatch FATAL]', { msg: e?.message, stack: e?.stack });
-    return null;
+    return { tipo: 'debug-erro', resposta: 'DEBUG_FATAL ' + JSON.stringify({ msg: e?.message, stack: (e?.stack || '').slice(0, 1200) }), q: 'FATAL' };
   }
 }
 
@@ -31463,7 +31482,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const empIdCtx = String(req.body?.empId || req.body?.emp_id || req.query?.empId || '').trim() || null;
 
     const fcResp = await _jarvisFunctionDispatch({ pergunta, empId: empIdCtx, req });
-    if (fcResp && typeof fcResp === 'object' && fcResp.tipo === 'dados-banco') {
+    if (fcResp && typeof fcResp === 'object' && (fcResp.tipo === 'dados-banco' || fcResp.tipo === 'debug-erro' || fcResp.tipo === 'debug-info')) {
       const extra = Object.fromEntries(Object.entries(fcResp).filter(([k]) => k !== 'resposta' && k !== 'tipo'));
       return respond(fcResp.resposta, { tipo: fcResp.tipo, ...extra });
     }
