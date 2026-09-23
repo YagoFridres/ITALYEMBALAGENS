@@ -53233,7 +53233,7 @@ function _ocultarGraficoComissoes() {
       st.textContent = ''
         + '@keyframes modalEntrada{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}'
         + '.com-conc-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99998;display:flex;align-items:center;justify-content:center;padding:24px}'
-        + '.com-conc-shell{position:relative;background:linear-gradient(145deg,#0f1729 0%,#111827 100%);border:1px solid #1e3a5f;border-radius:16px;box-shadow:0 30px 100px rgba(0,0,0,.8),0 0 0 1px rgba(59,130,246,.1);width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:0;animation:modalEntrada .25s ease-out;color:#f1f5f9}'
+        + '.com-conc-shell{position:relative;background:linear-gradient(145deg,#0f1729 0%,#111827 100%);border:1px solid #1e3a5f;border-radius:16px;box-shadow:0 30px 100px rgba(0,0,0,.8),0 0 0 1px rgba(59,130,246,.1);width:980px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:0;animation:modalEntrada .25s ease-out;color:#f1f5f9}'
         + '.com-conc-head{background:linear-gradient(135deg,#0d1f3c,#1a2f52);border-bottom:1px solid #1e3a5f;border-radius:16px 16px 0 0;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:16px}'
         + '.com-conc-x{background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;width:32px;height:32px;cursor:pointer}'
         + '.com-conc-x:hover{border-color:#ef4444;color:#ef4444}'
@@ -53855,6 +53855,18 @@ function _ocultarGraficoComissoes() {
       document.body.appendChild(backdrop);
 
       var shell = backdrop.querySelector('.com-conc-shell');
+      try {
+        var forbidden = backdrop.querySelectorAll('button, [role="button"], .btn');
+        for (var fi = 0; fi < forbidden.length; fi++) {
+          var fel = forbidden[fi];
+          var ftxt = String(fel.textContent || '').toLowerCase();
+          var fact = String(fel.getAttribute && fel.getAttribute('data-action') || fel.getAttribute && fel.getAttribute('data-acao') || '').toLowerCase();
+          if (/sem.?papel|sem.?papelao/.test(ftxt) || /sem.?papel/.test(fact)) {
+            try { fel.style.display = 'none'; } catch (_) {}
+            try { fel.remove(); } catch (_) {}
+          }
+        }
+      } catch (_) {}
       var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
       var valorUnitEl = backdrop.querySelector('#conclusao-valor-unitario');
       var dataEl = backdrop.querySelector('#conclusao-data-faturamento');
@@ -56249,6 +56261,57 @@ function _ocultarGraficoComissoes() {
               });
             } catch (_) {}
           }, true);
+        }
+      } catch (_) {}
+      try {
+        if (filtrosWrap && !filtrosWrap.querySelector('#comissao-excel-btn')) {
+          var _btnXl = document.createElement('button');
+          _btnXl.id = 'comissao-excel-btn';
+          _btnXl.type = 'button';
+          _btnXl.textContent = '📊 Excel';
+          _btnXl.style.cssText = 'background:#1e40af;color:#fff;border:1px solid #2563eb;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;margin-left:4px';
+          _btnXl.addEventListener('click', function() {
+            try {
+              var vArr = Array.isArray(window._comissoesSqlData && window._comissoesSqlData.vendedores) ? window._comissoesSqlData.vendedores : [];
+              var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+              var mesNome = meses[(parseInt(String(mes||'1'),10)||1)-1] || String(mes);
+              var periodo = mesNome + '/' + String(ano || new Date().getFullYear());
+              var rows = [['Vendedor','Base de Cálculo','Total Vendas no Período','% Custo Mercantil','Valor Comissão','Período Referência']];
+              vArr.forEach(function(v) {
+                var nome = String(v && (v.nome || v.vendedor) || '—').trim();
+                var total = Number(v && v.total || 0) || 0;
+                var pct = Number(v && v.comissao_pct || 0) || 0;
+                var comiss = Number(v && v.comissao_rs || 0) || 0;
+                rows.push([
+                  nome,
+                  total.toFixed(2),
+                  total.toFixed(2),
+                  pct.toFixed(2),
+                  comiss.toFixed(2),
+                  periodo
+                ]);
+              });
+              var csv = rows.map(function(r) {
+                return r.map(function(cell) {
+                  var s = String(cell == null ? '' : cell);
+                  if (/[;"\n]/.test(s)) s = '"' + s.replace(/"/g,'""') + '"';
+                  return s;
+                }).join(';');
+              }).join('\r\n');
+              var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = 'Comissoes_' + String(ano||'') + '_' + _pad2(mes) + '.csv';
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(function() { try { document.body.removeChild(a); } catch (_) {} try { URL.revokeObjectURL(url); } catch (_) {} }, 100);
+            } catch (e) {
+              try { console.error('[COM EXCEL] erro:', e); } catch (_) {}
+              try { toast('Erro ao exportar Excel: ' + String(e && e.message || e || ''), 'var(--red)'); } catch (_) { alert('Erro ao exportar Excel.'); }
+            }
+          });
+          filtrosWrap.appendChild(_btnXl);
         }
       } catch (_) {}
       setTimeout(function() {
@@ -61400,15 +61463,67 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     window.__orcDataLoadingPromise = loadPromise;
     return loadPromise;
   }
+  function _patchCmW3ProcessBlock(blockIdx) {
+    try {
+      var w3el = blockIdx
+        ? (document.querySelector('[data-calc-block="'+blockIdx+'"] [data-calc-field="w3-display"]'))
+        : document.getElementById('calc-w3-display');
+      if (!w3el) return;
+      var txt = w3el.textContent || '';
+      var m = txt.match(/([\d.,]+)\s*%/);
+      var w3Val = m ? parseFloat(String(m[1]).replace(',','.')) : null;
+      if (w3Val != null && !isNaN(w3Val)) {
+        w3el.textContent = 'Índice W3 / Markup = ' + w3Val.toFixed(1) + '%';
+      } else if (/Custo Mercadoria/i.test(txt)) {
+        w3el.textContent = txt.replace(/Custo Mercadoria\s*=\s*/i, 'Índice W3 / Markup = ');
+      }
+      var cmEl = blockIdx
+        ? (document.querySelector('[data-calc-block="'+blockIdx+'"] [data-calc-field="cm"]'))
+        : document.getElementById('calc-cm');
+      var cmVal = cmEl ? parseFloat(cmEl.value || '0') : 0;
+      if (isNaN(cmVal)) cmVal = 0;
+      var parent = w3el.parentNode;
+      if (!parent) return;
+      var cmDisp = blockIdx
+        ? parent.querySelector('[data-calc-field="cm-display-block"]')
+        : document.getElementById('calc-cm-display');
+      if (!cmDisp) {
+        cmDisp = document.createElement('span');
+        cmDisp.style.cssText = 'margin-left:14px;color:#fbbf24;font-weight:800;letter-spacing:.03em';
+        if (blockIdx) cmDisp.setAttribute('data-calc-field','cm-display-block');
+        else cmDisp.id = 'calc-cm-display';
+        parent.appendChild(cmDisp);
+      }
+      cmDisp.textContent = 'Custo Mercantil = ' + cmVal.toFixed(1) + '%';
+    } catch (e) {}
+  }
+  function patchCorrigirCmW3Displays() {
+    _patchCmW3ProcessBlock(0);
+    var blks = document.querySelectorAll('[data-calc-block]');
+    for (var i=0;i<blks.length;i++) {
+      var id = blks[i].getAttribute('data-calc-block');
+      if (id) _patchCmW3ProcessBlock(Number(id)||0);
+    }
+  }
   if (typeof window.calcRecalc === 'function' && !window.calcRecalc.__patchWavePanels) {
     var origCalcRecalc = window.calcRecalc;
     window.calcRecalc = function() {
       var out = origCalcRecalc.apply(this, arguments);
       try { ensureCalcWaveTableRows(); } catch (_) {}
       try { renderCalcWavePanels(); } catch (_) {}
+      try { patchCorrigirCmW3Displays(); } catch (_) {}
       return out;
     };
     window.calcRecalc.__patchWavePanels = true;
+  }
+  if (typeof calcRecalcFromScope === 'function' && !calcRecalcFromScope.__patchCmW3) {
+    var origCalcFromScope = calcRecalcFromScope;
+    window.calcRecalcFromScope = calcRecalcFromScope = function(blockIdx) {
+      var out = origCalcFromScope.apply(this, arguments);
+      try { _patchCmW3ProcessBlock(Number(blockIdx)||0); } catch (_) {}
+      return out;
+    };
+    calcRecalcFromScope.__patchCmW3 = true;
   }
   if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchWavePanels) {
     var origAbrirCalculadoraWave = window.abrirCalculadora;
