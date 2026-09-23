@@ -7584,6 +7584,13 @@ window._compraPapelaoEnsureStyles = function() {
 };
 window._compraPapelaoEnsureToolbar = function() {
   var page = document.getElementById('page-compras');
+  try {
+    if (page && !document.getElementById('cmp-body')) {
+      var hostEl = document.createElement('div');
+      hostEl.id = 'cmp-body';
+      page.appendChild(hostEl);
+    }
+  } catch (_) {}
   var toolbar = page && page.querySelector ? page.querySelector('.ptoolbar') : null;
   if (!toolbar) return;
   try {
@@ -9521,6 +9528,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   function cEnsureToolbar() {
     var page = document.getElementById('page-compras');
     if (!page) return;
+    try {
+      if (!document.getElementById('cmp-body')) {
+        var hEl = document.createElement('div');
+        hEl.id = 'cmp-body';
+        page.appendChild(hEl);
+      }
+    } catch (_) {}
     var toolbar = page.querySelector('.ptoolbar');
     if (!toolbar) return;
     if (!toolbar.dataset.ccpOrigHtml) toolbar.dataset.ccpOrigHtml = toolbar.innerHTML;
