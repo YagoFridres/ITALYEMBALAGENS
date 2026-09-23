@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -30928,19 +30928,20 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
     if (q1_abertas || q7_atrasadas) {
       let filtros = [];
       try {
-        filtros = ['ofs.deleted_at.is.null'];
-        filtros.push(...empClause('ofs'));
+        filtros = ['deleted_at.is.null'];
+        const realEmp = empClause('ofs')[0];
+        if (realEmp) filtros.push(realEmp.replace(/^ofs\./, ''));
         if (q7_atrasadas) {
           const hojeIso = today.toISOString().slice(0, 10);
-          filtros.push('ofs.data_entrega.lt.' + hojeIso);
-          filtros.push('ofs.status.not.ilike.%conclu%');
-          filtros.push('ofs.status.not.ilike.%cancel%');
+          filtros.push('data_entrega.lt.' + hojeIso);
+          filtros.push('status.not.ilike.%conclu%');
+          filtros.push('status.not.ilike.%cancel%');
         } else {
-          filtros.push('ofs.status.not.ilike.%conclu%');
-          filtros.push('ofs.status.not.ilike.%cancel%');
+          filtros.push('status.not.ilike.%conclu%');
+          filtros.push('status.not.ilike.%cancel%');
         }
-        console.warn('[Jarvis FC Q1/Q7] filtros array=', JSON.stringify(filtros), 'join=', filtros.join(','));
-        const { data, error } = await supabase.from('ofs').select('id,of,numero,cliNome,cliente_nome,status,data_entrega,ent,valor_total,urgente,emp_id').limit(100).or(filtros.join(','));
+        console.warn('[Jarvis FC Q1/Q7] filtros join=', filtros.join(','));
+        const { data, error } = await supabase.from('ofs').select('id,of,numero,cliNome,cliente_nome,status,data_entrega,ent,valor_total,urgente,emp_id').or(filtros.join(',')).limit(100);
         if (error) throw error;
         const rows = Array.isArray(data) ? data : [];
         const totalValor = rows.reduce((s, o) => s + Number(o.valor_total || 0), 0);
@@ -30973,20 +30974,20 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
     if (q10_estoque_min) {
       let filtros = [];
       try {
-        filtros = ['deleted_at.is.null', 'saldo.lt.200'];
+        filtros = ['deleted_at.is.null', 'quantidade_atual.lt.200'];
         console.warn('[Jarvis FC Q10] filtros join=', filtros.join(','));
-        const { data, error } = await supabase.from('chapas_estoque').select('id,descricao,gramatura,largura,comprimento,saldo,valor_unit').limit(100).or(filtros.join(','));
+        const { data, error } = await supabase.from('chapas_estoque').select('id,nome,nome_uso,gramatura,largura_mm,comprimento_mm,quantidade_atual,valor_unitario').or(filtros.join(',')).limit(100);
         if (error) throw error;
         const rows = Array.isArray(data) ? data : [];
         let txt = `🧾 Chapas Abaixo de 200 Unidades (Estoque Mínimo)\n\n`;
         txt += `• Total de itens: ${fmtNum(rows.length)}\n\n`;
         if (!rows.length) txt += '✅ Todas as chapas estão acima do nível mínimo.';
         else txt += rows.slice(0, 25).map((r, i) => {
-          const d = String(r.descricao || '—').slice(0, 40);
+          const d = String(r.nome_uso || r.nome || r.descricao || '—').slice(0, 40);
           const g = Number(r.gramatura || 0);
-          const dim = `${Number(r.largura || 0)}x${Number(r.comprimento || 0)}`;
-          const sal = fmtNum(r.saldo);
-          const v = fmtMoney(r.valor_unit);
+          const dim = `${Number(r.largura_mm || 0)}x${Number(r.comprimento_mm || 0)}`;
+          const sal = fmtNum(r.quantidade_atual || 0);
+          const v = fmtMoney(r.valor_unitario || 0);
           return `${i + 1}. ${d} ${g}g ${dim} · Saldo: ${sal} un · ${v}/un`;
         }).join('\n');
         return { tipo: 'dados-banco', resposta: txt, total_itens: rows.length };
@@ -30998,32 +30999,41 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
     }
 
     if (q12_caixas_perdidas) {
-      let url = '';
       try {
         const dtIni = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
         const dtFim = new Date(ano, mes, 0).toISOString().slice(0, 10);
-        url = '/api/caixas-perdidas/dashboard?data_inicio=' + dtIni + '&data_fim=' + dtFim;
-        console.warn('[Jarvis FC Q12] calling internal:', url);
-        const anal = await _jarvisCallInternal(req, url);
-        console.warn('[Jarvis FC Q12] internal resp type:', typeof anal, 'hasStatus?', anal && anal.status, 'keys:', anal && Object.keys(anal).slice(0,10));
-        const d = anal?.data || anal || {};
-        const r = d.resumo_mes_atual || {};
-        const det = Array.isArray(d.detalhamento) ? d.detalhamento : [];
-        let txt = `⚠️ Perdas de Caixas — ${String(mes).padStart(2,'0')}/${ano}\n\n`;
-        txt += `• Caixas perdidas: ${fmtNum(r.total_caixas || det.reduce((s,x)=>s+Number(x.quantidade_perdida||x.qtd_perdida||0),0))}\n`;
-        txt += `• Valor perdido (impacto): ${fmtMoney(r.valor_total || det.reduce((s,x)=>s+Number(x.valor_perdido||x.valor_total||0),0))}\n`;
-        txt += `• Ocorrências: ${fmtNum(r.total_ocorrencias || det.length)}\n\n`;
-        if (!det.length) txt += '✅ Sem registros de perda no período.';
-        else txt += `Últimas 10 perdas:\n` + det.slice(0, 10).map((x, i) => {
+        let tabelaAtiva = null;
+        for (const t of ['caixas_perdidas', 'caixas_perdas', 'perdas_producao']) {
+          const { error } = await supabase.from(t).select('id').limit(1);
+          if (!error) { tabelaAtiva = t; break; }
+        }
+        if (!tabelaAtiva) {
+          return { tipo: 'dados-banco', resposta: `⚠️ Perdas de Caixas — ${String(mes).padStart(2,'0')}/${ano}\n\n❌ Nenhuma tabela de perdas encontrada no banco.` };
+        }
+        let filtrosBase = ['created_at.gte.' + dtIni, 'created_at.lte.' + dtFim + 'T23:59:59'];
+        let { data: perdasRaw, error: perdErr } = await supabase.from(tabelaAtiva).select('id,of_id,quantidade_perdida,qtd_perdida,caixas_perdidas,maquina,maquina_nome,data,created_at,valor_perdido,valor_total,of_numero,cliente_nome,motivo_perda,operador').or(filtrosBase.join(',')).limit(500);
+        if (perdErr) throw perdErr;
+        const det = Array.isArray(perdasRaw) ? perdasRaw : [];
+        const total_caixas = det.reduce((s, x) => s + Number(x.quantidade_perdida || x.qtd_perdida || x.caixas_perdidas || 0), 0);
+        const total_valor = det.reduce((s, x) => s + Number(x.valor_perdido || x.valor_total || 0), 0);
+        const total_ocorr = det.length;
+        let detSorted = [...det].sort((a, b) => new Date(b.created_at || b.data || 0) - new Date(a.created_at || a.data || 0)).slice(0, 10);
+        let txt = `⚠️ Perdas de Caixas — ${String(mes).padStart(2,'0')}/${ano} · Tabela: ${tabelaAtiva}\n\n`;
+        txt += `• Caixas perdidas: ${fmtNum(total_caixas)}\n`;
+        txt += `• Valor perdido (impacto): ${fmtMoney(total_valor)}\n`;
+        txt += `• Ocorrências: ${fmtNum(total_ocorr)}\n\n`;
+        if (!detSorted.length) txt += '✅ Sem registros de perda no período.';
+        else txt += `Últimas 10 perdas:\n` + detSorted.map((x, i) => {
           const ofn = String(x.of_numero || x.of || x.numero || '—').slice(0, 10);
           const cli = String(x.cliente_nome || x.cliente || '—').slice(0, 22);
-          const qtd = fmtNum(x.quantidade_perdida || x.qtd_perdida || 0);
+          const qtd = fmtNum(x.quantidade_perdida || x.qtd_perdida || x.caixas_perdidas || 0);
           const v = fmtMoney(x.valor_perdido || x.valor_total || 0);
-          return `${i + 1}. OF #${ofn} ${cli} · ${qtd} cx · ${v}`;
+          const mot = x.motivo_perda ? ' · ' + String(x.motivo_perda).slice(0, 18) : '';
+          return `${i + 1}. OF #${ofn} ${cli} · ${qtd} cx · ${v}${mot}`;
         }).join('\n');
         return { tipo: 'dados-banco', resposta: txt };
       } catch (e) {
-        const pl = { msg: e.message, status: e.status, statusCode: e.statusCode, stack: (e.stack || '').slice(0, 800), url: url };
+        const pl = { msg: e.message, code: e.code, hint: e.hint, details: e.details, stack: (e.stack || '').slice(0, 800) };
         console.warn('[Jarvis FC Q12 ERROR]', pl);
         return { tipo: 'debug-erro', resposta: 'DEBUG_Q12_ERR ' + JSON.stringify(pl), q: 'Q12' };
       }
@@ -31034,13 +31044,15 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
       try {
         const dtIni = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
         const dtFim = new Date(ano, mes, 0).toISOString().slice(0, 10);
-        filtrosOf = ['deleted_at.is.null', 'data_conclusao.gte.' + dtIni, 'data_conclusao.lte.' + dtFim, ...empClause('ofs')];
+        filtrosOf = ['deleted_at.is.null', 'data_conclusao.gte.' + dtIni, 'data_conclusao.lte.' + dtFim];
+        const realEmp = empClause('ofs')[0];
+        if (realEmp) filtrosOf.push(realEmp.replace(/^ofs\./, ''));
         console.warn('[Jarvis FC Q20] filtrosOf join=', filtrosOf.join(','));
-        const { data: ofsR, error: eof } = await supabase.from('ofs').select('id,valor_total,caixas_produzidas,caixas_perdidas,qtd_perdida,data_conclusao').limit(1000).or(filtrosOf.join(','));
+        const { data: ofsR, error: eof } = await supabase.from('ofs').select('id,valor_total,caixas_boas,caixas_perdidas,qtd_perdida,data_conclusao').or(filtrosOf.join(',')).limit(1000);
         if (eof) throw eof;
         const ofsOK = Array.isArray(ofsR) ? ofsR : [];
         const ttV = ofsOK.reduce((s, o) => s + Number(o.valor_total || 0), 0);
-        const ttCx = ofsOK.reduce((s, o) => s + Number(o.caixas_produzidas || 0), 0);
+        const ttCx = ofsOK.reduce((s, o) => s + Number(o.caixas_boas || 0), 0);
         const ttPerd = ofsOK.reduce((s, o) => s + Number(o.caixas_perdidas || o.qtd_perdida || 0), 0);
         let txt = `📊 Resumo Mensal — ${String(mes).padStart(2,'0')}/${ano}\n\n`;
         txt += `• OFs concluídas: ${fmtNum(ofsOK.length)}\n`;
@@ -31061,9 +31073,11 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
       try {
         const dtIni = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
         const dtFim = new Date(ano, mes, 0).toISOString().slice(0, 10);
-        filtros = ['deleted_at.is.null', 'data_conclusao.gte.' + dtIni, 'data_conclusao.lte.' + dtFim, ...empClause('ofs')];
+        filtros = ['deleted_at.is.null', 'data_conclusao.gte.' + dtIni, 'data_conclusao.lte.' + dtFim];
+        const realEmp = empClause('ofs')[0];
+        if (realEmp) filtros.push(realEmp.replace(/^ofs\./, ''));
         console.warn('[Jarvis FC Q15] filtros join=', filtros.join(','));
-        const { data, error } = await supabase.from('ofs').select('valor_total').limit(1000).or(filtros.join(','));
+        const { data, error } = await supabase.from('ofs').select('valor_total').or(filtros.join(',')).limit(1000);
         if (error) throw error;
         const rows = Array.isArray(data) ? data : [];
         const tot = rows.reduce((s, o) => s + Number(o.valor_total || 0), 0);
