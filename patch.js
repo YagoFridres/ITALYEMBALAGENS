@@ -91,6 +91,115 @@ if (!window.__ofmaqDiag3sInstalled) {
   }
   setTimeout(_ofmaqDiag3sCheck, 3000);
 }
+if (!window.__ofmaqMaquinasValidasPatched) {
+  window.__ofmaqMaquinasValidasPatched = true;
+  window.__ofmaqMaquinasValidasOriginal = window.ofmaqMaquinasValidas;
+  window.ofmaqMaquinasValidas = function() {
+    try {
+      var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || window.OFs || window.kbOfs || [];
+      if (!ofs || !ofs.length) return window.__ofmaqMaquinasValidasOriginal();
+      var seenKeys = new Set();
+      var collected = [];
+      var orderBase = Array.isArray(window.MAQUINAS_ATIVAS) ? window.MAQUINAS_ATIVAS.slice() : [];
+      var hasFluxoFn = typeof window.ofFluxoMaquinasObj === 'function';
+      var hasMaqAtualFn = typeof window.getMaquinaAtual === 'function';
+      var hasCanonFn = typeof window.maqAtivaFromNome === 'function';
+      var hasNormFn = typeof window._normMaqNome === 'function';
+      for (var i = 0; i < ofs.length; i++) {
+        try {
+          var o = ofs[i];
+          if (!o) continue;
+          var names = [];
+          if (hasFluxoFn) {
+            try {
+              var fluxo = window.ofFluxoMaquinasObj(o) || [];
+              for (var j = 0; j < fluxo.length; j++) {
+                var mobj = fluxo[j];
+                if (mobj && mobj.nome) names.push(mobj.nome);
+              }
+            } catch (_) {}
+          }
+          if (hasMaqAtualFn) {
+            try {
+              var atual = window.getMaquinaAtual(o);
+              if (atual) names.push(atual);
+            } catch (_) {}
+          }
+          for (var k = 0; k < names.length; k++) {
+            var rawName = String(names[k] || '').trim();
+            if (!rawName) continue;
+            var canon = hasCanonFn ? (window.maqAtivaFromNome(rawName) || rawName) : rawName;
+            var key = hasNormFn ? window._normMaqNome(canon) : String(canon || '').toLowerCase();
+            if (!key || seenKeys.has(key)) continue;
+            seenKeys.add(key);
+            collected.push(canon);
+          }
+        } catch (_) {}
+      }
+      if (!collected.length) return window.__ofmaqMaquinasValidasOriginal();
+      collected.sort(function(a, b) {
+        var ia = orderBase.indexOf(a);
+        var ib = orderBase.indexOf(b);
+        var ra = (ia >= 0) ? ia : 9999;
+        var rb = (ib >= 0) ? ib : 9999;
+        if (ra !== rb) return ra - rb;
+        try { return String(a).localeCompare(String(b)); } catch (_) { return 0; }
+      });
+      return collected;
+    } catch (e) {
+      try { console.warn('[OFMAQ] ofmaqMaquinasValidas dinâmico falhou, fallback original:', e); } catch (_) {}
+      return window.__ofmaqMaquinasValidasOriginal();
+    }
+  };
+}
+if (!window._normSemPapel) {
+  window._normSemPapel = function(valOrOf, onlyField) {
+    try {
+      if (valOrOf == null) return false;
+      var normSingle = function(v) {
+        if (v === true || v === false) return v;
+        if (v === 1) return true;
+        if (v === 0) return false;
+        var s = String(v == null ? '' : v).trim().toLowerCase();
+        if (s === '1' || s === 'true' || s === 'sim' || s === 'yes' || s === 's' || s === 'y') return true;
+        if (s === '0' || s === 'false' || s === 'não' || s === 'nao' || s === 'no' || s === 'n' || s === '' || s === 'null' || s === 'undefined') return false;
+        return false;
+      };
+      if (typeof valOrOf === 'object' && !Array.isArray(valOrOf) && onlyField !== true) {
+        var r1 = normSingle(valOrOf.sem_papel);
+        var r2 = normSingle(valOrOf.sem_papelao);
+        var r = r1 || r2;
+        try { valOrOf.sem_papel = r; valOrOf.sem_papelao = r; } catch (_) {}
+        return r;
+      }
+      return normSingle(valOrOf);
+    } catch (_) { return false; }
+  };
+}
+if (!window._normUrgenteCanonico) {
+  window._normUrgenteCanonico = function(valOrOf) {
+    try {
+      if (valOrOf == null) return false;
+      var normSingle = function(v) {
+        if (v === true || v === false) return v;
+        if (v === 1) return true;
+        if (v === 0) return false;
+        var s = String(v == null ? '' : v).trim().toLowerCase();
+        if (s === '1' || s === 'true' || s === 'sim' || s === 'yes' || s === 's' || s === 'y') return true;
+        if (s === '0' || s === 'false' || s === 'não' || s === 'nao' || s === 'no' || s === 'n' || s === '' || s === 'null' || s === 'undefined') return false;
+        return false;
+      };
+      if (typeof valOrOf === 'object' && !Array.isArray(valOrOf)) {
+        var canonical = (valOrOf.urgente != null) ? valOrOf.urgente : valOrOf.urg;
+        var val = normSingle(canonical);
+        try { valOrOf.urg = val; valOrOf.urgente = val; } catch (_) {}
+        try { valOrOf.prioridade_ordem = val ? 1 : 999; } catch (_) {}
+        return val;
+      }
+      return normSingle(valOrOf);
+    } catch (_) { return false; }
+  };
+}
 if (!window._urlValida) {
   window._urlValida = function(url) {
     if (!url) return false;
@@ -5032,7 +5141,7 @@ try {
     function _ofIsSemPapelQ(o) {
       if (!o || typeof o !== 'object') return false;
       try {
-        if (o.sem_papel === true || o.sem_papelao === true || o.sem_papel === 1 || o.sem_papelao === 1 || String(o.sem_papel || '').trim() === '1' || String(o.sem_papelao || '').trim() === '1') return true;
+        if (typeof window._normSemPapel === 'function' ? window._normSemPapel(o) : (o.sem_papel === true || o.sem_papelao === true || o.sem_papel === 1 || o.sem_papelao === 1 || String(o.sem_papel || '').trim() === '1' || String(o.sem_papelao || '').trim() === '1')) return true;
         var obs = String(o.obs || o.observacao || '').trim();
         if (/sem\s*papel/i.test(obs)) return true;
       } catch (_ee) {}
@@ -15831,7 +15940,8 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
             + '</select>'
             + '<span id="hist-detalhe-dia-wrap"><input type="date" id="hist-detalhe-dia"></span>'
             + '<select id="hist-detalhe-maquina">' + _histCanonicalMachineOptionsHtml('') + '</select>'
-            + '<button type="button" class="hist-patch-btn" id="hist-detalhe-aplicar">Aplicar filtros</button>';
+            + '<button type="button" class="hist-patch-btn" id="hist-detalhe-aplicar">Aplicar filtros</button>'
+            + '<button type="button" class="hist-patch-btn" id="hist-detalhe-atualizar" title="Atualizar passagens do banco">↻ Atualizar</button>';
           filtrosWrap.appendChild(toolbar);
         }
         var periodoSel = document.getElementById('hist-detalhe-periodo');
@@ -15870,6 +15980,14 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         if (applyBtn && !applyBtn.dataset.bound) {
           applyBtn.dataset.bound = '1';
           applyBtn.onclick = function() {
+            _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
+          };
+        }
+        var atualizarBtn = document.getElementById('hist-detalhe-atualizar');
+        if (atualizarBtn && !atualizarBtn.dataset.bound) {
+          atualizarBtn.dataset.bound = '1';
+          atualizarBtn.onclick = function() {
+            try { if (typeof window.toast === 'function') window.toast('Atualizando passagens...', 'var(--blue)', 900); } catch (_) {}
             _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
           };
         }
@@ -20066,7 +20184,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     });
   }
 
+  function _ofmaqNormalizeAllCachesDeep() {
+    try {
+      var hasSP = typeof window._normSemPapel === 'function';
+      var hasUrgNorm = typeof window._normUrgenteCanonico === 'function';
+      var normArr = function(arr) {
+        if (!arr || !arr.length) return;
+        for (var i = 0; i < arr.length; i++) {
+          var o = arr[i];
+          if (!o || typeof o !== 'object') continue;
+          try { if (hasSP) window._normSemPapel(o); } catch (_) {}
+          try { if (hasUrgNorm) window._normUrgenteCanonico(o); } catch (_) {}
+        }
+      };
+      try { normArr(window.OFS); } catch (_) {}
+      try { if (typeof OFs !== 'undefined' && Array.isArray(OFs)) normArr(OFs); } catch (_) {}
+      try { normArr(window._ofmaqBaseList); } catch (_) {}
+      try { normArr(window._ofmaqListaCompleta); } catch (_) {}
+      try { normArr(window.kbOfs); } catch (_) {}
+      try { if (window._ofsPassaram && typeof window._ofsPassaram.forEach === 'function') {
+        window._ofsPassaram.forEach(function(val, k){
+          try { if (val && typeof val === 'object' && typeof val !== 'function' && val.sem_papel !== undefined) {
+            if (hasSP) window._normSemPapel(val);
+            if (hasUrgNorm) window._normUrgenteCanonico(val);
+          } } catch (_) {}
+        });
+      } } catch (_) {}
+    } catch (_) {}
+  }
   function _refreshOfmaqCachesFromRuntime() {
+    try { _ofmaqNormalizeAllCachesDeep(); } catch (_) {}
     try { if (Array.isArray(window.OFS)) window.OFS = _sortOfmaqCacheList(window.OFS); } catch (_) {}
     try { if (typeof OFs !== 'undefined' && Array.isArray(OFs)) OFs = _sortOfmaqCacheList(OFs); } catch (_) {}
     try { if (Array.isArray(window._ofmaqBaseList)) window._ofmaqBaseList = _sortOfmaqCacheList(window._ofmaqBaseList); } catch (_) {}
@@ -20393,6 +20540,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function isUrgente(of) {
+    try {
+      if (of && typeof window._normUrgenteCanonico === 'function') {
+        return window._normUrgenteCanonico(of);
+      }
+    } catch (_) {}
     var raw = of && (of.urgente != null ? of.urgente : of.urg);
     if (raw === true || raw === false) return raw;
     var txt = String(raw == null ? '' : raw).trim().toLowerCase();
@@ -24025,8 +24177,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (src.largura != null) out.largura = src.largura;
         if (src.caixa_comprimento != null) out.caixa_comprimento = src.caixa_comprimento;
         if (src.caixa_largura != null) out.caixa_largura = src.caixa_largura;
-        out.sem_papel = !!(src.sem_papel === true || src.sem_papelao === true || String(src.sem_papel || '').trim() === '1' || src.sem_papel === 1 || src.sem_papelao === 1);
-        out.sem_papelao = !!(src.sem_papel === true || src.sem_papelao === true || String(src.sem_papelao || '').trim() === '1' || src.sem_papel === 1 || src.sem_papelao === 1);
+        var spNorm = (typeof window._normSemPapel === 'function') ? window._normSemPapel(src) : !!(src.sem_papel === true || src.sem_papelao === true || src.sem_papel === 1 || src.sem_papelao === 1);
+        out.sem_papel = spNorm;
+        out.sem_papelao = spNorm;
         return out;
       };
       window.normalizeOF._patchedOfmaqDisplay = true;
@@ -27248,9 +27401,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
+      var body = { urg: !!urgent, urgente: !!urgent, prioridade_ordem: !!urgent ? 1 : 999 };
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/urgente', {
         method: 'PATCH',
-        body: { urgente: !!urgent }
+        body: body
       });
       try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'urgency', id: id, urgente: !!urgent, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao atualizar urgência');
@@ -27258,9 +27412,33 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (row.ofRaw) {
           row.ofRaw.urg = !!urgent;
           row.ofRaw.urgente = !!urgent;
+          row.ofRaw.prioridade_ordem = !!urgent ? 1 : 999;
+          try { if (typeof window._normUrgenteCanonico === 'function') window._normUrgenteCanonico(row.ofRaw); } catch (_) {}
         }
         row.urgencia = urgenciaTipo(row.ofRaw || row, row.prazoIso);
       }
+      try {
+        (function syncGlobalUrg(idRef, valRef) {
+          var apply = function(o) {
+            if (!o || typeof o !== 'object') return false;
+            var sid = String(o.id || o.of || o.numero || '').trim();
+            var rid = String(idRef || '').trim();
+            if (!rid || sid !== rid) return false;
+            o.urg = !!valRef;
+            o.urgente = !!valRef;
+            o.prioridade_ordem = !!valRef ? 1 : 999;
+            try { if (typeof window._normUrgenteCanonico === 'function') window._normUrgenteCanonico(o); } catch (_) {}
+            return true;
+          };
+          try { if (Array.isArray(window.OFS)) window.OFS.forEach(apply); } catch (_) {}
+          try { if (typeof OFs !== 'undefined' && Array.isArray(OFs)) OFs.forEach(apply); } catch (_) {}
+          try { if (Array.isArray(window._ofmaqListaCompleta)) window._ofmaqListaCompleta.forEach(apply); } catch (_) {}
+          try { if (Array.isArray(window._ofmaqBaseList)) window._ofmaqBaseList.forEach(apply); } catch (_) {}
+          try { if (Array.isArray(window.kbOfs)) window.kbOfs.forEach(apply); } catch (_) {}
+        })(id, !!urgent);
+      } catch (_) {}
+      try { if (typeof window._refreshOfmaqCachesFromRuntime === 'function') window._refreshOfmaqCachesFromRuntime(); } catch (_) {}
+      try { if (typeof window._refreshBadgesTopo === 'function') window._refreshBadgesTopo(); } catch (_) {}
       return result;
     }
 
@@ -27357,6 +27535,55 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         });
       }
       state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
+      try {
+        (function syncGlobalPassou(idRef, maqRef, rowRef) {
+          var now = new Date();
+          var isoNow = now.toISOString();
+          var apply = function(o) {
+            if (!o || typeof o !== 'object') return false;
+            var sid = String(o.id || o.of || o.numero || '').trim();
+            var rid = String(idRef || '').trim();
+            if (!rid || sid !== rid) return false;
+            o.passou_maquina = true;
+            try { if (typeof window._ofsPassaram === 'object' && window._ofsPassaram && typeof window._ofsPassaram.add === 'function') window._ofsPassaram.add(rid); } catch (_) {}
+            try {
+              var newItem = {
+                maquina: maqRef,
+                maquina_nome: maqRef,
+                nome_maquina: maqRef,
+                data_hora: isoNow,
+                data_passagem: isoNow.slice(0, 10),
+                hora_passagem: isoNow,
+                concluido: true,
+                status: 'Passou pela Máquina ' + String(maqRef || '')
+              };
+              if (!Array.isArray(o.passagens_maquina)) o.passagens_maquina = [];
+              var hasIt = o.passagens_maquina.some(function(pm) {
+                var okM = (pm && (pm.maquina === maqRef || pm.maquina_nome === maqRef || pm.nome_maquina === maqRef));
+                return okM;
+              });
+              if (!hasIt) o.passagens_maquina.push(newItem);
+              if (rowRef && typeof rowRef === 'object') {
+                rowRef.passou_maquina = true;
+                try { if (!Array.isArray(rowRef.passagens_maquina)) rowRef.passagens_maquina = []; if (!rowRef.passagens_maquina.some(function(pm){return pm && (pm.maquina===maqRef||pm.maquina_nome===maqRef||pm.nome_maquina===maqRef);})) rowRef.passagens_maquina.push(newItem); } catch (_) {}
+              }
+            } catch (_) {}
+            return true;
+          };
+          try { if (Array.isArray(window.OFS)) window.OFS.forEach(apply); } catch (_) {}
+          try { if (typeof OFs !== 'undefined' && Array.isArray(OFs)) OFs.forEach(apply); } catch (_) {}
+          try { if (Array.isArray(window._ofmaqListaCompleta)) window._ofmaqListaCompleta.forEach(apply); } catch (_) {}
+          try { if (Array.isArray(window._ofmaqBaseList)) window._ofmaqBaseList.forEach(apply); } catch (_) {}
+          try { if (Array.isArray(window.kbOfs)) window.kbOfs.forEach(apply); } catch (_) {}
+        })(id, machine, row && row.ofRaw ? row.ofRaw : row);
+      } catch (_) {}
+      try { if (typeof window._refreshOfmaqCachesFromRuntime === 'function') window._refreshOfmaqCachesFromRuntime(); } catch (_) {}
+      try { if (typeof window._refreshBadgesTopo === 'function') window._refreshBadgesTopo(); } catch (_) {}
+      try {
+        if (typeof window.renderOfmaqFinal === 'function' && String(window._PAGE_ATUAL || '') === 'ofmaq') {
+          setTimeout(function() { try { window.renderOfmaqFinal({ forceReload: false, reason: 'after-passou-maq' }); } catch (_) {} }, 30);
+        }
+      } catch (_) {}
       return resultPass;
     }
 
