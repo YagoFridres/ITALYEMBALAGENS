@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -30922,6 +30922,9 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
     const q19_orcamentos_status = hasAnyFn('orçamento', 'orcamento', 'orçamentos') && hasAnyFn('status', 'situação', 'aprovado', 'reprovado');
     const q20_resumo = hasAnyFn('resumo diario', 'resumo diário', 'resumo semanal', 'resumo mensal', 'resumo do dia', 'resumo do mês');
 
+    const matches = { norm, q1_abertas, q2_caixas_cli, q3_status, q4_compras_forn, q5_sem_papel, q6_clientes_of, q7_atrasadas, q8_toneladas, q9_comissoes, q10_estoque_min, q11_top_fornecedor, q12_caixas_perdidas, q13_ticket_medio, q14_clientes_inativos, q15_faturamento, q16_ultima_of, q17_passou_maquina, q18_compras_pendentes, q19_orcamentos_status, q20_resumo };
+    console.warn('[Jarvis FC] matches:', JSON.stringify(matches));
+
     if (q1_abertas || q7_atrasadas) {
       try {
         const filtros = ['ofs.deleted_at.is.null'];
@@ -30935,6 +30938,7 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
           filtros.push('ofs.status.not.ilike.%conclu%');
           filtros.push('ofs.status.not.ilike.%cancel%');
         }
+        console.warn('[Jarvis FC Q1/Q7] filtros array=', JSON.stringify(filtros), 'join=', filtros.join(','));
         const { data, error } = await supabase.from('ofs').select('id,of,numero,cliNome,cliente_nome,status,data_entrega,ent,valor_total,urgente,emp_id').limit(100).or(filtros.join(','));
         if (error) throw error;
         const rows = Array.isArray(data) ? data : [];
@@ -30958,12 +30962,13 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
         }).join('\n');
         if (rows.length > 20) txt += `\n\n... +${rows.length - 20} OF(s) omitidas (limite 20).`;
         return { tipo: 'dados-banco', resposta: txt, total_ofs: rows.length, total_valor: totalValor };
-      } catch (e) { console.warn('[Jarvis FC Q1/Q7]', e.message); }
+      } catch (e) { console.warn('[Jarvis FC Q1/Q7 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
     }
 
     if (q10_estoque_min) {
       try {
         const filtros = ['deleted_at.is.null', 'saldo.lt.200'];
+        console.warn('[Jarvis FC Q10] filtros join=', filtros.join(','));
         const { data, error } = await supabase.from('chapas_estoque').select('id,descricao,gramatura,largura,comprimento,saldo,valor_unit').limit(100).or(filtros.join(','));
         if (error) throw error;
         const rows = Array.isArray(data) ? data : [];
@@ -30979,14 +30984,17 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
           return `${i + 1}. ${d} ${g}g ${dim} · Saldo: ${sal} un · ${v}/un`;
         }).join('\n');
         return { tipo: 'dados-banco', resposta: txt, total_itens: rows.length };
-      } catch (e) { console.warn('[Jarvis FC Q10]', e.message); }
+      } catch (e) { console.warn('[Jarvis FC Q10 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
     }
 
     if (q12_caixas_perdidas) {
       try {
         const dtIni = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
         const dtFim = new Date(ano, mes, 0).toISOString().slice(0, 10);
-        const anal = await _jarvisCallInternal(req, '/api/caixas-perdidas/dashboard?data_inicio=' + dtIni + '&data_fim=' + dtFim);
+        const url = '/api/caixas-perdidas/dashboard?data_inicio=' + dtIni + '&data_fim=' + dtFim;
+        console.warn('[Jarvis FC Q12] calling internal:', url);
+        const anal = await _jarvisCallInternal(req, url);
+        console.warn('[Jarvis FC Q12] internal resp type:', typeof anal, 'hasStatus?', anal && anal.status, 'keys:', anal && Object.keys(anal).slice(0,10));
         const d = anal?.data || anal || {};
         const r = d.resumo_mes_atual || {};
         const det = Array.isArray(d.detalhamento) ? d.detalhamento : [];
@@ -31003,7 +31011,7 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
           return `${i + 1}. OF #${ofn} ${cli} · ${qtd} cx · ${v}`;
         }).join('\n');
         return { tipo: 'dados-banco', resposta: txt };
-      } catch (e) { console.warn('[Jarvis FC Q12]', e.message); }
+      } catch (e) { console.warn('[Jarvis FC Q12 ERROR]', { msg: e.message, stack: e.stack, status: e.status, statusCode: e.statusCode }); }
     }
 
     if (q20_resumo) {
@@ -31011,6 +31019,7 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
         const dtIni = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
         const dtFim = new Date(ano, mes, 0).toISOString().slice(0, 10);
         const filtrosOf = ['deleted_at.is.null', 'data_conclusao.gte.' + dtIni, 'data_conclusao.lte.' + dtFim, ...empClause('ofs')];
+        console.warn('[Jarvis FC Q20] filtrosOf join=', filtrosOf.join(','));
         const { data: ofsR, error: eof } = await supabase.from('ofs').select('id,valor_total,caixas_produzidas,caixas_perdidas,qtd_perdida,data_conclusao').limit(1000).or(filtrosOf.join(','));
         if (eof) throw eof;
         const ofsOK = Array.isArray(ofsR) ? ofsR : [];
@@ -31020,11 +31029,11 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
         let txt = `📊 Resumo Mensal — ${String(mes).padStart(2,'0')}/${ano}\n\n`;
         txt += `• OFs concluídas: ${fmtNum(ofsOK.length)}\n`;
         txt += `• Valor Vendido: ${fmtMoney(ttV)}\n`;
-        txt += `• Caixas Produzidas: ${fmtNum(ttCx)}\n`;
+        txt += `• Caixas Produzidas: ${fmtMoney(ttCx)}\n`;
         txt += `• Caixas Perdidas: ${fmtNum(ttPerd)}\n`;
         txt += `• Perda Média: ${ttCx + ttPerd > 0 ? (((ttPerd / (ttCx + ttPerd)) * 100).toFixed(2).replace('.', ',')) : '0,00'}%\n`;
         return { tipo: 'dados-banco', resposta: txt, total_valor: ttV, total_caixas: ttCx };
-      } catch (e) { console.warn('[Jarvis FC Q20]', e.message); }
+      } catch (e) { console.warn('[Jarvis FC Q20 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
     }
 
     if (q15_faturamento) {
@@ -31032,6 +31041,7 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
         const dtIni = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
         const dtFim = new Date(ano, mes, 0).toISOString().slice(0, 10);
         const filtros = ['deleted_at.is.null', 'data_conclusao.gte.' + dtIni, 'data_conclusao.lte.' + dtFim, ...empClause('ofs')];
+        console.warn('[Jarvis FC Q15] filtros join=', filtros.join(','));
         const { data, error } = await supabase.from('ofs').select('valor_total').limit(1000).or(filtros.join(','));
         if (error) throw error;
         const rows = Array.isArray(data) ? data : [];
@@ -31040,12 +31050,13 @@ async function _jarvisFunctionDispatch({ pergunta, empId, req }) {
           tipo: 'dados-banco',
           resposta: `💰 Faturamento Período ${String(mes).padStart(2,'0')}/${ano}\n\n• OFs concluídas: ${fmtNum(rows.length)}\n• Valor Total: ${fmtMoney(tot)}\n• Ticket Médio: ${rows.length ? fmtMoney(tot / rows.length) : fmtMoney(0)}`
         };
-      } catch (e) { console.warn('[Jarvis FC Q15]', e.message); }
+      } catch (e) { console.warn('[Jarvis FC Q15 ERROR]', { msg: e.message, stack: e.stack, hint: e.hint, details: e.details, code: e.code }); }
     }
 
+    console.warn('[Jarvis FC] NENHUM IF matchou (retornando null). pergunta original=', pergunta);
     return null;
   } catch (e) {
-    console.warn('[JarvisFunctionDispatch] erro silenciado:', e?.message);
+    console.error('[JarvisFunctionDispatch FATAL]', { msg: e?.message, stack: e?.stack });
     return null;
   }
 }
