@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260923201000';
-const SW_RUNTIME_VERSION = '20260923201000';
+const PATCH_RUNTIME_VERSION = '20260923202000';
+const SW_RUNTIME_VERSION = '20260923202000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27578,6 +27578,56 @@ function _comprasChapasBuildHeaderPayload(body, req, opts = {}) {
   return b;
 }
 
+function _comprasChapasNormalizarVincos(raw, targetOut) {
+  const out = targetOut && typeof targetOut === 'object' ? targetOut : {};
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const v1In = _comprasChapasStr(src.vinco1 ?? src.v1 ?? src.vinco_1);
+  const v2In = _comprasChapasStr(src.vinco2 ?? src.v2 ?? src.vinco_2);
+  const v3In = _comprasChapasStr(src.vinco3 ?? src.v3 ?? src.vinco_3);
+  const v4In = _comprasChapasStr(src.vinco4 ?? src.v4 ?? src.vinco_4);
+  const parts = [];
+  [v1In, v2In, v3In, v4In].forEach(function(v) {
+    if (v != null && String(v).trim() !== '' && String(v).trim() !== '0' && String(v).toLowerCase() !== 'null' && String(v).toLowerCase() !== 'undefined') {
+      parts.push(String(v).trim());
+    }
+  });
+  const vincosStr = _comprasChapasStr(src.vincos ?? src.vinco ?? src.vincos_concat);
+  if (!parts.length && vincosStr) {
+    const fromConcat = String(vincosStr).split(/[\/,;\s]+/).map(function(s){return s.trim();}).filter(Boolean);
+    fromConcat.forEach(function(v, i) {
+      if (i === 0 && !out.vinco1) out.vinco1 = v;
+      if (i === 1 && !out.vinco2) out.vinco2 = v;
+      if (i === 2 && !out.vinco3) out.vinco3 = v;
+      if (i === 3 && !out.vinco4) out.vinco4 = v;
+    });
+    parts.length = 0;
+    const v1 = _comprasChapasStr(out.vinco1); if (v1) parts.push(v1);
+    const v2 = _comprasChapasStr(out.vinco2); if (v2) parts.push(v2);
+    const v3 = _comprasChapasStr(out.vinco3); if (v3) parts.push(v3);
+    const v4 = _comprasChapasStr(out.vinco4); if (v4) parts.push(v4);
+  }
+  out.vinco1 = v1In || '';
+  out.vinco2 = v2In || '';
+  out.vinco3 = v3In || '';
+  out.vinco4 = v4In || '';
+  out.vincos = parts.join('/');
+  out.vincos_lista = parts.join('/');
+  return out;
+}
+
+function _comprasChapasValidarItem(raw, idx1) {
+  const item = raw && typeof raw === 'object' ? raw : {};
+  const largura = _comprasChapasNum(item.largura ?? item.largura_mm);
+  const comprimento = _comprasChapasNum(item.comprimento ?? item.comprimento_mm);
+  const quantidade = _comprasChapasNum(item.quantidade);
+  const valorM2 = _comprasChapasNum(item.valor_m2 ?? item.valorM2);
+  if (!largura || largura <= 0) return 'largura inválida (' + String(item.largura ?? item.largura_mm ?? '') + ')';
+  if (!comprimento || comprimento <= 0) return 'comprimento inválido (' + String(item.comprimento ?? item.comprimento_mm ?? '') + ')';
+  if (!quantidade || quantidade <= 0) return 'quantidade inválida (' + String(item.quantidade ?? '') + ')';
+  if (!valorM2 || valorM2 <= 0) return 'valor_m2 inválido (' + String(item.valor_m2 ?? item.valorM2 ?? '') + ')';
+  return null;
+}
+
 function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   const item = raw && typeof raw === 'object' ? { ...raw } : {};
   delete item.id;
@@ -27609,13 +27659,14 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   item.nomenclatura = _comprasChapasStr(item.nomenclatura ?? item.po);
   item.largura = largura;
   item.comprimento = comprimento;
-  item.vincos = _comprasChapasStr(item.vincos);
-  item.vinco1 = _comprasChapasStr(raw?.vinco1 ?? item?.vinco1);
-  item.vinco2 = _comprasChapasStr(raw?.vinco2 ?? item?.vinco2);
-  item.vinco3 = _comprasChapasStr(raw?.vinco3 ?? item?.vinco3);
-  item.vinco4 = _comprasChapasStr(raw?.vinco4 ?? item?.vinco4);
+  const norm = _comprasChapasNormalizarVincos({ ...raw, ...item });
+  item.vincos = norm.vincos || '';
+  item.vinco1 = norm.vinco1 || '';
+  item.vinco2 = norm.vinco2 || '';
+  item.vinco3 = norm.vinco3 || '';
+  item.vinco4 = norm.vinco4 || '';
   item.vincos_extra = Array.isArray(raw?.vincos_extra) ? raw.vincos_extra.map(_comprasChapasStr).filter(Boolean).join('/') : _comprasChapasStr(item?.vincos_extra);
-  item.vincos_lista = Array.isArray(raw?.vincos_lista) ? raw.vincos_lista.map(_comprasChapasStr).filter(Boolean).join('/') : _comprasChapasStr(item?.vincos_lista);
+  item.vincos_lista = norm.vincos_lista || '';
   item.quantidade = quantidade;
   item.lote_minimo = _comprasChapasNum(item.lote_minimo ?? item.loteMinimo);
   item.valor_m2 = valorM2;
@@ -28231,18 +28282,32 @@ app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
       try { console.error('[CMP-SAVE] id=' + id + ' FALHOU etapa=' + etapa + ' erro=' + String(upd.error?.message || upd.error).slice(0, 300)); } catch (_) {}
       return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
     }
-    try { console.log('[CMP-SAVE] id=' + id + ' header ATUALIZADO com sucesso. agora apagando itens...'); } catch (_) {}
+    etapa = 'valida_itens_antes_delete';
+    const itens = Array.isArray(body.itens) ? body.itens : [];
+    const confirmarZerar = body.confirmar_zerar_itens === true || body.confirmar_zerar === true || body.zerar_itens_confirmado === true;
+    const qtdAntiga = Array.isArray(atual.itens) ? atual.itens.length : 0;
+    if (qtdAntiga > 0 && itens.length === 0 && !confirmarZerar) {
+      try { console.log('[CMP-SAVE] id=' + id + ' BLOQUEIO SEGURANCA: tinha=' + qtdAntiga + ' novos=0 sem confirmacao. NENHUM DELETE/INSERT EFETUADO.'); } catch (_) {}
+      return res.status(400).json({ ok: false, error: 'A compra possui ' + qtdAntiga + ' item(ns), mas o envio não contém itens. Confirme a exclusão de todos os itens (confirmar_zerar_itens: true) ou envie os itens corretamente.', __seguranca: { qtd_anterior: qtdAntiga, qtd_nova: 0, precisa_confirmar: true } });
+    }
+    for (let i = 0; i < itens.length; i++) {
+      const err = _comprasChapasValidarItem(itens[i], i + 1);
+      if (err) {
+        try { console.log('[CMP-SAVE] id=' + id + ' VALIDACAO ITEM FALHOU idx=' + (i + 1) + ' erro=' + String(err).slice(0, 200)); } catch (_) {}
+        return res.status(400).json({ ok: false, error: 'Item ' + (i + 1) + ' inválido: ' + err });
+      }
+    }
+    const itensPayload = itens.length ? itens.map((item, idx) => _comprasChapasBuildItemPayload(item, id, idx + 1)) : [];
+    try { console.log('[CMP-SAVE] id=' + id + ' header ATUALIZADO. Validacao passou. tinha=' + qtdAntiga + ' novos=' + itensPayload.length + ' confirma_zerar=' + confirmarZerar + '. Agora deletando...'); } catch (_) {}
     etapa = 'delete_itens';
     const delItens = await supabase.from('compras_chapas_itens').delete().eq('compra_id', id);
     if (delItens.error) {
       try { console.error('[CMP-SAVE] id=' + id + ' FALHOU etapa=' + etapa + ' erro=' + String(delItens.error?.message || delItens.error).slice(0, 300)); } catch (_) {}
       return res.status(500).json({ ok: false, error: delItens.error.message });
     }
-    const itens = Array.isArray(body.itens) ? body.itens : [];
-    try { console.log('[CMP-SAVE] id=' + id + ' itens antigos apagados. qtd novos itens=' + itens.length); } catch (_) {}
-    if (itens.length) {
+    try { console.log('[CMP-SAVE] id=' + id + ' itens antigos apagados com sucesso. Inserindo novos=' + itensPayload.length); } catch (_) {}
+    if (itensPayload.length) {
       etapa = 'insert_itens';
-      const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, id, idx + 1));
       try { console.log('[CMP-SAVE] id=' + id + ' build ' + itensPayload.length + ' itens. 1o item vincos=' + String(itensPayload[0]?.vincos || '?').slice(0, 60)); } catch (_) {}
       const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
       if (insItens.error) {
