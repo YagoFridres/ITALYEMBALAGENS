@@ -3715,8 +3715,159 @@ try {
     { id: 'perdas-operador', label: 'Perdas por Operador', icon: '⚠️', desc: 'Ranking de produção, caixas perdidas e valor por operador. Inclui canceladas com perda.', run: rrOpenPerdasOperadorModal },
     { id: 'facas-mais-utilizadas', label: 'Facas Mais Utilizadas', icon: '🔪', desc: 'Ranking de uso de facas no período selecionado com detalhamento por máquina.', run: rrOpenFacasMaisUtilizadasModal },
     { id: 'resumo-anual', label: 'Resumo Anual', icon: '📅', desc: 'Totais consolidados do ano selecionado com detalhamento mês a mês (Janeiro a Dezembro). Usa data faturamento > conclusão > dia > criação.', run: rrOpenResumoAnualModal },
+    { id: 'frequencia-compra-clientes', label: '⏱ Frequência Compra por Cliente', icon: '⏱', desc: 'Ranking de clientes por frequência de compra, dias médios entre pedidos, atraso e ticket médio no período.', run: rrOpenFrequenciaCompraModal },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
+
+  function rrOpenFrequenciaCompraModal() {
+    try {
+      var now = new Date();
+      var mesDefault = now.getMonth() + 1;
+      var anoDefault = now.getFullYear();
+      var mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      var fmtNum = new Intl.NumberFormat('pt-BR');
+      var esc = function(s) { return String(s == null ? '' : s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+      var ultimaResposta = null;
+
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
+      var card = document.createElement('div');
+      card.style.cssText = 'width:min(1240px,97vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:18px 20px 22px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+      var mesOptions = '';
+      for (var mm = 1; mm <= 12; mm++) mesOptions += '<option value="' + mm + '"' + (mm === mesDefault ? ' selected' : '') + '>' + String(mm).padStart(2,'0') + '. ' + mesesLabels[mm-1] + '</option>';
+      card.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
+        + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">⏱ Frequência de Compra por Cliente</div><div style="font-size:12px;color:#94a3b8">Ranking por frequência de compra, dias médios entre pedidos, atraso e ticket médio.</div></div>'
+        + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        + '    <select id="rr-freq-mes" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700">' + mesOptions + '</select>'
+        + '    <input type="number" id="rr-freq-ano" min="2020" max="2040" step="1" value="' + anoDefault + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700;width:110px" />'
+        + '    <select id="rr-freq-empresa" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700">'
+        + '      <option value="ALL">Todas as empresas (Soma)</option>'
+        + '      <option value="E1">Italy Embalagens</option>'
+        + '      <option value="E2">Cartoeste</option>'
+        + '      <option value="E3">Oestepack</option>'
+        + '    </select>'
+        + '    <button type="button" id="rr-freq-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+        + '    <button type="button" id="rr-freq-print" class="rr-btn-secondary" style="padding:8px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(6,182,212,.16));color:#ecfeff;border:1px solid rgba(16,185,129,.3);cursor:pointer;font-weight:700">🖨 Gerar PDF / Imprimir</button>'
+        + '    <button type="button" id="rr-freq-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '  </div>'
+        + '</div>'
+        + '<div id="rr-freq-body" style="min-height:320px"><p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando frequência de compra por cliente...</p></div>';
+      wrap.appendChild(card);
+      document.body.appendChild(wrap);
+      var btnClose = card.querySelector('#rr-freq-close');
+      if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      var btnPrint = card.querySelector('#rr-freq-print');
+      if (btnPrint) btnPrint.onclick = function() {
+        try {
+          if (!ultimaResposta) { if (typeof window.toastMod === 'function') window.toastMod('Busque os dados antes de imprimir.', 'warn'); return; }
+          var dados = ultimaResposta;
+          var resumo = dados.resumo || {};
+          var lista = Array.isArray(dados.clientes) ? dados.clientes : [];
+          var periodLabel = String(resumo.mes || mesDefault).padStart(2,'0') + '/' + (resumo.ano || anoDefault);
+          rrOpenPrint({
+            title: 'Frequência de Compra por Cliente',
+            periodo: periodLabel,
+            cards: [
+              { label: 'Clientes Totais', value: fmtNum.format(Number(resumo.total_clientes || lista.length || 0)), sub: 'Com compra no período' },
+              { label: 'Clientes Atrasados', value: fmtNum.format(Number(resumo.total_atrasados || 0)), sub: '> 45 dias sem comprar' },
+              { label: 'Frequência Média (dias)', value: Number(resumo.freq_media_global || 0).toFixed(1).replace('.',','), sub: 'Média geral entre clientes' },
+              { label: 'Ticket Médio', value: fmtBRL.format(Number(resumo.ticket_medio || 0)), sub: 'Valor médio por pedido' }
+            ],
+            detailTitle: 'Ranking por Cliente',
+            detailHeaders: ['Cliente', 'N° Pedidos', 'Última Compra', 'Freq. Méd. (dias)', 'Atrasado?', 'Ticket Médio'],
+            detailRows: lista.map(function(c) {
+              return [
+                esc(c.cliente || '—'),
+                esc(fmtNum.format(Number(c.qtde_pedidos || c.n_pedidos || 0))),
+                esc(c.ultima_compra || c.data_ultima || '—'),
+                esc(Number(c.freq_media_dias || c.freq_media || 0).toFixed(1).replace('.',',')),
+                esc(!!c.atrasado ? '⚠️ Sim' : 'Não'),
+                esc(fmtBRL.format(Number(c.ticket_medio || 0)))
+              ];
+            }),
+            emptySummaryCols: 0,
+            emptyDetailCols: 6
+          });
+        } catch (e) { console.error('[RR-Freq][print]', e); }
+      };
+      var body = card.querySelector('#rr-freq-body');
+      var selMes = card.querySelector('#rr-freq-mes');
+      var inputAno = card.querySelector('#rr-freq-ano');
+      var selEmp = card.querySelector('#rr-freq-empresa');
+      var btnBuscar = card.querySelector('#rr-freq-buscar');
+
+      function carregar(mes, ano) {
+        if (!body) return;
+        body.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando frequência ' + esc(mes + '/' + ano) + '...</p>';
+        var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+        var empId = selEmp && selEmp.value ? selEmp.value : 'ALL';
+        fetch('/api/relatorios/frequencia-compra-clientes?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&emp_id=' + encodeURIComponent(empId), { headers: h })
+          .then(function(r) { return r.json(); })
+          .then(function(resp) {
+            if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
+            ultimaResposta = resp;
+            var resumo = resp.resumo || {};
+            var lista = Array.isArray(resp.clientes) ? resp.clientes : [];
+            var rowsHtml = lista.map(function(c, idx) {
+              var rowStyle = idx % 2 === 0 ? 'background:rgba(255,255,255,.015)' : 'background:transparent';
+              return ''
+                + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + rowStyle + '">'
+                + '  <td style="padding:10px 12px;color:#f8fafc;font-size:13px;font-weight:700">' + esc(c.cliente || '—') + '</td>'
+                + '  <td style="padding:10px 12px;color:#10b981;font-size:13px;font-weight:800;text-align:right">' + fmtNum.format(Number(c.qtde_pedidos || c.n_pedidos || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#64748b;font-size:12px;font-weight:600;text-align:right">' + esc(c.ultima_compra || c.data_ultima || '—') + '</td>'
+                + '  <td style="padding:10px 12px;color:#8b5cf6;font-size:13px;font-weight:700;text-align:right">' + Number(c.freq_media_dias || c.freq_media || 0).toFixed(1).replace('.',',') + ' d</td>'
+                + '  <td style="padding:10px 12px;color:' + (!!c.atrasado ? '#ef4444' : '#10b981') + ';font-size:12px;font-weight:800;text-align:center">' + (!!c.atrasado ? '⚠️ Sim' : 'Não') + '</td>'
+                + '  <td style="padding:10px 12px;color:#f59e0b;font-size:13px;font-weight:800;text-align:right">' + fmtBRL.format(Number(c.ticket_medio || 0)) + '</td>'
+                + '</tr>';
+            }).join('');
+
+            body.innerHTML = ''
+              + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+              + '  <div style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(6,182,212,.12));border:1px solid rgba(16,185,129,.22);border-radius:14px;padding:14px"><div style="font-size:11px;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Período</div><div style="font-size:24px;font-weight:900;color:#ecfdf5;margin-top:4px">' + esc(String(resumo.mes || mes).padStart(2,'0') + '/' + (resumo.ano || ano)) + '</div><div style="font-size:10px;color:#a7f3d0;margin-top:2px">' + (selEmp.value === 'ALL' ? 'Todas as empresas' : selEmp.value === 'E1' ? 'Italy' : selEmp.value === 'E2' ? 'Cartoeste' : 'Oestepack') + '</div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(59,130,246,.14),rgba(139,92,246,.14));border:1px solid rgba(59,130,246,.22);border-radius:14px;padding:14px"><div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Clientes Totais</div><div style="font-size:24px;font-weight:900;color:#eff6ff;margin-top:2px">' + fmtNum.format(Number(resumo.total_clientes || lista.length || 0)) + '</div><div style="font-size:10px;color:#bfdbfe;margin-top:2px">Atrasados: ' + fmtNum.format(Number(resumo.total_atrasados || 0)) + '</div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(245,158,11,.14));border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:14px"><div style="font-size:11px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Freq. Média Global</div><div style="font-size:24px;font-weight:900;color:#fffbeb;margin-top:2px">' + Number(resumo.freq_media_global || 0).toFixed(1).replace('.',',') + ' d</div><div style="font-size:10px;color:#fde68a;margin-top:2px">Dias médios entre compras</div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(219,39,119,.12));border:1px solid rgba(239,68,68,.22);border-radius:14px;padding:14px"><div style="font-size:11px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Ticket Médio</div><div style="font-size:24px;font-weight:900;color:#fef2f2;margin-top:2px">' + fmtBRL.format(Number(resumo.ticket_medio || 0)) + '</div><div style="font-size:10px;color:#fecaca;margin-top:2px">Total período: ' + fmtBRL.format(Number(resumo.total_valor || 0)) + '</div></div>'
+              + '</div>'
+              + '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:16px;overflow:hidden">'
+              + '  <div style="padding:12px 16px;background:linear-gradient(90deg,rgba(30,41,59,.8),rgba(15,23,42,.8));border-bottom:1px solid rgba(148,163,184,.1);display:flex;justify-content:space-between;align-items:center">'
+              + '    <div style="color:#f1f5f9;font-weight:800;font-size:14px">⏱ Ranking Frequência de Compra — ' + esc(String(resumo.mes || mes).padStart(2,'0') + '/' + (resumo.ano || ano)) + '</div>'
+              + '    <div style="color:#94a3b8;font-size:11px;font-weight:600">' + fmtNum.format(lista.length) + ' cliente(s) listado(s)</div>'
+              + '  </div>'
+              + (lista.length === 0
+                ? '<div style="padding:50px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">🧾</div><div style="color:#94a3b8;font-size:14px;font-weight:600">Nenhum dado de cliente registrado no período.</div></div>'
+                : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:linear-gradient(90deg,#1e293b,#0f172a)"><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.4px">Cliente</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">N° Pedidos</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Última Compra</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Freq. Méd. (dias)</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.4px">Atrasado?</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Ticket Médio</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>')
+              + '</div>';
+          })
+          .catch(function(err) {
+            if (!body) return;
+            body.innerHTML = ''
+              + '<div style="padding:40px 20px;text-align:center">'
+              + '  <div style="font-size:42px;margin-bottom:10px">⚠️</div>'
+              + '  <div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao carregar Frequência de Compra</div>'
+              + '  <div style="color:#f87171;font-size:12px;margin-top:6px">' + esc(err && err.message || err) + '</div>'
+              + '  <button type="button" onclick="document.getElementById(\'rr-freq-buscar\').click()" style="margin-top:14px;padding:8px 16px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700;font-size:12px">Tentar novamente</button>'
+              + '</div>';
+            console.error('[RR-FreqCompra]', err);
+          });
+      }
+      if (btnBuscar) btnBuscar.onclick = function() {
+        try {
+          var m = Number(selMes ? selMes.value : 0);
+          var a = Number(inputAno ? inputAno.value : 0);
+          if (!m || m < 1 || m > 12) return;
+          if (!a || a < 2020 || a > 2100) return;
+          carregar(m, a);
+        } catch (_) {}
+      };
+      setTimeout(function() { carregar(mesDefault, anoDefault); }, 30);
+    } catch (e) {
+      try { alert('Erro ao abrir Frequência de Compra por Cliente: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
 
   function rrOpenAmostrasMesModal() {
     try {
@@ -3826,17 +3977,94 @@ try {
       wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
       var card = document.createElement('div');
       card.style.cssText = 'width:min(1180px,97vw);max-height:91vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:18px 20px 22px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+      var ultimoResultadoProj = null;
       card.innerHTML = ''
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
         + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">📊 Projeção de Vendas</div><div style="font-size:12px;color:#94a3b8">Histórico mensal de faturamento com projeção baseada em média móvel e tendência.</div></div>'
-        + '  <button type="button" id="rr-projecao-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        + '    <button type="button" id="rr-projecao-print" style="padding:8px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.16),rgba(139,92,246,.16));color:#eff6ff;border:1px solid rgba(59,130,246,.3);cursor:pointer;font-weight:700">🖨 Gerar PDF / Imprimir</button>'
+        + '    <button type="button" id="rr-projecao-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '  </div>'
         + '</div>'
         + '<div id="widget-projecao-vendas" style="min-height:260px"><p style="color:#64748b;text-align:center;padding:30px;font-size:13px">Carregando projeção de vendas...</p></div>';
       wrap.appendChild(card);
       document.body.appendChild(wrap);
       var btnClose = card.querySelector('#rr-projecao-close');
+      var btnPrintProj = card.querySelector('#rr-projecao-print');
+      if (btnPrintProj) btnPrintProj.onclick = function() {
+        try {
+          if (typeof window.toastMod === 'function') window.toastMod('Gerando relatório PDF...', 'info');
+          fetch('/api/relatorios/projecao-vendas?proximo_ano=0', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(resp) {
+              try {
+                var d = (resp && resp.data) ? resp.data : null;
+                if (!d) throw new Error('sem_dados');
+                var historico = Array.isArray(d.historico) ? d.historico : [];
+                var projMeses = Array.isArray(d.projecao_meses) ? d.projecao_meses : [];
+                var resumo = d.resumo || {};
+                var mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+                var histMap = {};
+                historico.forEach(function(h) { histMap[String(h.mes || '')] = h; });
+                var projMap = {};
+                projMeses.forEach(function(p) { projMap[String(p.mes || '')] = p; });
+                var slope = Number(resumo.slope_tendencia || 0);
+                var mesesRows = [];
+                var totalHistoricoAno = 0;
+                var mesesCorridos = 0;
+                for (var mIdx = 0; mIdx < 12; mIdx++) {
+                  var chave = anoAtual + '-' + String(mIdx + 1).padStart(2, '0');
+                  var histH = histMap[chave];
+                  var projP = projMap[chave];
+                  var reais = histH ? Number(histH.valor_concluido || histH.valor_total || 0) : 0;
+                  if (reais > 0) { totalHistoricoAno += reais; mesesCorridos += 1; }
+                  var projVal = projP ? Number(projP.projecao_tendencia || projP.projecao_media || 0) : (reais > 0 ? reais : 0);
+                  var tendPct = 0;
+                  if (reais > 0 && projVal > 0) {
+                    tendPct = ((projVal - reais) / reais) * 100;
+                  } else if (projVal > 0) {
+                    tendPct = slope > 0 ? 5 : slope < 0 ? -5 : 0;
+                  }
+                  var tendLabel = tendPct > 0.1 ? '↗' : tendPct < -0.1 ? '↘' : '→';
+                  mesesRows.push([
+                    rrEsc_proj(mesesLabels[mIdx]),
+                    rrEsc_proj(fmtBRL_proj(reais)),
+                    rrEsc_proj(fmtBRL_proj(projVal)),
+                    rrEsc_proj(tendLabel + ' ' + Math.abs(tendPct).toFixed(2).replace('.',',') + '%')
+                  ]);
+                }
+                var mesesFaltantes = Math.max(0, 12 - mesesCorridos);
+                var mediaMensal = mesesCorridos > 0 ? (totalHistoricoAno / mesesCorridos) : Number(resumo.media_mensal_12m || 0);
+                var projetadoFinal = totalHistoricoAno + (mesesFaltantes * Math.max(0, Number(resumo.projecao_tendencia_mensal || mediaMensal)));
+                rrOpenPrint({
+                  title: 'Projeção de Vendas',
+                  periodo: 'Ano de ' + anoAtual,
+                  cards: [
+                    { label: 'Vendas Reais YTD', value: fmtBRL_proj(totalHistoricoAno), sub: mesesCorridos + ' mês(es) corridos' },
+                    { label: 'Projetado Final Ano', value: fmtBRL_proj(projetadoFinal), sub: 'Tendência: ' + (slope >= 0 ? 'Crescimento' : 'Queda') },
+                    { label: 'Média Mensal 12m', value: fmtBRL_proj(Number(resumo.total_12m_concluido > 0 ? (resumo.total_12m_concluido / 12) : mediaMensal)), sub: 'Base p/ projeção' },
+                    { label: 'Projetado Tendência Mensal', value: fmtBRL_proj(Number(resumo.projecao_tendencia_mensal || 0)), sub: (resumo.meses_projetados || 0) + ' mês(es) projetados' }
+                  ],
+                  detailTitle: '12 meses · Janeiro a Dezembro de ' + anoAtual,
+                  detailHeaders: ['Mês', 'Vendas Reais R$', 'Projeção R$', 'Tendência'],
+                  detailRows: mesesRows,
+                  emptySummaryCols: 0,
+                  emptyDetailCols: 4
+                });
+              } catch (ee) {
+                if (typeof window.toastMod === 'function') window.toastMod('Erro ao carregar dados da projeção: ' + String(ee.message || ee), 'error');
+              }
+            })
+            .catch(function(er) {
+              try { if (typeof window.toastMod === 'function') window.toastMod('Erro na requisição: ' + String(er.message || er), 'error'); } catch (_) {}
+            });
+        } catch (_) {}
+      };
+      function fmtBRL_proj(v) { try { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0)); } catch(_){ return String(v||0); } }
+      function rrEsc_proj(s){ return String(s==null?'':s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
       if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
       wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      var widgetHost = card.querySelector('#widget-projecao-vendas');
       if (typeof window.renderProjecaoVendas === 'function') {
         setTimeout(function() {
           try { window.renderProjecaoVendas(anoAtual); } catch (_) {}
@@ -3896,6 +4124,7 @@ try {
       for (var mm = 1; mm <= 12; mm++) {
         mesOptions += '<option value="' + mm + '"' + (mm === mesDefault ? ' selected' : '') + '>' + String(mm).padStart(2,'0') + '. ' + mesesLabels[mm-1] + '</option>';
       }
+      var ultimaRespostaPerdas = null;
       card.innerHTML = ''
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
         + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">⚠️ Produção e Perdas por Operador</div><div style="font-size:12px;color:#94a3b8">Ranking por operador no mês/ano com caixas produzidas, valor gerado, caixas perdidas e taxa. Inclui OFs concluídas e canceladas com perda registrada.</div></div>'
@@ -3909,6 +4138,7 @@ try {
         + '      <option value="E3">Oestepack</option>'
         + '    </select>'
         + '    <button type="button" id="rr-perdas-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+        + '    <button type="button" id="rr-perdas-print" style="padding:8px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(239,68,68,.16),rgba(249,115,22,.16));color:#fff7ed;border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:700">🖨 Gerar PDF / Imprimir</button>'
         + '    <button type="button" id="rr-perdas-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
         + '  </div>'
         + '</div>'
@@ -3916,8 +4146,42 @@ try {
       wrap.appendChild(card);
       document.body.appendChild(wrap);
       var btnClose = card.querySelector('#rr-perdas-close');
+      var btnPrintPerdas = card.querySelector('#rr-perdas-print');
       if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
       wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      if (btnPrintPerdas) btnPrintPerdas.onclick = function() {
+        try {
+          if (!ultimaRespostaPerdas) { if (typeof window.toastMod === 'function') window.toastMod('Busque os dados antes de imprimir.', 'warn'); return; }
+          var dados = ultimaRespostaPerdas;
+          var tot = dados.totalizadores || {};
+          var ranking = Array.isArray(dados.ranking) ? dados.ranking : [];
+          rrOpenPrint({
+            title: 'Produção e Perdas por Operador',
+            periodo: String(dados.mes || mesDefault).padStart(2,'0') + '/' + (dados.ano || anoDefault),
+            cards: [
+              { label: 'Caixas Produzidas', value: fmtNum.format(Number(tot.total_qtd_produzida || 0)), sub: 'Valor: ' + fmtBRL.format(Number(tot.total_valor_produzido || 0)) },
+              { label: 'Caixas Perdidas', value: fmtNum.format(Number(tot.total_qtd_perdida || 0)), sub: 'Valor: ' + fmtBRL.format(Number(tot.total_valor_perdido || 0)) },
+              { label: 'OFs Contabilizadas', value: fmtNum.format(Number(tot.total_ofs || 0)), sub: ranking.length + ' operador(es)' },
+              { label: 'Perda Média (%)', value: (Number(tot.total_qtd_produzida || 0) + Number(tot.total_qtd_perdida || 0) > 0 ? (((Number(tot.total_qtd_perdida || 0) / (Number(tot.total_qtd_produzida || 0) + Number(tot.total_qtd_perdida || 0))) * 100).toFixed(2).replace('.',',') : '0,00') + '%', sub: 'Geral do período' }
+            ],
+            detailTitle: 'Ranking por Operador',
+            detailHeaders: ['Operador', 'Caixas Produzidas', 'Valor Produzido', 'Caixas Perdidas', 'Valor Perdido', 'OFs', '% Perda'],
+            detailRows: ranking.map(function(r) {
+              return [
+                esc(r.operador || '—'),
+                esc(fmtNum.format(Number(r.qtd_produzida || 0))),
+                esc(fmtBRL.format(Number(r.valor_produzido || 0))),
+                esc(fmtNum.format(Number(r.qtd_perdida || 0))),
+                esc(fmtBRL.format(Number(r.valor_perdido || 0))),
+                esc(fmtNum.format(Number(r.qtd_ofs || 0))),
+                esc(Number(r.pct_perda || 0).toFixed(2).replace('.',',') + '%')
+              ];
+            }),
+            emptySummaryCols: 0,
+            emptyDetailCols: 7
+          });
+        } catch (e) { console.error('[RR-Perdas][print]', e); }
+      };
       var body = card.querySelector('#rr-perdas-body');
       var selMes = card.querySelector('#rr-perdas-mes');
       var inputAno = card.querySelector('#rr-perdas-ano');
@@ -3934,9 +4198,15 @@ try {
           .then(function(r) { return r.json(); })
           .then(function(resp) {
             if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
+            ultimaRespostaPerdas = resp;
             var tot = resp.totalizadores || {};
             var ranking = Array.isArray(resp.ranking) ? resp.ranking : [];
             var top3 = Array.isArray(tot.top3) ? tot.top3 : [];
+            var ofsSemOperador = 0;
+            try {
+              var opNI = ranking.find(function(r){ return String(r.operador || '').toUpperCase() === 'OPERADOR NÃO INFORMADO'; });
+              ofsSemOperador = Number(opNI && opNI.qtd_ofs || 0);
+            } catch (_) { ofsSemOperador = 0; }
             var top3Html = top3.map(function(t, i) {
               return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:900;color:#60a5fa;font-size:11px">#' + (i+1) + ' ' + esc(t.operador) + '</span><span style="font-weight:800;color:#93c5fd;font-size:11px">' + fmtNum.format(Number(t.qtd_produzida || 0)) + ' cx</span></div>';
             }).join('');
@@ -3960,7 +4230,20 @@ try {
                 + '</tr>';
             }).join('');
 
+            var barraInfo = '';
+            if (ofsSemOperador > 0) {
+              barraInfo = ''
+                + '<div style="margin-bottom:14px;padding:12px 16px;background:linear-gradient(135deg,rgba(251,146,60,.14),rgba(239,68,68,.12));border:1px solid rgba(251,146,60,.32);border-radius:14px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">'
+                + '  <div style="font-size:20px;line-height:1">⚠️</div>'
+                + '  <div style="flex:1;min-width:260px">'
+                + '    <div style="color:#fed7aa;font-weight:900;font-size:13px;margin-bottom:2px">' + fmtNum.format(ofsSemOperador) + ' OF(s) com perda/registro de máquina neste período não têm operador cadastrado.</div>'
+                + '    <div style="color:#fdba74;font-size:11px;font-weight:600;line-height:1.4">Esses registros foram lançados como "Operador Não Informado" para manter a consistência dos totais financeiros. Para eliminar este aviso, preencha o operador de conclusão nas OFs correspondentes.</div>'
+                + '  </div>'
+                + '</div>';
+            }
+
             body.innerHTML = ''
+              + barraInfo
               + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">'
               + '  <div style="background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(249,115,22,.12));border:1px solid rgba(239,68,68,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(239,68,68,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Período</div><div style="font-size:24px;font-weight:900;color:#fef2f2;margin-top:4px">' + esc(String(mes).padStart(2,'0') + '/' + resp.ano) + '</div><div style="font-size:10px;color:#fecaca;margin-top:2px">' + (function(){ var fid = String(resp.empresa_filtro_id || '').toUpperCase(); if (!fid || fid === 'ALL') return 'Todas as empresas (Soma)'; if (fid === 'E1') return 'Italy Embalagens'; if (fid === 'E2') return 'Cartoeste'; if (fid === 'E3') return 'Oestepack'; return 'Empresa: ' + esc(fid); })() + '</div></div></div>'
               + '  <div style="background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(5,150,105,.14));border:1px solid rgba(16,185,129,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(16,185,129,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Caixas Produzidas</div><div style="font-size:24px;font-weight:900;color:#ecfdf5;margin-top:2px">' + fmtNum.format(Number(tot.total_qtd_produzida || 0)) + '</div><div style="font-size:10px;color:#a7f3d0;margin-top:2px">Valor: ' + fmtBRL.format(Number(tot.total_valor_produzido || 0)) + '</div></div></div>'
@@ -4016,6 +4299,7 @@ try {
       var fmtTon = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
       var esc = function(s) { return String(s == null ? '' : s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
 
+      var ultimaRespostaAnual = null;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
       var card = document.createElement('div');
@@ -4032,6 +4316,7 @@ try {
         + '    </select>'
         + '    <input type="number" id="rr-resumo-anual-ano" min="2020" max="2040" step="1" value="' + anoDefault + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700;width:110px" />'
         + '    <button type="button" id="rr-resumo-anual-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+        + '    <button type="button" id="rr-resumo-anual-print" style="padding:8px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.16),rgba(139,92,246,.16));color:#eff6ff;border:1px solid rgba(59,130,246,.3);cursor:pointer;font-weight:700">🖨 Gerar PDF / Imprimir</button>'
         + '    <button type="button" id="rr-resumo-anual-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
         + '  </div>'
         + '</div>'
@@ -4039,8 +4324,42 @@ try {
       wrap.appendChild(card);
       document.body.appendChild(wrap);
       var btnClose = card.querySelector('#rr-resumo-anual-close');
+      var btnPrintAnual = card.querySelector('#rr-resumo-anual-print');
       if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
       wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      if (btnPrintAnual) btnPrintAnual.onclick = function() {
+        try {
+          if (!ultimaRespostaAnual) { if (typeof window.toastMod === 'function') window.toastMod('Busque os dados antes de imprimir.', 'warn'); return; }
+          var resp = ultimaRespostaAnual;
+          var r = resp.resumo_anual || {};
+          var meses = Array.isArray(resp.meses) ? resp.meses : [];
+          rrOpenPrint({
+            title: 'Resumo Anual',
+            periodo: 'Ano de ' + (resp.ano || anoDefault),
+            cards: [
+              { label: 'Valor Vendido', value: fmtBRL.format(Number(r.valor_vendido || 0)), sub: meses.length + ' meses consolidados' },
+              { label: 'Caixas Produzidas', value: fmtNum.format(Number(r.caixas_produzidas || 0)), sub: fmtTon.format(Number(r.toneladas || 0)) + ' T' },
+              { label: 'Clientes Atendidos', value: fmtNum.format(Number(r.clientes_distintos || 0)), sub: 'Ticket médio: ' + fmtBRL.format(Number(r.ticket_medio || 0)) },
+              { label: 'OFs Concluídas', value: fmtNum.format(Number(r.total_ofs || 0)), sub: 'Caixas/OF: ' + Number(r.caixas_por_of || 0).toFixed(2).replace('.',',') }
+            ],
+            detailTitle: '12 meses · Janeiro a Dezembro',
+            detailHeaders: ['Mês', 'Valor Vendido', 'Caixas', 'Toneladas', 'Valor Perdido', 'Caixas Perdidas', 'OFs'],
+            detailRows: meses.map(function(m) {
+              return [
+                esc(String(m.mes_numero || '').padStart(2,'0') + '. ' + (m.mes_label || '')),
+                esc(fmtBRL.format(Number(m.valor_vendido || 0))),
+                esc(fmtNum.format(Number(m.caixas_produzidas || 0))),
+                esc(fmtTon.format(Number(m.toneladas || 0)) + ' T'),
+                esc(fmtBRL.format(Number(m.valor_perdido || 0))),
+                esc(fmtNum.format(Number(m.caixas_perdidas || 0))),
+                esc(fmtNum.format(Number(m.total_ofs || 0)))
+              ];
+            }),
+            emptySummaryCols: 0,
+            emptyDetailCols: 7
+          });
+        } catch (e) { console.error('[RR-ResumoAnual][print]', e); }
+      };
       var body = card.querySelector('#rr-resumo-anual-body');
       var inputAno = card.querySelector('#rr-resumo-anual-ano');
       var btnBuscar = card.querySelector('#rr-resumo-anual-buscar');
@@ -4056,6 +4375,7 @@ try {
           .then(function(r) { return r.json(); })
           .then(function(resp) {
             if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
+            ultimaRespostaAnual = resp;
             var r = resp.resumo_anual || {};
             var meses = Array.isArray(resp.meses) ? resp.meses : [];
             var totalValorMeses = meses.reduce(function(s, m) { return s + Number(m.valor_vendido || 0); }, 0);
@@ -19015,13 +19335,26 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       var panel = document.getElementById('assist-panel');
       var overlay = document.getElementById('assist-overlay');
       if (panel) {
+        if (panel.dataset && panel.dataset.prevCssTextJarvis == null) {
+          try { panel.dataset.prevCssTextJarvis = String(panel.style.cssText || ''); } catch (_) {}
+        }
+        panel.style.setProperty('width', 'min(1200px, 94vw)', 'important');
+        panel.style.setProperty('min-width', 'min(820px, 92vw)', 'important');
+        panel.style.setProperty('max-width', 'min(1200px, 94vw)', 'important');
+        panel.style.setProperty('height', '88vh', 'important');
+        panel.style.setProperty('max-height', '88vh', 'important');
+        panel.style.setProperty('top', '50%', 'important');
+        panel.style.setProperty('left', '50%', 'important');
+        panel.style.setProperty('margin', '0', 'important');
+        panel.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+        panel.style.setProperty('bottom', 'auto', 'important');
+        panel.style.setProperty('right', 'auto', 'important');
+        panel.style.setProperty('border-radius', '20px', 'important');
         try { panel.style.removeProperty('opacity'); } catch (_) {}
-        try { panel.style.removeProperty('transform'); } catch (_) {}
         try { panel.style.removeProperty('visibility'); } catch (_) {}
         panel.style.setProperty('opacity', '1', 'important');
-        panel.style.setProperty('transform', 'none', 'important');
         panel.style.setProperty('visibility', 'visible', 'important');
-        panel.style.setProperty('z-index', '10003', 'important');
+        panel.style.setProperty('z-index', '9001', 'important');
         try { panel.classList.add('open'); } catch (_) {}
       }
       if (overlay) {
@@ -19190,6 +19523,70 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     } catch (_) {}
   }
 
+  function _jarvisInstallBadgeObserver() {
+    try {
+      if (window._jarvisBadgeObserverInstalled === true) return;
+      var panel = document.getElementById('assist-panel');
+      var host = document.querySelector('#assist-msgs, #chat-log, #jarvis-messages, .jarvis-messages-container') || panel;
+      if (!host) return;
+      var badgeBad = function(msgEl, tipo) {
+        try {
+          if (!msgEl || msgEl.dataset && msgEl.dataset.jarvisBadgeApplied === '1') return;
+          var t = String(tipo || (msgEl.dataset && msgEl.dataset.tipo) || 'llm').toLowerCase();
+          var isBanco = t === 'dados-banco' || t === 'banco' || t === 'db';
+          var badge = document.createElement('span');
+          badge.style.cssText = isBanco
+            ? 'display:inline-block;margin-bottom:8px;padding:3px 8px;border-radius:8px;background:#10b981;color:#fff;font-size:10px;font-weight:900;letter-spacing:.2px'
+            : 'display:inline-block;margin-bottom:8px;padding:3px 8px;border-radius:8px;background:#3b82f6;color:#fff;font-size:10px;font-weight:900;letter-spacing:.2px';
+          badge.textContent = isBanco ? '🔎 Dados reais · consulta bancos' : '🧠 IA generativa';
+          var firstChild = msgEl.firstChild;
+          if (firstChild) { try { msgEl.insertBefore(badge, firstChild); } catch (_) { try { msgEl.prepend(badge); } catch (_) {} } }
+          else { try { msgEl.appendChild(badge); } catch (_) {} }
+          try { msgEl.dataset.jarvisBadgeApplied = '1'; } catch (_) {}
+        } catch (_) {}
+      };
+      var applyAll = function() {
+        try {
+          var sel = '#assist-msgs .assist-msg-bot, #chat-log .chat-msg.bot, #jarvis-messages .jarvis-bubble.bot, .jarvis-bubble.bot, .chat-msg.bot, .assist-msg-bot';
+          var nodes = (host || document).querySelectorAll(sel);
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var parent = el.closest('[data-tipo]');
+            var tipo = (parent && parent.dataset && parent.dataset.tipo) || (el.dataset && el.dataset.tipo) || 'llm';
+            badgeBad(el, tipo);
+          }
+        } catch (_) {}
+      };
+      var obs = new MutationObserver(function(muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var m = muts[i];
+          if (m && m.addedNodes && m.addedNodes.length) {
+            for (var j = 0; j < m.addedNodes.length; j++) {
+              var n = m.addedNodes[j];
+              if (!n || n.nodeType !== 1) continue;
+              try {
+                if (n.matches && n.matches('.assist-msg-bot, .chat-msg.bot, .jarvis-bubble.bot, .chat-msg, .assist-msg-bot, .jarvis-bubble')) {
+                  var p = n.closest('[data-tipo]');
+                  badgeBad(n, (p && p.dataset && p.dataset.tipo) || (n.dataset && n.dataset.tipo) || 'llm');
+                } else {
+                  var inner = n.querySelectorAll ? n.querySelectorAll('.assist-msg-bot, .chat-msg.bot, .jarvis-bubble.bot') : [];
+                  for (var k = 0; k < inner.length; k++) {
+                    var q = inner[k].closest('[data-tipo]');
+                    badgeBad(inner[k], (q && q.dataset && q.dataset.tipo) || (inner[k].dataset && inner[k].dataset.tipo) || 'llm');
+                  }
+                }
+              } catch (_) {}
+            }
+          }
+        }
+      });
+      try { obs.observe(host, { childList: true, subtree: true }); } catch (_) {}
+      applyAll();
+      window._jarvisBadgeObserverInstalled = true;
+      [420, 920, 1720].forEach(function(d) { setTimeout(applyAll, d); });
+    } catch (_) {}
+  }
+
   function wrapJarvisOpeners() {
     ['_jarvisAbrir', 'abrirJarvis', 'fabAbrirJarvis', 'abrirPainelJarvis'].forEach(function(name) {
       try {
@@ -19214,6 +19611,17 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           });
           return result;
         };
+        [520, 1020, 1620].forEach(function(delay) {
+          setTimeout(function() {
+            try {
+              var panelEl = document.getElementById('assist-panel');
+              if (panelEl && panelEl.classList && panelEl.classList.contains('open')) {
+                forceJarvisPanelVisible();
+                try { _jarvisInstallBadgeObserver(); } catch (_) {}
+              }
+            } catch (_) {}
+          }, delay);
+        });
         wrappedOpen.__patchFullscreenSafe = true;
         wrappedOpen.__patchOriginal = originalOpen;
         window[name] = wrappedOpen;
