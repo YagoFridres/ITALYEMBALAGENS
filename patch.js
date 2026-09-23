@@ -63510,6 +63510,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }
   } catch (_) {}
   try {
+    if (typeof window.rrOpenFrequenciaCompraModal === 'undefined' && typeof rrOpenFrequenciaCompraModal === 'function') {
+      window.rrOpenFrequenciaCompraModal = rrOpenFrequenciaCompraModal;
+    }
+  } catch (_) {}
+  try {
     if (typeof window._histCanonicalMachineOptions === 'undefined' && typeof _histCanonicalMachineOptions === 'function') {
       window._histCanonicalMachineOptions = _histCanonicalMachineOptions;
     }
