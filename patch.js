@@ -27087,7 +27087,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       hideLegacyViews();
       if (state.showAllMachines) {
         state.selectedMachine = '__ALL__';
-      } else if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) {
+      } else if (state.machineCatalog.length && state.selectedMachine !== '__ALL__' && state.machineCatalog.indexOf(state.selectedMachine) < 0) {
         state.selectedMachine = state.machineCatalog[0];
       }
       var counts = state.showAllMachines ? countsByDay(null) : countsByDay(state.selectedMachine);
@@ -27101,6 +27101,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }).join('') || '<option value="">Sem máquina</option>');
       try {
         if (shell.machine.options && shell.machine.options.length) {
+          if (!!state.showAllMachines || shell.machine.disabled === true) state.selectedMachine = '__ALL__';
           shell.machine.options[0].setAttribute('value', '__ALL__');
           if (state.selectedMachine === '__ALL__') {
             shell.machine.options[0].setAttribute('selected', 'selected');
