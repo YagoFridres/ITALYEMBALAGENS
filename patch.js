@@ -27085,15 +27085,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function updateToolbar(shell) {
       if (!shell) return;
       hideLegacyViews();
-      if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
+      if (state.showAllMachines) {
+        state.selectedMachine = '__ALL__';
+      } else if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) {
+        state.selectedMachine = state.machineCatalog[0];
+      }
       var counts = state.showAllMachines ? countsByDay(null) : countsByDay(state.selectedMachine);
       shell.days.innerHTML = '<button type="button" data-week-shift="-7">◀</button>' + weekDays(state.weekStartIso).map(function(day) {
         var count = Number(counts[day.iso] || 0) || 0;
         return '<button type="button" class="ofmaq-final-day-btn" data-date="' + escAttr(day.iso) + '" data-hot="' + (count > 0 ? '1' : '0') + '" data-active="' + (state.selectedDateIso === day.iso ? '1' : '0') + '">' + escH(day.label + ' ' + fmtDayShort(day.iso) + ' (' + count + ')') + '</button>';
       }).join('') + '<button type="button" data-week-shift="7">▶</button>';
-      shell.machine.innerHTML = state.machineCatalog.map(function(machine) {
+      var optAll = '<option value="__ALL__"' + (state.selectedMachine === '__ALL__' ? ' selected' : '') + '>Todas as máquinas</option>';
+      shell.machine.innerHTML = optAll + (state.machineCatalog.map(function(machine) {
         return '<option value="' + escAttr(machine) + '"' + (machine === state.selectedMachine ? ' selected' : '') + '>' + escH(machine) + '</option>';
-      }).join('') || '<option value="">Sem máquina</option>';
+      }).join('') || '<option value="">Sem máquina</option>');
       shell.machine.disabled = !!state.showAllMachines;
       shell.machine.style.opacity = state.showAllMachines ? '0.55' : '1';
       shell.machine.style.pointerEvents = state.showAllMachines ? 'none' : 'auto';
@@ -27174,6 +27179,85 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '</tr>';
     }
 
+    function _stableKeyOfState(s) {
+      var parts = [
+        'sm=' + String(s.showAllMachines ? 1 : 0),
+        'm=' + String(s.selectedMachine || ''),
+        'd=' + String(s.selectedDateIso || ''),
+        'w=' + String(s.weekStartIso || ''),
+        'q=' + String(s.searchTerm || ''),
+        'g=' + String(s.grouped ? 1 : 0),
+        'n=' + String((s.rowsData && s.rowsData.length) || 0)
+      ];
+      return parts.join('|');
+    }
+
+    function _fastHash(str) {
+      var h = 2166136261;
+      var s = String(str || '');
+      for (var i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+        h = h >>> 0;
+      }
+      return h.toString(36);
+    }
+
+    function _applyIncrementalTbody(tbody, rowItems) {
+      if (!tbody) return;
+      var len = rowItems ? rowItems.length : 0;
+      if (!len) {
+        tbody.innerHTML = '<tr><td colspan="15" class="ofmaq-final-empty">'
+          + (tbody.dataset.emptyLabel || 'Nenhuma OF encontrada.') + '</td></tr>';
+        return;
+      }
+      var existing = tbody.querySelectorAll('tr[data-of-id]');
+      var map = {};
+      for (var j = 0; j < existing.length; j++) {
+        var tr = existing[j];
+        var id = String(tr.getAttribute('data-of-id') || '').trim();
+        if (id) map[id] = tr;
+      }
+      var frag = document.createDocumentFragment();
+      for (var k = 0; k < len; k++) {
+        var item = rowItems[k];
+        var idItem = String(item && item.id || '').trim();
+        var desiredHtml = rowHtml(item);
+        var desiredHash = _fastHash(desiredHtml);
+        var oldEl = idItem ? map[idItem] : null;
+        if (oldEl) {
+          delete map[idItem];
+          var oldHash = oldEl.getAttribute('data-hash-render') || '';
+          if (String(oldHash) !== desiredHash) {
+            var tmp = document.createElement('tbody');
+            tmp.innerHTML = desiredHtml;
+            var newNode = tmp.firstElementChild || tmp.firstChild;
+            if (newNode) {
+              newNode.setAttribute('data-hash-render', desiredHash);
+              oldEl.parentNode.replaceChild(newNode, oldEl);
+              frag.appendChild(newNode);
+              continue;
+            }
+          }
+          frag.appendChild(oldEl);
+        } else {
+          var tmp2 = document.createElement('tbody');
+          tmp2.innerHTML = desiredHtml;
+          var newEl = tmp2.firstElementChild || tmp2.firstChild;
+          if (newEl) {
+            newEl.setAttribute('data-hash-render', desiredHash);
+            frag.appendChild(newEl);
+          }
+        }
+      }
+      var stale = Object.keys(map);
+      for (var s = 0; s < stale.length; s++) {
+        try { if (map[stale[s]] && map[stale[s]].parentNode) map[stale[s]].parentNode.removeChild(map[stale[s]]); } catch (_) {}
+      }
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+      tbody.appendChild(frag);
+    }
+
     function renderRows(shell) {
       if (!shell) return;
       hideLegacyViews();
@@ -27191,6 +27275,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!temPapelCol || curThs.length !== 15) { try { oldWrap.remove(); } catch (_e) {} oldWrap = null; }
       }
       var rows = sortedVisibleRows(currentVisibleRows());
+      var curStableKey = typeof _stableKeyOfState === 'function' ? _stableKeyOfState(state) : null;
+      if (curStableKey) {
+        if (state._stableOrderLastKey !== curStableKey) {
+          state._stableOrderLastKey = curStableKey;
+          state._rowOrderMap = new Map(rows.map(function(r, i) { return [String(r.id || ''), i]; }));
+        } else if (state._rowOrderMap instanceof Map) {
+          rows.sort(function(a, b) {
+            var ai = state._rowOrderMap.get(String(a.id || ''));
+            var bi = state._rowOrderMap.get(String(b.id || ''));
+            if (ai == null) ai = 1e9;
+            if (bi == null) bi = 1e9;
+            if (ai !== bi) return ai - bi;
+            return 0;
+          });
+        }
+      }
       var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
       if (!state.showAllMachines) {
         if (!oldWrap) {
@@ -27202,7 +27302,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           else rootEl.appendChild(oldWrap);
         }
         shell.tbody = oldWrap.querySelector('#ofmaq-final-tbody') || oldWrap.querySelector('tbody');
-        if (shell.tbody) shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+        if (shell.tbody) {
+          if (typeof _applyIncrementalTbody === 'function') _applyIncrementalTbody(shell.tbody, rows);
+          else shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+          if (!rows.length) shell.tbody.dataset.emptyLabel = 'Nenhuma OF encontrada para este filtro.';
+        }
       } else {
         var grouped = {};
         var order = [];
@@ -27218,39 +27322,91 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           grouped = orderedSet;
           order = Object.keys(orderedSet);
         }
-        var blocks = document.createElement('div');
-        blocks.className = 'ofmaq-final-machine-blocks';
+        var existingBlocks = Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks'));
+        var blocks = existingBlocks.length ? existingBlocks[0] : null;
+        if (!blocks) {
+          blocks = document.createElement('div');
+          blocks.className = 'ofmaq-final-machine-blocks';
+          if (oldWrap) try { oldWrap.remove(); } catch (_) {}
+          var chipsEl2 = rootEl.querySelector('#ofmaq-final-redistribuicao, .ofmaq-final-redistribuicao');
+          if (chipsEl2 && chipsEl2.parentNode) chipsEl2.parentNode.insertBefore(blocks, chipsEl2.nextSibling);
+          else rootEl.appendChild(blocks);
+        }
+        var existingSections = blocks.querySelectorAll('section[data-maquina-bloco]');
+        var existingByMaq = {};
+        for (var _es = 0; _es < existingSections.length; _es++) {
+          var sec = existingSections[_es];
+          var mk = String(sec.getAttribute('data-maquina-bloco') || '');
+          existingByMaq[mk] = sec;
+        }
         if (!order.length) {
           blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
         } else {
-          blocks.innerHTML = order.map(function(maq) {
+          var frag = document.createDocumentFragment();
+          for (var _om = 0; _om < order.length; _om++) {
+            var maq = order[_om];
             var list = grouped[maq] || [];
             var qtd = list.reduce(function(s, r) { return s + (Number(r.quantidade || 0) || 0); }, 0);
             var tempo = list.reduce(function(s, r) { return s + (Number(r.tempoMin || 0) || 0); }, 0);
             var urg = list.filter(function(r) { return r.urgencia === 'urgente'; }).length;
-            return ''
-              + '<section class="ofmaq-final-machine-block" data-maquina-bloco="' + escAttr(maq) + '">'
-              + '  <div class="ofmaq-final-machine-header">'
-              + '    <div><h3>' + escH(maq) + '</h3><small>Fila da máquina em ' + escH(fmtDateBR(state.selectedDateIso || state.weekStartIso) + ' · sequência ajustável por OF') + '</small></div>'
-              + '    <div class="ofmaq-final-machine-stats">'
-              + '      <span class="ofmaq-final-machine-stat">OFs: <b>' + escH(String(list.length)) + '</b></span>'
-              + '      <span class="ofmaq-final-machine-stat">Caixas: <b>' + escH(fmtInt(qtd)) + '</b></span>'
-              + '      <span class="ofmaq-final-machine-stat">Tempo: <b>' + escH(fmtTempo(tempo)) + '</b></span>'
-              + (urg > 0 ? '<span class="ofmaq-final-machine-stat" style="border-color:rgba(248,113,113,.38);color:#fecaca">Urgentes: <b style="color:#fff1f2">' + escH(String(urg)) + '</b></span>' : '')
-              + '    </div>'
-              + '  </div>'
-              + '  <div class="ofmaq-final-table-wrap">'
-              + '    <table class="ofmaq-final-table">' + theadFixed
-              + '      <tbody>' + (list.length ? list.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>') + '</tbody>'
-              + '    </table>'
-              + '  </div>'
-              + '</section>';
-          }).join('');
+            var sectionEl = existingByMaq[maq];
+            if (!sectionEl) {
+              sectionEl = document.createElement('section');
+              sectionEl.className = 'ofmaq-final-machine-block';
+              sectionEl.setAttribute('data-maquina-bloco', maq);
+              sectionEl.innerHTML = ''
+                + '  <div class="ofmaq-final-machine-header">'
+                + '    <div><h3 class="ofmaq-maq-h"></h3><small class="ofmaq-maq-sub"></small></div>'
+                + '    <div class="ofmaq-final-machine-stats">'
+                + '      <span class="ofmaq-final-machine-stat">OFs: <b class="ofmaq-st-ofs"></b></span>'
+                + '      <span class="ofmaq-final-machine-stat">Caixas: <b class="ofmaq-st-cx"></b></span>'
+                + '      <span class="ofmaq-final-machine-stat">Tempo: <b class="ofmaq-st-tmp"></b></span>'
+                + '      <span class="ofmaq-final-machine-stat ofmaq-st-urg-wrap" style="display:none;border-color:rgba(248,113,113,.38);color:#fecaca">Urgentes: <b class="ofmaq-st-urg" style="color:#fff1f2"></b></span>'
+                + '    </div>'
+                + '  </div>'
+                + '  <div class="ofmaq-final-table-wrap">'
+                + '    <table class="ofmaq-final-table">' + theadFixed + '<tbody></tbody></table>'
+                + '  </div>';
+            }
+            var h3El = sectionEl.querySelector('.ofmaq-maq-h');
+            if (h3El) h3El.textContent = maq;
+            var subEl = sectionEl.querySelector('.ofmaq-maq-sub');
+            if (subEl) subEl.textContent = 'Fila da máquina em ' + fmtDateBR(state.selectedDateIso || state.weekStartIso) + ' · sequência ajustável por OF';
+            var stOfs = sectionEl.querySelector('.ofmaq-st-ofs');
+            if (stOfs) stOfs.textContent = String(list.length);
+            var stCx = sectionEl.querySelector('.ofmaq-st-cx');
+            if (stCx) stCx.textContent = fmtInt(qtd);
+            var stTmp = sectionEl.querySelector('.ofmaq-st-tmp');
+            if (stTmp) stTmp.textContent = fmtTempo(tempo);
+            var urgWrap = sectionEl.querySelector('.ofmaq-st-urg-wrap');
+            var stUrg = sectionEl.querySelector('.ofmaq-st-urg');
+            if (urgWrap) { urgWrap.style.display = urg > 0 ? '' : 'none'; }
+            if (stUrg && urg > 0) stUrg.textContent = String(urg);
+            var tb = sectionEl.querySelector('tbody');
+            if (tb) {
+              if (typeof _applyIncrementalTbody === 'function') _applyIncrementalTbody(tb, list);
+              else tb.innerHTML = list.length ? list.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>';
+            }
+            if (!sectionEl.parentNode) frag.appendChild(sectionEl);
+          }
+          var keptSet = {};
+          order.forEach(function(m) { keptSet[m] = true; });
+          var oldSecs = blocks.querySelectorAll('section[data-maquina-bloco]');
+          for (var _os = 0; _os < oldSecs.length; _os++) {
+            var mkOld = String(oldSecs[_os].getAttribute('data-maquina-bloco') || '');
+            if (!keptSet[mkOld]) try { oldSecs[_os].parentNode && oldSecs[_os].parentNode.removeChild(oldSecs[_os]); } catch (_) {}
+          }
+          if (frag.childNodes.length) blocks.appendChild(frag);
+          var curOrder = Array.prototype.slice.call(blocks.querySelectorAll('section[data-maquina-bloco]'));
+          var needReorder = false;
+          for (var _co = 0; _co < curOrder.length; _co++) { if (String(curOrder[_co].getAttribute('data-maquina-bloco')) !== order[_co]) { needReorder = true; break; } }
+          if (needReorder) {
+            for (var _re = 0; _re < order.length; _re++) {
+              var wantSec = existingByMaq[order[_re]] || blocks.querySelector('section[data-maquina-bloco="' + escAttr(order[_re]) + '"]');
+              if (wantSec) blocks.appendChild(wantSec);
+            }
+          }
         }
-        if (oldWrap) try { oldWrap.remove(); } catch (_) {}
-        var chipsEl2 = rootEl.querySelector('#ofmaq-final-redistribuicao, .ofmaq-final-redistribuicao');
-        if (chipsEl2 && chipsEl2.parentNode) chipsEl2.parentNode.insertBefore(blocks, chipsEl2.nextSibling);
-        else rootEl.appendChild(blocks);
         shell.tbody = null;
       }
       try { console.log('[OFMAQ-FINAL] showAll=', !!state.showAllMachines, 'maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
@@ -27669,6 +27825,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!machine) return;
         try {
           await moveRow(id, machine);
+          try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
           if (row) row.maquina = machine;
           if (row) row.order = nextOrderForMachineDay(machine, row.prazoIso, row.id);
           applyDisplaySeqToState();
@@ -27695,6 +27852,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
         try {
           await updateDate(id, value);
+          try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
           if (row) row.prazoIso = value;
           if (row) row.order = nextOrderForMachineDay(row.maquina, value, row.id);
           applyDisplaySeqToState();
@@ -27728,6 +27886,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
         try {
           await moveRowAndDate(id, machine, value);
+          try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
           if (row) {
             row.maquina = machine;
             row.prazoIso = value;
@@ -27792,6 +27951,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try {
           if (action === 'pass') {
             await markPassed(id, row.maquina);
+            try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
             closeModal('ofmaq-final-actions');
             state.machineCatalog = machineCatalogFromRows(state.rowsData);
             updateToolbar(ensureShell());
@@ -27807,6 +27967,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (action === 'toggle-urgency') {
             var nextUrgent = !(row && row.urgencia === 'urgente');
             await setUrgency(id, nextUrgent);
+            try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
             closeModal('ofmaq-final-actions');
             updateToolbar(ensureShell());
             renderRows(ensureShell());
@@ -27815,6 +27976,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
           if (action === 'sem-papel') {
             await window.toggleSemPapelOf(id, row && row.numero, null);
+            try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
             if (row && row.ofRaw) row.ofRaw.sem_papel = !row.ofRaw.sem_papel;
             closeModal('ofmaq-final-actions');
             updateToolbar(ensureShell());
@@ -27852,6 +28014,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               }
               var rSav = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySave });
               if (!rSav || !rSav.resp || !rSav.resp.ok || (rSav.data && rSav.data.ok === false)) throw new Error((rSav && rSav.data && (rSav.data.error || rSav.data.message)) || 'Falha ao salvar dados do papel');
+              try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
               if (row && row.ofRaw) {
                 row.ofRaw.papel_comprado = rawTxt ? rawTxt : null;
                 if (bodySave.previsao_entrega_papel) row.ofRaw.previsao_entrega_papel = bodySave.previsao_entrega_papel;
@@ -27871,6 +28034,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
           if (action === 'up' || action === 'down') {
             await reorderWithinDay(id, action === 'up' ? -1 : 1);
+            try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
             closeModal('ofmaq-final-actions');
           }
         } catch (err) {
@@ -28039,7 +28203,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var showAllBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-show-all') : null;
         if (showAllBtn) {
           state.showAllMachines = !state.showAllMachines;
-          if (!state.showAllMachines && !state.selectedMachine && state.machineCatalog.length) state.selectedMachine = state.machineCatalog[0];
+          state.selectedMachine = state.showAllMachines ? '__ALL__' : (state.machineCatalog[0] || null);
           updateToolbar(shell);
           renderRows(shell);
           return;
@@ -28082,7 +28246,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       shell.root.addEventListener('change', function(ev) {
         var select = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-machine') : null;
         if (select) {
-          state.selectedMachine = normalizeMachine(String(select.value || '').trim());
+          var rawVal = String(select.value || '').trim();
+          if (rawVal === '__ALL__') {
+            state.showAllMachines = true;
+            state.selectedMachine = '__ALL__';
+          } else {
+            state.showAllMachines = false;
+            state.selectedMachine = normalizeMachine(rawVal);
+          }
           updateToolbar(shell);
           renderRows(shell);
           return;
@@ -50927,6 +51098,9 @@ window._mbnActive = function(id) {
 
   async function _verificarOFsNovas() {
     if (_rodando) return;
+    try {
+      if (window.__OFMAQ_POLLING_SUSPEND_UNTIL && Date.now() < window.__OFMAQ_POLLING_SUSPEND_UNTIL) return;
+    } catch (_) {}
     _rodando = true;
     try {
       var token = '';
@@ -50974,7 +51148,7 @@ window._mbnActive = function(id) {
     }
   }
 
-  setInterval(_verificarOFsNovas, 30000);
+  setInterval(_verificarOFsNovas, 90000);
 })();
 
 (function patchBackupNotifEChapas() {
