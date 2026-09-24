@@ -26002,6 +26002,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function ensureDefaults() {
       if (!state.selectedDateIso) state.selectedDateIso = isoFromDate(currentBusinessDate());
       if (!state.weekStartIso) state.weekStartIso = weekStartIso(state.selectedDateIso);
+      if (!!state.showAllMachines && state.selectedMachine !== '__ALL__') state.selectedMachine = '__ALL__';
     }
 
     function normalizeMachine(raw) {
@@ -27124,6 +27125,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
         }
       } catch (_e) {}
+      if (!!state.showAllMachines) {
+        try {
+          if (shell.machine.options && shell.machine.options.length) {
+            shell.machine.options[0].setAttribute('value', '__ALL__');
+            shell.machine.options[0].setAttribute('selected', 'selected');
+            shell.machine.options[0].defaultSelected = true;
+            for (var _ak = 1; _ak < shell.machine.options.length; _ak++) {
+              shell.machine.options[_ak].removeAttribute('selected');
+              shell.machine.options[_ak].selected = false;
+            }
+            state.selectedMachine = '__ALL__';
+            shell.machine.value = '__ALL__';
+            shell.machine.selectedIndex = 0;
+          }
+        } catch (_ef) {}
+      }
       shell.machine.disabled = !!state.showAllMachines;
       shell.machine.style.opacity = state.showAllMachines ? '0.55' : '1';
       shell.machine.style.pointerEvents = state.showAllMachines ? 'none' : 'auto';
@@ -28231,6 +28248,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           state.selectedMachine = state.showAllMachines ? '__ALL__' : (state.machineCatalog[0] || null);
           updateToolbar(shell);
           renderRows(shell);
+          if (shell.machine && typeof MutationObserver !== 'undefined') {
+            try {
+              var until = Date.now() + 1500;
+              (function() {
+                if (!shell.machine || !shell.machine.options || !shell.machine.options[0]) return;
+                var opt0 = shell.machine.options[0];
+                var obs = new MutationObserver(function() {
+                  if (Date.now() > until) { try { obs.disconnect(); } catch (_) {} return; }
+                  if (!!state.showAllMachines) {
+                    try { if (opt0.getAttribute('value') !== '__ALL__') opt0.setAttribute('value', '__ALL__'); } catch (_) {}
+                    try { if (!opt0.defaultSelected) opt0.defaultSelected = true; } catch (_) {}
+                    try {
+                      if (shell.machine.selectedIndex !== 0) {
+                        state.selectedMachine = '__ALL__';
+                        shell.machine.value = '__ALL__';
+                        shell.machine.selectedIndex = 0;
+                      }
+                    } catch (_) {}
+                  }
+                });
+                obs.observe(shell.machine, { attributes: true, childList: true, subtree: true });
+                setTimeout(function() { try { obs.disconnect(); } catch (_) {} }, 1600);
+              })();
+            } catch (_obsErr) {}
+          }
+          setTimeout(function() {
+            if (!!state.showAllMachines) state.selectedMachine = '__ALL__';
+            updateToolbar(shell);
+            renderRows(shell);
+          }, 150);
           return;
         }
         var groupBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-group') : null;
@@ -28350,6 +28397,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
       state.rowsData = buildRowsFromOfs(rawRows);
       state.machineCatalog = machineCatalogFromRows(state.rowsData);
+      if (!!state.showAllMachines || state.selectedMachine === '__ALL__') state.selectedMachine = '__ALL__';
       state.lastFetchAt = now;
       try {
         var canonArr = Array.isArray(state.rowsData) ? state.rowsData.slice() : [];
