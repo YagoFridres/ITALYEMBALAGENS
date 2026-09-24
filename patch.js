@@ -56300,25 +56300,58 @@ function _ocultarGraficoComissoes() {
           _btnXl.style.cssText = 'background:#1e40af;color:#fff;border:1px solid #2563eb;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;margin-left:4px';
           _btnXl.addEventListener('click', function() {
             try {
-              var vArr = Array.isArray(window._comissoesSqlData && window._comissoesSqlData.vendedores) ? window._comissoesSqlData.vendedores : [];
-              var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-              var mesNome = meses[(parseInt(String(mes||'1'),10)||1)-1] || String(mes);
-              var periodo = mesNome + '/' + String(ano || new Date().getFullYear());
-              var rows = [['Vendedor','Base de Cálculo','Total Vendas no Período','% Custo Mercantil','Valor Comissão','Período Referência']];
-              vArr.forEach(function(v) {
-                var nome = String(v && (v.nome || v.vendedor) || '—').trim();
-                var total = Number(v && v.total || 0) || 0;
-                var pct = Number(v && v.comissao_pct || 0) || 0;
-                var comiss = Number(v && v.comissao_rs || 0) || 0;
-                rows.push([
-                  nome,
-                  total.toFixed(2),
-                  total.toFixed(2),
-                  pct.toFixed(2),
-                  comiss.toFixed(2),
-                  periodo
-                ]);
+              var ofsArr = Array.isArray(window._comissoesSqlData && window._comissoesSqlData.ofs) ? window._comissoesSqlData.ofs : [];
+              var _cliNome = function(of) {
+                return String((of && (
+                  (of.cliente != null && String(of.cliente).trim()) ||
+                  (of.cliente_nome != null && String(of.cliente_nome).trim()) ||
+                  (of.clinome != null && String(of.clinome).trim()) ||
+                  (of.cliNome != null && String(of.cliNome).trim()) ||
+                  (of.cliente_name != null && String(of.cliente_name).trim()) ||
+                  (of.__cliente_nome_view != null && String(of.__cliente_nome_view).trim()) ||
+                  (of._cliente_nome != null && String(of._cliente_nome).trim())
+                )) || '—').trim() || '—';
+              };
+              var _vendNome = function(of) {
+                var vid = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
+                var vendMap = window._vendedoresMap || {};
+                return String(
+                  (of && (of._vendedor_resolvido || of._vendedor_nome || of.vendedor))
+                  || vendMap[vid]
+                  || '—'
+                ).trim() || '—';
+              };
+              var _vtOf = function(of) {
+                var bruto = of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor_venda != null ? of.valor_venda : of.valor)));
+                return Number(bruto || 0) || 0;
+              };
+              var _ofNum = function(of) {
+                return String(of && (of.numero || of.of_numero) || '').trim();
+              };
+              var _linhasDados = ofsArr.map(function(of) {
+                var qtd = Number(of && (of.quantidade != null ? of.quantidade : of.qtd) || 0) || 0;
+                var valorTotal = _vtOf(of);
+                var vu = Number(of && of.valor_unitario || 0) || 0;
+                if (!vu && valorTotal && qtd > 0) vu = valorTotal / qtd;
+                return [
+                  _cliNome(of),
+                  qtd,
+                  vu,
+                  valorTotal,
+                  _vendNome(of),
+                  _ofNum(of)
+                ];
               });
+              _linhasDados.sort(function(a, b) {
+                var ca = String(a[0] || '').toLowerCase();
+                var cb = String(b[0] || '').toLowerCase();
+                var cmp = ca.localeCompare(cb, 'pt-BR');
+                if (cmp !== 0) return cmp;
+                var na = Number(String(a[5] || '0').replace(/[^0-9-]/g, '')) || 0;
+                var nb = Number(String(b[5] || '0').replace(/[^0-9-]/g, '')) || 0;
+                return na - nb;
+              });
+              var rows = [['Cliente','Quantidade de Caixas','Valor Unitário','Valor Total','Vendedor','Número da OF']].concat(_linhasDados);
               var csv = rows.map(function(r) {
                 return r.map(function(cell) {
                   var s = String(cell == null ? '' : cell);
