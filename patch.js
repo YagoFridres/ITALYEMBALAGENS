@@ -27096,15 +27096,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var count = Number(counts[day.iso] || 0) || 0;
         return '<button type="button" class="ofmaq-final-day-btn" data-date="' + escAttr(day.iso) + '" data-hot="' + (count > 0 ? '1' : '0') + '" data-active="' + (state.selectedDateIso === day.iso ? '1' : '0') + '">' + escH(day.label + ' ' + fmtDayShort(day.iso) + ' (' + count + ')') + '</button>';
       }).join('') + '<button type="button" data-week-shift="7">▶</button>';
-      var optAll = '<option value="__ALL__"' + (state.selectedMachine === '__ALL__' ? ' selected' : '') + '>Todas as máquinas</option>';
-      shell.machine.innerHTML = optAll + (state.machineCatalog.map(function(machine) {
-        return '<option value="' + escAttr(machine) + '"' + (machine === state.selectedMachine ? ' selected' : '') + '>' + escH(machine) + '</option>';
-      }).join('') || '<option value="">Sem máquina</option>');
+      var selectedForInner = state.selectedMachine === '__ALL__' ? '' : escAttr(state.selectedMachine || '');
+      var optAllHtml = '<option value="__ALL__"' + (state.selectedMachine === '__ALL__' ? ' selected="selected"' : '') + '>Todas as máquinas</option>';
+      var optsOthers = state.machineCatalog.map(function(machine) {
+        return '<option value="' + escAttr(machine) + '"' + (machine === state.selectedMachine ? ' selected="selected"' : '') + '>' + escH(machine) + '</option>';
+      }).join('');
+      shell.machine.innerHTML = optAllHtml + (optsOthers || '<option value="">Sem máquina</option>');
       try {
         if (shell.machine.options && shell.machine.options.length) {
           if (!!state.showAllMachines || shell.machine.disabled === true) state.selectedMachine = '__ALL__';
-          shell.machine.options[0].setAttribute('value', '__ALL__');
           if (state.selectedMachine === '__ALL__') {
+            if (shell.machine.options[0].getAttribute('value') !== '__ALL__') shell.machine.options[0].setAttribute('value', '__ALL__');
             shell.machine.options[0].setAttribute('selected', 'selected');
             shell.machine.options[0].defaultSelected = true;
             for (var _ai = 1; _ai < shell.machine.options.length; _ai++) {
@@ -27113,6 +27115,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             }
             shell.machine.selectedIndex = 0;
             shell.machine.value = '__ALL__';
+            if (shell.machine.options[0].getAttribute('value') !== '__ALL__') shell.machine.options[0].setAttribute('value', '__ALL__');
           } else if (String(state.selectedMachine || '').length) {
             shell.machine.options[0].removeAttribute('selected');
             shell.machine.options[0].defaultSelected = false;
@@ -27128,7 +27131,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!!state.showAllMachines) {
         try {
           if (shell.machine.options && shell.machine.options.length) {
-            shell.machine.options[0].setAttribute('value', '__ALL__');
+            if (shell.machine.options[0].getAttribute('value') !== '__ALL__') shell.machine.options[0].setAttribute('value', '__ALL__');
             shell.machine.options[0].setAttribute('selected', 'selected');
             shell.machine.options[0].defaultSelected = true;
             for (var _ak = 1; _ak < shell.machine.options.length; _ak++) {
@@ -27136,8 +27139,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               shell.machine.options[_ak].selected = false;
             }
             state.selectedMachine = '__ALL__';
-            shell.machine.value = '__ALL__';
             shell.machine.selectedIndex = 0;
+            shell.machine.value = '__ALL__';
+            if (shell.machine.options[0].getAttribute('value') !== '__ALL__') shell.machine.options[0].setAttribute('value', '__ALL__');
           }
         } catch (_ef) {}
       }
