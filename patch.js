@@ -25928,6 +25928,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return s.replace(/\s+/g, ' ');
     }
 
+    function _safeNumeroOfOrdem(v) {
+      var s = String(v == null ? '' : v).trim();
+      if (!s) return 0;
+      var dig = s.replace(/[^0-9]/g, '');
+      if (!dig) return 0;
+      var n = Number(dig);
+      return Number.isFinite(n) ? n : 0;
+    }
+
     function pad2(v) {
       return String(v || 0).padStart(2, '0');
     }
