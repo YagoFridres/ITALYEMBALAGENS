@@ -27100,14 +27100,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return '<option value="' + escAttr(machine) + '"' + (machine === state.selectedMachine ? ' selected' : '') + '>' + escH(machine) + '</option>';
       }).join('') || '<option value="">Sem máquina</option>');
       try {
-        if (state.selectedMachine === '__ALL__') {
-          if (shell.machine.options && shell.machine.options.length) {
-            shell.machine.options[0].value = '__ALL__';
-            shell.machine.options[0].selected = true;
-            for (var _ai = 1; _ai < shell.machine.options.length; _ai++) shell.machine.options[_ai].selected = false;
+        if (shell.machine.options && shell.machine.options.length) {
+          shell.machine.options[0].setAttribute('value', '__ALL__');
+          if (state.selectedMachine === '__ALL__') {
+            shell.machine.options[0].setAttribute('selected', 'selected');
+            shell.machine.options[0].defaultSelected = true;
+            for (var _ai = 1; _ai < shell.machine.options.length; _ai++) {
+              shell.machine.options[_ai].removeAttribute('selected');
+              shell.machine.options[_ai].selected = false;
+            }
+            shell.machine.selectedIndex = 0;
+            shell.machine.value = '__ALL__';
+          } else if (String(state.selectedMachine || '').length) {
+            shell.machine.options[0].removeAttribute('selected');
+            shell.machine.options[0].defaultSelected = false;
+            shell.machine.value = String(state.selectedMachine || '');
+            for (var _aj = 0; _aj < shell.machine.options.length; _aj++) {
+              shell.machine.options[_aj].selected = (shell.machine.options[_aj].value === shell.machine.value);
+              if (shell.machine.options[_aj].selected) shell.machine.options[_aj].setAttribute('selected', 'selected');
+              else shell.machine.options[_aj].removeAttribute('selected');
+            }
           }
-          shell.machine.selectedIndex = 0;
-          shell.machine.value = '__ALL__';
         }
       } catch (_e) {}
       shell.machine.disabled = !!state.showAllMachines;
@@ -27275,7 +27288,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       purgeLegacyViews();
       var rootEl = shell.root || getContainer();
       if (!rootEl) return;
-      Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks')).forEach(function(b) { try { b.remove(); } catch (_) {} });
       var oldWrap = rootEl.querySelector('.ofmaq-final-table-wrap');
       if (oldWrap) {
         var curThs = oldWrap.querySelectorAll('table thead th');
@@ -27304,6 +27316,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
       if (!state.showAllMachines) {
+        Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks')).forEach(function(b) { try { b.remove(); } catch (_) {} });
         if (!oldWrap) {
           oldWrap = document.createElement('div');
           oldWrap.className = 'ofmaq-final-table-wrap';
