@@ -27099,6 +27099,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       shell.machine.innerHTML = optAll + (state.machineCatalog.map(function(machine) {
         return '<option value="' + escAttr(machine) + '"' + (machine === state.selectedMachine ? ' selected' : '') + '>' + escH(machine) + '</option>';
       }).join('') || '<option value="">Sem máquina</option>');
+      try {
+        if (state.selectedMachine === '__ALL__') {
+          if (shell.machine.options && shell.machine.options.length) {
+            shell.machine.options[0].value = '__ALL__';
+            shell.machine.options[0].selected = true;
+            for (var _ai = 1; _ai < shell.machine.options.length; _ai++) shell.machine.options[_ai].selected = false;
+          }
+          shell.machine.selectedIndex = 0;
+          shell.machine.value = '__ALL__';
+        }
+      } catch (_e) {}
       shell.machine.disabled = !!state.showAllMachines;
       shell.machine.style.opacity = state.showAllMachines ? '0.55' : '1';
       shell.machine.style.pointerEvents = state.showAllMachines ? 'none' : 'auto';
