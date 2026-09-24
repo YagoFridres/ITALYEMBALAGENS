@@ -47529,60 +47529,53 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var s = String(t == null ? '' : t).trim();
         return !s || /^sem[\s_-]vendedor$/i.test(s) || /^vendedor\s*[-\u2014]?\s*$/i.test(s) || /^-+$/.test(s) || s === '\u2014' || s === '\u2013' || /^n\/a$/i.test(s);
       };
+      var _setVendCache = function(o, v) {
+        if (!o || typeof o !== 'object' || !v) return;
+        try { o._vendedor_resolvido = v; } catch (_e1) { try { Object.defineProperty(o, '_vendedor_resolvido', {value: v, writable: true, configurable: true}); } catch (_e1b) {} }
+        try { o._vendedor_nome = v; } catch (_e2) { try { Object.defineProperty(o, '_vendedor_nome', {value: v, writable: true, configurable: true}); } catch (_e2b) {} }
+      };
       var txt1 = String(of._vendedor_resolvido || '').trim(); if (txt1 && !_isVendBad(txt1)) return txt1;
       var txt2 = String(of._vendedor_nome || '').trim(); if (txt2 && !_isVendBad(txt2)) return txt2;
       var txt3 = String(of.vendedor_nome || '').trim(); if (txt3 && !_isVendBad(txt3)) return txt3;
       var txt4 = String(of.vendNome || '').trim(); if (txt4 && !_isVendBad(txt4)) return txt4;
-      var txt5 = String(of.vendedor || '').trim();
-      if (!_isVendBad(txt5)) return txt5;
+      var txt5 = String(of.vendedor || '').trim(); if (!_isVendBad(txt5)) return txt5;
       var id = String(of.vendedor_id || of.vendId || of.vend_id || of.vendid || '').trim();
       if (!id) return fb || (txt5 || 'Sem vendedor');
       var isUiid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
       if (!isUiid) return fb || (txt5 || 'Sem vendedor');
-      try {
-        if (Array.isArray(window.VENDEDORES) && window.VENDEDORES.length) {
-          var m = window.VENDEDORES.find(function(x){ return x && (String(x.id||x.uuid||x.codigo||'').trim() === id); });
-          var mn = m ? String(m.nome || m.label || m.vendedor || m.vendedor_nome || '').trim() : '';
-          if (mn && !_isVendBad(mn)) {
-            try { if (of && typeof of === 'object') { try { of._vendedor_resolvido = mn; of._vendedor_nome = mn; } catch(_a) { try { Object.defineProperty(of, '_vendedor_resolvido', {value: mn, writable: true, configurable: true}); Object.defineProperty(of, '_vendedor_nome', {value: mn, writable: true, configurable: true}); } catch(_b){} } } catch(_c){}
-            return mn;
-          }
-        }
-      } catch (_) {}
+      if (Array.isArray(window.VENDEDORES) && window.VENDEDORES.length) {
+        var m = null;
+        try { m = window.VENDEDORES.find(function(x){ return x && (String(x.id||x.uuid||x.codigo||'').trim() === id); }); } catch(_m1){}
+        var mn = m ? String(m.nome || m.label || m.vendedor || m.vendedor_nome || '').trim() : '';
+        if (mn && !_isVendBad(mn)) { _setVendCache(of, mn); return mn; }
+      }
       try {
         if (window._vendedoresMap && typeof window._vendedoresMap.get === 'function') {
-          var byId = null; try { byId = window._vendedoresMap.get(id); } catch(_m1){}
+          var byId = null; try { byId = window._vendedoresMap.get(id); } catch(_g1){}
           if (byId) {
             var nmr = typeof byId === 'string' ? byId : String(byId.nome || byId.vendedor || byId.vendedor_nome || '').trim();
-            if (nmr && !_isVendBad(nmr)) {
-              try { if (of && typeof of === 'object') { try { of._vendedor_resolvido = nmr; of._vendedor_nome = nmr; } catch(_d){} } catch(_e){}
-              return nmr;
-            }
+            if (nmr && !_isVendBad(nmr)) { _setVendCache(of, nmr); return nmr; }
           }
           try {
             var mapKeys = typeof window._vendedoresMap.keys === 'function' ? Array.from(window._vendedoresMap.keys()) : [];
-            if (Array.isArray(mapKeys) && mapKeys.length) {
+            if (mapKeys.length) {
               for (var kk = 0; kk < mapKeys.length; kk++) {
-                var kObj = null; try { kObj = window._vendedoresMap.get(mapKeys[kk]); } catch(_f){}
+                var kObj = null; try { kObj = window._vendedoresMap.get(mapKeys[kk]); } catch(_g2){}
                 if (kObj && typeof kObj === 'object' && String(kObj.id || '').trim() === id) {
                   var nmr2 = String(kObj.nome || kObj.vendedor || kObj.vendedor_nome || '').trim();
-                  if (nmr2 && !_isVendBad(nmr2)) {
-                    try { if (of && typeof of === 'object') { try { of._vendedor_resolvido = nmr2; of._vendedor_nome = nmr2; } catch(_g){} } catch(_h){}
-                    return nmr2;
-                  }
+                  if (nmr2 && !_isVendBad(nmr2)) { _setVendCache(of, nmr2); return nmr2; }
                 }
               }
             }
-          } catch (_iterErr) {}
+          } catch (_iter1) {}
         }
-      } catch (_) {}
+      } catch (_mv1) {}
       try {
         if (window.__VEND_CACHE instanceof Map) {
           var cch = window.__VEND_CACHE.get(id);
-          if (cch && typeof cch === 'string' && !_isVendBad(cch)) return cch;
+          if (typeof cch === 'string' && !_isVendBad(cch)) return cch;
         }
-      } catch (_) {}
-      try { if (!_isVendBad(txt5)) return txt5; } catch (_) {}
+      } catch (_vc1) {}
       return fb || (txt5 || 'Sem vendedor');
     } catch (_) { return (typeof fallbackTxt === 'string' ? fallbackTxt : 'Sem vendedor'); }
   }
