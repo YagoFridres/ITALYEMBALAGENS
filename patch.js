@@ -43109,13 +43109,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       host.id = 'patch-page-host';
       host.className = 'page';
       host.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:20px;background:var(--bg)';
-      host.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
-          '<h2 id="patch-page-title" style="margin:0;color:var(--text);font-size:18px"></h2>' +
-        '</div>' +
-        '<div id="patch-page-body"></div>';
       main.appendChild(host);
     }
+
+    try {
+      var _hasTitle = !!document.getElementById('patch-page-title');
+      var _hasBody = !!document.getElementById('patch-page-body');
+      if (!_hasTitle || !_hasBody) {
+        host.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
+            '<h2 id="patch-page-title" style="margin:0;color:var(--text);font-size:18px"></h2>' +
+          '</div>' +
+          '<div id="patch-page-body"></div>';
+      }
+    } catch (_) {}
 
     try {
       document.querySelectorAll('[id^="page-"]').forEach(function(el) {
@@ -43123,6 +43130,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     } catch (_) {}
     try { host.style.display = 'block'; } catch (_) {}
+    try { host.removeAttribute('hidden'); } catch (_) {}
     try { document.getElementById('patch-page-title').textContent = title || ''; } catch (_) {}
     try { window._PAGE_ATUAL = pageKey; } catch (_) {}
     try {
@@ -47096,6 +47104,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           window.renderPageCentralCustos(hostCC);
         } else {
           hostCC.innerHTML = '<div style="padding:30px;color:#f75a5a">Erro: Módulo Central de Custos não carregado. Tente recarregar a página (Ctrl+F5).</div>';
+        }
+        return;
+      }
+      if (page === 'relatorios') {
+        var _hostRel = getMainPatchHost('relatorios', '🖨 Central de Relatórios');
+        try {
+          var _hstRel = document.getElementById('patch-page-host');
+          if (_hstRel) { _hstRel.style.display = 'block'; _hstRel.removeAttribute('hidden'); }
+        } catch(_){}
+        var _relRendered = false;
+        if (typeof window.__patchRelatoriosReInit === 'function') {
+          try { window.__patchRelatoriosReInit(); _relRendered = true; } catch(_) {}
+        }
+        if (!_relRendered) {
+          try { if (typeof rrEnsureFreshPage === 'function') { rrEnsureFreshPage(true); _relRendered = true; } } catch(_) {}
+        }
+        if (!_relRendered && _hostRel) {
+          _hostRel.innerHTML = '<div style="padding:30px;color:#f75a5a">Erro: Módulo Relatórios não carregado. Tente recarregar a página (Ctrl+F5).</div>';
         }
         return;
       }
@@ -59393,8 +59419,9 @@ function _ocultarGraficoComissoes() {
           } else if ((rawPid === 'historico-passagens' || rawPid === 'passagens-hist' || rawPid === 'maquinas-periodo' || rawPid === 'historico') && typeof window._histBuscarHistoricoPassagens === 'function') {
             setTimeout(function(){ try { window._histBuscarHistoricoPassagens(true); } catch(_){} }, 40);
             setTimeout(function(){ try { window._histBuscarHistoricoPassagens(true); } catch(_){} }, 300);
-          } else if (rawPid === 'relatorios' && typeof window.__patchRelatoriosReInit === 'function') {
-            setTimeout(function(){ try { window.__patchRelatoriosReInit(); } catch(_){} }, 40);
+          } else if (rawPid === 'relatorios') {
+            setTimeout(function(){ try { if (typeof window.__patchRelatoriosReInit === 'function') window.__patchRelatoriosReInit(); else if (typeof rrEnsureFreshPage === 'function') rrEnsureFreshPage(true); } catch(_){} }, 40);
+            setTimeout(function(){ try { if (typeof window.__patchRelatoriosReInit === 'function') window.__patchRelatoriosReInit(); else if (typeof rrEnsureFreshPage === 'function') rrEnsureFreshPage(true); } catch(_){} }, 300);
           }
         } catch (_) {}
       }
@@ -63440,6 +63467,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
               var pb = document.getElementById('patch-page-body');
               if (pb) { while (pb.firstChild) pb.removeChild(pb.firstChild); pb.innerHTML = ''; }
             } catch (_lc){}
+          } else {
+            try {
+              var _ph2 = document.getElementById('patch-page-host');
+              if (_ph2) { _ph2.style.display = 'block'; _ph2.removeAttribute('hidden'); }
+            } catch (_lc2){}
           }
         } catch (_pre){}
         try { return origGo.apply(this, arguments); } catch (e1){ try { return origGo(arguments[0]); } catch(e2){ throw e1||e2;} }
