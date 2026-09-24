@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260924162000';
-const SW_RUNTIME_VERSION = '20260924162000';
+const PATCH_RUNTIME_VERSION = '20260924164000';
+const SW_RUNTIME_VERSION = '20260924164000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -3622,17 +3622,35 @@ app.put('/api/configuracoes/:chave', authMiddleware, requireAdmin, async (req, r
 app.get('/api/admin/sync-vendedores-ofs', requireAdmin, async (req, res) => {
   try {
     const _isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-    const { data: allOfs, error: errOfs } = await supabase.from('ofs').select('id,vendedor_id,vendId,vendid,vendedor,vendNome,vendedor_nome').limit(20000);
+    const _selectCompat = async () => {
+      let cur = 'id,vendedor_id,vendId,vendid,vendedor,vendNome';
+      for (let t = 0; t < 4; t++) {
+        const { data, error } = await supabase.from('ofs').select(cur).limit(20000);
+        if (!error) return { data: data || [], error: null };
+        const msg = String(error.message || error);
+        const m1 = msg.match(/Could not find the '([^']+)' column/i);
+        const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+        const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+        if (!col) return { data: null, error };
+        const parts = cur.split(',').map(s => s.trim()).filter(Boolean);
+        const next = parts.filter(c => c !== col);
+        if (!next.length || next.length === parts.length) return { data: null, error };
+        cur = next.join(',');
+      }
+      const { data, error } = await supabase.from('ofs').select('id,vendedor_id,vendedor,vendNome').limit(20000);
+      return { data: data || [], error };
+    };
+    const { data: allOfs, error: errOfs } = await _selectCompat();
     if (errOfs) return res.status(500).json({ ok: false, error: String(errOfs.message || errOfs) });
     const ofsArr = Array.isArray(allOfs) ? allOfs : [];
     const vidsUniques = Array.from(new Set(ofsArr.map((o) => String(o?.vendedor_id || o?.vendId || o?.vendid || '').trim()).filter((x) => _isUuid(x))));
     const vendMap = new Map();
     if (vidsUniques.length) {
-      const { data: vends, error: errV } = await supabase.from('vendedores').select('id,nome,rs,vendedor_nome,representante').in('id', vidsUniques).limit(vidsUniques.length + 10);
+      const { data: vends, error: errV } = await supabase.from('vendedores').select('id,nome,rs,representante').in('id', vidsUniques).limit(vidsUniques.length + 10);
       if (!errV && Array.isArray(vends)) {
         vends.forEach((v) => {
           if (!v || !v.id) return;
-          const nm = String(v.nome || v.rs || v.vendedor_nome || v.representante || '').trim();
+          const nm = String(v.nome || v.rs || v.representante || '').trim();
           if (nm) vendMap.set(String(v.id).trim(), nm);
         });
       }
@@ -3644,7 +3662,7 @@ app.get('/api/admin/sync-vendedores-ofs', requireAdmin, async (req, res) => {
     const detalhes_preview = [];
     ofsArr.forEach((of) => {
       const vid = String(of?.vendedor_id || of?.vendId || of?.vendid || '').trim();
-      const nomeAtualTexto = String(of?.vendedor || of?.vendNome || of?.vendedor_nome || '').trim();
+      const nomeAtualTexto = String(of?.vendedor || of?.vendNome || '').trim();
       const nomeEsperado = _isUuid(vid) ? (vendMap.get(vid) || '') : '';
       if (!nomeEsperado) return;
       if (!nomeAtualTexto || nomeAtualTexto.toLowerCase().indexOf('sem vend') >= 0 || nomeAtualTexto.toLowerCase() !== nomeEsperado.toLowerCase()) {
@@ -3653,8 +3671,9 @@ app.get('/api/admin/sync-vendedores-ofs', requireAdmin, async (req, res) => {
         if (detalhes_preview.length < 15) detalhes_preview.push({ id: of.id, vid, texto_atual: nomeAtualTexto || '', nome_esperado: nomeEsperado });
       }
     });
-    const dryRun = String(req.query?.dry || req.query?.dry_run || req.body?.dry || '').trim().toLowerCase();
-    if (dryRun === '1' || dryRun === 'true' || dryRun === 'sim' || !String(req.query?.confirmar || req.body?.confirmar || '').trim()) {
+    const confirmar = String(req.query?.confirmar || req.body?.confirmar || '').trim();
+    const dryRun = !confirmar || confirmar === '0' || confirmar.toLowerCase() === 'false' || confirmar.toLowerCase() === 'nao' || confirmar.toLowerCase() === 'não';
+    if (dryRun) {
       return res.json({
         ok: true,
         modo: 'dry_run',
@@ -3662,7 +3681,7 @@ app.get('/api/admin/sync-vendedores-ofs', requireAdmin, async (req, res) => {
         total_vendedores_resolvidos: vendMap.size,
         ofs_precisam_correcao: precisam,
         detalhes_preview,
-        proximo_passo: 'Chame novamente com ?confirmar=1 para executar o UPDATE em massa dos campos texto vendedor/vendNome/vendedor_nome.',
+        proximo_passo: 'Chame novamente com ?confirmar=1 para executar o UPDATE em massa dos campos texto vendedor/vendNome.',
       });
     }
     for (let i = 0; i < idsParaCorrigir.length; i++) {
@@ -3671,7 +3690,6 @@ app.get('/api/admin/sync-vendedores-ofs', requireAdmin, async (req, res) => {
         const { error: upErr } = await supabase.from('ofs').update({
           vendedor: row.nomeEsperado,
           vendNome: row.nomeEsperado,
-          vendedor_nome: row.nomeEsperado,
           updated_at: new Date().toISOString(),
         }).eq('id', row.id);
         if (upErr) { falhas += 1; } else { atualizadas += 1; }
@@ -10953,7 +10971,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
     const _vendedorIdBruto = body.vendedor_id != null ? String(body.vendedor_id || '').trim() || null : (body.vendId != null || body.vend_id != null ? String(body.vendId || body.vend_id || '').trim() || null : null);
     let _vendedorNomeResolvido = body.vendedor != null ? String(body.vendedor || '').trim() || '' : '';
-    if (!_vendedorNomeResolvido && !_vendedorIdBruto) _vendedorNomeResolvido = String(of?.vendedor || of?.vendNome || of?.vendedor_nome || '').trim() || '';
+    if (!_vendedorNomeResolvido && !_vendedorIdBruto) _vendedorNomeResolvido = String(of?.vendedor || of?.vendNome || '').trim() || '';
     const _empresaIdBruto = String(body.empresa_id || '').trim();
     let _empresaNomeResolvido = body.empresa != null ? String(body.empresa || '').trim() || '' : '';
     if (!_empresaNomeResolvido && _empresaIdBruto) {
@@ -10962,9 +10980,9 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
         'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack',
       };
-      _empresaNomeResolvido = EMP_MAP[_empresaIdBruto] || String(of?.empresa || of?.empNome || '').trim() || '';
+      _empresaNomeResolvido = EMP_MAP[_empresaIdBruto] || String(of?.empNome || '').trim() || '';
     }
-    if (!_empresaNomeResolvido) _empresaNomeResolvido = String(of?.empresa || of?.empNome || 'Italy Embalagens').trim() || 'Italy Embalagens';
+    if (!_empresaNomeResolvido) _empresaNomeResolvido = String(of?.empNome || 'Italy Embalagens').trim() || 'Italy Embalagens';
     try {
       if (_vendedorIdBruto && /^[0-9a-f-]{36}$/i.test(_vendedorIdBruto)) {
         const { data: _vendRow } = await supabase.from('vendedores').select('id,nome,rs,vendedor_nome,representante').eq('id', _vendedorIdBruto).maybeSingle().catch(() => ({ data: null, error: true }));
@@ -10994,9 +11012,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       vendedor_id: _vendedorIdBruto || (of?.vendedor_id ?? null),
       vendedor: _vendedorNomeResolvido || (of?.vendedor ?? null),
       vendNome: _vendedorNomeResolvido || (of?.vendNome ?? null),
-      vendedor_nome: _vendedorNomeResolvido || (of?.vendedor_nome ?? null),
       empresa_id: _empresaIdBruto || (of?.empresa_id ?? null),
-      empresa: _empresaNomeResolvido || (of?.empresa ?? null),
       empNome: _empresaNomeResolvido || (of?.empNome ?? null),
       qtd: qtdFinal,
       quantidade: qtdFinal,
