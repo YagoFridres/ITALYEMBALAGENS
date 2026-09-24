@@ -28427,7 +28427,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
         } catch (_) {}
       } catch (_) {}
-      if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
+      if (state.machineCatalog.length && state.selectedMachine !== '__ALL__' && !state.showAllMachines && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
       return state.rowsData;
     }
 
@@ -28491,14 +28491,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return String(a || '').localeCompare(String(b || ''), 'pt-BR');
       });
       state.machineCatalog = catalog.slice();
-      if (catalog.length && catalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = catalog[0];
+      if (catalog.length && state.selectedMachine !== '__ALL__' && !state.showAllMachines && catalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = catalog[0];
       try {
         var machineSelect = shell.root && shell.root.querySelector ? shell.root.querySelector('#ofmaq-final-machine') : null;
         if (machineSelect) {
-          machineSelect.innerHTML = ['<option value="">Todas as máquinas</option>'].concat(catalog.map(function(name) {
-            return '<option value="' + escAttrLocal(name) + '">' + escHLocal(name) + '</option>';
+          machineSelect.innerHTML = ['<option value="__ALL__"' + (!!state.showAllMachines || state.selectedMachine === '__ALL__' ? ' selected="selected"' : '') + '>Todas as máquinas</option>'].concat(catalog.map(function(name) {
+            return '<option value="' + escAttrLocal(name) + '"' + ((!state.showAllMachines && state.selectedMachine === name) ? ' selected="selected"' : '') + '>' + escHLocal(name) + '</option>';
           })).join('');
-          machineSelect.value = state.selectedMachine || '';
+          machineSelect.value = (!!state.showAllMachines || state.selectedMachine === '__ALL__') ? '__ALL__' : (state.selectedMachine || '');
+          if (!!state.showAllMachines || state.selectedMachine === '__ALL__') {
+            if (machineSelect.options && machineSelect.options[0] && machineSelect.options[0].getAttribute('value') !== '__ALL__') machineSelect.options[0].setAttribute('value', '__ALL__');
+            if (machineSelect.options && machineSelect.options[0]) machineSelect.options[0].selected = true;
+            machineSelect.selectedIndex = 0;
+          }
         }
       } catch (_) {}
       shell.tbody.innerHTML = rows.length
