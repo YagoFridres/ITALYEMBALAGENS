@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260923234000';
-const SW_RUNTIME_VERSION = '20260923234000';
+const PATCH_RUNTIME_VERSION = '20260924162000';
+const SW_RUNTIME_VERSION = '20260924162000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -3617,6 +3617,79 @@ app.put('/api/configuracoes/:chave', authMiddleware, requireAdmin, async (req, r
     if (error) throw error;
     return ok(res, data ? (data.valor ?? null) : valor);
   } catch (e) { return err(res, e); }
+});
+
+app.get('/api/admin/sync-vendedores-ofs', requireAdmin, async (req, res) => {
+  try {
+    const _isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+    const { data: allOfs, error: errOfs } = await supabase.from('ofs').select('id,vendedor_id,vendId,vendid,vendedor,vendNome,vendedor_nome').limit(20000);
+    if (errOfs) return res.status(500).json({ ok: false, error: String(errOfs.message || errOfs) });
+    const ofsArr = Array.isArray(allOfs) ? allOfs : [];
+    const vidsUniques = Array.from(new Set(ofsArr.map((o) => String(o?.vendedor_id || o?.vendId || o?.vendid || '').trim()).filter((x) => _isUuid(x))));
+    const vendMap = new Map();
+    if (vidsUniques.length) {
+      const { data: vends, error: errV } = await supabase.from('vendedores').select('id,nome,rs,vendedor_nome,representante').in('id', vidsUniques).limit(vidsUniques.length + 10);
+      if (!errV && Array.isArray(vends)) {
+        vends.forEach((v) => {
+          if (!v || !v.id) return;
+          const nm = String(v.nome || v.rs || v.vendedor_nome || v.representante || '').trim();
+          if (nm) vendMap.set(String(v.id).trim(), nm);
+        });
+      }
+    }
+    let precisam = 0;
+    let atualizadas = 0;
+    let falhas = 0;
+    const idsParaCorrigir = [];
+    const detalhes_preview = [];
+    ofsArr.forEach((of) => {
+      const vid = String(of?.vendedor_id || of?.vendId || of?.vendid || '').trim();
+      const nomeAtualTexto = String(of?.vendedor || of?.vendNome || of?.vendedor_nome || '').trim();
+      const nomeEsperado = _isUuid(vid) ? (vendMap.get(vid) || '') : '';
+      if (!nomeEsperado) return;
+      if (!nomeAtualTexto || nomeAtualTexto.toLowerCase().indexOf('sem vend') >= 0 || nomeAtualTexto.toLowerCase() !== nomeEsperado.toLowerCase()) {
+        precisam += 1;
+        idsParaCorrigir.push({ id: of.id, nomeEsperado });
+        if (detalhes_preview.length < 15) detalhes_preview.push({ id: of.id, vid, texto_atual: nomeAtualTexto || '', nome_esperado: nomeEsperado });
+      }
+    });
+    const dryRun = String(req.query?.dry || req.query?.dry_run || req.body?.dry || '').trim().toLowerCase();
+    if (dryRun === '1' || dryRun === 'true' || dryRun === 'sim' || !String(req.query?.confirmar || req.body?.confirmar || '').trim()) {
+      return res.json({
+        ok: true,
+        modo: 'dry_run',
+        total_ofs_lidas: ofsArr.length,
+        total_vendedores_resolvidos: vendMap.size,
+        ofs_precisam_correcao: precisam,
+        detalhes_preview,
+        proximo_passo: 'Chame novamente com ?confirmar=1 para executar o UPDATE em massa dos campos texto vendedor/vendNome/vendedor_nome.',
+      });
+    }
+    for (let i = 0; i < idsParaCorrigir.length; i++) {
+      const row = idsParaCorrigir[i];
+      try {
+        const { error: upErr } = await supabase.from('ofs').update({
+          vendedor: row.nomeEsperado,
+          vendNome: row.nomeEsperado,
+          vendedor_nome: row.nomeEsperado,
+          updated_at: new Date().toISOString(),
+        }).eq('id', row.id);
+        if (upErr) { falhas += 1; } else { atualizadas += 1; }
+      } catch (_) { falhas += 1; }
+    }
+    try { _clearOfsCaches(); } catch (_) {}
+    return res.json({
+      ok: true,
+      modo: 'executado',
+      total_ofs_lidas: ofsArr.length,
+      ofs_precisam_correcao: precisam,
+      ofs_atualizadas_sucesso: atualizadas,
+      ofs_falharam: falhas,
+      detalhes_preview,
+    });
+  } catch (eSync) {
+    return res.status(500).json({ ok: false, error: String(eSync?.message || eSync) });
+  }
 });
 
 app.get('/api/admin/maquinas_validas_ofs', requireAdmin, async (req, res) => {
@@ -10878,6 +10951,39 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     operadoresConclusao = (Array.isArray(operadoresConclusao) ? operadoresConclusao : []).filter(Boolean);
     operadoresConclusao = [...new Set(operadoresConclusao)];
 
+    const _vendedorIdBruto = body.vendedor_id != null ? String(body.vendedor_id || '').trim() || null : (body.vendId != null || body.vend_id != null ? String(body.vendId || body.vend_id || '').trim() || null : null);
+    let _vendedorNomeResolvido = body.vendedor != null ? String(body.vendedor || '').trim() || '' : '';
+    if (!_vendedorNomeResolvido && !_vendedorIdBruto) _vendedorNomeResolvido = String(of?.vendedor || of?.vendNome || of?.vendedor_nome || '').trim() || '';
+    const _empresaIdBruto = String(body.empresa_id || '').trim();
+    let _empresaNomeResolvido = body.empresa != null ? String(body.empresa || '').trim() || '' : '';
+    if (!_empresaNomeResolvido && _empresaIdBruto) {
+      const EMP_MAP = {
+        'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
+        'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
+        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack',
+      };
+      _empresaNomeResolvido = EMP_MAP[_empresaIdBruto] || String(of?.empresa || of?.empNome || '').trim() || '';
+    }
+    if (!_empresaNomeResolvido) _empresaNomeResolvido = String(of?.empresa || of?.empNome || 'Italy Embalagens').trim() || 'Italy Embalagens';
+    try {
+      if (_vendedorIdBruto && /^[0-9a-f-]{36}$/i.test(_vendedorIdBruto)) {
+        const { data: _vendRow } = await supabase.from('vendedores').select('id,nome,rs,vendedor_nome,representante').eq('id', _vendedorIdBruto).maybeSingle().catch(() => ({ data: null, error: true }));
+        if (_vendRow) {
+          const _nm = String(_vendRow.nome || _vendRow.rs || _vendRow.vendedor_nome || _vendRow.representante || '').trim();
+          if (_nm) _vendedorNomeResolvido = _nm;
+        }
+      }
+    } catch (_vendLookupErr) {}
+    if (!_vendedorNomeResolvido && of?.vendedor_id) {
+      try {
+        const { data: _vendRow2 } = await supabase.from('vendedores').select('id,nome,rs,vendedor_nome,representante').eq('id', String(of.vendedor_id || '').trim()).maybeSingle().catch(() => ({ data: null, error: true }));
+        if (_vendRow2) {
+          const _nm2 = String(_vendRow2.nome || _vendRow2.rs || _vendRow2.vendedor_nome || _vendRow2.representante || '').trim();
+          if (_nm2) _vendedorNomeResolvido = _nm2;
+        }
+      } catch (_vendLookupErr2) {}
+    }
+
     const updateData = {
       status: 'Concluído',
       setor_finalizacao: body.setor_finalizacao || null,
@@ -10885,9 +10991,16 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       caixas_perdidas: body.caixas_perdidas != null ? parseInt(body.caixas_perdidas, 10) : null,
       motivo_perda: body.motivo_perda || null,
       operador_conclusao: body.operador_conclusao || (operadoresConclusao[0] || null),
-      vendedor_id: body.vendedor_id != null ? String(body.vendedor_id || '').trim() || null : (body.vendId != null || body.vend_id != null ? String(body.vendId || body.vend_id || '').trim() || null : null),
+      vendedor_id: _vendedorIdBruto || (of?.vendedor_id ?? null),
+      vendedor: _vendedorNomeResolvido || (of?.vendedor ?? null),
+      vendNome: _vendedorNomeResolvido || (of?.vendNome ?? null),
+      vendedor_nome: _vendedorNomeResolvido || (of?.vendedor_nome ?? null),
+      empresa_id: _empresaIdBruto || (of?.empresa_id ?? null),
+      empresa: _empresaNomeResolvido || (of?.empresa ?? null),
+      empNome: _empresaNomeResolvido || (of?.empNome ?? null),
       qtd: qtdFinal,
       quantidade: qtdFinal,
+      qtd_pedida: body.qtd_pedida != null ? parseInt(body.qtd_pedida, 10) : (of?.qtd_pedida ?? (qtdFinal || null)),
       qtd_produzida: qtdFinal,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,

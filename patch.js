@@ -37965,7 +37965,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var porVendedor = {};
     var ordemVendedores = [];
     (json.ofs || []).forEach(function(of) {
-      var v = String(of && of.vendedor || 'Sem Vendedor').trim() || 'Sem Vendedor';
+      var v = __erpResolveVendedorNomeOF(of, 'Sem Vendedor');
       if (!porVendedor[v]) { porVendedor[v] = []; ordemVendedores.push(v); }
       porVendedor[v].push(of);
     });
@@ -47521,18 +47521,65 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return '—';
   }
 
-  function __dashGetVendedor(of) {
+  function __erpResolveVendedorNomeOF(of, fallbackTxt) {
     try {
-      var v = String(of && (of.vendedor || of.vendedor_nome || of.vend_nome || of.nome_vendedor || of.vendedorLabel || '') || '').trim();
-      if (v) return v;
-      var id = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
-      if (!id) return '—';
+      var fb = fallbackTxt != null ? String(fallbackTxt).trim() : '';
+      if (of == null) return fb || 'Sem vendedor';
+      var txt1 = String(of._vendedor_resolvido || '').trim(); if (txt1) return txt1;
+      var txt2 = String(of._vendedor_nome || '').trim(); if (txt2) return txt2;
+      var txt3 = String(of.vendedor_nome || '').trim(); if (txt3) return txt3;
+      var txt4 = String(of.vendNome || '').trim(); if (txt4) return txt4;
+      var txt5 = String(of.vendedor || '').trim();
+      var ehDefaultRuim = !txt5 || /^sem[\s_-]vendedor$/i.test(txt5) || /^-$/.test(txt5) || /^—$/.test(txt5);
+      if (!ehDefaultRuim) return txt5;
+      var id = String(of.vendedor_id || of.vendId || of.vend_id || of.vendid || '').trim();
+      if (!id) return fb || (txt5 || 'Sem vendedor');
+      var isUiid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+      if (!isUiid) return fb || (txt5 || 'Sem vendedor');
       try {
         if (Array.isArray(window.VENDEDORES) && window.VENDEDORES.length) {
-          var m = window.VENDEDORES.find(function(x) { return x && String(x.id || x.uuid || x.codigo || '').trim() === id; });
-          if (m && (m.nome || m.label)) return String(m.nome || m.label);
+          var m = window.VENDEDORES.find(function(x){ return x && (String(x.id||x.uuid||x.codigo||'').trim() === id); });
+          var mn = m ? String(m.nome || m.label || m.vendedor || m.vendedor_nome || '').trim() : '';
+          if (mn) { try { if (of && typeof of === 'object') { of._vendedor_resolvido = mn; of._vendedor_nome = mn; } } catch (_) {} return mn; }
         }
       } catch (_) {}
+      try {
+        if (window._vendedoresMap && typeof window._vendedoresMap.get === 'function') {
+          var byId = window._vendedoresMap.get(id);
+          if (byId) {
+            var nmr = typeof byId === 'string' ? byId : String(byId.nome || byId.vendedor || byId.vendedor_nome || '').trim();
+            if (nmr) { try { if (of && typeof of === 'object') { of._vendedor_resolvido = nmr; of._vendedor_nome = nmr; } } catch (_) {} return nmr; }
+          }
+          var keys = Object.keys(window._vendedoresMap);
+          if (Array.isArray(keys)) {
+            for (var kki = 0; kki < keys.length; kki++) {
+              var it = window._vendedoresMap[keys[kki]];
+              if (it && typeof it === 'object' && String(it.id || '').trim() === id) {
+                var nmr2 = String(it.nome || it.vendedor || it.vendedor_nome || '').trim();
+                if (nmr2) { try { if (of && typeof of === 'object') { of._vendedor_resolvido = nmr2; of._vendedor_nome = nmr2; } } catch (_) {} return nmr2; }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      try {
+        if (window.__VEND_CACHE instanceof Map) {
+          var cch = window.__VEND_CACHE.get(id);
+          if (cch) return cch;
+        }
+      } catch (_) {}
+      try { if (of && typeof of === 'object' && txt5) return txt5; } catch (_) {}
+      return fb || (txt5 || 'Sem vendedor');
+    } catch (_) { return (typeof fallbackTxt === 'string' ? fallbackTxt : 'Sem vendedor'); }
+  }
+  try { window.__erpResolveVendedorNomeOF = __erpResolveVendedorNomeOF; } catch (_) {}
+
+  function __dashGetVendedor(of) {
+    try {
+      var resolved = __erpResolveVendedorNomeOF(of, '—');
+      if (resolved && resolved !== '—' && resolved.toLowerCase() !== 'sem vendedor') return resolved;
+      var id = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
+      if (!id) return '—';
       return id.slice(0, 8);
     } catch (_) { return '—'; }
   }
@@ -52850,7 +52897,7 @@ function _ocultarGraficoComissoes() {
             + '<div><span style="color:#64748b">Valor:</span> <b style="color:#e2e8f0">' + _fmtMoney(of && (of.valor_total ?? of.valor_venda ?? 0)) + '</b></div>'
             + '<div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHtml(pickQtd(of)) + '</b></div>'
             + '<div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHtml(entrega ? fmtDateBrLocal(entrega) : '—') + '</b></div>'
-            + '<div><span style="color:#64748b">Vendedor:</span> <b style="color:#e2e8f0">' + escHtml(String(of && (of.vendNome || of.vendedor_nome || of.vendedor) || '—')) + '</b></div>'
+            + '<div><span style="color:#64748b">Vendedor:</span> <b style="color:#e2e8f0">' + escHtml(__erpResolveVendedorNomeOF(of, '—')) + '</b></div>'
             + '</div>'
             + '<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">'
             + '<button type="button" data-acao="concluir">✅ Concluir</button>'
@@ -53179,15 +53226,9 @@ function _ocultarGraficoComissoes() {
 
   function _resolverVendedor(of) {
     try {
-      if (!window._vendedoresMap) return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim() || '—';
-      var vid = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
-      var vnome = String(of && (of.vendedor || of.vendedor_nome || of.vendNome || '') || '').trim().toLowerCase();
-      return window._vendedoresMap[vid]
-        || window._vendedoresMap[vnome]
-        || String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim()
-        || '—';
+      return __erpResolveVendedorNomeOF(of, '—');
     } catch (_) {
-      return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim() || '—';
+      return __erpResolveVendedorNomeOF(of, '—');
     }
   }
 
@@ -54849,6 +54890,16 @@ function _ocultarGraficoComissoes() {
         if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         var empresaIdSel = String((empresaEl && empresaEl.value) || '').trim();
+        var empresaNomeSel = '';
+        if (empresaEl && empresaEl.options && empresaEl.selectedIndex >= 0) empresaNomeSel = String(empresaEl.options[empresaEl.selectedIndex].text || '').trim();
+        if (!empresaNomeSel && empresaIdSel) {
+          var EMP_MAP_LOCAL = {
+            'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
+            'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
+            'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack',
+          };
+          empresaNomeSel = EMP_MAP_LOCAL[empresaIdSel] || (String(of && (of.empresa || of.empNome || '') || '').trim() || 'Italy Embalagens');
+        }
         if (!empresaIdSel) { try { alert('Selecione a empresa proprietária da OF: Italy Embalagens, Cartoeste ou Oestepack.'); } catch (_) {} return; }
         if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
         if (!resumo.tipoCaixaValido) { try { alert('Selecione um tipo de caixa antes de concluir a OF.'); } catch (_) {} return; }
@@ -54863,6 +54914,11 @@ function _ocultarGraficoComissoes() {
         var tipoCaixaSel = resumo.tipoCaixa || currentTipoCaixa();
         var vendedorAtualSel = currentVendedor();
         var materiaPrima = resumo.materiaPrima || _calcularResumoMateriaPrimaConclusao(of, caixasProduzidas, gramaturaSel);
+        var vendNomeFinal = String(vendedorAtualSel && vendedorAtualSel.nome || '').trim();
+        if (!vendNomeFinal && of && (of.vendedor || of.vendedor_nome || of.vendNome)) vendNomeFinal = String(of.vendedor || of.vendedor_nome || of.vendNome || '').trim();
+        var vendIdFinal = String(vendedorAtualSel && vendedorAtualSel.id || '').trim();
+        if (!vendIdFinal && of && (of.vendedor_id || of.vendId || of.vend_id)) vendIdFinal = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+        var qtdPedidaDesejada = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0) || caixasProduzidas;
         var body = {
           status: 'Concluído',
           data_faturamento: dataFaturamento,
@@ -54871,6 +54927,9 @@ function _ocultarGraficoComissoes() {
           caixas_boas: caixasProduzidas,
           preco: precoUnitario,
           valor_unitario: precoUnitario,
+          quantidade: caixasProduzidas,
+          qtd: caixasProduzidas,
+          qtd_pedida: qtdPedidaDesejada,
           valor_total: resumo.novoTotal,
           valor_venda: resumo.novoTotal,
           usuario_conclusao: usuario,
@@ -54904,11 +54963,16 @@ function _ocultarGraficoComissoes() {
           }),
           operadores_conclusao: operadoresConclusao,
           operador_conclusao: operadoresConclusao[0] || null,
+          empresa_id: empresaIdSel || null,
+          empresa: empresaNomeSel || 'Italy Embalagens',
+          empNome: empresaNomeSel || 'Italy Embalagens',
+          vendedor_id: vendIdFinal || null,
+          vendedor: vendNomeFinal || null,
+          vendedor_nome: vendNomeFinal || null,
+          vendNome: vendNomeFinal || null,
+          vendId: vendIdFinal || null,
           _allow_partial: '1'
         };
-        if (vendedorAtualSel.id) body.vendedor_id = vendedorAtualSel.id;
-        if (vendedorAtualSel.nome) body.vendedor = vendedorAtualSel.nome;
-        body.empresa_id = empresaIdSel;
         // #region debug-point C:conclusao-of-payload-operadores
         try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'payload conclusao com operadores montado', { ofId: String(of && of.id || ofId || ''), operadoresConclusao: operadoresConclusao.slice(), perdasLen: perdas.length, perdas: perdas.map(function(perda) { return { maquina: String(perda && perda.maquina || ''), qtd: Number(perda && perda.qtd || 0) || 0, operadores: Array.isArray(perda && perda.operadores) ? perda.operadores.slice() : [] }; }) }); } catch (_) {}
         // #endregion
@@ -55759,7 +55823,7 @@ function _ocultarGraficoComissoes() {
     if (!grupos.length && ofsBase.length) {
       var mapa = Object.create(null);
       ofsBase.forEach(function(of) {
-        var nome = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || 'Sem vendedor').trim() || 'Sem vendedor';
+        var nome = __erpResolveVendedorNomeOF(of, 'Sem vendedor');
         if (!mapa[nome]) mapa[nome] = { vendedor: nome, total_vendas: 0, ofs: [] };
         mapa[nome].ofs.push(of);
         mapa[nome].total_vendas += Number(of && (of.valor_total != null ? of.valor_total : of.total) || 0) || 0;
@@ -55849,7 +55913,7 @@ function _ocultarGraficoComissoes() {
         if (nome) return nome;
       }
     } catch (_) {}
-    return String(of && (of.vendedor_nome || of.vendNome || of.vendedor || '') || '').trim();
+    return String(__erpResolveVendedorNomeOF(of, '') || '').trim();
   }
   function _comStatusConcluida(of) {
     return String(of && of.status || '').toLowerCase().indexOf('conclu') >= 0;
