@@ -42856,7 +42856,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var backupArr2 = null;
         try {
           if (Array.isArray(window.CLIENTES)) {
-            backupArr = window.CLIENTES;
+            backupArr = window.CLIENTES.slice();
             if (hasFilter) {
               window.CLIENTES = backupArr.filter(function(c) {
                 var ok = true;
@@ -42873,7 +42873,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             }
           }
           if (Array.isArray(window._CLIENTES)) {
-            backupArr2 = window._CLIENTES;
+            backupArr2 = window._CLIENTES.slice();
             if (hasFilter) {
               try { window._CLIENTES = window.CLIENTES; } catch (_) {}
             }
