@@ -64077,6 +64077,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
               removerLinha(rid, rowAtual || {});
             };
           });
+          Array.prototype.slice.call(tbody.querySelectorAll('input[type=\"checkbox\"][data-op-field=\"ativo\"]')).forEach(function(chk) {
+            chk.addEventListener('change', function() {
+              try {
+                var rowEl = chk.closest && chk.closest('tr');
+                var rid = rowEl ? String(rowEl.getAttribute('data-op-id') || '').trim() : '';
+                if (!rid) return;
+                var saveBtn = rowEl ? rowEl.querySelector('[data-op-save]') : null;
+                if (saveBtn && typeof saveBtn.onclick === 'function') {
+                  saveBtn.onclick();
+                }
+              } catch (_) {}
+            }, false);
+          });
         } catch (_) {}
       }
 
