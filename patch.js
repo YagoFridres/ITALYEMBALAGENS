@@ -42852,10 +42852,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { fCidade = String((document.getElementById('cli-cidade') || {}).value || '').trim().toLowerCase(); } catch (_) {}
         try { fUf = String((document.getElementById('cli-uf') || {}).value || '').trim().toUpperCase(); } catch (_) {}
         var hasFilter = (fCidade && fCidade.length >= 1) || (fUf && fUf.length >= 2);
-        if (!hasFilter) return orig.apply(this, arguments);
         var backup = null;
         try {
-          if (Array.isArray(window.CLIENTES)) {
+          if (hasFilter && Array.isArray(window.CLIENTES)) {
             backup = window.CLIENTES;
             window.CLIENTES = backup.filter(function(c) {
               var ok = true;
@@ -42869,18 +42868,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               }
               return ok;
             });
+            if (Array.isArray(window._CLIENTES)) {
+              try { window._CLIENTES = window.CLIENTES; } catch (_) {}
+            }
           }
-          if (Array.isArray(window._CLIENTES)) {
-            try { window._CLIENTES = window.CLIENTES; } catch (_) {}
+          var result = orig.apply(this, arguments);
+          if (backup) {
+            var bkp = backup;
+            setTimeout(function() {
+              try { window.CLIENTES = bkp; } catch (_) {}
+              try { window._CLIENTES = bkp; } catch (_) {}
+            }, 250);
           }
-        } catch (_) { backup = null; }
-        try {
-          return orig.apply(this, arguments);
-        } finally {
+          return result;
+        } catch (e) {
           if (backup) {
             try { window.CLIENTES = backup; } catch (_) {}
             try { window._CLIENTES = backup; } catch (_) {}
           }
+          throw e;
         }
       };
       wrapped._patchFiltrosCidadeUf = true;
