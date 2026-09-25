@@ -41672,21 +41672,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _resetFiltrosClientes() {
     try {
-      var sit = document.querySelector('#cli-sit');
-      if (sit) {
-        sit.value = '';
-        try { sit.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
-      var ramo = document.querySelector('#cli-ramo');
-      if (ramo) {
-        ramo.value = '';
-        try { ramo.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
-      var emp = document.querySelector('#cli-emp-fil');
-      if (emp) {
-        emp.value = '';
-        try { emp.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
+      ['#cli-busca', '#cli-cidade', '#cli-uf', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
+        var el = document.querySelector(s);
+        if (!el) return;
+        el.value = '';
+        try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+        try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      });
       if (typeof renderClientes === 'function') {
         try { renderClientes(); } catch (_) {}
       }
@@ -41706,7 +41698,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       btn.textContent = 'Ver Todos';
       btn.onclick = async function() {
         try {
-          ['#cli-busca', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
+          ['#cli-busca', '#cli-cidade', '#cli-uf', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
             var el = document.querySelector(s);
             if (!el) return;
             el.value = '';
@@ -42746,7 +42738,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { if (typeof _cliBusca !== 'undefined') _cliBusca = ''; } catch (_) {}
       try { if (typeof window._cliBusca !== 'undefined') window._cliBusca = ''; } catch (_) {}
 
-      ['#cli-busca', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
+      ['#cli-busca', '#cli-cidade', '#cli-uf', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
         try {
           var el = document.querySelector(s);
           if (!el) return;
@@ -42803,6 +42795,99 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }, true);
   }
 
+  function ensureClientesFiltrosCidadeUf() {
+    try {
+      var toolbar = document.querySelector('#page-clientes .ptoolbar');
+      if (!toolbar) return;
+      var buscaEl = document.getElementById('cli-busca');
+      if (!buscaEl) return;
+      if (document.getElementById('cli-cidade')) return;
+      var inputStyle = 'background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);';
+      var inputCidade = document.createElement('input');
+      inputCidade.id = 'cli-cidade';
+      inputCidade.type = 'text';
+      inputCidade.placeholder = '🏙 Cidade...';
+      inputCidade.setAttribute('style', inputStyle + 'width:140px;');
+      inputCidade.setAttribute('list', 'cad-cidades-datalist');
+      inputCidade.setAttribute('autocomplete', 'off');
+      inputCidade.oninput = function() {
+        try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+      };
+      inputCidade.onchange = inputCidade.oninput;
+      var inputUf = document.createElement('input');
+      inputUf.id = 'cli-uf';
+      inputUf.type = 'text';
+      inputUf.placeholder = 'UF';
+      inputUf.setAttribute('style', inputStyle + 'width:56px;text-transform:uppercase;');
+      inputUf.setAttribute('list', 'cad-estados-datalist');
+      inputUf.setAttribute('maxlength', '2');
+      inputUf.setAttribute('autocomplete', 'off');
+      inputUf.oninput = function() {
+        try { this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2); } catch (_) {}
+        try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+      };
+      inputUf.onchange = inputUf.oninput;
+      if (buscaEl.nextSibling) {
+        toolbar.insertBefore(inputCidade, buscaEl.nextSibling);
+      } else {
+        toolbar.appendChild(inputCidade);
+      }
+      if (inputCidade.nextSibling) {
+        toolbar.insertBefore(inputUf, inputCidade.nextSibling);
+      } else {
+        toolbar.appendChild(inputUf);
+      }
+      try { if (typeof _cadAtualizarDatalists === 'function') _cadAtualizarDatalists(); } catch (_) {}
+    } catch (_) {}
+  }
+
+  function wrapRenderClientesComFiltrosAvancados() {
+    try {
+      if (typeof window.renderClientes !== 'function') return;
+      if (window.renderClientes._patchFiltrosCidadeUf) return;
+      var orig = window.renderClientes;
+      var wrapped = function() {
+        var fCidade = '';
+        var fUf = '';
+        try { fCidade = String((document.getElementById('cli-cidade') || {}).value || '').trim().toLowerCase(); } catch (_) {}
+        try { fUf = String((document.getElementById('cli-uf') || {}).value || '').trim().toUpperCase(); } catch (_) {}
+        var hasFilter = (fCidade && fCidade.length >= 1) || (fUf && fUf.length >= 2);
+        if (!hasFilter) return orig.apply(this, arguments);
+        var backup = null;
+        try {
+          if (Array.isArray(window.CLIENTES)) {
+            backup = window.CLIENTES;
+            window.CLIENTES = backup.filter(function(c) {
+              var ok = true;
+              if (fCidade) {
+                var cid = String((c && (c.cidade || c.cidade_entrega || '')) || '').toLowerCase();
+                if (cid.indexOf(fCidade) < 0) ok = false;
+              }
+              if (ok && fUf && fUf.length >= 2) {
+                var uf = String((c && (c.uf || c.estado || '')) || '').toUpperCase();
+                if (uf.indexOf(fUf) < 0) ok = false;
+              }
+              return ok;
+            });
+          }
+          if (Array.isArray(window._CLIENTES)) {
+            try { window._CLIENTES = window.CLIENTES; } catch (_) {}
+          }
+        } catch (_) { backup = null; }
+        try {
+          return orig.apply(this, arguments);
+        } finally {
+          if (backup) {
+            try { window.CLIENTES = backup; } catch (_) {}
+            try { window._CLIENTES = backup; } catch (_) {}
+          }
+        }
+      };
+      wrapped._patchFiltrosCidadeUf = true;
+      window.renderClientes = wrapped;
+    } catch (_) {}
+  }
+
   function tick() {
     try {
       (function patchClientesSimplificarBarra() {
@@ -42813,7 +42898,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             st.textContent =
               '#page-clientes .ptoolbar #patch-cli-ver-todos{display:none!important;visibility:hidden!important;width:0!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}' +
               '#page-clientes .ptoolbar #patch-cli-quick-filters{display:none!important;visibility:hidden!important;width:0!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}' +
-              '#page-clientes #cli-busca{display:block!important;visibility:visible!important;width:100%!important;min-width:220px!important}';
+              '#page-clientes #cli-busca{display:block!important;visibility:visible!important;width:100%!important;min-width:220px!important}' +
+              '#page-clientes #cli-cidade{display:inline-block!important;visibility:visible!important}' +
+              '#page-clientes #cli-uf{display:inline-block!important;visibility:visible!important}';
             document.head.appendChild(st);
           }
           try { var vt = document.getElementById('patch-cli-ver-todos'); if (vt && vt.parentNode) vt.parentNode.removeChild(vt); } catch (_) {}
@@ -42828,6 +42915,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { ensureBtnMesclarClientes(); } catch (_) {}
     try { ensureBtnNovoCliente(); } catch (_) {}
     try { ensureClientesQuickFiltersNoTopo(); } catch (_) {}
+    try { ensureClientesFiltrosCidadeUf(); } catch (_) {}
+    try { wrapRenderClientesComFiltrosAvancados(); } catch (_) {}
     try { patchRenderClientesBadge(); } catch (_) {}
     try { _adicionarBadgeOfs(); } catch (_) {}
     try { patchSalvarAntiDuploClique(); } catch (_) {}

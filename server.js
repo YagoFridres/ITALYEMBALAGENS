@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260925095500';
-const SW_RUNTIME_VERSION = '20260925095500';
+const PATCH_RUNTIME_VERSION = '20260925104500';
+const SW_RUNTIME_VERSION = '20260925104500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -14395,6 +14395,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
     const qBusca = String(req.query.search || req.query.q || '').trim();
+    const qCidade = String(req.query.cidade || '').trim();
+    const qUf = String(req.query.uf || req.query.estado || '').trim();
+    const qRamo = String(req.query.ramo || req.query.ramo_atividade || '').trim();
     const incluirInativos = String(req.query.incluir_inativos || '').trim().toLowerCase() === 'true';
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 2000, 2000);
@@ -14404,6 +14407,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       'clientes_',
       empId || 'all',
       qBusca || '',
+      qCidade || '',
+      qUf || '',
+      qRamo || '',
       lite ? 'lite1' : 'lite0',
       incluirInativos ? 'inclui_inativos1' : 'inclui_inativos0',
       hasPaging ? ('p' + offset + ':' + limit) : 'full',
@@ -14521,6 +14527,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         let q = supabase.from('clientes').select(selectCols).order(orderCol, { ascending: orderAsc });
         if (col) q = q.eq(col, empId);
         if (qBusca) q = q.ilike('nome', `%${qBusca}%`);
+        if (qCidade) q = q.ilike('cidade', `%${qCidade}%`);
+        if (qUf) q = q.ilike('uf', `%${qUf}%`);
+        if (qRamo) q = q.ilike('ramo', `%${qRamo}%`);
         // Mantemos clientes inativos disponíveis para comissões quando solicitado.
         if (incluirInativos) {
           // intencionalmente sem filtro por ativo (inclui inativos para tela Comissões/histórico)
@@ -14658,6 +14667,94 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     }
     throw lastErr;
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/clientes/autocomplete/cidade', authMiddleware, async (req, res) => {
+  try {
+    const q = String(req.query.q || req.query.busca || '').trim();
+    const cacheKey = 'cli_ac_cid_' + (q || 'ALL');
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+    let query = supabase
+      .from('clientes')
+      .select('cidade')
+      .not('cidade', 'is', null)
+      .neq('cidade', '')
+      .order('cidade', { ascending: true });
+    if (q) query = query.ilike('cidade', `%${q}%`);
+    const { data, error } = await query.limit(100);
+    if (error) throw error;
+    const seen = new Set();
+    const list = [];
+    for (const row of (data || [])) {
+      const v = String(row.cidade || '').trim();
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      list.push(v);
+    }
+    list.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const out = { ok: true, data: list.slice(0, 100) };
+    try { cacheSet(cacheKey, out, 5 * 60 * 1000); } catch (_) {}
+    return res.json(out);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/clientes/autocomplete/uf', authMiddleware, async (req, res) => {
+  try {
+    const cacheKey = 'cli_ac_uf';
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('uf')
+      .not('uf', 'is', null)
+      .neq('uf', '')
+      .order('uf', { ascending: true })
+      .limit(100);
+    if (error) throw error;
+    const seen = new Set();
+    const list = [];
+    for (const row of (data || [])) {
+      const v = String(row.uf || '').trim().toUpperCase().slice(0, 2);
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      list.push(v);
+    }
+    list.sort();
+    const out = { ok: true, data: list };
+    try { cacheSet(cacheKey, out, 10 * 60 * 1000); } catch (_) {}
+    return res.json(out);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/clientes/autocomplete/ramo', authMiddleware, async (req, res) => {
+  try {
+    const q = String(req.query.q || req.query.busca || '').trim();
+    const cacheKey = 'cli_ac_ramo_' + (q || 'ALL');
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+    let query = supabase
+      .from('clientes')
+      .select('ramo')
+      .not('ramo', 'is', null)
+      .neq('ramo', '')
+      .order('ramo', { ascending: true });
+    if (q) query = query.ilike('ramo', `%${q}%`);
+    const { data, error } = await query.limit(100);
+    if (error) throw error;
+    const seen = new Set();
+    const list = [];
+    for (const row of (data || [])) {
+      const v = String(row.ramo || '').trim();
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      list.push(v);
+    }
+    list.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const out = { ok: true, data: list.slice(0, 100) };
+    try { cacheSet(cacheKey, out, 5 * 60 * 1000); } catch (_) {}
+    return res.json(out);
+  } catch (e) { return err(res, e); }
 });
 
 app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
