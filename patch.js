@@ -42916,8 +42916,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { ensureBtnNovoCliente(); } catch (_) {}
     try { ensureClientesQuickFiltersNoTopo(); } catch (_) {}
     try { ensureClientesFiltrosCidadeUf(); } catch (_) {}
-    try { wrapRenderClientesComFiltrosAvancados(); } catch (_) {}
     try { patchRenderClientesBadge(); } catch (_) {}
+    try { wrapRenderClientesComFiltrosAvancados(); } catch (_) {}
     try { _adicionarBadgeOfs(); } catch (_) {}
     try { patchSalvarAntiDuploClique(); } catch (_) {}
     try { patchFetchClientesAfterPost(); } catch (_) {}
