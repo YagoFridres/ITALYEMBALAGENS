@@ -42881,12 +42881,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var result = orig.apply(this, arguments);
           var bkp = backupArr;
           var bkp2 = backupArr2;
-          setTimeout(function() {
+          var _restore = function() {
             try {
               if (bkp) window.CLIENTES = bkp;
               if (bkp2) window._CLIENTES = bkp2;
             } catch (_) {}
-          }, 300);
+          };
+          setTimeout(_restore, 200);
+          setTimeout(_restore, 600);
+          setTimeout(_restore, 1200);
           return result;
         } catch (e) {
           try {
