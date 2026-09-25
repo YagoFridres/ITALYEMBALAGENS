@@ -42852,40 +42852,47 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { fCidade = String((document.getElementById('cli-cidade') || {}).value || '').trim().toLowerCase(); } catch (_) {}
         try { fUf = String((document.getElementById('cli-uf') || {}).value || '').trim().toUpperCase(); } catch (_) {}
         var hasFilter = (fCidade && fCidade.length >= 1) || (fUf && fUf.length >= 2);
-        var backup = null;
+        var backupArr = null;
+        var backupArr2 = null;
         try {
-          if (hasFilter && Array.isArray(window.CLIENTES)) {
-            backup = window.CLIENTES;
-            window.CLIENTES = backup.filter(function(c) {
-              var ok = true;
-              if (fCidade) {
-                var cid = String((c && (c.cidade || c.cidade_entrega || '')) || '').toLowerCase();
-                if (cid.indexOf(fCidade) < 0) ok = false;
-              }
-              if (ok && fUf && fUf.length >= 2) {
-                var uf = String((c && (c.uf || c.estado || '')) || '').toUpperCase();
-                if (uf.indexOf(fUf) < 0) ok = false;
-              }
-              return ok;
-            });
-            if (Array.isArray(window._CLIENTES)) {
+          if (Array.isArray(window.CLIENTES)) {
+            backupArr = window.CLIENTES;
+            if (hasFilter) {
+              window.CLIENTES = backupArr.filter(function(c) {
+                var ok = true;
+                if (fCidade) {
+                  var cid = String((c && (c.cidade || c.cidade_entrega || '')) || '').toLowerCase();
+                  if (cid.indexOf(fCidade) < 0) ok = false;
+                }
+                if (ok && fUf && fUf.length >= 2) {
+                  var uf = String((c && (c.uf || c.estado || '')) || '').toUpperCase();
+                  if (uf.indexOf(fUf) < 0) ok = false;
+                }
+                return ok;
+              });
+            }
+          }
+          if (Array.isArray(window._CLIENTES)) {
+            backupArr2 = window._CLIENTES;
+            if (hasFilter) {
               try { window._CLIENTES = window.CLIENTES; } catch (_) {}
             }
           }
           var result = orig.apply(this, arguments);
-          if (backup) {
-            var bkp = backup;
-            setTimeout(function() {
-              try { window.CLIENTES = bkp; } catch (_) {}
-              try { window._CLIENTES = bkp; } catch (_) {}
-            }, 250);
-          }
+          var bkp = backupArr;
+          var bkp2 = backupArr2;
+          setTimeout(function() {
+            try {
+              if (bkp) window.CLIENTES = bkp;
+              if (bkp2) window._CLIENTES = bkp2;
+            } catch (_) {}
+          }, 300);
           return result;
         } catch (e) {
-          if (backup) {
-            try { window.CLIENTES = backup; } catch (_) {}
-            try { window._CLIENTES = backup; } catch (_) {}
-          }
+          try {
+            if (backupArr) window.CLIENTES = backupArr;
+            if (backupArr2) window._CLIENTES = backupArr2;
+          } catch (_) {}
           throw e;
         }
       };
