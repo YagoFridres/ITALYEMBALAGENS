@@ -42846,10 +42846,74 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof window.renderClientes !== 'function') return;
       if (window.renderClientes._patchFiltrosCidadeUf) return;
       var orig = window.renderClientes;
-      var wrapped = function() {
-        if (wrapped._emSegundoRender) {
-          return orig.apply(this, arguments);
+      var _filtroRodandoAtual = null;
+      function _extrairCidadeUfCardHtml(htmlTxt) {
+        var txt = String(htmlTxt || '').toLowerCase();
+        var mCidade = txt.match(/([a-zà-úçãõâêôíúÃÕÂÊÔÍÚ][a-zà-úçãõâêôíúÃÕÂÊÔÍÚ\s'\-]{1,60})[\/·\-]\s*([a-z]{2})(?:[^a-z]|$)/i);
+        var r = { cidade: '', uf: '' };
+        if (mCidade && mCidade[1] && mCidade[2]) {
+          r.cidade = mCidade[1].trim();
+          r.uf = mCidade[2].toUpperCase();
         }
+        return r;
+      }
+      function _aplicarFiltroDOMCliente(fCidade, fUf, rodada) {
+        try {
+          var gridEl = document.getElementById('cli-grid');
+          if (!gridEl || !gridEl.children || !gridEl.children.length) return;
+          fCidade = String(fCidade || '').trim().toLowerCase();
+          fUf = String(fUf || '').trim().toUpperCase();
+          var temCidade = fCidade.length >= 1;
+          var temUf = fUf.length >= 2;
+          if (!temCidade && !temUf) return;
+          var backupArr = _filtroRodandoAtual && _filtroRodandoAtual.backup;
+          var mapCli = null;
+          if (Array.isArray(backupArr)) {
+            mapCli = {};
+            backupArr.forEach(function(c) {
+              var k = String((c && (c.id || c.uuid || c.codigo || '')) || '').trim();
+              if (!k) return;
+              mapCli[k] = c;
+            });
+          }
+          var filhos = Array.prototype.slice.call(gridEl.children);
+          var totalOriginal = filhos.length;
+          var mantidos = 0;
+          for (var i = 0; i < filhos.length; i++) {
+            var el = filhos[i];
+            if (!el || !el.parentNode) continue;
+            var manter = true;
+            var txt = (el.innerText || el.textContent || '').toString();
+            var elHtml = txt;
+            var idAttr = String(el.getAttribute('data-id') || el.getAttribute('data-cliente-id') || el.getAttribute('id') || '').trim();
+            var cObj = null;
+            if (idAttr && mapCli) cObj = mapCli[idAttr] || null;
+            var cidadeCard = '';
+            var ufCard = '';
+            if (cObj) {
+              cidadeCard = String((cObj.cidade || cObj.cidade_entrega || '') || '').toLowerCase();
+              ufCard = String((cObj.uf || cObj.estado || '') || '').toUpperCase();
+            }
+            if (!cidadeCard || !ufCard) {
+              var extraido = _extrairCidadeUfCardHtml(elHtml);
+              if (!cidadeCard) cidadeCard = extraido.cidade.toLowerCase();
+              if (!ufCard) ufCard = extraido.uf.toUpperCase();
+            }
+            if (temCidade) {
+              if (cidadeCard.indexOf(fCidade) < 0) manter = false;
+            }
+            if (manter && temUf) {
+              if (ufCard.indexOf(fUf) < 0) manter = false;
+            }
+            if (!manter) {
+              try { if (el.parentNode) el.parentNode.removeChild(el); } catch (_) {}
+            } else {
+              mantidos++;
+            }
+          }
+        } catch (_) {}
+      }
+      var wrapped = function() {
         var fCidade = '';
         var fUf = '';
         try { fCidade = String((document.getElementById('cli-cidade') || {}).value || '').trim().toLowerCase(); } catch (_) {}
@@ -42858,30 +42922,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var backupArr = null;
         var backupArr2 = null;
         try {
-          if (Array.isArray(window.CLIENTES)) {
-            backupArr = window.CLIENTES.slice();
-            if (hasFilter) {
-              window.CLIENTES = backupArr.filter(function(c) {
-                var ok = true;
-                if (fCidade) {
-                  var cid = String((c && (c.cidade || c.cidade_entrega || '')) || '').toLowerCase();
-                  if (cid.indexOf(fCidade) < 0) ok = false;
-                }
-                if (ok && fUf && fUf.length >= 2) {
-                  var uf = String((c && (c.uf || c.estado || '')) || '').toUpperCase();
-                  if (uf.indexOf(fUf) < 0) ok = false;
-                }
-                return ok;
-              });
-            }
-          }
-          if (Array.isArray(window._CLIENTES)) {
-            backupArr2 = window._CLIENTES.slice();
-            if (hasFilter) {
-              try { window._CLIENTES = window.CLIENTES; } catch (_) {}
-            }
-          }
-          var result = orig.apply(this, arguments);
+          if (Array.isArray(window.CLIENTES)) backupArr = window.CLIENTES.slice();
+          if (Array.isArray(window._CLIENTES)) backupArr2 = window._CLIENTES.slice();
           var bkp = backupArr;
           var bkp2 = backupArr2;
           var _restore = function() {
@@ -42890,40 +42932,30 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (bkp2) window._CLIENTES = bkp2;
             } catch (_) {}
           };
-          if (hasFilter && bkp) {
-            (function(bkp, bkp2, fCidade, fUf, args) {
+          _filtroRodandoAtual = { backup: bkp, cidade: fCidade, uf: fUf, ts: Date.now() };
+          var result = orig.apply(this, arguments);
+          if (hasFilter) {
+            var t0 = _filtroRodandoAtual ? _filtroRodandoAtual.ts : 0;
+            (function(fCid, fUf, tokenTs) {
+              [250, 1000, 2200, 3400].forEach(function(d) {
+                setTimeout(function() {
+                  try {
+                    if (!_filtroRodandoAtual || _filtroRodandoAtual.ts !== tokenTs) return;
+                    _aplicarFiltroDOMCliente(fCid, fUf);
+                  } catch (_) {}
+                }, d);
+              });
               setTimeout(function() {
                 try {
-                  var filtrado = bkp.filter(function(c) {
-                    var ok = true;
-                    if (fCidade) {
-                      var cid = String((c && (c.cidade || c.cidade_entrega || '')) || '').toLowerCase();
-                      if (cid.indexOf(fCidade) < 0) ok = false;
-                    }
-                    if (ok && fUf && fUf.length >= 2) {
-                      var uf = String((c && (c.uf || c.estado || '')) || '').toUpperCase();
-                      if (uf.indexOf(fUf) < 0) ok = false;
-                    }
-                    return ok;
-                  });
-                  if (Array.isArray(window.CLIENTES)) window.CLIENTES = filtrado;
-                  if (Array.isArray(window._CLIENTES) && bkp2) {
-                    try { window._CLIENTES = filtrado; } catch (_) {}
-                  }
-                  try {
-                    wrapped._emSegundoRender = true;
-                    wrapped.apply(window, args || []);
-                  } finally {
-                    wrapped._emSegundoRender = false;
-                  }
-                  setTimeout(_restore, 1500);
+                  if (_filtroRodandoAtual && _filtroRodandoAtual.ts === tokenTs) _restore();
                 } catch (_) {}
-              }, 1600);
-            })(bkp, bkp2, fCidade, fUf, Array.prototype.slice.call(arguments));
+              }, 4000);
+            })(fCidade, fUf, t0);
           } else {
-            setTimeout(_restore, 300);
+            setTimeout(_restore, 250);
             setTimeout(_restore, 800);
             setTimeout(_restore, 1500);
+            setTimeout(_restore, 2800);
           }
           return result;
         } catch (e) {
