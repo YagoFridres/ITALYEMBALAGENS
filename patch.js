@@ -42847,6 +42847,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (window.renderClientes._patchFiltrosCidadeUf) return;
       var orig = window.renderClientes;
       var wrapped = function() {
+        if (wrapped._emSegundoRender) {
+          return orig.apply(this, arguments);
+        }
         var fCidade = '';
         var fUf = '';
         try { fCidade = String((document.getElementById('cli-cidade') || {}).value || '').trim().toLowerCase(); } catch (_) {}
@@ -42887,9 +42890,41 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (bkp2) window._CLIENTES = bkp2;
             } catch (_) {}
           };
-          setTimeout(_restore, 200);
-          setTimeout(_restore, 600);
-          setTimeout(_restore, 1200);
+          if (hasFilter && bkp) {
+            (function(bkp, bkp2, fCidade, fUf, args) {
+              setTimeout(function() {
+                try {
+                  var filtrado = bkp.filter(function(c) {
+                    var ok = true;
+                    if (fCidade) {
+                      var cid = String((c && (c.cidade || c.cidade_entrega || '')) || '').toLowerCase();
+                      if (cid.indexOf(fCidade) < 0) ok = false;
+                    }
+                    if (ok && fUf && fUf.length >= 2) {
+                      var uf = String((c && (c.uf || c.estado || '')) || '').toUpperCase();
+                      if (uf.indexOf(fUf) < 0) ok = false;
+                    }
+                    return ok;
+                  });
+                  if (Array.isArray(window.CLIENTES)) window.CLIENTES = filtrado;
+                  if (Array.isArray(window._CLIENTES) && bkp2) {
+                    try { window._CLIENTES = filtrado; } catch (_) {}
+                  }
+                  try {
+                    wrapped._emSegundoRender = true;
+                    wrapped.apply(window, args || []);
+                  } finally {
+                    wrapped._emSegundoRender = false;
+                  }
+                  setTimeout(_restore, 1500);
+                } catch (_) {}
+              }, 1600);
+            })(bkp, bkp2, fCidade, fUf, Array.prototype.slice.call(arguments));
+          } else {
+            setTimeout(_restore, 300);
+            setTimeout(_restore, 800);
+            setTimeout(_restore, 1500);
+          }
           return result;
         } catch (e) {
           try {
