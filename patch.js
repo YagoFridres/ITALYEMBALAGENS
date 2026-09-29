@@ -3908,6 +3908,7 @@ try {
         + '      <option value="E2">Cartoeste</option>'
         + '      <option value="E3">Oestepack</option>'
         + '    </select>'
+        + '    <button type="button" id="rr-perdas-imprimir" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px" disabled>🖨 Gerar Relatório</button>'
         + '    <button type="button" id="rr-perdas-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
         + '    <button type="button" id="rr-perdas-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
         + '  </div>'
@@ -3923,6 +3924,73 @@ try {
       var inputAno = card.querySelector('#rr-perdas-ano');
       var selEmp = card.querySelector('#rr-perdas-empresa');
       var btnBuscar = card.querySelector('#rr-perdas-buscar');
+      var btnImprimir = card.querySelector('#rr-perdas-imprimir');
+      var __lastPerdasPayload = null;
+
+      function _rrPerdasFmtEmpresa(fid) {
+        var f = String(fid || '').toUpperCase();
+        if (!f || f === 'ALL') return 'Todas as empresas (Soma)';
+        if (f === 'E1') return 'Italy Embalagens';
+        if (f === 'E2') return 'Cartoeste';
+        if (f === 'E3') return 'Oestepack';
+        return 'Empresa: ' + f;
+      }
+
+      function _rrPerdasGerarRelatorio() {
+        try {
+          if (!__lastPerdasPayload) {
+            if (typeof window.toastMod === 'function') window.toastMod('Busque os dados antes de gerar o relatório.', 'warn');
+            return;
+          }
+          var p = __lastPerdasPayload;
+          var tot = p.tot;
+          var ranking = p.ranking;
+          var top3 = p.top3;
+          var totPeriodoProd = Number(tot.total_qtd_produzida || 0);
+          var totPeriodoPerda = Number(tot.total_qtd_perdida || 0);
+          var perdaPct = totPeriodoProd + totPeriodoPerda > 0
+            ? Number(((totPeriodoPerda / (totPeriodoProd + totPeriodoPerda)) * 100).toFixed(2))
+            : 0;
+          var periodoLabel = String(p.mes).padStart(2, '0') + '/' + p.ano + ' · ' + _rrPerdasFmtEmpresa(p.empId);
+          var cards = [
+            { label: 'Período', value: String(p.mes).padStart(2, '0') + '/' + p.ano, sub: _rrPerdasFmtEmpresa(p.empId) },
+            { label: 'Caixas Produzidas', value: fmtNum.format(totPeriodoProd), sub: 'Valor: ' + fmtBRL.format(Number(tot.total_valor_produzido || 0)) },
+            { label: 'Caixas Perdidas', value: fmtNum.format(totPeriodoPerda), sub: 'Valor: ' + fmtBRL.format(Number(tot.total_valor_perdido || 0)) + ' · Perda: ' + perdaPct.toFixed(2).replace('.', ',') + '%' },
+            { label: 'OFs Contabilizadas', value: fmtNum.format(Number(tot.total_ofs || 0)), sub: ranking.length + ' operador(es) listado(s)' }
+          ];
+          if (top3 && top3.length > 0) {
+            cards.push({
+              label: '🏆 Top 1 Operador',
+              value: esc(String(top3[0].operador || '—')),
+              sub: fmtNum.format(Number(top3[0].qtd_produzida || 0)) + ' cx · ' + fmtBRL.format(Number(top3[0].valor_produzido || 0))
+            });
+          }
+          var detailHeaders = ['Operador', 'Caixas Produzidas', 'Valor Produzido', 'Caixas Perdidas', 'Valor Perdido', 'OFs', '% Perda'];
+          var detailRows = ranking.map(function(r) {
+            return [
+              esc(r.operador || '—'),
+              esc(fmtNum.format(Number(r.qtd_produzida || 0))),
+              esc(fmtBRL.format(Number(r.valor_produzido || 0))),
+              esc(fmtNum.format(Number(r.qtd_perdida || 0))),
+              esc(fmtBRL.format(Number(r.valor_perdido || 0))),
+              esc(fmtNum.format(Number(r.qtd_ofs || 0))),
+              esc(Number(r.pct_perda || 0).toFixed(2).replace('.', ',') + '%')
+            ];
+          });
+          rrOpenPrint({
+            title: 'Perdas por Operador — ' + String(p.mes).padStart(2, '0') + '/' + p.ano,
+            periodo: periodoLabel,
+            cards: cards,
+            detailTitle: 'Ranking de Produção + Perdas por Operador',
+            detailHeaders: detailHeaders,
+            detailRows: detailRows,
+            emptyDetailCols: detailHeaders.length
+          });
+        } catch (e) {
+          console.error('[RR-PerdasOperador][imprimir]', e);
+          try { alert('Erro ao gerar relatório de perdas: ' + String(e && e.message || e)); } catch (_) {}
+        }
+      }
 
       function carregarPerdas(mes, ano) {
         if (!body) return;
@@ -3945,6 +4013,8 @@ try {
             var perdaPct = totPeriodoProd + totPeriodoPerda > 0
               ? Number(((totPeriodoPerda / (totPeriodoProd + totPeriodoPerda)) * 100).toFixed(2))
               : 0;
+            __lastPerdasPayload = { resp: resp, tot: tot, ranking: ranking, top3: top3, mes: mes, ano: ano, empId: empId, totalPeriodoProd: totPeriodoProd, totalPeriodoPerda: totPeriodoPerda, perdaPct: perdaPct };
+            if (btnImprimir) { btnImprimir.disabled = false; btnImprimir.style.opacity = '1'; }
 
             var rowsHtml = ranking.map(function(r, idx) {
               var rowStyle = idx % 2 === 0 ? 'background:rgba(255,255,255,.015)' : 'background:transparent';
@@ -3991,6 +4061,7 @@ try {
           });
       }
 
+      if (btnImprimir) btnImprimir.onclick = function() { _rrPerdasGerarRelatorio(); };
       if (btnBuscar) btnBuscar.onclick = function() {
         try {
           var m = Number(selMes ? selMes.value : 0);
@@ -4031,6 +4102,7 @@ try {
         + '      <option value="E3">Oestepack</option>'
         + '    </select>'
         + '    <input type="number" id="rr-resumo-anual-ano" min="2020" max="2040" step="1" value="' + anoDefault + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700;width:110px" />'
+        + '    <button type="button" id="rr-resumo-anual-imprimir" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px" disabled>🖨 Gerar Relatório</button>'
         + '    <button type="button" id="rr-resumo-anual-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
         + '    <button type="button" id="rr-resumo-anual-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
         + '  </div>'
@@ -4044,6 +4116,73 @@ try {
       var body = card.querySelector('#rr-resumo-anual-body');
       var inputAno = card.querySelector('#rr-resumo-anual-ano');
       var btnBuscar = card.querySelector('#rr-resumo-anual-buscar');
+      var btnImprimir = card.querySelector('#rr-resumo-anual-imprimir');
+      var __lastResumoAnualPayload = null;
+
+      function _rrAnualFmtEmpresa(fid) {
+        var f = String(fid || '').toUpperCase();
+        if (!f || f === 'ALL') return 'Todas as empresas (Soma)';
+        if (f === 'E1') return 'Italy Embalagens';
+        if (f === 'E2') return 'Cartoeste';
+        if (f === 'E3') return 'Oestepack';
+        return 'Empresa: ' + f;
+      }
+
+      function _rrAnualGerarRelatorio() {
+        try {
+          if (!__lastResumoAnualPayload) {
+            if (typeof window.toastMod === 'function') window.toastMod('Busque os dados antes de gerar o relatório.', 'warn');
+            return;
+          }
+          var p = __lastResumoAnualPayload;
+          var r = p.resp.resumo_anual || {};
+          var meses = Array.isArray(p.resp.meses) ? p.resp.meses : [];
+          var totalValorMeses = meses.reduce(function(s, m) { return s + Number(m.valor_vendido || 0); }, 0);
+          var totalCaixasMeses = meses.reduce(function(s, m) { return s + Number(m.caixas_produzidas || 0); }, 0);
+          var totalTonMeses = meses.reduce(function(s, m) { return s + Number(m.toneladas || 0); }, 0);
+          var periodoLabel = 'Ano ' + p.ano + ' · ' + _rrAnualFmtEmpresa(p.empId);
+          var cards = [
+            { label: 'Ano', value: esc(p.ano), sub: _rrAnualFmtEmpresa(p.empId) },
+            { label: 'Valor Vendido', value: fmtBRL.format(Number(r.valor_vendido || 0)), sub: 'Soma meses: ' + fmtBRL.format(totalValorMeses) },
+            { label: 'Caixas Produzidas', value: fmtNum.format(Number(r.caixas_produzidas || 0)), sub: 'Soma meses: ' + fmtNum.format(totalCaixasMeses) },
+            { label: 'Toneladas', value: fmtTon.format(Number(r.toneladas || 0)) + ' T', sub: 'Soma meses: ' + fmtTon.format(totalTonMeses) + ' T' },
+            { label: 'Valor Perdido', value: fmtBRL.format(Number(r.valor_perdido || 0)), sub: fmtNum.format(Number(r.caixas_perdidas || 0)) + ' cx · Perda: ' + Number(r.perda_pct || 0).toFixed(2).replace('.', ',') + '%' },
+            { label: 'OFs Concluídas', value: fmtNum.format(Number(r.total_ofs || 0)), sub: 'Cx/OF: ' + Number(r.caixas_por_of || 0).toFixed(2).replace('.', ',') },
+            { label: 'Clientes Atendidos', value: fmtNum.format(Number(r.clientes_distintos || 0)), sub: 'Ticket médio: ' + fmtBRL.format(Number(r.ticket_medio || 0)) }
+          ];
+          if (r.top_cliente_nome) {
+            cards.push({
+              label: '🏆 Cliente TOP 1',
+              value: esc(String(r.top_cliente_nome || '—')),
+              sub: fmtBRL.format(Number(r.top_cliente_valor || 0)) + ' · ' + fmtNum.format(Number(r.top_cliente_ofs || 0)) + ' OFs'
+            });
+          }
+          var detailHeaders = ['Mês', 'Valor Vendido', 'Caixas', 'Toneladas', 'Valor Perdido', 'Caixas Perdidas', 'OFs'];
+          var detailRows = meses.map(function(m) {
+            return [
+              esc(String(m.mes_numero || '').padStart(2, '0') + '. ' + (m.mes_label || '')),
+              esc(fmtBRL.format(Number(m.valor_vendido || 0))),
+              esc(fmtNum.format(Number(m.caixas_produzidas || 0))),
+              esc(fmtTon.format(Number(m.toneladas || 0)) + ' T'),
+              esc(fmtBRL.format(Number(m.valor_perdido || 0))),
+              esc(fmtNum.format(Number(m.caixas_perdidas || 0))),
+              esc(fmtNum.format(Number(m.total_ofs || 0)))
+            ];
+          });
+          rrOpenPrint({
+            title: 'Resumo Anual — ' + p.ano,
+            periodo: periodoLabel,
+            cards: cards,
+            detailTitle: 'Detalhamento Mês a Mês (Janeiro a Dezembro)',
+            detailHeaders: detailHeaders,
+            detailRows: detailRows,
+            emptyDetailCols: detailHeaders.length
+          });
+        } catch (e) {
+          console.error('[RR-ResumoAnual][imprimir]', e);
+          try { alert('Erro ao gerar relatório anual: ' + String(e && e.message || e)); } catch (_) {}
+        }
+      }
 
       function carregarResumoAnual(ano) {
         if (!body) return;
@@ -4062,6 +4201,9 @@ try {
             var totalCaixasMeses = meses.reduce(function(s, m) { return s + Number(m.caixas_produzidas || 0); }, 0);
             var totalTonMeses = meses.reduce(function(s, m) { return s + Number(m.toneladas || 0); }, 0);
             var totalPerdasMeses = meses.reduce(function(s, m) { return s + Number(m.valor_perdido || 0); }, 0);
+            __lastResumoAnualPayload = { resp: resp, ano: ano, empId: empId };
+            try { window.__lastResumoAnual = resp; } catch (_) {}
+            if (btnImprimir) { btnImprimir.disabled = false; btnImprimir.style.opacity = '1'; }
             var mesesHtml = meses.map(function(m, idx) {
               var rowStyle = idx % 2 === 0 ? 'background:rgba(255,255,255,.015)' : 'background:transparent';
               return ''
@@ -4110,6 +4252,7 @@ try {
           });
       }
 
+      if (btnImprimir) btnImprimir.onclick = function() { _rrAnualGerarRelatorio(); };
       if (btnBuscar) btnBuscar.onclick = function() {
         try {
           var a = Number(inputAno ? inputAno.value : 0);
