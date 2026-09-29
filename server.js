@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260929120000';
-const SW_RUNTIME_VERSION = '20260929120000';
+const PATCH_RUNTIME_VERSION = '20260929162000';
+const SW_RUNTIME_VERSION = '20260929162000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2784,13 +2784,24 @@ function _vendasOficialDentroDoPeriodo(of, range = {}) {
   return true;
 }
 
-async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
+async function _listarOfsVendasOficiais(range = {}, empresaId = '', colsExtras = null) {
   const rows = [];
   const PAGE = 1000;
+  const colsBase = ['id','numero','of','status','deleted_at','empresa_id','emp_id','cli_id','data_faturamento','data_conclusao','dia','created_at','valor_total'];
+  const colsArr = colsBase.slice();
+  if (Array.isArray(colsExtras) && colsExtras.length) {
+    colsExtras.forEach((c) => {
+      const col = String(c || '').trim();
+      if (!col) return;
+      if (colsArr.includes(col)) return;
+      if (_ofsSelectableHas(col)) colsArr.push(col);
+    });
+  }
+  const selectStr = colsArr.join(',');
   for (let offset = 0; offset < 50000; offset += PAGE) {
     let query = supabase
       .from('ofs')
-      .select('id,numero,of,status,deleted_at,empresa_id,emp_id,cli_id,data_faturamento,data_conclusao,dia,created_at,valor_total')
+      .select(selectStr)
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
       .range(offset, offset + PAGE - 1);
@@ -7798,87 +7809,199 @@ app.get('/api/relatorios/frequencia-compra-clientes', authMiddleware, async (req
 app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-
-    const anoDefault = new Date().getFullYear();
-    const ano = Math.trunc(Number(req?.query?.ano ?? anoDefault)) || anoDefault;
-
-    let empresa_id = null;
-    let companyIds = [];
-    const temFiltroEmpresaManual = !!String(
-      req?.query?.empId ||
-      req?.query?.emp_id ||
-      req?.query?.empresa_id ||
-      req?.query?.empresaId ||
-      req?.headers?.['x-emp-id'] ||
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { res.setHeader('Vary','Accept-Encoding, Authorization, Accept'); } catch (_) {}
+    try { res.setHeader('X-Accel-Expires','0'); } catch (_) {}
+    try { res.setHeader('X-Robots-Tag','noindex'); } catch (_) {}
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('rel_'); } catch (_) {}
+    const anoRaw = Number(req.query?.ano || 0);
+    const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : new Date().getFullYear();
+    const empParam = String(
+      req.query?.emp_id ||
+      req.query?.empId ||
+      req.query?.empresa_id ||
+      req.query?.empresaId ||
+      req.headers?.['x-emp-id'] ||
       ''
-    ).trim();
-    try {
-      empresa_id = await _resolveEmpresaUuid(req);
-    } catch (_) { empresa_id = null; }
-    if (temFiltroEmpresaManual && empresa_id) {
-      companyIds = [empresa_id];
+    ).trim().toUpperCase();
+    let companyIds;
+    let filtroRetorno = null;
+    if (empParam === 'ALL') {
+      companyIds = [
+        'df5f7672-0a6b-402d-ae65-296554236c31',
+        'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+      ];
+      filtroRetorno = 'ALL';
     } else {
-      empresa_id = null;
-      companyIds = [];
+      let empresa_id = null;
+      try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+      companyIds = empresa_id ? [empresa_id] : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+      filtroRetorno = empParam || empresa_id || null;
+    }
+    const range = {
+      inicio: `${ano}-01-01`,
+      fim: `${ano}-12-31`,
+      fim_exclusivo: `${ano + 1}-01-01`
+    };
+    const isTodasEmpresas = !empParam || empParam === 'ALL' || !companyIds || companyIds.length === 0 || companyIds.length === _RELATORIOS_EMPRESAS_FIXAS.length;
+    let empresaParamResumoAnual = '';
+    if (!isTodasEmpresas && companyIds && companyIds.length === 1 && _RELATORIOS_EMPRESAS_FIXAS.some((e) => e.id === companyIds[0])) {
+      empresaParamResumoAnual = companyIds[0];
+    }
+    const colsExtrasResumoAnual = [
+      'clinome','cliNome','cliente_nome','valor_venda','total','qtd','quantidade','qtd_produzida','qtd_pedida','qtd_perdida','tonelada_vendida','operadores_conclusao','maquina_perda','vendedor_id','empId'
+    ];
+    let ofs = (await _listarOfsVendasOficiais(range, empresaParamResumoAnual, colsExtrasResumoAnual)) || [];
+    ofs = ofs.filter((row) => {
+      if (isTodasEmpresas) return true;
+      if (!companyIds || !companyIds.length) return true;
+      const rowEmp = String(_relatoriosPickEmpresaId(row) || '').trim();
+      if (!rowEmp) return true;
+      return companyIds.includes(rowEmp);
+    });
+    try { ofs = _filtrarOfsNaoTesteGlobal(ofs); } catch (_) {}
+    const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(Boolean);
+    const clientesMap = await _relatoriosLoadClientesDetails(cliIds);
+
+    const mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const porMes = new Map();
+    for (let m = 1; m <= 12; m += 1) {
+      const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
+      porMes.set(mes_ref, {
+        mes_ref,
+        mes_numero: m,
+        mes_label: mesesLabels[m - 1],
+        valor_vendido: 0,
+        caixas_produzidas: 0,
+        toneladas: 0,
+        caixas_perdidas: 0,
+        valor_perdido: 0,
+        total_ofs: 0,
+        clientes_ids: new Set()
+      });
     }
 
-    const inicio = `${ano}-01-01`;
-    const fim = `${ano}-12-31`;
-    const fim_exclusivo = `${ano + 1}-01-01`;
+    const porCliente = new Map();
+    const clientesIdsAno = new Set();
 
-    const ofsAno = await _relatoriosFetchOfsConcluidas({ inicio, fim, fim_exclusivo }, { companyIds });
+    ofs.forEach((of) => {
+      const dt = _vendasOficialDateObj(of);
+      if (!dt) return;
+      const mes_ref = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (!porMes.has(mes_ref)) return;
+      const mes = porMes.get(mes_ref);
+      const valor = _relatoriosPickValorOf(of);
+      const qtd = _relatoriosPickQtdOf(of);
+      const perda = _relatoriosPickPerdaOf(of);
+      const ton = _relatoriosPickTonOf(of);
+      const denominador = qtd + perda;
+      const valorPerda = denominador > 0 ? Number(((perda / denominador) * valor).toFixed(2)) : 0;
+      mes.valor_vendido += valor;
+      mes.caixas_produzidas += qtd;
+      mes.toneladas += ton;
+      mes.caixas_perdidas += perda;
+      mes.valor_perdido += valorPerda;
+      mes.total_ofs += 1;
+      const cliId = _assistPickOfClienteId(of);
+      if (cliId) {
+        mes.clientes_ids.add(cliId);
+        clientesIdsAno.add(cliId);
+        if (!porCliente.has(cliId)) {
+          porCliente.set(cliId, {
+            cli_id: cliId,
+            nome: _relatoriosPickClienteNomeOf(of, clientesMap) || 'Cliente não identificado',
+            valor_total: 0,
+            total_ofs: 0
+          });
+        }
+        const cli = porCliente.get(cliId);
+        cli.valor_total += valor;
+        cli.total_ofs += 1;
+        if (!cli.nome || cli.nome === 'Cliente não identificado') {
+          cli.nome = _relatoriosPickClienteNomeOf(of, clientesMap) || cli.nome;
+        }
+      }
+    });
 
-    const meses = new Array(12).fill(null).map((_, idx) => ({
-      mes: idx + 1,
-      nome: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][idx],
-      receita_total: 0,
-      qtd_ofs: 0,
-      caixas_produzidas: 0,
-      caixas_perdidas: 0
-    }));
-
-    for (const ofItem of (ofsAno || [])) {
-      const dataRef = _vendasOficialDataRef(ofItem);
-      if (!dataRef) continue;
-      const dt = new Date(`${dataRef}T12:00:00`);
-      if (!Number.isFinite(dt.getTime())) continue;
-      if (dt.getFullYear() !== ano) continue;
-      const mesIdx = dt.getMonth();
-      if (mesIdx < 0 || mesIdx > 11) continue;
-
-      const receita = Number(ofItem?.valor_total ?? ofItem?.valor_venda ?? ofItem?.total ?? 0) || 0;
-      const qtdProd = Math.max(0, Math.trunc(
-        Number(ofItem?.caixas_boas ?? ofItem?.qtd_produzida ?? ofItem?.quantidade ?? ofItem?.qtd ?? ofItem?.qtd_pedida ?? 0) || 0
-      ));
-      const qtdPerd = Math.max(0, Math.trunc(
-        Number(ofItem?.caixas_perdidas ?? ofItem?.qtd_perdida ?? 0) || 0
-      ));
-
-      meses[mesIdx].receita_total += receita > 0 ? receita : 0;
-      meses[mesIdx].qtd_ofs += 1;
-      meses[mesIdx].caixas_produzidas += qtdProd;
-      meses[mesIdx].caixas_perdidas += qtdPerd;
+    const mesesArr = [];
+    for (let m = 1; m <= 12; m += 1) {
+      const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
+      const item = porMes.get(mes_ref);
+      mesesArr.push({
+        mes_ref: item.mes_ref,
+        mes_numero: item.mes_numero,
+        mes_label: item.mes_label,
+        valor_vendido: Number(item.valor_vendido || 0),
+        caixas_produzidas: Number(item.caixas_produzidas || 0),
+        toneladas: Number(item.toneladas || 0),
+        caixas_perdidas: Number(item.caixas_perdidas || 0),
+        valor_perdido: Number(item.valor_perdido || 0),
+        total_ofs: Number(item.total_ofs || 0),
+        clientes_distintos: item.clientes_ids.size,
+        mes: item.mes_numero,
+        nome: item.mes_label,
+        receita_total: Number(item.valor_vendido || 0),
+        qtd_ofs: Number(item.total_ofs || 0)
+      });
     }
 
-    const mesesOut = meses.map((m) => ({
-      mes: m.mes,
-      nome: m.nome,
-      receita_total: +Number(m.receita_total).toFixed(2),
-      qtd_ofs: m.qtd_ofs,
-      caixas_produzidas: m.caixas_produzidas,
-      caixas_perdidas: m.caixas_perdidas
-    }));
+    const totalValor = mesesArr.reduce((s, it) => s + Number(it.valor_vendido || 0), 0);
+    const totalCaixas = mesesArr.reduce((s, it) => s + Number(it.caixas_produzidas || 0), 0);
+    const totalTon = mesesArr.reduce((s, it) => s + Number(it.toneladas || 0), 0);
+    const totalPerdasQtd = mesesArr.reduce((s, it) => s + Number(it.caixas_perdidas || 0), 0);
+    const totalPerdasValor = mesesArr.reduce((s, it) => s + Number(it.valor_perdido || 0), 0);
+    const totalOfs = mesesArr.reduce((s, it) => s + Number(it.total_ofs || 0), 0);
+
+    let topCliente = { nome: '—', valor: 0, total_ofs: 0 };
+    try {
+      const clientesList = Array.from(porCliente.values()).sort((a, b) => Number(b.valor_total || 0) - Number(a.valor_total || 0));
+      if (clientesList[0]) {
+        topCliente = {
+          nome: String(clientesList[0].nome || '—'),
+          valor: Number(clientesList[0].valor_total || 0),
+          total_ofs: Number(clientesList[0].total_ofs || 0)
+        };
+      }
+    } catch (_) {
+      topCliente = { nome: '—', valor: 0, total_ofs: 0 };
+    }
+
+    const ticketMedio = totalOfs > 0 ? Number((totalValor / totalOfs).toFixed(2)) : 0;
+    const caixasPorOf = totalOfs > 0 ? Number((totalCaixas / totalOfs).toFixed(2)) : 0;
+    const perdaPct = totalCaixas + totalPerdasQtd > 0 ? Number(((totalPerdasQtd / (totalCaixas + totalPerdasQtd)) * 100).toFixed(2)) : 0;
+
+    const resumo_anual = {
+      valor_vendido: Number(totalValor || 0),
+      valor_perdido: Number(totalPerdasValor || 0),
+      toneladas: Number(totalTon || 0),
+      clientes_distintos: clientesIdsAno.size,
+      top_cliente_nome: topCliente.nome,
+      top_cliente_valor: topCliente.valor,
+      top_cliente_ofs: topCliente.total_ofs,
+      caixas_produzidas: Number(totalCaixas || 0),
+      caixas_perdidas: Number(totalPerdasQtd || 0),
+      perda_pct: perdaPct,
+      total_ofs: Number(totalOfs || 0),
+      ticket_medio: ticketMedio,
+      caixas_por_of: caixasPorOf
+    };
 
     return res.json({
       ok: true,
       ano,
-      criterio_data: 'Hierarquia: data_faturamento > data_conclusao > dia > created_at. Status = Concluído',
-      modo_empresa: companyIds.length === 1 ? 'empresa_unica' : 'todas_empresas',
-      empresa_id_usada: companyIds.length === 1 ? companyIds[0] : null,
-      meses: mesesOut
+      range,
+      empresa_filtro_id: filtroRetorno || null,
+      criterio_data: 'Hierarquia HF17: data_conclusao > data_faturamento > dia > created_at. Fuso America/Sao_Paulo. Status = Concluído. Filtro: clientes TESTE excluídos. Usa valor_total.',
+      modo_empresa: filtroRetorno,
+      empresa_id_usada: companyIds,
+      resumo_anual,
+      meses: mesesArr
     });
   } catch (e) {
-    console.error('[RESUMO-ANUAL]', e);
+    console.error('[RELATORIOS][RESUMO-ANUAL]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -17134,176 +17257,6 @@ app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
-  try {
-    setNoCache(res);
-    try { res.removeHeader('ETag'); } catch (_) {}
-    try { res.removeHeader('Last-Modified'); } catch (_) {}
-    try { res.setHeader('Vary','Accept-Encoding, Authorization, Accept'); } catch (_) {}
-    try { res.setHeader('X-Accel-Expires','0'); } catch (_) {}
-    try { res.setHeader('X-Robots-Tag','noindex'); } catch (_) {}
-    try { cacheClearPrefix('ofs_'); } catch (_) {}
-    try { cacheClearPrefix('rel_'); } catch (_) {}
-    const anoRaw = Number(req.query?.ano || 0);
-    const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : new Date().getFullYear();
-    const empParam = String(req.query.emp_id || '').trim().toUpperCase();
-    let companyIds;
-    let filtroRetorno = null;
-    if (empParam === 'ALL') {
-      companyIds = [
-        'df5f7672-0a6b-402d-ae65-296554236c31',
-        'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
-      ];
-      filtroRetorno = 'ALL';
-    } else {
-      let empresa_id = null;
-      try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-      companyIds = empresa_id ? [empresa_id] : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
-      filtroRetorno = empParam || empresa_id || null;
-    }
-    const range = {
-      inicio: `${ano}-01-01`,
-      fim: `${ano}-12-31`,
-      fim_exclusivo: `${ano + 1}-01-01`
-    };
-    const ofs = await _relatoriosFetchOfsConcluidas(range, { companyIds });
-    const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(Boolean);
-    const clientesMap = await _relatoriosLoadClientesDetails(cliIds);
-
-    const mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const porMes = new Map();
-    for (let m = 1; m <= 12; m += 1) {
-      const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
-      porMes.set(mes_ref, {
-        mes_ref,
-        mes_numero: m,
-        mes_label: mesesLabels[m - 1],
-        valor_vendido: 0,
-        caixas_produzidas: 0,
-        toneladas: 0,
-        caixas_perdidas: 0,
-        valor_perdido: 0,
-        total_ofs: 0,
-        clientes_ids: new Set()
-      });
-    }
-
-    const porCliente = new Map();
-    const clientesIdsAno = new Set();
-
-    ofs.forEach((of) => {
-      const dt = _vendasOficialDateObj(of);
-      if (!dt) return;
-      const mes_ref = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
-      if (!porMes.has(mes_ref)) return;
-      const mes = porMes.get(mes_ref);
-      const valor = _relatoriosPickValorOf(of);
-      const qtd = _relatoriosPickQtdOf(of);
-      const perda = _relatoriosPickPerdaOf(of);
-      const ton = _relatoriosPickTonOf(of);
-      const denominador = qtd + perda;
-      const valorPerda = denominador > 0 ? Number(((perda / denominador) * valor).toFixed(2)) : 0;
-      mes.valor_vendido += valor;
-      mes.caixas_produzidas += qtd;
-      mes.toneladas += ton;
-      mes.caixas_perdidas += perda;
-      mes.valor_perdido += valorPerda;
-      mes.total_ofs += 1;
-      const cliId = _assistPickOfClienteId(of);
-      if (cliId) {
-        mes.clientes_ids.add(cliId);
-        clientesIdsAno.add(cliId);
-        if (!porCliente.has(cliId)) {
-          porCliente.set(cliId, {
-            cli_id: cliId,
-            nome: _relatoriosPickClienteNomeOf(of, clientesMap) || 'Cliente não identificado',
-            valor_total: 0,
-            total_ofs: 0
-          });
-        }
-        const cli = porCliente.get(cliId);
-        cli.valor_total += valor;
-        cli.total_ofs += 1;
-        if (!cli.nome || cli.nome === 'Cliente não identificado') {
-          cli.nome = _relatoriosPickClienteNomeOf(of, clientesMap) || cli.nome;
-        }
-      }
-    });
-
-    const mesesArr = [];
-    for (let m = 1; m <= 12; m += 1) {
-      const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
-      const item = porMes.get(mes_ref);
-      mesesArr.push({
-        mes_ref: item.mes_ref,
-        mes_numero: item.mes_numero,
-        mes_label: item.mes_label,
-        valor_vendido: Number(item.valor_vendido || 0),
-        caixas_produzidas: Number(item.caixas_produzidas || 0),
-        toneladas: Number(item.toneladas || 0),
-        caixas_perdidas: Number(item.caixas_perdidas || 0),
-        valor_perdido: Number(item.valor_perdido || 0),
-        total_ofs: Number(item.total_ofs || 0),
-        clientes_distintos: item.clientes_ids.size
-      });
-    }
-
-    const totalValor = mesesArr.reduce((s, it) => s + Number(it.valor_vendido || 0), 0);
-    const totalCaixas = mesesArr.reduce((s, it) => s + Number(it.caixas_produzidas || 0), 0);
-    const totalTon = mesesArr.reduce((s, it) => s + Number(it.toneladas || 0), 0);
-    const totalPerdasQtd = mesesArr.reduce((s, it) => s + Number(it.caixas_perdidas || 0), 0);
-    const totalPerdasValor = mesesArr.reduce((s, it) => s + Number(it.valor_perdido || 0), 0);
-    const totalOfs = mesesArr.reduce((s, it) => s + Number(it.total_ofs || 0), 0);
-
-    let topCliente = { nome: '—', valor: 0, total_ofs: 0 };
-    try {
-      const clientesList = Array.from(porCliente.values()).sort((a, b) => Number(b.valor_total || 0) - Number(a.valor_total || 0));
-      if (clientesList[0]) {
-        topCliente = {
-          nome: String(clientesList[0].nome || '—'),
-          valor: Number(clientesList[0].valor_total || 0),
-          total_ofs: Number(clientesList[0].total_ofs || 0)
-        };
-      }
-    } catch (_) {
-      topCliente = { nome: '—', valor: 0, total_ofs: 0 };
-    }
-
-    const ticketMedio = totalOfs > 0 ? Number((totalValor / totalOfs).toFixed(2)) : 0;
-    const caixasPorOf = totalOfs > 0 ? Number((totalCaixas / totalOfs).toFixed(2)) : 0;
-    const perdaPct = totalCaixas + totalPerdasQtd > 0 ? Number(((totalPerdasQtd / (totalCaixas + totalPerdasQtd)) * 100).toFixed(2)) : 0;
-
-    const resumo_anual = {
-      valor_vendido: Number(totalValor || 0),
-      valor_perdido: Number(totalPerdasValor || 0),
-      toneladas: Number(totalTon || 0),
-      clientes_distintos: clientesIdsAno.size,
-      top_cliente_nome: topCliente.nome,
-      top_cliente_valor: topCliente.valor,
-      top_cliente_ofs: topCliente.total_ofs,
-      caixas_produzidas: Number(totalCaixas || 0),
-      caixas_perdidas: Number(totalPerdasQtd || 0),
-      perda_pct: perdaPct,
-      total_ofs: Number(totalOfs || 0),
-      ticket_medio: ticketMedio,
-      caixas_por_of: caixasPorOf
-    };
-
-    return res.json({
-      ok: true,
-      ano,
-      range,
-      empresa_filtro_id: filtroRetorno || null,
-      resumo_anual,
-      meses: mesesArr
-    });
-  } catch (e) {
-    console.error('[RELATORIOS][RESUMO-ANUAL]', e?.message || e);
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-
 app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
@@ -17342,54 +17295,64 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
       fim: `${ano}-${String(mes).padStart(2, '0')}-31`,
       fim_exclusivo: `${anoSeguinte}-${String(mesSeguinte).padStart(2, '0')}-01`
     };
-    const inicioIso = range.inicio;
-    const fimExclusivoIso = range.fim_exclusivo;
-
-    const columns = [
-      'id', 'numero', 'of', 'status', 'deleted_at',
-      'data_faturamento', 'data_conclusao', 'dia', 'created_at',
-      'empresa_id', 'emp_id', 'cli_id', 'cliente_nome', 'cliNome', 'clinome',
-      'valor_total', 'valor_venda', 'total',
-      'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
-      'qtd_perdida', 'caixas_perdidas',
-      'operador_conclusao', 'operadores_conclusao', 'maquina_perda'
-    ].join(',');
-
-    const rows = [];
-    const pageSize = 1000;
-    for (let offset = 0; offset < 50000; offset += pageSize) {
-      const result = await _selectCompatRows('ofs', columns, (q) => {
-        let b = q.or(`and(status.ilike.%conclu%,status.ilike.%cancel%)`);
-        const orParts = [
-          `and(data_faturamento.gte.${inicioIso},data_faturamento.lt.${fimExclusivoIso})`,
-          `and(data_conclusao.gte.${inicioIso},data_conclusao.lt.${fimExclusivoIso})`,
-          `and(dia.gte.${inicioIso},dia.lt.${fimExclusivoIso})`,
-          `and(created_at.gte.${inicioIso},created_at.lt.${fimExclusivoIso})`
-        ].join(',');
-        try { b = b.or(orParts); } catch (_) {}
-        try { b = b.is('deleted_at', null); } catch (_) {}
-        return b.order('created_at', { ascending: true }).range(offset, offset + pageSize - 1);
-      });
-      if (result?.error) throw result.error;
-      const chunk = Array.isArray(result?.data) ? result.data : [];
-      if (!chunk.length) break;
-      rows.push(...chunk);
-      if (chunk.length < pageSize) break;
+    const isTodasEmpresasPerdas = !empParam || empParam === 'ALL' || !companyIds || companyIds.length === 0 || companyIds.length === _RELATORIOS_EMPRESAS_FIXAS.length;
+    let empresaParamPerdasOp = '';
+    if (!isTodasEmpresasPerdas && companyIds && companyIds.length === 1 && _RELATORIOS_EMPRESAS_FIXAS.some((e) => e.id === companyIds[0])) {
+      empresaParamPerdasOp = companyIds[0];
     }
-
-    const ofsFiltrados = rows.filter((row) => {
-      if (row?.deleted_at) return false;
+    const colsExtrasPerdas = [
+      'clinome','cliNome','cliente_nome','valor_venda','total','qtd','quantidade','qtd_produzida','qtd_pedida','qtd_perdida','operadores_conclusao','maquina_perda','empId'
+    ];
+    const ofsOficiais = (await _listarOfsVendasOficiais(range, empresaParamPerdasOp, colsExtrasPerdas)) || [];
+    const ofsPerdasBruto = [];
+    try {
+      const colsPerdas = [
+        'id','numero','of','status','deleted_at',
+        'data_faturamento','data_conclusao','dia','created_at',
+        'empresa_id','emp_id','cli_id','cliente_nome','cliNome','clinome',
+        'valor_total','valor_venda','total',
+        'qtd','quantidade','qtd_produzida','qtd_pedida',
+        'qtd_perdida',
+        'operadores_conclusao','maquina_perda'
+      ].filter((c) => _ofsSelectableHas(c)).join(',');
+      const ofsCanceladoComPerda = await _selectCompatRows('ofs', colsPerdas, (q) => {
+        let b = q
+          .ilike('status','%cancel%')
+          .gte('data_conclusao', range.inicio)
+          .lt('data_conclusao', range.fim_exclusivo);
+        try { b = b.is('deleted_at', null); } catch (_) {}
+        return b.limit(2000);
+      });
+      if (ofsCanceladoComPerda?.error) throw ofsCanceladoComPerda.error;
+      if (Array.isArray(ofsCanceladoComPerda?.data)) ofsPerdasBruto.push(...ofsCanceladoComPerda.data);
+    } catch (_e) {
+      console.error('[RELATORIOS][PERDAS-OPERADOR][CANCELADAS-PERDA]', _e?.message || _e, _e?.stack || '');
+      ofsPerdasBruto.length = 0;
+    }
+    let ofsFiltradosEntrada = ofsOficiais.slice();
+    ofsFiltradosEntrada = ofsFiltradosEntrada.concat(ofsPerdasBruto);
+    try { ofsFiltradosEntrada = _filtrarOfsNaoTesteGlobal(ofsFiltradosEntrada); } catch (_) {}
+    ofsFiltradosEntrada = ofsFiltradosEntrada.filter((row) => {
+      if (isTodasEmpresasPerdas) return true;
+      if (!companyIds || !companyIds.length) return true;
+      const rowEmp = String(_relatoriosPickEmpresaId(row) || '').trim();
+      if (!rowEmp) return true;
+      return companyIds.includes(rowEmp);
+    });
+    const ofsFiltradosDentroPeriodo = ofsFiltradosEntrada.filter((row) => _vendasOficialDentroDoPeriodo(row, range));
+    const ofsFiltrados = [];
+    for (let k = 0; k < ofsFiltradosDentroPeriodo.length; k += 1) {
+      const row = ofsFiltradosDentroPeriodo[k];
+      if (row?.deleted_at) continue;
       const sts = String(row?.status || '').trim().toLowerCase();
       const isConcluido = sts.includes('conclu') || sts === 'concluida' || sts === 'concluído';
       const isCancelada = sts.includes('cancel');
-      if (!isConcluido && !isCancelada) return false;
+      if (!isConcluido && !isCancelada) continue;
       const qtdPerdida = Number(row?.qtd_perdida ?? row?.caixas_perdidas ?? 0) || 0;
       const temMaqPerda = String(row?.maquina_perda || '').trim() !== '';
-      if (isCancelada && qtdPerdida <= 0 && !temMaqPerda) return false;
-      if (!_vendasOficialDentroDoPeriodo(row, range)) return false;
-      if (!companyIds.length) return true;
-      return companyIds.includes(_relatoriosPickEmpresaId(row));
-    });
+      if (isCancelada && qtdPerdida <= 0 && !temMaqPerda) continue;
+      ofsFiltrados.push(row);
+    }
 
     function unpackOperadores(of) {
       const raw = of?.operadores_conclusao ?? of?.operador_conclusao ?? '';
