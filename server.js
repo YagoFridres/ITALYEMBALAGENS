@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260925121000';
-const SW_RUNTIME_VERSION = '20260925121000';
+const PATCH_RUNTIME_VERSION = '20260929094500';
+const SW_RUNTIME_VERSION = '20260929094500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2623,8 +2623,42 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
 }
 
 function _relatoriosIsoDateOnly(value) {
-  const txt = String(value || '').trim().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(txt) ? txt : '';
+  const rawStr = String(value || '').trim();
+  if (!rawStr) return '';
+  const simple10 = rawStr.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(simple10) && rawStr.length === 10) {
+    return simple10;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(simple10.replace(/-/g,'/').slice(0,10))) {
+    const p = simple10.replace(/\//g,'-').split('-');
+    if (p.length === 3 && p[2].length === 4) {
+      return `${p[2]}-${p[1]}-${p[0]}`;
+    }
+  }
+  try {
+    const dt = new Date(value);
+    if (Number.isFinite(dt.getTime())) {
+      let isoTz = null;
+      try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'America/Sao_Paulo',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).formatToParts(dt);
+        let y='', m='', d='';
+        parts.forEach(p => {
+          if (p.type === 'year') y = p.value;
+          else if (p.type === 'month') m = p.value;
+          else if (p.type === 'day') d = p.value;
+        });
+        if (y && m && d) isoTz = `${y}-${m}-${d}`;
+      } catch (_tzErr) { isoTz = null; }
+      if (isoTz && /^\d{4}-\d{2}-\d{2}$/.test(isoTz)) return isoTz;
+      return dt.toISOString().slice(0, 10);
+    }
+  } catch (_) {}
+  return /^\d{4}-\d{2}-\d{2}$/.test(simple10) ? simple10 : '';
 }
 
 function _relatoriosAddDaysIso(dateStr, days) {
@@ -2717,8 +2751,8 @@ function _vendasOficialStatusConcluido(status) {
 
 function _vendasOficialDateObj(of) {
   const raw = (
-    of?.data_faturamento ??
     of?.data_conclusao ??
+    of?.data_faturamento ??
     of?.dia ??
     of?.created_at ??
     ''
@@ -2756,7 +2790,7 @@ async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
   for (let offset = 0; offset < 50000; offset += PAGE) {
     let query = supabase
       .from('ofs')
-      .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_faturamento,data_conclusao,dia,created_at,valor_total')
+      .select('id,numero,of,status,deleted_at,empresa_id,emp_id,cli_id,data_faturamento,data_conclusao,dia,created_at,valor_total')
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
       .range(offset, offset + PAGE - 1);
@@ -36124,9 +36158,23 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     }
 
     const hoje = new Date();
-    const hojeStr = hoje.toISOString().slice(0, 10);
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
-    const fimMesExclusivo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1).toISOString().slice(0, 10);
+    const hojeStr = _relatoriosIsoDateOnly(hoje);
+    const mesAnoRef = (() => {
+      try {
+        const ps = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'America/Sao_Paulo',
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(hoje);
+        let y='',m='';
+        ps.forEach(p => { if (p.type==='year') y=p.value; else if (p.type==='month') m=p.value; });
+        if (y && m) return { ano: parseInt(y), mes: parseInt(m,10) };
+      } catch(_){}
+      return { ano: hoje.getFullYear(), mes: hoje.getMonth()+1 };
+    })();
+    const inicioMes = `${mesAnoRef.ano}-${String(mesAnoRef.mes).padStart(2,'0')}-01`;
+    const fimMesExclusivo = mesAnoRef.mes === 12
+      ? `${mesAnoRef.ano+1}-01-01`
+      : `${mesAnoRef.ano}-${String(mesAnoRef.mes+1).padStart(2,'0')}-01`;
 
     function statusOf(of) {
       const s = String(of?.status || '').toLowerCase().trim();
@@ -36200,20 +36248,6 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
           }
           const urgFlag = of?.urgente || of?.urg;
           if (urgFlag && String(urgFlag).toLowerCase() !== 'false' && String(urgFlag) !== '0' && st !== 'concluido') temUrgenteFlag = true;
-
-          const valor = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
-          if (st === 'concluido' && valor > 0) {
-            const dtConc = of?.data_conclusao || of?.data_faturamento || of?.created_at;
-            const dtConcStr = String(dtConc || '').slice(0, 10);
-            if (dtConcStr >= inicioMes && dtConcStr < fimMesExclusivo) {
-              fatMesValor += valor;
-              fatMesCount++;
-            }
-            if (dtConcStr === hojeStr) {
-              fatDiaValor += valor;
-              fatDiaCount++;
-            }
-          }
         }
 
         const pass = parsePassagens(of?.passagens_maquina || of?.passagens_por_maquina || of?.passagens || null);
@@ -36229,6 +36263,49 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
         try { console.warn('[dashboard/resumo-ofs] pulando OF com erro, id=', String(of?.id || of?.numero || '?'), 'erro=', e && (e.message || e) || e); } catch (_) {}
       }
     });
+
+    const _resumoEnriquecerNomeCliente = async function(arr) {
+      if (!Array.isArray(arr) || !arr.length) return Array.isArray(arr) ? arr : [];
+      try {
+        const cliIds = Array.from(new Set(arr.map(o => String(o?.cli_id || '').trim()).filter(Boolean)));
+        if (!cliIds.length) return arr.map(o => ({ ...(o||{}), cliente_nome: o?.cliente_nome || o?.cliente || '' }));
+        const pageClis = await supabase.from('clientes')
+          .select('id,nome,cliNome,clinome,cliente_nome')
+          .in('id', cliIds);
+        const mp = new Map();
+        (pageClis?.data || []).forEach(c => {
+          mp.set(String(c.id), String(c.nome || c.cliNome || c.clinome || c.cliente_nome || '').trim());
+        });
+        return arr.map(o => ({
+          ...(o||{}),
+          cliente_nome: (o?.cliente_nome || o?.cliente || mp.get(String(o?.cli_id||'')) || '')
+        }));
+      } catch (_errJoin) {
+        try { console.warn('[dashboard/resumo-ofs _enriquecerNomeCliente]', String(_errJoin?.message||_errJoin)); } catch(_){}
+        return Array.isArray(arr) ? arr : [];
+      }
+    };
+
+    try {
+      const [_fatMesOficial, _fatDiaOficial] = await Promise.all([
+        _listarOfsVendasOficiais({ inicio: inicioMes, fim_exclusivo: fimMesExclusivo }, empresaId).then(async (arr) => _resumoEnriquecerNomeCliente(arr || [])),
+        (async () => {
+          const hojeIso = _relatoriosIsoDateOnly(new Date());
+          if (!hojeIso) return [];
+          const amanhaIso = _relatoriosAddDaysIso(hojeIso, 1);
+          const rawList = await _listarOfsVendasOficiais({ inicio: hojeIso, fim_exclusivo: amanhaIso }, empresaId);
+          return _resumoEnriquecerNomeCliente(rawList || []);
+        })()
+      ]);
+      const _fatMesFiltrado = _filtrarOfsNaoTesteGlobal(Array.isArray(_fatMesOficial) ? _fatMesOficial : []);
+      const _fatDiaFiltrado = _filtrarOfsNaoTesteGlobal(Array.isArray(_fatDiaOficial) ? _fatDiaOficial : []);
+      fatMesValor = _fatMesFiltrado.reduce((s, o) => s + _vendasOficialValor(o), 0);
+      fatMesCount = Array.isArray(_fatMesFiltrado) ? _fatMesFiltrado.length : 0;
+      fatDiaValor = _fatDiaFiltrado.reduce((s, o) => s + _vendasOficialValor(o), 0);
+      fatDiaCount = Array.isArray(_fatDiaFiltrado) ? _fatDiaFiltrado.length : 0;
+    } catch (_errFatOficial) {
+      try { console.error('[dashboard/resumo-ofs _helperFonteUnicaFalhou]', String(_errFatOficial?.stack||_errFatOficial?.message||_errFatOficial)); } catch(_){}
+    }
 
     if (temUrgenteFlag && urgentes === 0) urgentes = 1;
     if (ofsErros > 0) {
