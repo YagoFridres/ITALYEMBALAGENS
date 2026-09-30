@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260930090800';
-const SW_RUNTIME_VERSION = '20260930090800';
+const PATCH_RUNTIME_VERSION = '20260930094000';
+const SW_RUNTIME_VERSION = '20260930094000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -24071,126 +24071,304 @@ app.get('/api/relatorios/amostras-mes', authMiddleware, async (req, res) => {
 
 app.get('/api/relatorios/projecao-vendas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await resolverEmpresaId(req);
-    const estenderProximoAno = String(req.query.proximo_ano || req.query.nextYear || '').trim() === '1';
+    setNoCache(res);
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('rel_'); } catch (_) {}
+
+    const q = req?.query || {};
+    const estenderProximoAno = String(q.proximo_ano || q.nextYear || '').trim() === '1';
     const agora = new Date();
     const anoAtual = agora.getFullYear();
     const mesAtual = agora.getMonth() + 1;
+    const mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-    const dtInicio = new Date(anoAtual - 1, 0, 1).toISOString();
-    const anoFimFiltro = estenderProximoAno ? anoAtual + 2 : anoAtual + 1;
-    const dtFimFiltro = new Date(anoFimFiltro, 0, 1).toISOString();
-
-    let q = supabase
-      .from('ofs')
-      .select('id,numero,status,quantidade,qtd,valor_total,valor_venda,created_at,data_faturamento,data_conclusao,dia,empresa_id,deleted_at')
-      .gte('created_at', dtInicio)
-      .lt('created_at', dtFimFiltro);
-    if (empresaId) q = q.or('empresa_id.eq.' + empresaId + ',empresa_id.is.null');
-    q = q.is('deleted_at', null);
-    const { data: rows, error } = await q;
-    if (error) throw error;
-
-    const cancelRe = /cancel|anul|exclu|rejeit|inativo/i;
-    const concluidoRe = /concl|entreg|fatur|fech|pronto|finaliz|ok/i;
-    const historicoMap = new Map();
-    (rows || []).forEach(of => {
-      const statusNorm = String(of?.status || '').trim();
-      if (cancelRe.test(statusNorm)) return;
-      const dataRef = of?.data_faturamento || of?.data_conclusao || of?.dia || of?.created_at || null;
-      if (!dataRef) return;
-      const d = new Date(dataRef);
-      const chave = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-      const statusOk = concluidoRe.test(statusNorm);
-      const valor = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
-      const qtd = Number(of?.quantidade ?? of?.qtd ?? 0) || 0;
-      const cur = historicoMap.get(chave) || { mes: chave, valor: 0, ofs: 0, qtd_caixas: 0, ofs_concluidas: 0, valor_concluido: 0 };
-      cur.ofs += 1;
-      cur.qtd_caixas += qtd;
-      cur.valor += valor;
-      if (statusOk) {
-        cur.ofs_concluidas += 1;
-        cur.valor_concluido += valor;
-      }
-      historicoMap.set(chave, cur);
-    });
-
-    const mesesOrdenados = Array.from(historicoMap.values()).sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
-
-    const serieConcluido = mesesOrdenados.map(m => Number(m.valor_concluido || m.valor || 0) || 0);
-    const n = serieConcluido.length;
-    let projecaoBaseMes = 0;
-    if (n >= 3) {
-      const ult3 = serieConcluido.slice(-3);
-      projecaoBaseMes = ult3.reduce((s, v) => s + v, 0) / ult3.length;
-    } else if (n > 0) {
-      projecaoBaseMes = serieConcluido.reduce((s, v) => s + v, 0) / n;
+    const temFiltroEmpresaManual = !!String(q.emp_id || q.empId || q.empresa_id || q.empresaId || req?.headers?.['x-emp-id'] || '').trim();
+    let empresaUuid = null;
+    try { empresaUuid = await _resolveEmpresaUuid(req); } catch (_) { empresaUuid = null; }
+    let companyIds = [];
+    let modo = 'todas_empresas';
+    let empresaParam = '';
+    if (temFiltroEmpresaManual && empresaUuid) {
+      companyIds = [empresaUuid];
+      modo = 'empresa_unica';
+      empresaParam = _RELATORIOS_EMPRESAS_FIXAS.some((e) => e.id === empresaUuid) ? empresaUuid : '';
+    } else {
+      empresaUuid = null;
+      companyIds = _RELATORIOS_EMPRESAS_FIXAS.map((e) => e.id);
+      modo = 'todas_empresas';
+      empresaParam = '';
     }
-    let slope = 0;
-    if (n >= 2) {
-      const xs = serieConcluido.map((_, i) => i + 1);
-      const mediaX = xs.reduce((s, x) => s + x, 0) / n;
-      const mediaY = serieConcluido.reduce((s, y) => s + y, 0) / n;
-      let num = 0, den = 0;
-      for (let i = 0; i < n; i++) {
-        num += (xs[i] - mediaX) * (serieConcluido[i] - mediaY);
-        den += (xs[i] - mediaX) ** 2;
+    const isTodasEmpresas = modo === 'todas_empresas';
+
+    const anoInicioHist = anoAtual - 1;
+    const anoFimHist = anoAtual;
+    const rangeHist = { inicio: `${anoInicioHist}-01-01`, fim: `${anoFimHist}-12-31`, fim_exclusivo: `${anoFimHist + 1}-01-01` };
+    const colsExtrasProj = ['status','cliNome','clinome','cliente_nome','valor_venda','total','qtd','quantidade','qtd_produzida','empId','vendedor_id'];
+    let ofsHist = (await _listarOfsVendasOficiais(rangeHist, empresaParam, colsExtrasProj)) || [];
+    ofsHist = ofsHist.filter((row) => {
+      if (isTodasEmpresas) return true;
+      if (!companyIds || !companyIds.length) return true;
+      const rowEmp = String(_relatoriosPickEmpresaId(row) || '').trim();
+      if (!rowEmp) return true;
+      return companyIds.includes(rowEmp);
+    });
+    try { ofsHist = _filtrarOfsNaoTesteGlobal(ofsHist); } catch (_) {}
+
+    const msDia = 86400000;
+    const cancelRe = /cancel|anul|exclu|rejeit|inativo/i;
+    const concluidoRe = /concl|entreg|fatur|fech|pronto|finaliz|ok|assinado|liberado|despachado|embarcad/i;
+    const abertoRe = /aberto|pendente|programad|agendad|em producao|em produção|produzindo|producao|produção|parado|aguard|setu[p]|setup|na fila|fila|nova|aberto_gerenciar/i;
+    const historicoMap = new Map();
+    let carteiraQtd = 0;
+    let carteiraValor = 0;
+    let carteiraCaixas = 0;
+    for (const ofRow of ofsHist) {
+      const dataRef = _vendasOficialDataRef(ofRow);
+      const statusNorm = String(ofRow?.status || '').trim();
+      const statusLow = statusNorm.toLowerCase();
+      const statusCancel = cancelRe.test(statusNorm);
+      if (statusCancel) continue;
+      const statusConcluido = concluidoRe.test(statusNorm);
+      const isAberto = !statusConcluido && abertoRe.test(statusNorm);
+      const valor = Number(ofRow?.valor_total || ofRow?.valor_venda || ofRow?.total || 0) || 0;
+      const qtd = Number(ofRow?.qtd || ofRow?.quantidade || ofRow?.qtd_produzida || 0) || 0;
+      if (isAberto) { carteiraQtd += 1; carteiraValor += valor; carteiraCaixas += qtd; }
+      if (dataRef) {
+        const iso = _relatoriosIsoDateOnly(dataRef);
+        if (iso) {
+          const partes = iso.split('-');
+          if (partes.length >= 2) {
+            const chave = partes[0] + '-' + partes[1];
+            const mesN = parseInt(partes[1], 10);
+            if (!historicoMap.has(chave)) historicoMap.set(chave, {
+              mes: chave, ano: parseInt(partes[0], 10), mes_numero: mesN, mes_label: mesesLabels[(mesN - 1) % 12] || '',
+              ofs_total: 0, ofs_concluidas: 0, qtd_caixas: 0,
+              valor_total: 0, valor_concluido: 0,
+            });
+            const cur = historicoMap.get(chave);
+            cur.ofs_total += 1;
+            cur.qtd_caixas += qtd;
+            cur.valor_total += valor;
+            if (statusConcluido) { cur.ofs_concluidas += 1; cur.valor_concluido += valor; }
+          }
+        }
       }
+    }
+
+    const mesesPreenchidos = [];
+    for (let a = anoInicioHist; a <= anoFimHist; a++) {
+      for (let mm = 1; mm <= 12; mm++) {
+        const chv = a + '-' + String(mm).padStart(2, '0');
+        if (historicoMap.has(chv)) mesesPreenchidos.push(historicoMap.get(chv));
+        else mesesPreenchidos.push({
+          mes: chv, ano: a, mes_numero: mm, mes_label: mesesLabels[mm - 1] || '',
+          ofs_total: 0, ofs_concluidas: 0, qtd_caixas: 0, valor_total: 0, valor_concluido: 0,
+        });
+      }
+    }
+    mesesPreenchidos.sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
+    const mesesOrdenados = mesesPreenchidos;
+    const serieConcluido = mesesOrdenados.map((m) => Number(m.valor_concluido || m.valor_total || 0) || 0);
+    const n = serieConcluido.length;
+    const idxHoje = mesesOrdenados.findIndex((m) => m.ano === anoAtual && m.mes_numero === mesAtual);
+    const serieAteHoje = idxHoje >= 0 ? serieConcluido.slice(0, idxHoje + 1) : serieConcluido.slice();
+    const nValidos = serieAteHoje.filter((v) => Number(v || 0) > 0 || true).length;
+    const ult3 = serieAteHoje.slice(-3).filter((_, i, arr) => arr.length >= 1);
+    const ult6 = serieAteHoje.slice(-6).filter((_, i, arr) => arr.length >= 1);
+    const media3 = ult3.length > 0 ? ult3.reduce((s, v) => s + v, 0) / ult3.length : 0;
+    const media6 = ult6.length > 0 ? ult6.reduce((s, v) => s + v, 0) / ult6.length : 0;
+    let slope = 0;
+    if (serieAteHoje.length >= 2) {
+      const xs = serieAteHoje.map((_, i) => i + 1);
+      const nn = xs.length;
+      const mediaX = xs.reduce((s, x) => s + x, 0) / nn;
+      const mediaY = serieAteHoje.reduce((s, y) => s + y, 0) / nn;
+      let num = 0, den = 0;
+      for (let i = 0; i < nn; i++) { num += (xs[i] - mediaX) * (serieAteHoje[i] - mediaY); den += (xs[i] - mediaX) ** 2; }
       slope = den > 0 ? (num / den) : 0;
     }
-    const projecaoTendenciaMes = Math.max(0, projecaoBaseMes + slope);
+    const tendencia = Math.max(0, (media3 || media6 || 0) + slope);
+    const mediaHist12Ult = serieAteHoje.slice(-12);
+    const mediaMensal12 = mediaHist12Ult.length > 0 ? (mediaHist12Ult.reduce((s, v) => s + v, 0) / mediaHist12Ult.length) : 0;
+
+    const fatoresSazonais = new Map();
+    const valoresPorMesNum = new Map();
+    for (const m of mesesOrdenados) {
+      if (m.valor_concluido > 0 || m.valor_total > 0) {
+        if (!valoresPorMesNum.has(m.mes_numero)) valoresPorMesNum.set(m.mes_numero, []);
+        valoresPorMesNum.get(m.mes_numero).push(Number(m.valor_concluido || m.valor_total || 0));
+      }
+    }
+    const mediaGeralMes = (mediaMensal12 || media6 || media3 || 1) || 1;
+    for (let mm = 1; mm <= 12; mm++) {
+      const vals = valoresPorMesNum.get(mm) || [];
+      const mediaMes = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      const fator = mediaGeralMes > 0 ? Math.max(0.1, mediaMes / mediaGeralMes) : 1;
+      fatoresSazonais.set(mm, +Number(fator || 1).toFixed(3));
+    }
 
     const mesesProjetados = [];
     const ultimoMesKey = mesesOrdenados.length ? mesesOrdenados[mesesOrdenados.length - 1].mes : `${anoAtual}-${String(mesAtual).padStart(2,'0')}`;
-    const partesUlt = ultimoMesKey.split('-');
-    let prAno = parseInt(partesUlt[0], 10);
-    let prMes = parseInt(partesUlt[1], 10);
+    const partesUlt = String(ultimoMesKey).split('-');
+    let prAno = parseInt(partesUlt[0] || anoAtual, 10) || anoAtual;
+    let prMes = parseInt(partesUlt[1] || mesAtual, 10) || mesAtual;
     if (prMes >= 12) { prAno += 1; prMes = 1; } else { prMes += 1; }
     const anoLimiteProj = estenderProximoAno ? (anoAtual + 1) : anoAtual;
     let guard = 0;
     while ((prAno < anoLimiteProj) || (prAno === anoLimiteProj && prMes <= 12)) {
       if (++guard > 36) break;
       const chave = prAno + '-' + String(prMes).padStart(2, '0');
+      const fatorSaz = fatoresSazonais.get(prMes) != null ? fatoresSazonais.get(prMes) : 1;
+      const pMedia3 = Math.max(0, media3) * fatorSaz;
+      const pMedia6 = Math.max(0, media6) * fatorSaz;
+      const pTend = Math.max(0, tendencia) * fatorSaz;
+      const pSazonal = Math.max(0, ((media3 + media6) / 2 || tendencia || 0)) * fatorSaz;
       mesesProjetados.push({
-        mes: chave,
-        projecao_media: Math.round(projecaoBaseMes * 100) / 100,
-        projecao_tendencia: Math.round(projecaoTendenciaMes * 100) / 100
+        mes: chave, ano: prAno, mes_numero: prMes, mes_label: mesesLabels[prMes - 1] || '',
+        fator_sazonal: +fatorSaz,
+        projecao_media3: Math.round(pMedia3 * 100) / 100,
+        projecao_media6: Math.round(pMedia6 * 100) / 100,
+        projecao_tendencia: Math.round(pTend * 100) / 100,
+        projecao_sazonal: Math.round(pSazonal * 100) / 100,
+        projecao_conservadora: Math.round(Math.min(pMedia3, pMedia6, pSazonal) * 100) / 100,
+        projecao_agressiva: Math.round(Math.max(pMedia3, pMedia6, pTend, pSazonal) * 100) / 100,
       });
       if (prMes >= 12) { prAno += 1; prMes = 1; } else { prMes += 1; }
     }
 
-    const totalHistorico12 = mesesOrdenados.filter(m => {
-      const pa = m.mes.split('-').map(Number);
-      const diff = (anoAtual - pa[0]) * 12 + (mesAtual - pa[1]);
-      return diff >= 0 && diff < 12;
-    }).reduce((s, m) => s + Number(m.valor_concluido || m.valor || 0), 0);
+    let total12mAteHoje = 0;
+    for (let offset = 0; offset < 12; offset++) {
+      const idx = idxHoje >= 0 ? idxHoje - offset : -1;
+      if (idx >= 0 && mesesOrdenados[idx]) total12mAteHoje += Number(mesesOrdenados[idx].valor_concluido || mesesOrdenados[idx].valor_total || 0);
+    }
+    const diasCorridosMes = (function() {
+      const primeiro = new Date(anoAtual, mesAtual - 1, 1, 12, 0, 0, 0);
+      const hojeD = new Date(agora); hojeD.setHours(12, 0, 0, 0);
+      return Math.max(1, Math.round((hojeD.getTime() - primeiro.getTime()) / msDia) + 1);
+    })();
+    const diasTotalMes = new Date(anoAtual, mesAtual, 0, 12, 0, 0, 0).getDate();
+    const mesAtualChave = `${anoAtual}-${String(mesAtual).padStart(2,'0')}`;
+    const mesAtualDados = historicoMap.get(mesAtualChave) || mesesOrdenados.find((m) => m.mes === mesAtualChave) || { valor_concluido: 0, ofs_concluidas: 0, qtd_caixas: 0 };
+    const valorMesCorrente = Number(mesAtualDados.valor_concluido || mesAtualDados.valor_total || 0) || 0;
+    const ofsMesCorrente = Number(mesAtualDados.ofs_concluidas || mesAtualDados.ofs_total || 0) || 0;
+    const ritmoDiarioMedio = diasCorridosMes > 0 ? (valorMesCorrente / diasCorridosMes) : 0;
+    const projRitmoDiarioTotalMes = Math.round(ritmoDiarioMedio * diasTotalMes * 100) / 100;
+    const projRitmoDiarioRestoMes = Math.max(0, Math.round(ritmoDiarioMedio * (diasTotalMes - diasCorridosMes) * 100) / 100);
+    const caixasMesCorrente = Number(mesAtualDados.qtd_caixas || 0) || 0;
+    const ritmoCaixasDia = diasCorridosMes > 0 ? (caixasMesCorrente / diasCorridosMes) : 0;
 
-    const mediaMensal12 = mesesOrdenados.length ? (totalHistorico12 / Math.min(12, Math.max(1, mesesOrdenados.length))) : 0;
+    let metaMensal = null;
+    let metaCadastrada = false;
+    let metasMapMes = new Map();
+    try {
+      const tablesCandidatas = ['metas_vendas', 'metas', 'meta_mensal', 'vendas_metas'];
+      let tentativas = 0;
+      for (const tbl of tablesCandidatas) {
+        if (tentativas > 2) break;
+        try {
+          const { data, error } = await supabase.from(tbl).select('*').limit(1000);
+          tentativas += 1;
+          if (error) continue;
+          if (Array.isArray(data) && data.length > 0) {
+            for (const r of data) {
+              const mes = Math.max(1, Math.min(12, parseInt(String(r.mes || r.mes_referencia || r.mes_numero || 0).trim(), 10) || 0));
+              const ano = Math.max(2000, Math.min(2100, parseInt(String(r.ano || r.ano_referencia || r.ano_referente || anoAtual).trim(), 10) || anoAtual));
+              const v = Number(r.valor || r.meta || r.meta_valor || r.valor_meta || r.total || 0) || 0;
+              const empOk = !r.empresa_id || isTodasEmpresas || r.empresa_id === empresaUuid;
+              if (mes && ano && v > 0 && empOk) {
+                const k = `${ano}-${String(mes).padStart(2,'0')}`;
+                const atual = Number(metasMapMes.get(k) || 0);
+                metasMapMes.set(k, atual + v);
+              }
+              metaCadastrada = true;
+            }
+            if (metaCadastrada) break;
+          }
+        } catch (_) { continue; }
+      }
+    } catch (_) {}
+    if (metasMapMes.size > 0) metaCadastrada = true;
+    const metaMesCorrente = metasMapMes.has(mesAtualChave) ? Number(metasMapMes.get(mesAtualChave) || 0) : 0;
+    metaMensal = metaCadastrada ? metaMesCorrente : null;
+    const atingPctMesCorrente = metaMensal && metaMensal > 0 ? Math.round((valorMesCorrente / metaMensal) * 10000) / 100 : null;
+    const projsTotais = mesesProjetados.reduce((acc, m) => {
+      acc.media3 += Number(m.projecao_media3 || 0);
+      acc.media6 += Number(m.projecao_media6 || 0);
+      acc.tendencia += Number(m.projecao_tendencia || 0);
+      acc.sazonal += Number(m.projecao_sazonal || 0);
+      acc.conservadora += Number(m.projecao_conservadora || 0);
+      acc.agressiva += Number(m.projecao_agressiva || 0);
+      return acc;
+    }, { media3: 0, media6: 0, tendencia: 0, sazonal: 0, conservadora: 0, agressiva: 0 });
+    for (const k of Object.keys(projsTotais)) projsTotais[k] = Math.round(projsTotais[k] * 100) / 100;
+
+    const totalProjetadoAnoAtualConserv = valorMesCorrente + projsTotais.conservadora + (function(){
+      let s = 0;
+      for (const m of mesesOrdenados) if (m.ano === anoAtual && m.mes_numero < mesAtual) s += Number(m.valor_concluido || m.valor_total || 0);
+      return s;
+    })();
 
     return res.json({
       ok: true,
+      modo_empresa: modo,
+      empresa_id_usada: modo === 'empresa_unica' && empresaUuid ? empresaUuid : null,
+      criterio_data: 'data_conclusao → data_faturamento → dia → created_at (America/Sao_Paulo Intl); OFs concluídas; status canceladas excluídas; sem teste',
       data: {
-        periodo: { ano_atual: anoAtual, mes_atual: mesAtual, estender_proximo_ano: estenderProximoAno },
-        historico: mesesOrdenados.map(m => ({
+        periodo: { ano_atual: anoAtual, mes_atual: mesAtual, mes_label_atual: mesesLabels[mesAtual - 1] || '', estender_proximo_ano: estenderProximoAno, hoje: _relatoriosIsoDateOnly(agora.toISOString()) },
+        mes_atual: {
+          mes: mesAtualChave,
+          dias_corridos: diasCorridosMes,
+          dias_total_mes: diasTotalMes,
+          dias_uteis_restantes: Math.max(0, diasTotalMes - diasCorridosMes),
+          valor_concluido: Math.round(valorMesCorrente * 100) / 100,
+          ofs_concluidas: ofsMesCorrente,
+          qtd_caixas: caixasMesCorrente,
+          meta_mensal: metaMensal != null ? (Math.round(metaMensal * 100) / 100) : null,
+          meta_cadastrada: !!metaCadastrada && metaMensal != null && metaMensal > 0,
+          percentual_atingido_meta: atingPctMesCorrente,
+          ritmo_diario_valor_medio: Math.round(ritmoDiarioMedio * 100) / 100,
+          ritmo_diario_caixas_medio: Math.round(ritmoCaixasDia * 100) / 100,
+          projecao_ritmo_total_mes: projRitmoDiarioTotalMes,
+          projecao_ritmo_restante_mes: projRitmoDiarioRestoMes,
+        },
+        carteira_aberto: {
+          qtd_ofs: carteiraQtd,
+          valor_total: Math.round(carteiraValor * 100) / 100,
+          caixas_estimadas: carteiraCaixas || 0,
+          explicacao: 'OFs não canceladas com status em aberto/pendente/programação/em produção/na fila/nova no intervalo analisado.',
+        },
+        historico: mesesOrdenados.map((m) => ({
           mes: m.mes,
-          ofs_total: Number(m.ofs || 0),
+          ano: m.ano,
+          mes_numero: m.mes_numero,
+          mes_label: m.mes_label,
+          ofs_total: Number(m.ofs_total || 0),
           ofs_concluidas: Number(m.ofs_concluidas || 0),
           qtd_caixas: Number(m.qtd_caixas || 0),
-          valor_total: Math.round(Number(m.valor || 0) * 100) / 100,
-          valor_concluido: Math.round(Number(m.valor_concluido || 0) * 100) / 100
+          valor_total: Math.round(Number(m.valor_total || 0) * 100) / 100,
+          valor_concluido: Math.round(Number(m.valor_concluido || 0) * 100) / 100,
+          fator_sazonal: fatoresSazonais.get(m.mes_numero) != null ? fatoresSazonais.get(m.mes_numero) : null,
+          meta_mensal: metasMapMes.has(m.mes) ? Math.round(Number(metasMapMes.get(m.mes) || 0) * 100) / 100 : (metaCadastrada ? 0 : null),
         })),
         projecao_meses: mesesProjetados,
         resumo: {
-          total_12m_concluido: Math.round(totalHistorico12 * 100) / 100,
-          media_mensal_12m: Math.round(mediaMensal12 * 100) / 100,
-          projecao_media_mensal: Math.round(projecaoBaseMes * 100) / 100,
-          projecao_tendencia_mensal: Math.round(projecaoTendenciaMes * 100) / 100,
-          meses_projetados: mesesProjetados.length,
-          slope_tendencia: Math.round(slope * 100) / 100
-        }
+          total_12m_ate_hoje_valor: Math.round(total12mAteHoje * 100) / 100,
+          media_mensal_12m_ate_hoje: Math.round(mediaMensal12 * 100) / 100,
+          media_movel_ult3m: Math.round(media3 * 100) / 100,
+          media_movel_ult6m: Math.round(media6 * 100) / 100,
+          tendencia_linear_slope_mensal: Math.round(slope * 100) / 100,
+          projecao_tendencia_mensal_base: Math.round(tendencia * 100) / 100,
+          meses_projetados_qtd: mesesProjetados.length,
+          somatorio_valores_projetados: projsTotais,
+          total_ano_atual_consolidado: Math.round(totalProjetadoAnoAtualConserv * 100) / 100,
+          explicacao_metodo: 'Média Móvel 3m + 6m, Regressão Linear (tendência slope último N meses), Fatores Sazonais mensais (média mês / média geral). Projeções multiplicadas por fator sazonal correspondente.',
+        },
       }
     });
   } catch (e) {
+    console.error('[PROJECAO-VENDAS]', e?.message || e, e?.stack || '');
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
