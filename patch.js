@@ -66276,4 +66276,32 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   })();
 })();
 
+(function hotfixRrProjVendasTravarReferencia() {
+  try {
+    if (window.__rrProjVendasTravadoHotfix3) return;
+    window.__rrProjVendasTravadoHotfix3 = true;
+    var fnReal = null;
+    var atual = typeof window.renderProjecaoVendas !== 'undefined' ? window.renderProjecaoVendas : null;
+    if (atual && typeof atual._orig === 'function') {
+      fnReal = atual._orig;
+    } else if (typeof atual === 'function' && !atual._orig) {
+      fnReal = atual;
+    }
+    if (!fnReal || typeof fnReal !== 'function') return;
+    try { fnReal._patchHideWidget = true; } catch(_){}
+    try { fnReal._rrNovaVersaoProj = true; } catch(_){}
+    try { if ('_orig' in fnReal) delete fnReal._orig; } catch(_){}
+    try {
+      Object.defineProperty(window, 'renderProjecaoVendas', {
+        configurable: false,
+        writable: false,
+        enumerable: true,
+        value: fnReal
+      });
+    } catch(_defErr) {
+      try { window.renderProjecaoVendas = fnReal; } catch(_){}
+    }
+  } catch(_) {}
+})();
+
 
