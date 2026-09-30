@@ -4685,12 +4685,12 @@ try {
               + '</tr>';
           }).join('');
 
-          var projRows = '';
+          var projRows = ''; var mesesFuturos = [];
           if (proj.length) {
             projRows = proj.map(function(p, idx) {
               var zebra = (idx % 2) === 0 ? 'background:rgba(148,163,184,.03)' : '';
-              function _c(obj) { return { ofs: Number(obj && obj.ofs || 0), val: Number(obj && obj.valor || 0), cx: Number(obj && obj.caixas || 0) }; }
-              var m3 = _c(p.media3); var m6 = _c(p.media6); var t = _c(p.tendencia); var sz = _c(p.sazonal); var cs = _c(p.conservadora); var ag = _c(p.agressiva);
+              function _cv(v) { return { ofs: 0, val: Number(v || 0), cx: 0 }; }
+              var m3 = _cv(p.projecao_media3); var m6 = _cv(p.projecao_media6); var t = _cv(p.projecao_tendencia); var sz = _cv(p.projecao_sazonal); var cs = _cv(p.projecao_conservadora); var ag = _cv(p.projecao_agressiva);
               return ''
                 + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + zebra + '">'
                 + '  <td style="padding:9px 12px;color:#f8fafc;font-size:12px;font-weight:800;white-space:nowrap">' + esc(labelMes(p.mes || '')) + '</td>'
