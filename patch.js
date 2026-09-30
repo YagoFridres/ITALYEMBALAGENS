@@ -4558,6 +4558,11 @@ try {
       try {
         var container = document.getElementById('widget-projecao-vendas');
         if (!container) return;
+        try {
+          container.style.display = 'block';
+          var pai = container.parentElement;
+          if (pai) { pai.style.display = 'block'; pai.style.visibility = 'visible'; var avo = pai.parentElement; if (avo) { avo.style.display = 'block'; avo.style.visibility = 'visible'; } }
+        } catch (_) {}
         var fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
         var fmtNum = new Intl.NumberFormat('pt-BR');
         var esc = function(s) { return String(s == null ? '' : s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
@@ -51477,8 +51482,12 @@ window._mbnActive = function(id) {
 
   function hideProjecaoVendas() {
     try {
+      var funNovaAtiva = !!(window.renderProjecaoVendas && window.renderProjecaoVendas._patchHideWidget && !window.renderProjecaoVendas._orig);
       Array.prototype.slice.call(document.querySelectorAll('#widget-projecao-vendas, .projecao-vendas, [id*="projecao"]')).forEach(function(el) {
         if (!el) return;
+        var id = el.id || '';
+        var temConteudoNovo = /rr-proj-(body|emp|buscar|imprimir|status)/.test(el.innerHTML || '');
+        if (funNovaAtiva && (id === 'widget-projecao-vendas' || temConteudoNovo)) return;
         var box = el.closest ? (el.closest('.sbox') || el) : el;
         box.style.display = 'none';
       });
