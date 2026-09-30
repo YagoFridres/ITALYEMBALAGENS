@@ -3846,7 +3846,7 @@ try {
         }, 520);
       } else {
         try {
-          document.getElementById('widget-projecao-vendas').innerHTML = ''
+          document.getElementById('rr-widget-projecao-vendas').innerHTML = ''
             + '<div style="padding:40px 20px;text-align:center">'
             + '  <div style="font-size:42px;margin-bottom:10px">📋</div>'
             + '  <div style="color:#94a3b8;font-size:14px;font-weight:600">Widget de projeção não carregado.</div>'
@@ -34686,6 +34686,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function patchAbrirOfRapida() { return; }
 
+  (function(){ try {
+    var __rrAtualRpv = window.renderProjecaoVendas;
+    if (typeof __rrAtualRpv === 'function' && (__rrAtualRpv._rrNovaVersaoProj || __rrAtualRpv._patchHideWidget)) return;
+  } catch(_rrGuardErr){}
   window.renderProjecaoVendas = async function(anoExibir) {
     var container = document.getElementById('widget-projecao-vendas');
     if (!container) return;
@@ -34808,6 +34812,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { if (typeof window.toast === 'function') window.toast(msgErro, '#f43f5e'); } catch(_t) {}
     }
   };
+  })();
 
   window.editarMesFaturamento = function(ano, mes, valorAtual, obsAtual) {
     try {
