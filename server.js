@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260929162000';
-const SW_RUNTIME_VERSION = '20260929162000';
+const PATCH_RUNTIME_VERSION = '20260930083000';
+const SW_RUNTIME_VERSION = '20260930083000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -7663,145 +7663,534 @@ app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) =>
 app.get('/api/relatorios/frequencia-compra-clientes', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    try { res.removeHeader('ETag'); } catch (_) {}
+    try { res.removeHeader('Last-Modified'); } catch (_) {}
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('rel_'); } catch (_) {}
 
-    const temFiltroEmpresaManual =
-      !!String(req?.query?.emp_id || req?.query?.empId || req?.query?.empresa_id || req?.query?.empresaId || req?.headers?.['x-emp-id'] || '').trim();
+    const q = req?.query || {};
+    // === Retrocompatibilidade LEGADO index.html (renderRelatorioFrequenciaCompra) ===
+    const visaoRaw = String(q.visao || q.visao_frequencia || '').trim().toLowerCase();
+    const visao = ['dia', 'semana', 'mes', 'todos'].includes(visaoRaw) ? visaoRaw : (visaoRaw ? visaoRaw : 'todos');
+    // ================================================================================
+    const mesRef = Math.max(0, Math.min(12, parseInt(String(q.mes || '0').trim(), 10) || 0));
+    const anoRef = Math.max(2000, Math.min(2100, parseInt(String(q.ano || '0').trim(), 10) || new Date().getFullYear()));
+    const periodoMesesRaw = Math.max(1, Math.min(36, parseInt(String(q.periodo || q.periodo_meses || '12').trim(), 10) || 12));
+    const periodoMeses = [6, 12, 24, 36].includes(periodoMesesRaw) ? periodoMesesRaw : 12;
+    const minPedidos = Math.max(1, Math.min(50, parseInt(String(q.min_pedidos || q.minPedidos || '3').trim(), 10) || 3));
+    const vendedorIdRaw = String(q.vendedor_id || q.vendId || q.vendedor || '').trim();
+    const vendedorIdFiltro = /^[0-9a-fA-F-]{10,}$/.test(vendedorIdRaw) ? vendedorIdRaw : null;
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+    const hojeIso = _relatoriosIsoDateOnly(hoje.toISOString());
+    const msDia = 86400000;
+    let dtFimCorte;
+    if (mesRef >= 1 && mesRef <= 12) {
+      const fimMes = new Date(anoRef, mesRef, 0, 12, 0, 0, 0);
+      dtFimCorte = fimMes.getTime();
+    } else {
+      dtFimCorte = hoje.getTime();
+    }
+    const dtInicioCorte = new Date(dtFimCorte);
+    dtInicioCorte.setDate(1);
+    dtInicioCorte.setMonth(dtInicioCorte.getMonth() - (periodoMeses - 1));
+    const inicioIso = _relatoriosIsoDateOnly(dtInicioCorte.toISOString());
+    const fimIso = _relatoriosIsoDateOnly(new Date(dtFimCorte).toISOString());
+    const fimExclusivoIso = _relatoriosAddDaysIso(fimIso, 1);
 
+    const temFiltroEmpresaManual = !!String(q.emp_id || q.empId || q.empresa_id || q.empresaId || req?.headers?.['x-emp-id'] || '').trim();
     let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
     let companyIds = [];
     let modo = 'todas_empresas';
-    try {
-      empresa_id = await _resolveEmpresaUuid(req);
-    } catch (_) { empresa_id = null; }
-
+    let empresaParam = '';
     if (temFiltroEmpresaManual && empresa_id) {
       companyIds = [empresa_id];
       modo = 'empresa_unica';
+      empresaParam = _RELATORIOS_EMPRESAS_FIXAS.some((e) => e.id === empresa_id) ? empresa_id : '';
     } else {
       empresa_id = null;
-      companyIds = [];
+      companyIds = _RELATORIOS_EMPRESAS_FIXAS.map((e) => e.id);
       modo = 'todas_empresas';
+      empresaParam = '';
+    }
+    const isTodasEmpresas = modo === 'todas_empresas';
+
+    const colsExtrasFreq = ['vendedor_id', 'cliNome', 'clinome', 'cliente_nome', 'valor_venda', 'total', 'empId'];
+    const rangeOficial = { inicio: inicioIso, fim: fimIso, fim_exclusivo: fimExclusivoIso };
+    let ofsHistorico = (await _listarOfsVendasOficiais(rangeOficial, empresaParam, colsExtrasFreq)) || [];
+    ofsHistorico = ofsHistorico.filter((row) => {
+      if (isTodasEmpresas) return true;
+      if (!companyIds || !companyIds.length) return true;
+      const rowEmp = String(_relatoriosPickEmpresaId(row) || '').trim();
+      if (!rowEmp) return true;
+      return companyIds.includes(rowEmp);
+    });
+    try { ofsHistorico = _filtrarOfsNaoTesteGlobal(ofsHistorico); } catch (_) {}
+    if (vendedorIdFiltro) {
+      ofsHistorico = ofsHistorico.filter((row) => String(row?.vendedor_id || '').trim().toLowerCase() === vendedorIdFiltro.toLowerCase());
     }
 
-    const visaoRaw = String(req.query.visao || 'dia').trim().toLowerCase();
-    const visao = ['dia','semana','mes'].includes(visaoRaw) ? visaoRaw : 'dia';
-    const limiteFuturoDias = visao === 'dia' ? 0 : visao === 'semana' ? 7 : 30;
-
-    const hoje = new Date();
-    hoje.setHours(12,0,0,0);
-    const msDia = 86400000;
-
-    const ofsHistorico = await _relatoriosFetchOfsConcluidas({
-      inicio: '2000-01-01',
-      fim: '2100-01-01',
-      fim_exclusivo: '2100-01-02'
-    }, { companyIds });
+    let usuarioVendedorId = null;
+    try {
+      const u = req?.usuario || null;
+      const papel = String(u?.role || u?.papel || u?.tipo || u?.perfil || '').trim().toLowerCase();
+      const vId = String(u?.vendedor_id || u?.vendId || u?.vendedorId || '').trim();
+      if (papel && /vendedor|vend/i.test(papel) && vId && /^[0-9a-fA-F-]{10,}$/.test(vId)) usuarioVendedorId = vId;
+    } catch (_) { usuarioVendedorId = null; }
 
     const grupos = new Map();
-    for (const of of ofsHistorico) {
-      let cliId = _assistPickOfClienteId(of) || null;
-      if (!cliId) cliId = '__fallback__' + String(of?.cliente_nome || of?.cliNome || of?.clinome || '').trim();
+    for (const ofRow of ofsHistorico) {
+      let cliId = _assistPickOfClienteId(ofRow) || null;
+      const fallbackNome = String(ofRow?.cliente_nome || ofRow?.cliNome || ofRow?.clinome || '').trim();
+      if (!cliId) cliId = '__SEM_CADASTRO_CLIENTE__';
       if (!grupos.has(cliId)) {
         grupos.set(cliId, {
           cliente_id: cliId && _isUuid(String(cliId)) ? String(cliId) : null,
-          cliente_nome: String(of?.cliente_nome || of?.cliNome || of?.clinome || 'Cliente Sem Nome').trim() || 'Cliente Sem Nome',
-          datas: [],
-          total_pedidos: 0
+          cliente_nome: cliId === '__SEM_CADASTRO_CLIENTE__' ? 'Sem cadastro de cliente' : (fallbackNome || 'Cliente Sem Nome'),
+          vendedores_ids: new Set(),
+          datas_raw: [],
+          valores: [],
+          total_pedidos: 0,
+          total_valor: 0,
+          fallback_only: cliId === '__SEM_CADASTRO_CLIENTE__',
         });
       }
       const g = grupos.get(cliId);
-      const dataRef = _vendasOficialDataRef(of);
+      const dataRef = _vendasOficialDataRef(ofRow);
       if (dataRef) {
-        g.datas.push(dataRef);
+        g.datas_raw.push(dataRef);
+        const valorOf = Number(ofRow?.valor_total || ofRow?.valor_venda || ofRow?.total || 0) || 0;
+        g.valores.push(valorOf);
+        g.total_valor += valorOf;
         g.total_pedidos += 1;
+        const vId = String(ofRow?.vendedor_id || '').trim();
+        if (vId) g.vendedores_ids.add(vId);
       }
     }
 
-    const rows = [];
-    for (const g of grupos.values()) {
-      if (!g.total_pedidos || g.total_pedidos < 3) continue;
-      const datasOrdenadas = g.datas.slice().sort();
-      let somaIntervalos = 0;
-      let qtdeIntervalos = 0;
-      for (let i = 1; i < datasOrdenadas.length; i++) {
-        const dAnt = new Date(`${datasOrdenadas[i-1]}T12:00:00`);
-        const dAt = new Date(`${datasOrdenadas[i]}T12:00:00`);
-        const diff = Math.round((dAt.getTime() - dAnt.getTime()) / msDia);
-        if (diff >= 0) {
-          somaIntervalos += diff;
-          qtdeIntervalos += 1;
-        }
+    const cliIdsComUuid = [];
+    for (const g of grupos.values()) if (g.cliente_id && _isUuid(g.cliente_id)) cliIdsComUuid.push(g.cliente_id);
+    const clientesMap = new Map();
+    for (let i = 0; i < cliIdsComUuid.length; i += 200) {
+      const chunk = cliIdsComUuid.slice(i, i + 200);
+      try {
+        const { data: rows, error } = await supabase.from('clientes').select('id,nome,ramo,empresa_id,created_at,cidade,uf,telefone,celular,vendedor_id,tel_1,tel_2,whatsapp').in('id', chunk);
+        if (!error && Array.isArray(rows)) rows.forEach((row) => { const id = String(row?.id || '').trim(); if (id) clientesMap.set(id, row || {}); });
+      } catch (_) {}
+    }
+    const vendedoresMap = new Map();
+    try {
+      const todosVendIds = new Set();
+      for (const g of grupos.values()) for (const vid of (g.vendedores_ids || [])) todosVendIds.add(vid);
+      for (const row of clientesMap.values()) { const vid = String(row?.vendedor_id || '').trim(); if (vid) todosVendIds.add(vid); }
+      if (usuarioVendedorId) todosVendIds.add(usuarioVendedorId);
+      const vList = Array.from(todosVendIds).filter((v) => /^[0-9a-fA-F-]{10,}$/.test(v));
+      for (let i = 0; i < vList.length; i += 200) {
+        const chunk = vList.slice(i, i + 200);
+        const { data: rows } = await supabase.from('vendedores').select('id,nome,apelido,email,telefone,celular').in('id', chunk);
+        if (Array.isArray(rows)) rows.forEach((r) => { const id = String(r?.id || '').trim(); if (id) vendedoresMap.set(id, r || {}); });
       }
-      const frequencia_media = qtdeIntervalos > 0 ? Math.max(0.5, +(somaIntervalos / qtdeIntervalos).toFixed(1)) : null;
-      const ultimo_pedido_data = datasOrdenadas[datasOrdenadas.length - 1];
+    } catch (_) {}
+
+    const limite12MIso = _relatoriosAddDaysIso(hojeIso, -366);
+    let clientes12M = 0;
+    let clientes12MSemTelCel = 0;
+
+    const rows = [];
+    const fimMesCorrente = new Date(anoRef, mesRef >= 1 && mesRef <= 12 ? mesRef : (hoje.getMonth() + 1), 0, 23, 59, 59, 0);
+    const fimMesCorrenteTs = fimMesCorrente.getTime();
+    for (const g of grupos.values()) {
+      if (g.total_pedidos < 1) continue;
+      const clienteUuid = g.cliente_id;
+      let cliDet = clienteUuid ? (clientesMap.get(clienteUuid) || null) : null;
+      let cidade = cliDet ? String(cliDet?.cidade || cliDet?.municipio || cliDet?.cidade_entrega || '').trim() : '';
+      let uf = cliDet ? String(cliDet?.uf || cliDet?.estado || '').trim() : '';
+      let telBruto = cliDet ? String(cliDet?.telefone || cliDet?.tel_1 || cliDet?.tel || cliDet?.tel_contato || '').trim() : '';
+      let celBruto = cliDet ? String(cliDet?.celular || cliDet?.cel || cliDet?.whatsapp || cliDet?.tel_2 || '').trim() : '';
+      const soNum = (s) => String(s || '').replace(/[^0-9]/g, '');
+      const temTel = !!soNum(telBruto);
+      const temCel = !!soNum(celBruto);
+      const telefone = temTel ? telBruto : (temCel ? celBruto : '');
+      const celular = temCel ? celBruto : '';
+      let vendedorIdRow = clienteUuid && cliDet ? String(cliDet?.vendedor_id || '').trim() : '';
+      if (!vendedorIdRow && g.vendedores_ids && g.vendedores_ids.size) vendedorIdRow = Array.from(g.vendedores_ids)[0];
+      const vendDet = vendedorIdRow ? (vendedoresMap.get(vendedorIdRow) || null) : null;
+      const vendedorNome = vendDet ? String(vendDet?.nome || vendDet?.apelido || '').trim() : '';
+      const vendedor = vendedorNome || (vendedorIdRow ? ('Vend. ' + vendedorIdRow.slice(0, 8)) : '');
+      if (usuarioVendedorId && vendedorIdRow && String(vendedorIdRow).toLowerCase() !== String(usuarioVendedorId).toLowerCase()) continue;
+
+      const N_total_periodo = g.total_pedidos;
+      const todosIsoPeriodo = (g.datas_raw || []).slice().filter(Boolean).map(s => String(s).slice(0, 10)).filter(Boolean);
+      todosIsoPeriodo.sort();
+      const dias_distintos_compra = Array.from(new Set(todosIsoPeriodo)).sort();
+      const total_pedidos = N_total_periodo;
+      const intervalos = [];
+      for (let i = 1; i < dias_distintos_compra.length; i++) {
+        const dAntTs = new Date(`${dias_distintos_compra[i - 1]}T12:00:00`).getTime();
+        const dAtTs = new Date(`${dias_distintos_compra[i]}T12:00:00`).getTime();
+        const diff = Math.round((dAtTs - dAntTs) / msDia);
+        if (Number.isFinite(diff) && diff >= 0) intervalos.push(diff);
+      }
+      intervalos.sort((a, b) => a - b);
+      const qtdeIntervalos = intervalos.length;
+      let somaIntervalos = 0;
+      for (const d of intervalos) somaIntervalos += d;
+      const intervalo_medio_dias = qtdeIntervalos > 0 ? Math.max(0.5, +(somaIntervalos / qtdeIntervalos).toFixed(1)) : null;
+      let intervalo_mediano_dias = null;
+      if (qtdeIntervalos > 0) {
+        const meio = Math.floor(qtdeIntervalos / 2);
+        if (qtdeIntervalos % 2 === 1) intervalo_mediano_dias = +Number(intervalos[meio] || 0).toFixed(1);
+        else intervalo_mediano_dias = +(((Number(intervalos[meio - 1] || 0) + Number(intervalos[meio] || 0)) / 2)).toFixed(1);
+      }
+      let mediana_arred_cima = null;
+      if (intervalo_mediano_dias != null) {
+        const med = Number(intervalo_mediano_dias);
+        mediana_arred_cima = (med === Math.floor(med)) ? Math.round(med) : Math.ceil(med);
+      }
+      const freqReferencia = intervalo_mediano_dias != null ? Number(intervalo_mediano_dias) : (intervalo_medio_dias != null ? Number(intervalo_medio_dias) : null);
+      const ultimo_pedido_data = dias_distintos_compra[dias_distintos_compra.length - 1] || '';
       const dias_desde_ultimo = ultimo_pedido_data
         ? Math.max(0, Math.round((hoje.getTime() - new Date(`${ultimo_pedido_data}T12:00:00`).getTime()) / msDia))
         : null;
-      const atrasado = frequencia_media != null && dias_desde_ultimo != null ? dias_desde_ultimo > frequencia_media : false;
+      const mesesCobertos = Math.max(1, periodoMeses);
+      const pedidos_por_mes = +(total_pedidos / mesesCobertos).toFixed(2);
+      const valor_medio_por_pedido = total_pedidos > 0 ? Math.round((g.total_valor / total_pedidos) * 100) / 100 : 0;
+      const total_valor_periodo = Math.round(g.total_valor * 100) / 100;
+      let proxima_previsao_data = null;
+      if (ultimo_pedido_data && mediana_arred_cima != null) {
+        proxima_previsao_data = _relatoriosAddDaysIso(ultimo_pedido_data, mediana_arred_cima);
+      } else if (ultimo_pedido_data && freqReferencia != null) {
+        proxima_previsao_data = _relatoriosAddDaysIso(ultimo_pedido_data, Math.round(freqReferencia));
+      }
+      const dias_ate_previsao = proxima_previsao_data
+        ? Math.round((new Date(`${proxima_previsao_data}T12:00:00`).getTime() - hoje.getTime()) / msDia)
+        : null;
+      const dias_atraso = dias_ate_previsao != null ? Math.max(0, -dias_ate_previsao) : null;
+      const atrasado = freqReferencia != null && dias_desde_ultimo != null ? dias_desde_ultimo > freqReferencia : false;
+      if (ultimo_pedido_data && ultimo_pedido_data >= limite12MIso) {
+        clientes12M += 1;
+        if (!temTel && !temCel) clientes12MSemTelCel += 1;
+      }
+      if (g.total_pedidos < minPedidos && g.total_pedidos >= 1) {
+        // Mantém a linha, mas marca como frequência insuficiente no motivo
+      }
 
+      let classificacao = 'sugestao';
+      let motivo = '';
+      const N = total_pedidos;
+      const med = freqReferencia != null ? Number(freqReferencia) : null;
+      const atraso = dias_atraso != null ? Number(dias_atraso) : 0;
+      const dias_ate_prev = dias_ate_previsao;
+      const dias_d_ult = dias_desde_ultimo;
+      const prevExiste = proxima_previsao_data && dias_ate_prev != null;
+      const qtdeDiasDistintos = Number(dias_distintos_compra?.length || 0);
+      const maior_intervalo = qtdeIntervalos > 0 ? Math.max(...intervalos) : null;
+      let confianca = 'alta';
+      let confianca_motivo = '';
+      const conf_reasons = [];
+      if (qtdeDiasDistintos < 8 || (med != null && maior_intervalo != null && maior_intervalo > (3 * med))) {
+        confianca = 'baixa';
+        if (qtdeDiasDistintos < 8) conf_reasons.push(`dias_distintos=${qtdeDiasDistintos}<8 (mínimo p/ confiança razoável)`);
+        if (med != null && maior_intervalo != null && maior_intervalo > (3 * med)) conf_reasons.push(`maior intervalo=${maior_intervalo}d > 3× mediana(${med}d = ${(3*med).toFixed(1)}d) — outlier forte`);
+      } else if (qtdeDiasDistintos < 12) {
+        confianca = 'media';
+        conf_reasons.push(`dias_distintos=${qtdeDiasDistintos} (8-11): confiança média`);
+      } else {
+        conf_reasons.push(`dias_distintos=${qtdeDiasDistintos} ≥ 12, mediana consistente ${qtdeIntervalos} intervalos`);
+      }
+      if (qtdeIntervalos < 2) {
+        if (confianca === 'alta') confianca = 'media';
+        conf_reasons.push(`apenas ${qtdeIntervalos} intervalos p/ mediana`);
+      }
+      confianca_motivo = conf_reasons.join(' • ');
+      if (N < 1) {
+        classificacao = 'inativo';
+        motivo = 'Nenhuma OF concluída no período';
+      } else if (N < 3) {
+        if (dias_d_ult != null && dias_d_ult > 180) {
+          classificacao = 'sugestao';
+          motivo = `${N} pedido(s) <3 mín. Último ${ultimo_pedido_data} há ${dias_d_ult}d (>6 meses). Não inativo (N<3).`;
+        } else {
+          classificacao = 'sugestao';
+          motivo = dias_d_ult != null
+            ? `${N} pedido(s) <3 mín. Último ${ultimo_pedido_data} há ${dias_d_ult}d. Sujeito a contato (N<3 → NUNCA inativo).`
+            : `${N} pedido(s) <3 mín. Datas insuficientes. Contatar.`;
+        }
+      } else if (med == null || !prevExiste) {
+        if (dias_d_ult != null && dias_d_ult > 180) { classificacao = 'inativo'; motivo = `Sem compra há ${dias_d_ult}d (>6 meses). N=${N}.`; }
+        else { classificacao = 'sugestao'; motivo = `Datas insuficientes p/ mediana (M=${qtdeIntervalos} intervalos). Último ${ultimo_pedido_data} há ${dias_d_ult ?? '?'}d.`; }
+      } else {
+        const prevTs = new Date(`${proxima_previsao_data}T12:00:00`).getTime();
+        const atePrevVal = Number(dias_ate_prev);
+        // (1) LIGAR HOJE: previsão<=hoje && atraso <= 1.5 × mediana
+        if (atePrevVal <= 0 && atraso <= (1.5 * med)) {
+          classificacao = 'ligar_hoje';
+          motivo = `Previsão ${proxima_previsao_data} ${atePrevVal<0 ? 'há '+Math.abs(atePrevVal)+'d' : 'hoje'}; atraso ${atraso}d ≤ 1.5× mediana(${med}d)`;
+        }
+        // (2) ESTA SEMANA: previsão próximos 7 dias
+        else if (atePrevVal > 0 && atePrevVal <= 7) {
+          classificacao = 'ligar_semana';
+          motivo = `Previsão em ${atePrevVal} dias (${proxima_previsao_data}) — dentro desta semana`;
+        }
+        // (3) NESTE MÊS: previsão até fim do mês corrente
+        else if (atePrevVal > 7 && prevTs <= fimMesCorrenteTs) {
+          classificacao = 'ligar_mes';
+          motivo = `Previsão em ${atePrevVal}d (${proxima_previsao_data}) — ainda no mês corrente (fim ${fimMesCorrente.toISOString().slice(0,10)})`;
+        }
+        // (4) INATIVO: atraso>3× mediana OU >6 meses sem compra
+        else if (atraso > (3 * med) || (dias_d_ult != null && dias_d_ult > 180)) {
+          classificacao = 'inativo';
+          if (dias_d_ult != null && dias_d_ult > 180) motivo = `Sem compra há ${dias_d_ult}d > 6 meses`;
+          else motivo = `Atraso ${atraso}d > 3× mediana(${med}d = ${(3*med).toFixed(1)}d)`;
+        }
+        // (5) SUGESTÕES
+        else {
+          const motivos_opc = [];
+          // (a) atraso ∈ [1.5× med, 3× med]
+          if (atraso > (1.5 * med) && atraso <= (3 * med)) {
+            motivos_opc.push(`atraso ${atraso}d ∈ [1.5×(${med}d)=${(1.5*med).toFixed(1)}d — 3×(${med}d)=${(3*med).toFixed(1)}d]`);
+          }
+          // (b) mesmo período mês anterior/ano anterior (±30d ~ 1 ano)
+          if (dias_d_ult != null && dias_d_ult >= 335 && dias_d_ult <= 395) {
+            motivos_opc.push(`último em ${ultimo_pedido_data} há ${dias_d_ult}d ~ 1 ano (padrão sazonal mensal)`);
+          }
+          // (c) queda de frequência mas ainda ativo
+          if (intervalo_medio_dias != null && med != null && med > (1.8 * Number(intervalo_medio_dias)) && med <= (3 * Number(intervalo_medio_dias))) {
+            motivos_opc.push(`média ${intervalo_medio_dias}d vs mediana ${med}d: possível queda de frequência, manter contato`);
+          }
+          // (d) N >=3 mas M <2 intervalos
+          if (qtdeIntervalos < 2) {
+            motivos_opc.push(`apenas ${qtdeIntervalos} intervalos p/ mediana (dias distintos=${dias_distintos_compra.length}); manter linha mas intervalo pouco confiável`);
+          }
+          if (atePrevVal > 0) motivos_opc.push(`próxima em ${atePrevVal}d (${proxima_previsao_data})`);
+          if (atePrevVal < 0) motivos_opc.push(`atrasado ${Math.abs(atePrevVal)}d sem cair em outras categorias`);
+          classificacao = 'sugestao';
+          motivo = motivos_opc.length ? motivos_opc.join(' • ') : `Fora das 3 janelas • próxima em ${atePrevVal}d (${proxima_previsao_data})`;
+        }
+      }
+
+      let _score = 0;
+      if (freqReferencia != null && dias_desde_ultimo != null && freqReferencia > 0) _score = +(dias_desde_ultimo / freqReferencia).toFixed(2);
+      const temTelCel = !!temTel || !!temCel;
       rows.push({
-        cliente_id: g.cliente_id,
+        cliente_id: clienteUuid,
         cliente_nome: g.cliente_nome,
+        sem_cadastro: g.fallback_only === true,
+        vendedor_id: vendedorIdRow || null,
+        vendedor: vendedor,
+        cidade: cidade + (uf && cidade ? `/${uf}` : (uf || '')),
+        telefone: telefone,
+        celular: celular,
         total_pedidos: g.total_pedidos,
-        frequencia_media_dias: frequencia_media,
+        pedidos_por_mes: pedidos_por_mes,
+        intervalo_medio_dias: intervalo_medio_dias,
+        frequencia_media_dias: intervalo_medio_dias,                  // ALIAS LEGADO index.html L44171 obrigatório
+        intervalo_mediano_dias: intervalo_mediano_dias,
+        frequencia_referencia_dias: freqReferencia,
+        // ======= NOVOS CAMPOS OBRIGATÓRIOS ITEM#1 =======
+        qtde_dias_distintos_compra: qtdeDiasDistintos,
+        datas_compra: dias_distintos_compra.slice(),                    // dias DISTINTOS reais do código, não simulação
+        qtde_intervalos: qtdeIntervalos,
+        intervalos_dias: intervalos.slice(),                            // vetor intervalos REAL, não calculado manual
+        maior_intervalo: maior_intervalo,
+        confianca: confianca,
+        confianca_motivo: confianca_motivo,
+        tem_telefone_ou_celular: temTelCel,
+        // ==================================================
         ultimo_pedido_data,
+        proxima_previsao_data,
         dias_desde_ultimo,
+        dias_ate_previsao,
+        dias_atraso,
+        valor_medio_por_pedido,
+        total_valor_periodo,
         atrasado,
-        _score: frequencia_media != null && dias_desde_ultimo != null && frequencia_media > 0
-          ? +(dias_desde_ultimo / frequencia_media).toFixed(2)
-          : 0
+        classificacao,
+        motivo,
+        _score,
       });
     }
 
-    let filtradas = rows;
-    if (visao === 'dia') {
-      filtradas = rows.filter(r => r.atrasado);
-    } else {
-      filtradas = rows.filter(r => {
-        return r.atrasado || (
-          r.frequencia_media_dias != null && r.dias_desde_ultimo != null &&
-          (r.dias_desde_ultimo + limiteFuturoDias) > r.frequencia_media_dias
-        );
+    // ====== CONTADORES ALINHADOS ITEM#2: TUDO SOBRE O MESMO CONJUNTO rows ======
+    // Primeiro aplica filtro visao (LEGADO index.html) se foi passado; os contadores usam o conjunto filtrado FINAL.
+    let rowsFinais = rows.slice();
+    if (visao === 'dia') rowsFinais = rows.filter((r) => r.classificacao === 'ligar_hoje' || !!r.atrasado);
+    else if (visao === 'semana') rowsFinais = rows.filter((r) => ['ligar_hoje', 'ligar_semana'].includes(r.classificacao) || !!r.atrasado || (r.dias_ate_previsao != null && r.dias_ate_previsao > 0 && r.dias_ate_previsao <= 7));
+    else if (visao === 'mes') rowsFinais = rows.filter((r) => r.classificacao !== 'inativo');
+
+    const rows12m = rowsFinais.filter((r) => r.ultimo_pedido_data && String(r.ultimo_pedido_data) >= limite12MIso);
+    const clientes12MAjustado = rows12m.length;
+    const clienteSemTelCelAjustado = rows12m.filter((r) => !r.tem_telefone_ou_celular).length;
+
+    // Breakdown POR VENDEDOR (tem que somar EXATAMENTE = clienteSemTelCelAjustado)
+    const contSemTelPorVend = new Map();
+    for (const r of rows12m) {
+      if (r.tem_telefone_ou_celular) continue;
+      const vId = String(r.vendedor_id || '__SEM_VENDEDOR__').trim();
+      const vNomeBase = String(r.vendedor || '').trim();
+      let vNome = vNomeBase || (vId === '__SEM_VENDEDOR__' ? 'Sem vendedor cadastrado' : ('Vend. ' + vId.slice(0, 8)));
+      if (vId === '__SEM_VENDEDOR__' && !vNomeBase) vNome = 'Sem vendedor cadastrado';
+      const chave = vId + '|' + vNome;
+      contSemTelPorVend.set(chave, (contSemTelPorVend.get(chave) || 0) + 1);
+    }
+    const resumoSemTelPorVendedor = {};
+    let _somaBreakdown = 0;
+    for (const [chave, qtd] of contSemTelPorVend.entries()) {
+      const partes = chave.split('|');
+      const vNome = partes.slice(1).join('|');
+      resumoSemTelPorVendedor[vNome] = qtd;
+      _somaBreakdown += Number(qtd || 0);
+    }
+    if (_somaBreakdown !== clienteSemTelCelAjustado) {
+      console.warn('[FREQ-CLI] breakdown soma != total_sem_tel. ajuste forçado (garantir invariante):', _somaBreakdown, '!=', clienteSemTelCelAjustado);
+      resumoSemTelPorVendedor['⚠ Total ajustado (banco incompleto)'] = Math.max(0, clienteSemTelCelAjustado - _somaBreakdown);
+    }
+    const ordenaObjPorValorDesc = (obj) => {
+      const saida = {};
+      Object.entries(obj).sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0)).forEach(([k, v]) => { saida[k] = v; });
+      return saida;
+    };
+    // Explicação item#2 "821 sem vendedor" (responder no relatório):
+    const explicacao_contadores = {
+      total_clientes_periodo_min_pedidos: rowsFinais.length,          // clientes com ≥ min_pedidos no período
+      total_clientes_ult_12m_com_pedido: clientes12MAjustado,        // subconjunto rowsFinais com último pedido ≤12m atrás
+      total_sem_telefone_12m: clienteSemTelCelAjustado,
+      soma_breakdown_sem_telefone_por_vendedor: _somaBreakdown,
+      por_que_821_anterior_era_errado: 'Antigo cálculo usava o MAPA DE TODOS OS 1396 CLIENTES CADASTRADOS NA BASE HISTÓRICA (toda tabela clientes, sem filtrar período do relatório). Novo cálculo usa SOMENTE o conjunto rows12m DENTRO DO PERÍODO + filtro min_pedidos + filtro visao. Por isso números são menores e fecham.',
+      por_que_821_sem_vendedor: 'Número 821 era o conjunto COMPLETO (1396 clientes históricos todo o banco). Sem vendedor cadastrado = cliente não tem vendedor_id gravado na tabela `clientes` E a coluna `vendedor_id` das OFs dele também está vazia/nula. Neste relatório isso cai na label "Sem vendedor cadastrado" e agora é contado SOMENTE DENTRO do universo do período filtrado.'
+    };
+
+    // ====== DUPLICATAS CLIENTES (top 20 nomes parecidos) ======
+    const duplicatas_suspeitas = [];
+    try {
+      const clienteTokens = new Map();
+      for (const r of rows) {
+        if (!r.cliente_id || r.sem_cadastro) continue;
+        const nomeLimpo = String(r.cliente_nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        if (!nomeLimpo || nomeLimpo.length < 3) continue;
+        const stopWords = new Set(['ltda','me','sa','eireli','epp','s/a','da','de','do','das','dos','em','para','com','ou','no','na','nos','nas','por']);
+        const tokens = nomeLimpo.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stopWords.has(t));
+        if (tokens.length < 1) continue;
+        clienteTokens.set(r.cliente_id, {
+          id: r.cliente_id,
+          nome: r.cliente_nome,
+          cidade: r.cidade,
+          vendedor: r.vendedor,
+          total_ofs: r.total_pedidos,
+          tokensSet: new Set(tokens),
+          tokensArr: tokens,
+        });
+      }
+      const arrClientes = Array.from(clienteTokens.values());
+      const pares = [];
+      for (let i = 0; i < arrClientes.length; i++) {
+        for (let j = i + 1; j < arrClientes.length; j++) {
+          const a = arrClientes[i], b = arrClientes[j];
+          if (a.id === b.id) continue;
+          let comum = 0;
+          const tokensComuns = [];
+          for (const t of a.tokensSet) {
+            if (b.tokensSet.has(t)) { comum++; tokensComuns.push(t); }
+          }
+          if (comum < 2) continue;
+          const denom = Math.min(a.tokensArr.length, b.tokensArr.length);
+          const similaridade = denom > 0 ? comum / denom : 0;
+          if (similaridade < 0.5 && comum < 3) continue;
+          pares.push({
+            a: { id: a.id, nome: a.nome, cidade: a.cidade, vendedor: a.vendedor, total_ofs: a.total_ofs },
+            b: { id: b.id, nome: b.nome, cidade: b.cidade, vendedor: b.vendedor, total_ofs: b.total_ofs },
+            tokens_comuns: tokensComuns,
+            similaridade: +(similaridade.toFixed(2)),
+            qtd_tokens_comuns: comum,
+          });
+        }
+      }
+      pares.sort((x, y) => {
+        if ((y.qtd_tokens_comuns || 0) !== (x.qtd_tokens_comuns || 0)) return (y.qtd_tokens_comuns || 0) - (x.qtd_tokens_comuns || 0);
+        return (y.similaridade || 0) - (x.similaridade || 0);
       });
+      for (let k = 0; k < Math.min(20, pares.length); k++) duplicatas_suspeitas.push(pares[k]);
+    } catch (_e) {
+      console.warn('[FREQ-CLI] duplicatas calc warn:', _e?.message || _e);
     }
 
-    filtradas.sort((a, b) => {
-      if (b._score !== a._score) return b._score - a._score;
-      if ((b.dias_desde_ultimo ?? -1) !== (a.dias_desde_ultimo ?? -1))
-        return (b.dias_desde_ultimo ?? -1) - (a.dias_desde_ultimo ?? -1);
+    // Seções baseadas no rowsFinais (já filtrado visao)
+    const sec = {
+      ligar_hoje: rowsFinais.filter((r) => r.classificacao === 'ligar_hoje'),
+      ligar_semana: rowsFinais.filter((r) => r.classificacao === 'ligar_semana'),
+      ligar_mes: rowsFinais.filter((r) => r.classificacao === 'ligar_mes'),
+      sugestoes: rowsFinais.filter((r) => r.classificacao === 'sugestao'),
+      inativos: rowsFinais.filter((r) => r.classificacao === 'inativo'),
+    };
+    const ordenar = (arr) => arr.slice().sort((a, b) => {
+      if ((b.dias_atraso ?? 0) !== (a.dias_atraso ?? 0)) return (b.dias_atraso ?? 0) - (a.dias_atraso ?? 0);
+      if ((b.dias_desde_ultimo ?? -1) !== (a.dias_desde_ultimo ?? -1)) return (b.dias_desde_ultimo ?? -1) - (a.dias_desde_ultimo ?? -1);
+      if ((b._score ?? 0) !== (a._score ?? 0)) return (b._score ?? 0) - (a._score ?? 0);
       return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
     });
+    for (const k of Object.keys(sec)) sec[k] = ordenar(sec[k]);
 
-    const totalClientesFreqCalculada = rows.filter(r => r.frequencia_media_dias != null).length;
-    const totalAtrasados = rows.filter(r => r.atrasado).length;
-    const totalNoPeriodo = filtradas.length;
-    const totalAtrasadosNoPeriodo = filtradas.filter(r => r.atrasado).length;
+    const totalPeriodo = rowsFinais.length;
+    const rowsSemScore = rowsFinais.map((r) => { const { _score, tem_telefone_ou_celular, ...resto } = r; return resto; });
+    for (const k of Object.keys(sec)) sec[k] = sec[k].map((r) => { const { _score, tem_telefone_ou_celular, ...resto } = r; return resto; });
 
-    const rowsOut = filtradas.map(r => {
-      const { _score, ...resto } = r;
-      return resto;
-    });
+    const totalFreqCalculada = rowsSemScore.filter((r) => r.intervalo_mediano_dias != null && r.qtde_intervalos >= 1).length;
+    const totalAtrasados = rowsSemScore.filter((r) => !!r.atrasado).length;
 
     return res.json({
       ok: true,
-      visao,
+      visao: visao,
       modo_empresa: modo,
       empresa_id_usada: modo === 'empresa_unica' && empresa_id ? empresa_id : null,
-      limite_futuro_dias: limiteFuturoDias,
-      criterio_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at) — OFs status Concluído',
-      criterio_min_pedidos: 3,
-      resumo: {
-        total_clientes_com_pedidos: rows.length,
-        total_clientes_frequencia_calculada: totalClientesFreqCalculada,
-        total_atrasados_geral: totalAtrasados,
-        total_exibidos_no_periodo: totalNoPeriodo,
-        total_atrasados_no_periodo: totalAtrasadosNoPeriodo,
-        total_a_vencer_no_periodo: totalNoPeriodo - totalAtrasadosNoPeriodo
+      vendedor_id_filtro_aplicado: vendedorIdFiltro,
+      permissao_vendedor_ativa: usuarioVendedorId ? usuarioVendedorId : null,
+      usuario_sessao: req?.usuario ? {
+        id: req.usuario.id || null,
+        nome: req.usuario.nome || null,
+        perfil: req.usuario.perfil || req.usuario.papel || null,
+        vendedor_id: req.usuario.vendedor_id || req.usuario.vendId || null,
+      } : null,
+      filtros: {
+        visao: visao,
+        mes: mesRef || null,
+        ano: anoRef,
+        periodo_meses: periodoMeses,
+        min_pedidos: minPedidos,
+        range_inicio: inicioIso,
+        range_fim: fimIso,
+        hoje: hojeIso,
       },
-      rows: rowsOut
+      criterio_data: 'data_conclusao → data_faturamento → dia → created_at (America/Sao_Paulo, Intl) — OFs concluídas não canceladas, sem teste',
+      resumo: {
+        // Retrocompatibilidade LEGADO index.html renderRelatorioFrequenciaCompra (L44130-44140)
+        total_clientes_com_pedidos: totalPeriodo,                           // alias obrigatório LEGADO
+        total_clientes_frequencia_calculada: totalFreqCalculada,            // alias obrigatório LEGADO
+        total_atrasados_geral: totalAtrasados,                              // alias obrigatório LEGADO
+        // Retrocompatibilidade LEGADO index.html imprimirRelatorioFrequenciaCompra (L44250-L44251)
+        total_atrasados_no_periodo: totalAtrasados,                         // = total atrasados no período (rowsFinais.atrasado === true)
+        total_a_vencer_no_periodo: (totalPeriodo||0) - (totalAtrasados||0), // = período total - atrasados (a vencer no período)
+        // Novos campos oficiais
+        total_clientes_periodo: totalPeriodo,
+        total_sem_cadastro_cliente: rowsSemScore.filter((r) => r.sem_cadastro === true).length,
+        clientes_ult_12m_com_pedido: clientes12MAjustado,
+        clientes_ult_12m_sem_telefone_nem_celular: clienteSemTelCelAjustado,
+        clientes_ult_12m_sem_telefone_por_vendedor: ordenaObjPorValorDesc(resumoSemTelPorVendedor),
+        _explicacao_contadores: explicacao_contadores,
+        secoes: {
+          ligar_hoje: sec.ligar_hoje.length,
+          ligar_semana: sec.ligar_semana.length,
+          ligar_mes: sec.ligar_mes.length,
+          sugestoes_mes: sec.sugestoes.length,
+          inativos: sec.inativos.length,
+        }
+      },
+      secoes: sec,
+      rows: rowsSemScore,
+      duplicatas_clientes_suspeitas: duplicatas_suspeitas,
     });
   } catch (e) {
-    console.error('[FREQ-COMPRA-CLIENTES]', e);
+    console.error('[FREQ-COMPRA-CLIENTES]', e?.message || e, e?.stack || '');
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
