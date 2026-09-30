@@ -4553,6 +4553,288 @@ try {
     rrEnsurePcpSergioButton();
   }
 
+  try {
+    window.renderProjecaoVendas = function(anoRef) {
+      try {
+        var container = document.getElementById('widget-projecao-vendas');
+        if (!container) return;
+        var fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        var fmtNum = new Intl.NumberFormat('pt-BR');
+        var esc = function(s) { return String(s == null ? '' : s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+        function empLabel(k) {
+          var f = String(k || '').toUpperCase().trim();
+          if (f === 'ALL' || !f) return 'Todas as empresas (Soma)';
+          if (f === 'E1') return 'Italy Embalagens';
+          if (f === 'E2') return 'Cartoeste';
+          if (f === 'E3') return 'Oestepack';
+          return 'Empresa ' + f;
+        }
+        var __lastPayload = null;
+        container.innerHTML = ''
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap;padding:0 2px">'
+          + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          + '    <select id="rr-proj-emp" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700">'
+          + '      <option value="">Todas as empresas (Soma)</option>'
+          + '      <option value="ALL">Todas as empresas (Soma)</option>'
+          + '      <option value="E1">Italy Embalagens</option>'
+          + '      <option value="E2">Cartoeste</option>'
+          + '      <option value="E3">Oestepack</option>'
+          + '    </select>'
+          + '    <button type="button" id="rr-proj-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+          + '    <button type="button" id="rr-proj-imprimir" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px" disabled>🖨 Gerar Relatório</button>'
+          + '  </div>'
+          + '  <div id="rr-proj-status" style="color:#64748b;font-size:11px;font-weight:600"></div>'
+          + '</div>'
+          + '<div id="rr-proj-body" style="min-height:260px"><p style="color:#64748b;text-align:center;padding:30px;font-size:13px">Carregando projeção de vendas...</p></div>';
+
+        var selEmp = container.querySelector('#rr-proj-emp');
+        var btnBuscar = container.querySelector('#rr-proj-buscar');
+        var btnImprimir = container.querySelector('#rr-proj-imprimir');
+        var body = container.querySelector('#rr-proj-body');
+        var status = container.querySelector('#rr-proj-status');
+
+        function carregar(empId) {
+          if (!body) return;
+          btnImprimir.disabled = true;
+          __lastPayload = null;
+          if (status) status.textContent = 'Buscando dados · ' + empLabel(empId) + '...';
+          body.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando projeção de vendas...</p>';
+          var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+          var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+          var qs = empId ? ('?emp_id=' + encodeURIComponent(empId)) : '';
+          fetch('/api/relatorios/projecao-vendas' + qs, { headers: h }).then(function(r) { return r.json(); }).then(function(resp) {
+            if (!resp || !resp.ok) throw new Error(resp && (resp.error || resp.message || resp.err) ? (resp.error || resp.message || resp.err) : 'Erro na consulta');
+            var d = resp.data || {};
+            __lastPayload = { resp: resp, d: d, empId: empId, fmtBRL: fmtBRL, fmtNum: fmtNum, esc: esc };
+            btnImprimir.disabled = false;
+            renderBody(resp, d, empId);
+          }).catch(function(err) {
+            btnImprimir.disabled = true;
+            if (status) status.textContent = 'Erro';
+            body.innerHTML = ''
+              + '<div style="padding:40px 20px;text-align:center">'
+              + '  <div style="font-size:42px;margin-bottom:10px">⚠️</div>'
+              + '  <div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao carregar projeção de vendas</div>'
+              + '  <div style="color:#f87171;font-size:12px;margin-top:6px">' + esc(String(err && err.message || err)) + '</div>'
+              + '  <button type="button" onclick="document.getElementById(\'rr-proj-buscar\').click()" style="margin-top:14px;padding:8px 16px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700;font-size:12px">Tentar novamente</button>'
+              + '</div>';
+            console.error('[RR-ProjVendas]', err);
+          });
+        }
+
+        function renderBody(resp, d, empId) {
+          if (!body) return;
+          if (status) status.textContent = resp.modo_empresa ? (resp.modo_empresa + ' · ' + empLabel(empId)) : empLabel(empId);
+          var mesAtual = d.mes_atual || {};
+          var resumo = d.resumo || {};
+          var hist = Array.isArray(d.historico) ? d.historico : [];
+          var proj = Array.isArray(d.projecao_meses) ? d.projecao_meses : [];
+          var aberto = d.carteira_aberto || {};
+          var somaProj = resumo.somatorio_valores_projetados || {};
+          var qtdProj = Number(resumo.meses_projetados_qtd || 0);
+          var media3 = Number(resumo.media_movel_ult3m || 0);
+          var media6 = Number(resumo.media_movel_ult6m || 0);
+          var tendBase = Number(resumo.projecao_tendencia_mensal_base || 0);
+          var consV = Number(somaProj.conservadora || 0);
+          var agrV = Number(somaProj.agressiva || 0);
+          var consAvg = qtdProj > 0 ? (consV / qtdProj) : 0;
+          var agrAvg = qtdProj > 0 ? (agrV / qtdProj) : 0;
+          var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+          function labelMes(mesKey) {
+            try {
+              var parts = String(mesKey || '').split('-');
+              if (parts.length === 2) return meses[parseInt(parts[1], 10) - 1] + '/' + parts[0];
+            } catch (_) {}
+            return String(mesKey || '');
+          }
+          function mkCard(icon, titulo, valor, subt, cor) {
+            return ''
+              + '<div style="background:linear-gradient(135deg,rgba(15,23,42,.85),rgba(30,41,59,.85));border:1px solid rgba(148,163,184,.12);border-radius:16px;padding:14px 16px">'
+              + '  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">'
+              + '    <div>'
+              + '      <div style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:.2px">' + esc(titulo) + '</div>'
+              + '      <div style="color:' + (cor || '#f8fafc') + ';font-size:20px;font-weight:900;margin-top:6px;line-height:1.1">' + esc(valor) + '</div>'
+              + (subt ? ('<div style="color:#64748b;font-size:11px;font-weight:600;margin-top:4px">' + esc(subt) + '</div>') : '')
+              + '    </div>'
+              + '    <div style="font-size:22px;line-height:1">' + esc(icon) + '</div>'
+              + '  </div>'
+              + '</div>';
+          }
+          var cards = ''
+            + mkCard('📅', 'Mês Atual · ' + labelMes(mesAtual.mes || '2026-09'), fmtBRL.format(Number(mesAtual.valor_concluido || 0)), fmtNum.format(Number(mesAtual.ofs_concluidas || 0)) + ' OFs · ' + fmtNum.format(Number(mesAtual.qtd_caixas || 0)) + ' cx', '#38bdf8')
+            + mkCard('📊', 'Média Móvel 3m', fmtBRL.format(media3), 'Soma dividida por ' + Math.max(qtdProj || 3, 3) + ' meses projetados', '#a78bfa')
+            + mkCard('📈', 'Média Móvel 6m', fmtBRL.format(media6), 'Janela ampliada', '#fbbf24')
+            + mkCard('📉', 'Tendência Linear (base)', fmtBRL.format(tendBase), 'Regressão mensal', '#f472b6')
+            + mkCard('🛡', 'Projeção Conservadora · ' + qtdProj + 'm', fmtBRL.format(consV), 'Média ' + fmtBRL.format(consAvg) + '/mês', '#10b981')
+            + mkCard('🚀', 'Projeção Agressiva · ' + qtdProj + 'm', fmtBRL.format(agrV), 'Média ' + fmtBRL.format(agrAvg) + '/mês', '#ef4444');
+
+          var histRows = hist.slice().reverse().map(function(m, idx) {
+            var zebra = (idx % 2) === 0 ? 'background:rgba(148,163,184,.03)' : '';
+            return ''
+              + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + zebra + '">'
+              + '  <td style="padding:9px 12px;color:#e2e8f0;font-size:12px;font-weight:700;white-space:nowrap">' + esc(labelMes(m.mes || (m.ano + '-' + String(m.mes_numero || 1).padStart(2,'0')))) + '</td>'
+              + '  <td style="padding:9px 12px;color:#38bdf8;font-size:12px;font-weight:800;text-align:center">' + fmtNum.format(Number(m.ofs_concluidas || 0)) + '</td>'
+              + '  <td style="padding:9px 12px;color:#a78bfa;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(Number(m.valor_concluido || m.valor_total || 0)) + '</td>'
+              + '  <td style="padding:9px 12px;color:#10b981;font-size:12px;font-weight:800;text-align:center">' + fmtNum.format(Number(m.qtd_caixas || 0)) + '</td>'
+              + '  <td style="padding:9px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:center">' + (m.fator_sazonal ? (Number(m.fator_sazonal).toFixed(2) + 'x') : '—') + '</td>'
+              + '</tr>';
+          }).join('');
+
+          var projRows = '';
+          if (proj.length) {
+            projRows = proj.map(function(p, idx) {
+              var zebra = (idx % 2) === 0 ? 'background:rgba(148,163,184,.03)' : '';
+              function _c(obj) { return { ofs: Number(obj && obj.ofs || 0), val: Number(obj && obj.valor || 0), cx: Number(obj && obj.caixas || 0) }; }
+              var m3 = _c(p.media3); var m6 = _c(p.media6); var t = _c(p.tendencia); var sz = _c(p.sazonal); var cs = _c(p.conservadora); var ag = _c(p.agressiva);
+              return ''
+                + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + zebra + '">'
+                + '  <td style="padding:9px 12px;color:#f8fafc;font-size:12px;font-weight:800;white-space:nowrap">' + esc(labelMes(p.mes || '')) + '</td>'
+                + '  <td style="padding:9px 12px;color:#a78bfa;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(m3.val) + '</td>'
+                + '  <td style="padding:9px 12px;color:#fbbf24;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(m6.val) + '</td>'
+                + '  <td style="padding:9px 12px;color:#f472b6;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(t.val) + '</td>'
+                + '  <td style="padding:9px 12px;color:#14b8a6;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(sz.val) + '</td>'
+                + '  <td style="padding:9px 12px;color:#10b981;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(cs.val) + '</td>'
+                + '  <td style="padding:9px 12px;color:#ef4444;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(ag.val) + '</td>'
+                + '</tr>';
+            }).join('');
+          } else {
+            var mesesFuturos = [];
+            try {
+              var ultMes = mesAtual.mes || '2026-09';
+              var parts = ultMes.split('-');
+              var y = parseInt(parts[0], 10); var m = parseInt(parts[1], 10);
+              for (var i = 1; i <= Math.max(qtdProj, 3); i++) {
+                var nm = m + i; var ny = y;
+                if (nm > 12) { nm -= 12; ny += 1; }
+                mesesFuturos.push(ny + '-' + String(nm).padStart(2, '0'));
+              }
+            } catch (_) {}
+            projRows = mesesFuturos.map(function(mk, idx) {
+              var zebra = (idx % 2) === 0 ? 'background:rgba(148,163,184,.03)' : '';
+              var mesesN = mesesFuturos.length || 1;
+              return ''
+                + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + zebra + '">'
+                + '  <td style="padding:9px 12px;color:#f8fafc;font-size:12px;font-weight:800;white-space:nowrap">' + esc(labelMes(mk)) + '</td>'
+                + '  <td style="padding:9px 12px;color:#a78bfa;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(media3 / mesesN) + '</td>'
+                + '  <td style="padding:9px 12px;color:#fbbf24;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(media6 / mesesN) + '</td>'
+                + '  <td style="padding:9px 12px;color:#f472b6;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(tendBase / mesesN) + '</td>'
+                + '  <td style="padding:9px 12px;color:#14b8a6;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format((Number(somaProj.sazonal || 0) || (media3)) / mesesN) + '</td>'
+                + '  <td style="padding:9px 12px;color:#10b981;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(consAvg) + '</td>'
+                + '  <td style="padding:9px 12px;color:#ef4444;font-size:12px;font-weight:800;text-align:center">' + fmtBRL.format(agrAvg) + '</td>'
+                + '</tr>';
+            }).join('');
+          }
+
+          var emptyMsg = !hist.length ? ('<div style="padding:50px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">📊</div><div style="color:#94a3b8;font-size:14px;font-weight:600">Nenhum dado de histórico encontrado para ' + esc(empLabel(empId)) + '.</div><div style="color:#64748b;font-size:12px;margin-top:4px">Tente outra empresa no filtro acima.</div></div>') : '';
+
+          body.innerHTML = ''
+            + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">' + cards + '</div>'
+            + (resumo.explicacao_metodo ? ('<div style="background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:14px;padding:10px 14px;margin-bottom:14px;color:#bae6fd;font-size:11px;font-weight:600">🧭 ' + esc(String(resumo.explicacao_metodo).substring(0, 300)) + '</div>') : '')
+            + emptyMsg
+            + (hist.length ? (''
+              + '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:16px;overflow:hidden;margin-bottom:14px">'
+              + '  <div style="padding:12px 16px;background:linear-gradient(90deg,rgba(30,41,59,.8),rgba(15,23,42,.8));border-bottom:1px solid rgba(148,163,184,.1);display:flex;justify-content:space-between;align-items:center">'
+              + '    <div style="color:#f1f5f9;font-weight:800;font-size:14px">📜 Histórico Mensal (' + hist.length + ' meses)</div>'
+              + '    <div style="color:#94a3b8;font-size:11px;font-weight:600">Critério: ' + esc(String(resp.criterio_data || 'Data conclusão').split(';')[0]) + '</div>'
+              + '  </div>'
+              + '  <div style="overflow:auto"><table style="width:100%;border-collapse:collapse">'
+              + '    <thead><tr style="background:rgba(2,6,23,.5)">'
+              + '      <th style="padding:10px 12px;color:#94a3b8;font-size:11px;font-weight:800;text-align:left;letter-spacing:.5px">Mês</th>'
+              + '      <th style="padding:10px 12px;color:#94a3b8;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">OFs Concluídas</th>'
+              + '      <th style="padding:10px 12px;color:#94a3b8;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Valor Total</th>'
+              + '      <th style="padding:10px 12px;color:#94a3b8;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Caixas</th>'
+              + '      <th style="padding:10px 12px;color:#94a3b8;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Fator Sazonal</th>'
+              + '    </tr></thead>'
+              + '    <tbody>' + histRows + '</tbody>'
+              + '  </table></div>'
+              + '</div>'
+              + '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:16px;overflow:hidden">'
+              + '  <div style="padding:12px 16px;background:linear-gradient(90deg,rgba(124,58,237,.25),rgba(37,99,235,.25));border-bottom:1px solid rgba(148,163,184,.1);display:flex;justify-content:space-between;align-items:center">'
+              + '    <div style="color:#f1f5f9;font-weight:800;font-size:14px">🔮 Projeção Futura (' + (mesesFuturos.length || proj.length || qtdProj) + ' meses)</div>'
+              + '    <div style="color:#94a3b8;font-size:11px;font-weight:600">6 cenários: Média 3m · Média 6m · Tendência · Sazonal · Conservadora · Agressiva</div>'
+              + '  </div>'
+              + '  <div style="overflow:auto"><table style="width:100%;border-collapse:collapse">'
+              + '    <thead><tr style="background:rgba(2,6,23,.5)">'
+              + '      <th style="padding:10px 12px;color:#94a3b8;font-size:11px;font-weight:800;text-align:left;letter-spacing:.5px">Mês Projetado</th>'
+              + '      <th style="padding:10px 12px;color:#a78bfa;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Média 3m</th>'
+              + '      <th style="padding:10px 12px;color:#fbbf24;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Média 6m</th>'
+              + '      <th style="padding:10px 12px;color:#f472b6;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Tendência</th>'
+              + '      <th style="padding:10px 12px;color:#14b8a6;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Sazonal</th>'
+              + '      <th style="padding:10px 12px;color:#10b981;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Conservadora</th>'
+              + '      <th style="padding:10px 12px;color:#ef4444;font-size:11px;font-weight:800;text-align:center;letter-spacing:.5px">Agressiva</th>'
+              + '    </tr></thead>'
+              + '    <tbody>' + projRows + '</tbody>'
+              + '  </table></div>'
+              + '</div>') : '');
+        }
+
+        if (btnImprimir) btnImprimir.onclick = function() {
+          try {
+            if (!__lastPayload) return;
+            var resp = __lastPayload.resp; var d = __lastPayload.d; var empId = __lastPayload.empId;
+            var esc2 = __lastPayload.esc; var fb = __lastPayload.fmtBRL; var fn = __lastPayload.fmtNum;
+            var hist = Array.isArray(d.historico) ? d.historico.slice().reverse() : [];
+            var detalheHeaders = ['Mês', 'OFs Concluídas', 'Valor Total', 'Caixas'];
+            var detalheRows = hist.map(function(m) {
+              return [ esc2(String(m.mes || '')), fn.format(Number(m.ofs_concluidas || 0)), fb.format(Number(m.valor_concluido || m.valor_total || 0)), fn.format(Number(m.qtd_caixas || 0)) ];
+            });
+            var resumo = d.resumo || {}; var aberto2 = d.carteira_aberto || {}; var mesAtual2 = d.mes_atual || {};
+            var cards2 = [
+              { label: 'Mês Atual', value: fb.format(Number(mesAtual2.valor_concluido || 0)), sub: fn.format(Number(mesAtual2.ofs_concluidas || 0)) + ' OFs · ' + fn.format(Number(mesAtual2.qtd_caixas || 0)) + ' caixas' },
+              { label: 'Média Móvel 3m', value: fb.format(Number(resumo.media_movel_ult3m || 0)), sub: 'Janela curta' },
+              { label: 'Média Móvel 6m', value: fb.format(Number(resumo.media_movel_ult6m || 0)), sub: 'Janela longa' },
+              { label: 'Tendência Linear', value: fb.format(Number(resumo.projecao_tendencia_mensal_base || 0)), sub: 'Regressão · slope ' + fn.format(Number(resumo.tendencia_linear_slope_mensal || 0)) + '/mês' },
+              { label: 'Projeção Conservadora (' + Number(resumo.meses_projetados_qtd || 0) + 'm)', value: fb.format(Number((resumo.somatorio_valores_projetados || {}).conservadora || 0)), sub: 'Cenário baixo' },
+              { label: 'Projeção Agressiva (' + Number(resumo.meses_projetados_qtd || 0) + 'm)', value: fb.format(Number((resumo.somatorio_valores_projetados || {}).agressiva || 0)), sub: 'Cenário alto' },
+              { label: 'Carteira em Aberto', value: fb.format(Number(aberto2.valor_total || 0)), sub: fn.format(Number(aberto2.qtd_ofs || 0)) + ' OFs · ' + fn.format(Number(aberto2.caixas_estimadas || 0)) + ' cx' },
+              { label: 'Período', value: esc2(String(d.periodo || '')), sub: empLabel(empId) + ' · ' + (resp.modo_empresa || '') }
+            ];
+            var cfg = {
+              title: 'Projeção de Vendas · ' + empLabel(empId),
+              periodo: String(d.periodo || 'Atual') + ' · ' + empLabel(empId),
+              cards: cards2,
+              summaryTitle: 'Totais 12 meses consolidados',
+              summaryHeaders: ['Indicador', 'Valor'],
+              summaryRows: [
+                ['Total acumulado 12m até hoje', fb.format(Number(resumo.total_12m_ate_hoje_valor || 0))],
+                ['Média mensal 12m', fb.format(Number(resumo.media_mensal_12m_ate_hoje || resumo.media_mensal_12m || 0))],
+                ['Total consolidado ano atual', fb.format(Number(resumo.total_ano_atual_consolidado || 0))],
+                ['Meses projetados à frente', fn.format(Number(resumo.meses_projetados_qtd || 0), 0)]
+              ],
+              emptySummaryCols: 2,
+              detailTitle: 'Histórico Mensal (detalhado)',
+              detailHeaders: detalheHeaders,
+              detailRows: detalheRows,
+              emptyDetailCols: 4
+            };
+            if (typeof rrOpenPrint === 'function') rrOpenPrint(cfg);
+            else alert('Módulo impressão rrOpenPrint não carregado.');
+          } catch(ePrint) {
+            try { alert('Erro ao montar relatório: ' + String(ePrint.message || ePrint)); } catch(_) {}
+            console.error('[RR-ProjVendas-Print]', ePrint);
+          }
+        };
+
+        if (btnBuscar) btnBuscar.onclick = function() {
+          try { if (typeof window.toastMod === 'function') window.toastMod('Buscando projeção...', 'info'); } catch (_) {}
+          var sel = selEmp ? selEmp.value : '';
+          if (sel === 'ALL' || sel === '') carregar('');
+          else carregar(sel);
+        };
+        if (selEmp) selEmp.onchange = function() { if (btnBuscar) btnBuscar.click(); };
+
+        setTimeout(function() { try { if (btnBuscar) btnBuscar.click(); } catch (_) {} }, 80);
+      } catch (eTop) {
+        try {
+          var c2 = document.getElementById('widget-projecao-vendas');
+          if (c2) c2.innerHTML = '<div style="padding:40px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">⚠️</div><div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao inicializar widget</div><div style="color:#f87171;font-size:12px;margin-top:6px">' + String(eTop && eTop.message || eTop).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div></div>';
+        } catch(_) {}
+        console.error('[RR-ProjVendas-Top]', eTop);
+      }
+    };
+    try { window.renderProjecaoVendas._patchHideWidget = true; } catch (_) {}
+  } catch (_) {}
+
   function rrBoot() {
     try {
       rrInstallGoWrapper();
