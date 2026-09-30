@@ -3831,7 +3831,7 @@ try {
         + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">📊 Projeção de Vendas</div><div style="font-size:12px;color:#94a3b8">Histórico mensal de faturamento com projeção baseada em média móvel e tendência.</div></div>'
         + '  <button type="button" id="rr-projecao-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
         + '</div>'
-        + '<div id="widget-projecao-vendas" style="min-height:260px"><p style="color:#64748b;text-align:center;padding:30px;font-size:13px">Carregando projeção de vendas...</p></div>';
+        + '<div id="rr-widget-projecao-vendas" style="min-height:260px"><p style="color:#64748b;text-align:center;padding:30px;font-size:13px">Carregando projeção de vendas...</p></div>';
       wrap.appendChild(card);
       document.body.appendChild(wrap);
       var btnClose = card.querySelector('#rr-projecao-close');
@@ -4556,7 +4556,7 @@ try {
   try {
     window.renderProjecaoVendas = function(anoRef) {
       try {
-        var container = document.getElementById('widget-projecao-vendas');
+        var container = document.getElementById('rr-widget-projecao-vendas');
         if (!container) return;
         try {
           container.style.display = 'block';
@@ -4831,7 +4831,7 @@ try {
         setTimeout(function() { try { if (btnBuscar) btnBuscar.click(); } catch (_) {} }, 80);
       } catch (eTop) {
         try {
-          var c2 = document.getElementById('widget-projecao-vendas');
+          var c2 = document.getElementById('rr-widget-projecao-vendas');
           if (c2) c2.innerHTML = '<div style="padding:40px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">⚠️</div><div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao inicializar widget</div><div style="color:#f87171;font-size:12px;margin-top:6px">' + String(eTop && eTop.message || eTop).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div></div>';
         } catch(_) {}
         console.error('[RR-ProjVendas-Top]', eTop);
@@ -51484,11 +51484,11 @@ window._mbnActive = function(id) {
   function hideProjecaoVendas() {
     try {
       var funNovaAtiva = !!(window.renderProjecaoVendas && (window.renderProjecaoVendas._rrNovaVersaoProj || window.renderProjecaoVendas._patchHideWidget));
-      Array.prototype.slice.call(document.querySelectorAll('#widget-projecao-vendas, .projecao-vendas, [id*="projecao"]')).forEach(function(el) {
+      Array.prototype.slice.call(document.querySelectorAll('#rr-widget-projecao-vendas, #widget-projecao-vendas, .projecao-vendas, [id*="projecao"]')).forEach(function(el) {
         if (!el) return;
         var id = el.id || '';
         var temConteudoNovo = /rr-proj-(body|emp|buscar|imprimir|status)/.test(el.innerHTML || '');
-        if (funNovaAtiva && (id === 'widget-projecao-vendas' || temConteudoNovo)) return;
+        if (funNovaAtiva && (id === 'widget-projecao-vendas' || id === 'rr-widget-projecao-vendas' || temConteudoNovo)) return;
         var box = el.closest ? (el.closest('.sbox') || el) : el;
         box.style.display = 'none';
       });
