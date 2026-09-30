@@ -4838,6 +4838,7 @@ try {
       }
     };
     try { window.renderProjecaoVendas._patchHideWidget = true; } catch (_) {}
+    try { window.renderProjecaoVendas._rrNovaVersaoProj = true; } catch (_) {}
   } catch (_) {}
 
   function rrBoot() {
@@ -51482,7 +51483,7 @@ window._mbnActive = function(id) {
 
   function hideProjecaoVendas() {
     try {
-      var funNovaAtiva = !!(window.renderProjecaoVendas && window.renderProjecaoVendas._patchHideWidget && !window.renderProjecaoVendas._orig);
+      var funNovaAtiva = !!(window.renderProjecaoVendas && (window.renderProjecaoVendas._rrNovaVersaoProj || window.renderProjecaoVendas._patchHideWidget));
       Array.prototype.slice.call(document.querySelectorAll('#widget-projecao-vendas, .projecao-vendas, [id*="projecao"]')).forEach(function(el) {
         if (!el) return;
         var id = el.id || '';
