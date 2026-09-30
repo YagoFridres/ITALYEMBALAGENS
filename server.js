@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -935,16 +935,16 @@ function _clearOfsCaches() {
 const _MAP_UUID_SIGLA_EMP_GLOBAL = {
   'df5f7672-0a6b-402d-ae65-296554236c31': 'E1',
   'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'E2',
-  'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'E3',
+  'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'E3',
 };
 const _MAP_SIGLA_UUID_EMP_GLOBAL = {
   'E1': 'df5f7672-0a6b-402d-ae65-296554236c31',
   'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-  'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a',
 };
 const _JJ3_U1 = 'df5f7672-0a6b-402d-ae65-296554236c31';
 const _JJ3_U2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
-const _JJ3_U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667';
+const _JJ3_U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a';
 function _jj3ClassificaEmpresa(of) {
   const eid = String(of?.empresa_id || '').trim().toLowerCase();
   const sid = String(of?.emp_id || '').trim().toUpperCase();
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260930103000';
-const SW_RUNTIME_VERSION = '20260930103000';
+const PATCH_RUNTIME_VERSION = '20260930104000';
+const SW_RUNTIME_VERSION = '20260930104000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8222,7 +8222,7 @@ app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
       companyIds = [
         'df5f7672-0a6b-402d-ae65-296554236c31',
         'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+        'a6e5f5d8-4743-4ebe-885e-c2f0741a667a'
       ];
       filtroRetorno = 'ALL';
     } else {
@@ -9784,7 +9784,7 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
   try {
     const U1 = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const U2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
-    const U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667';
+    const U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a';
     const VALIDOS = new Set([U1, U2, U3]);
     const rangeRef = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     const inicio = String(rangeRef?.inicio || '').slice(0, 10) || new Date().toISOString().slice(0,7)+'-01';
@@ -11563,7 +11563,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       const EMP_MAP = {
         'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
         'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack',
+        'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'Oestepack',
       };
       _empresaNomeResolvido = EMP_MAP[_empresaIdBruto] || String(of?.empNome || '').trim() || '';
     }
@@ -12978,7 +12978,7 @@ function _limparPayloadPassagens(raw) {
   (function __garantirEmpresaObrigatoria() {
     var __UUID_E1 = 'df5f7672-0a6b-402d-ae65-296554236c31';
     var __UUID_E2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
-    var __UUID_E3 = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667';
+    var __UUID_E3 = 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a';
     var __uuidBySigla = { 'E1': __UUID_E1, 'E2': __UUID_E2, 'E3': __UUID_E3 };
     var __siglaByUuid = {};
     __siglaByUuid[__UUID_E1.toLowerCase()] = 'E1';
@@ -17668,7 +17668,7 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
       companyIds = [
         'df5f7672-0a6b-402d-ae65-296554236c31',
         'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+        'a6e5f5d8-4743-4ebe-885e-c2f0741a667a'
       ];
       filtroRetorno = 'ALL';
     } else {
@@ -24117,22 +24117,8 @@ app.get('/api/relatorios/projecao-vendas', authMiddleware, async (req, res) => {
     const anoFimHist = anoAtual;
     const rangeHist = { inicio: `${anoInicioHist}-01-01`, fim: `${anoFimHist}-12-31`, fim_exclusivo: `${anoFimHist + 1}-01-01` };
     const colsExtrasProj = ['status','cliNome','clinome','cliente_nome','valor_venda','total','qtd','quantidade','qtd_produzida','empresa_id','emp_id','vendedor_id'];
-    let ofsHist = [];
-    const PAGE_OFS = 1000;
-    for (let offset = 0; offset < 50000; offset += PAGE_OFS) {
-      let query = supabase
-        .from('ofs')
-        .select(colsExtrasProj.join(','))
-        .is('deleted_at', null)
-        .order('created_at', {ascending:true})
-        .range(offset, offset + PAGE_OFS - 1);
-      const { data, error } = await query;
-      if (error) throw error;
-      if (!(Array.isArray(data) && data.length)) break;
-      ofsHist.push(...data);
-      if (data.length < PAGE_OFS) break;
-    }
-    ofsHist = ofsHist.filter((row) => _vendasOficialStatusConcluido(row?.status) && _vendasOficialDentroDoPeriodo(row, rangeHist));
+    const empresaParamParaHelper = (isTodasEmpresas || !companyIds || !companyIds.length) ? '' : (empresaUuid || '');
+    let ofsHist = (await _listarOfsVendasOficiais(rangeHist, empresaParamParaHelper, colsExtrasProj)) || [];
     ofsHist = ofsHist.filter((row) => {
       if (isTodasEmpresas) return true;
       if (!companyIds || !companyIds.length) return true;
@@ -24143,7 +24129,7 @@ app.get('/api/relatorios/projecao-vendas', authMiddleware, async (req, res) => {
         const c = String(cid || '').trim();
         if (!c) return;
         const cLow = c.toLowerCase();
-        const cSigla = cLow === 'df5f7672-0a6b-402d-ae65-296554236c31' ? 'E1' : cLow === 'e9b734dc-c7d5-4b04-898d-1ec7affa721e' ? 'E2' : cLow === 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667' ? 'E3' : '';
+        const cSigla = cLow === 'df5f7672-0a6b-402d-ae65-296554236c31' ? 'E1' : cLow === 'e9b734dc-c7d5-4b04-898d-1ec7affa721e' ? 'E2' : cLow === 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a' ? 'E3' : '';
         if (!cSigla) return;
         const uuidOk = rowEmpUuid && (rowEmpUuid === cLow);
         const siglaOk = rowEmpSigla === cSigla;
@@ -37383,10 +37369,10 @@ async function _ensureEstadosCidadesSeedFromClientes() {
 const _CCUSTOS_EMP_IDS = {
   E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
   E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-  E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  E3: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a',
   ITALY: 'df5f7672-0a6b-402d-ae65-296554236c31',
   CARTOESTE: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-  OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a',
 };
 function _ccustosResolveEmpresaId(raw, defaultNull) {
   const s = String(raw || '').trim();
