@@ -54752,7 +54752,7 @@ function _ocultarGraficoComissoes() {
         + '        <option value="">Selecione a empresa...</option>'
         + '        <option value="df5f7672-0a6b-402d-ae65-296554236c31">Italy Embalagens</option>'
         + '        <option value="e9b734dc-c7d5-4b04-898d-1ec7affa721e">Cartoeste</option>'
-        + '        <option value="a6e5f5d8-4743-4ebe-885e-c2f0f741a667">Oestepack</option>'
+        + '        <option value="a6e5f5d8-4743-4ebe-885e-c2f0f741a667a">Oestepack</option>'
         + '      </select>'
         + '    </div>'
         + '    <div class="com-conc-field">'
@@ -54879,7 +54879,7 @@ function _ocultarGraficoComissoes() {
         var EMPRESA_SIGLA_UUID = {
           'E1': 'df5f7672-0a6b-402d-ae65-296554236c31',
           'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-          'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+          'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667a'
         };
         var rawEmpId = String(of && (of.empresa_id || of.emp_id || of.empId || of.emp || of.empresa || '') || '').trim();
         if (rawEmpId) {
@@ -55556,7 +55556,7 @@ function _ocultarGraficoComissoes() {
           var EMP_MAP_LOCAL = {
             'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
             'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
-            'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack',
+            'a6e5f5d8-4743-4ebe-885e-c2f0f741a667a': 'Oestepack',
           };
           empresaNomeSel = EMP_MAP_LOCAL[empresaIdSel] || (String(of && (of.empresa || of.empNome || '') || '').trim() || 'Italy Embalagens');
         }
@@ -55581,7 +55581,9 @@ function _ocultarGraficoComissoes() {
         var qtdPedidaDesejada = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0) || caixasProduzidas;
         var body = {
           status: 'Concluído',
+          data_conclusao: dataFaturamento ? dataFaturamento + 'T12:00:00.000Z' : null,
           data_faturamento: dataFaturamento,
+          dia: dataFaturamento || null,
           qtd_produzida: caixasProduzidas,
           caixas_produzidas: caixasProduzidas,
           caixas_boas: caixasProduzidas,
