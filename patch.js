@@ -26293,7 +26293,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       machineCatalog: [],
       loading: false,
       renderQueued: false,
-      lastFetchAt: 0
+      lastFetchAt: 0,
+      selectedClienteId: null,
+      selectedClienteNome: '',
+      _acIndex: -1,
+      _acSuggestions: []
     };
     window.__ofmaqFinalState = state;
     window.__ofmaqPipeline = 'final';
@@ -26452,6 +26456,82 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var h = Math.floor(n / 60);
       var m = n % 60;
       return h > 0 ? (h + 'h' + (m ? ' ' + m + 'min' : '')) : (n + ' min');
+    }
+
+    function clienteNomeFromObj(c) {
+      if (!c || typeof c !== 'object') return '';
+      return String(c.nome || c.rs || c.razao_social || c.razaosocial || c.razao || c.Nome || c.RazaoSocial || c.RS || '').trim();
+    }
+    function getClientesList() {
+      var raw = null;
+      try { if (Array.isArray(window._CLIENTES)) raw = window._CLIENTES; } catch (_) {}
+      if (!raw) try { if (Array.isArray(window.CLIENTES)) raw = window.CLIENTES; } catch (_) {}
+      if (!raw) try { if (Array.isArray(window.__CLIENTES)) raw = window.__CLIENTES; } catch (_) {}
+      if (!raw || !raw.length) return [];
+      var out = [];
+      var seen = {};
+      for (var i = 0; i < raw.length; i++) {
+        var c = raw[i] || {};
+        var id = String(c.id || c.Id || c.ID || c.uuid || c._id || '').trim();
+        if (!id) continue;
+        if (seen[id]) continue;
+        seen[id] = true;
+        var nome = clienteNomeFromObj(c);
+        if (!nome) continue;
+        out.push({ id: id, nome: nome, _norm: normText(nome) });
+      }
+      return out;
+    }
+    function buscarClientesAutocomplete(term, limite) {
+      var list = getClientesList();
+      if (!list.length) return [];
+      var q = normText(term || '');
+      var lim = Number(limite || 8) || 8;
+      if (!q) return list.slice(0, lim);
+      var score = [];
+      for (var i = 0; i < list.length; i++) {
+        var item = list[i];
+        var idx = item._norm.indexOf(q);
+        if (idx < 0) continue;
+        score.push({ item: item, idx: idx, len: item._norm.length });
+      }
+      score.sort(function(a, b) { if (a.idx !== b.idx) return a.idx - b.idx; return a.len - b.len; });
+      var r = [];
+      for (var j = 0; j < score.length && j < lim; j++) r.push(score[j].item);
+      return r;
+    }
+    function renderAcSuggestions(shell, suggestions) {
+      if (!shell || !shell.searchWrap || !shell.acDropdown) return;
+      state._acSuggestions = Array.isArray(suggestions) ? suggestions.slice() : [];
+      if (state._acIndex >= state._acSuggestions.length) state._acIndex = -1;
+      if (!state._acSuggestions.length) {
+        shell.acDropdown.style.display = 'none';
+        shell.acDropdown.innerHTML = '';
+        return;
+      }
+      var html = state._acSuggestions.map(function(it, i) {
+        var ativo = i === state._acIndex ? ' data-active="1"' : '';
+        return '<button type="button" class="ofmaq-final-ac-item"' + ativo + ' data-cli-id="' + escAttr(it.id) + '" data-cli-nome="' + escAttr(it.nome) + '" data-idx="' + String(i) + '">' + escH(it.nome) + '</button>';
+      }).join('');
+      shell.acDropdown.innerHTML = html;
+      shell.acDropdown.style.display = 'block';
+    }
+    function selecionarClienteAutocomplete(shell, cliId, cliNome) {
+      state.selectedClienteId = String(cliId || '').trim() || null;
+      state.selectedClienteNome = String(cliNome || '').trim() || '';
+      state._acSuggestions = [];
+      state._acIndex = -1;
+      if (shell && shell.search) shell.search.value = state.searchTerm || '';
+      if (shell && shell.acDropdown) { shell.acDropdown.style.display = 'none'; shell.acDropdown.innerHTML = ''; }
+      if (shell) { updateToolbar(shell); renderRows(shell); }
+    }
+    function limparFiltroCliente(shell) {
+      state.selectedClienteId = null;
+      state.selectedClienteNome = '';
+      state._acSuggestions = [];
+      state._acIndex = -1;
+      if (shell && shell.search) shell.search.value = state.searchTerm || '';
+      if (shell) { updateToolbar(shell); renderRows(shell); }
     }
 
     function ensureDefaults() {
@@ -26835,6 +26915,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!state.showAllMachines && state.selectedMachine && item.maquina !== state.selectedMachine) return false;
         if (state.selectedDateIso && item.prazoIso !== state.selectedDateIso) return false;
         if (state.searchTerm && String(item.searchText || '').indexOf(normText(state.searchTerm)) < 0) return false;
+        if (state.selectedClienteId) {
+          var cidItem = String(item && (item.cliId || item.cli_id || item.clienteId || item.cliente_id || '') || '').trim();
+          var cidSel = String(state.selectedClienteId || '').trim();
+          if (!cidItem || cidItem !== cidSel) return false;
+        }
         return true;
       });
     }
@@ -27008,6 +27093,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-amostra-feito{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 16px;border-radius:12px;border:1px solid rgba(34,197,94,.5);background:linear-gradient(135deg,rgba(22,101,52,.96),rgba(22,163,74,.92));color:#ecfdf5;font-size:13px;font-weight:900;letter-spacing:.02em;cursor:pointer;box-shadow:0 10px 24px rgba(22,101,52,.24)}'
         + '#page-ofmaq .ofmaq-amostra-feito[disabled],#page-ofmaq .ofmaq-amostra-feito[data-loading="1"]{opacity:.65;pointer-events:none}'
         + '#page-ofmaq .ofmaq-amostras-vazio{padding:24px 20px;border-radius:14px;border:1px dashed rgba(148,163,184,.25);text-align:center;color:#cbd5e1;font-size:13px}'
+        + '#page-ofmaq .ofmaq-final-search-wrap{position:relative;display:grid;gap:6px}'
+        + '#page-ofmaq .ofmaq-final-cliente-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(37,99,235,.18);border:1px solid #60a5fa;color:#dbeafe;font-size:12px;font-weight:800;letter-spacing:.02em;justify-self:start;line-height:1}'
+        + '#page-ofmaq .ofmaq-final-cliente-chip button{min-height:unset;width:20px;height:20px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.3);color:#fff;cursor:pointer;font-size:11px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}'
+        + '#page-ofmaq .ofmaq-final-ac-dropdown{position:absolute;top:100%;left:0;right:0;margin-top:6px;z-index:50;max-height:280px;overflow:auto;border-radius:14px;background:#0f172a;border:1px solid rgba(71,85,105,.85);box-shadow:0 20px 40px rgba(2,6,23,.5);padding:4px;display:none}'
+        + '#page-ofmaq .ofmaq-final-ac-item{width:100%;display:block;padding:10px 14px;text-align:left;border-radius:10px;border:none;background:transparent;color:#e2e8f0;cursor:pointer;font-size:13px;font-weight:700}'
+        + '#page-ofmaq .ofmaq-final-ac-item:hover{background:#1e293b;color:#f8fafc}'
+        + '#page-ofmaq .ofmaq-final-ac-item[data-active="1"]{background:#2563eb;color:#eff6ff}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
@@ -27077,7 +27169,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <div id="ofmaq-final-days" class="ofmaq-final-days"></div>'
           + '    <select id="ofmaq-final-machine"></select>'
           + '    <button type="button" id="ofmaq-final-show-all">Ver Todas as Máquinas</button>'
-          + '    <input id="ofmaq-final-search" type="search" placeholder="Buscar OF, cliente, produto, tamanho ou cor...">'
+          + '    <div id="ofmaq-final-search-wrap" class="ofmaq-final-search-wrap">'
+          + '      <div id="ofmaq-final-cliente-chip" class="ofmaq-final-cliente-chip" style="display:none;">Filtro: <span data-ofmaq-cli-nome></span><button type="button" data-ofmaq-cli-clear title="Limpar filtro">✕</button></div>'
+          + '      <input id="ofmaq-final-search" type="search" placeholder="Buscar OF, cliente, produto, tamanho ou cor...">'
+          + '      <div id="ofmaq-final-ac-dropdown" class="ofmaq-final-ac-dropdown"></div>'
+          + '    </div>'
           + '    <button type="button" id="ofmaq-final-group">Agrupar Setup</button>'
           + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
           + '  </div>'
@@ -27108,7 +27204,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         days: root.querySelector('#ofmaq-final-days'),
         machine: root.querySelector('#ofmaq-final-machine'),
         showAll: root.querySelector('#ofmaq-final-show-all'),
+        searchWrap: root.querySelector('#ofmaq-final-search-wrap'),
         search: root.querySelector('#ofmaq-final-search'),
+        acDropdown: root.querySelector('#ofmaq-final-ac-dropdown'),
+        clienteChip: root.querySelector('#ofmaq-final-cliente-chip'),
+        clienteChipNome: root.querySelector('#ofmaq-final-cliente-chip [data-ofmaq-cli-nome]'),
+        clienteChipClear: root.querySelector('#ofmaq-final-cliente-chip [data-ofmaq-cli-clear]'),
         group: root.querySelector('#ofmaq-final-group'),
         report: root.querySelector('#ofmaq-final-report'),
         summaryToggle: root.querySelector('#ofmaq-final-summary-toggle'),
@@ -27610,6 +27711,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         shell.showAll.style.color = state.showAllMachines ? '#eff6ff' : '';
       }
       if (shell.search.value !== String(state.searchTerm || '')) shell.search.value = String(state.searchTerm || '');
+      if (shell.clienteChip) {
+        if (state.selectedClienteId && state.selectedClienteNome) {
+          shell.clienteChip.style.display = 'inline-flex';
+          if (shell.clienteChipNome) shell.clienteChipNome.textContent = state.selectedClienteNome;
+        } else {
+          shell.clienteChip.style.display = 'none';
+          if (shell.clienteChipNome) shell.clienteChipNome.textContent = '';
+        }
+      }
       shell.group.textContent = state.grouped ? 'Agrupado por Setup ✓' : 'Agrupar Setup';
       renderAlert(shell);
       renderSummary(shell);
@@ -28771,8 +28881,32 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           openImage(String(imageBtn.getAttribute('data-ofmaq-final-image') || '').trim());
           return;
         }
+        var acItem = ev && ev.target && ev.target.closest ? ev.target.closest('.ofmaq-final-ac-item') : null;
+        if (acItem) {
+          var cid = String(acItem.getAttribute('data-cli-id') || '').trim();
+          var cnome = String(acItem.getAttribute('data-cli-nome') || '').trim();
+          selecionarClienteAutocomplete(shell, cid, cnome);
+          return;
+        }
+        var cliClear = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-cli-clear]') : null;
+        if (cliClear) {
+          limparFiltroCliente(shell);
+          return;
+        }
         var actionBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-actions]') : null;
         if (actionBtn) openActionsModal(String(actionBtn.getAttribute('data-ofmaq-final-actions') || '').trim());
+        var isInsideSearch = false;
+        try {
+          if (shell && shell.searchWrap && shell.searchWrap.contains && shell.searchWrap.contains(ev.target)) isInsideSearch = true;
+        } catch (_) {}
+        if (!isInsideSearch && shell && shell.acDropdown) {
+          try {
+            shell.acDropdown.style.display = 'none';
+            shell.acDropdown.innerHTML = '';
+            state._acSuggestions = [];
+            state._acIndex = -1;
+          } catch (_) {}
+        }
       });
       shell.root.addEventListener('change', function(ev) {
         var select = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-machine') : null;
@@ -28800,24 +28934,73 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           });
         }
       });
+      var _acDebounceTimer = null;
       shell.root.addEventListener('input', function(ev) {
         var input = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-search') : null;
         if (input) {
           state.searchTerm = String(input.value || '');
           renderRows(shell);
+          if (_acDebounceTimer) { clearTimeout(_acDebounceTimer); _acDebounceTimer = null; }
+          var val = String(input.value || '');
+          if (!val) {
+            try {
+              if (shell.acDropdown) { shell.acDropdown.style.display = 'none'; shell.acDropdown.innerHTML = ''; }
+              state._acSuggestions = [];
+              state._acIndex = -1;
+            } catch (_) {}
+            return;
+          }
+          _acDebounceTimer = setTimeout(function() {
+            try {
+              var sugs = buscarClientesAutocomplete(val, 8);
+              renderAcSuggestions(shell, sugs);
+            } catch (_err) {
+              try { console.error('[OFMAQ-AC] erro busca cliente:', _err); } catch (__) {}
+            }
+          }, 150);
         }
       });
       shell.root.addEventListener('keydown', async function(ev) {
-        var input = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-seq]') : null;
-        if (!input || String(ev.key || '') !== 'Enter') return;
-        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        var id = String(input.getAttribute('data-ofmaq-final-seq') || '').trim();
-        var value = Math.max(1, Number(input.value || 0) || 1);
-        if (!id) return;
-        try {
-          await moveToPositionWithinDay(id, value);
-        } catch (err) {
-          try { window.toast('Erro ao salvar sequência: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        var seqInput = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-seq]') : null;
+        if (seqInput && String(ev.key || '') === 'Enter') {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          var id = String(seqInput.getAttribute('data-ofmaq-final-seq') || '').trim();
+          var value = Math.max(1, Number(seqInput.value || 0) || 1);
+          if (!id) return;
+          try {
+            await moveToPositionWithinDay(id, value);
+          } catch (err) {
+            try { window.toast('Erro ao salvar sequência: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          }
+          return;
+        }
+        var searchInput = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-search') : null;
+        if (!searchInput) return;
+        var k = String(ev.key || '');
+        if (k === 'Escape') {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          try {
+            if (shell.acDropdown) { shell.acDropdown.style.display = 'none'; shell.acDropdown.innerHTML = ''; }
+            state._acSuggestions = [];
+            state._acIndex = -1;
+          } catch (_) {}
+          return;
+        }
+        var hasSug = !!(state._acSuggestions && state._acSuggestions.length);
+        if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Enter') {
+          if (!hasSug) return;
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          if (k === 'ArrowDown') {
+            state._acIndex = (state._acIndex + 1) % state._acSuggestions.length;
+            renderAcSuggestions(shell, state._acSuggestions.slice());
+          } else if (k === 'ArrowUp') {
+            state._acIndex = state._acIndex <= 0 ? (state._acSuggestions.length - 1) : (state._acIndex - 1);
+            renderAcSuggestions(shell, state._acSuggestions.slice());
+          } else if (k === 'Enter' && state._acIndex >= 0 && state._acSuggestions[state._acIndex]) {
+            var sel = state._acSuggestions[state._acIndex];
+            selecionarClienteAutocomplete(shell, sel.id, sel.nome);
+          }
+          return;
         }
       });
     }
