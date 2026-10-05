@@ -5020,6 +5020,8 @@ try {
           try {
             var btns = el.querySelectorAll('.patch-ofmaq-sem-papel-btn');
             btns.forEach(function(b) {
+              var parent = b.closest && b.closest('#ofmaq-final-actions');
+              if (!parent) return;
               b.setAttribute('data-active', novo ? '1' : '0');
               b.textContent = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
             });
@@ -5028,7 +5030,7 @@ try {
         try {
           var btnTxtNovoGlobal = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
           var ofNumMatch = String((patch && (patch.numero || patch.of_numero || patch.of)) || '').trim();
-          document.querySelectorAll('.patch-ofmaq-sem-papel-btn').forEach(function(b) {
+          document.querySelectorAll('#ofmaq-final-actions .patch-ofmaq-sem-papel-btn').forEach(function(b) {
             try {
               var txt = String(b.textContent || '').trim();
               if (!/Sem Papelão/i.test(txt) && !/Remover Sem Papelão/i.test(txt)) return;
@@ -5482,19 +5484,9 @@ try {
       try {
         var btnTxtNovo = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
         var btnSel = [
-          '.kb-card-ofmaq[data-of-id="' + id + '"] button',
-          '.kb-card-ofmaq[data-id="' + id + '"] button',
-          '.patch-ofmaq-v2-row[data-of-id="' + id + '"] button',
-          'tr.patch-ofmaq-row[data-of-id="' + id + '"] button',
-          '#ofmaq-tbody-zero tr[data-of-id="' + id + '"] button',
-          '.ofmaq-final-table-wrap tr[data-of-id="' + id + '"] button',
-          '.ofmaq-final-row[data-of-id="' + id + '"] button',
-          '.ofmaq-row[data-of-id="' + id + '"] button',
-          'table.ofmaq-final-table tr[data-of-id="' + id + '"] button',
-          'table.rtbl tr[data-of-id="' + id + '"] button',
-          'tbody tr[data-of-id="' + id + '"] button',
-          'button[data-sem-papel-btn][data-of-id="' + id + '"]',
-          'button#semPapelBtn'
+          '#ofmaq-final-actions[data-of-id="' + id + '"] .patch-ofmaq-sem-papel-btn',
+          '.modal#ofmaq-final-actions .patch-ofmaq-sem-papel-btn',
+          '#ofmaq-final-actions .patch-ofmaq-sem-papel-btn'
         ].join(',');
         var botoes = document.querySelectorAll(btnSel);
         botoes.forEach(function(b) {
@@ -5507,7 +5499,7 @@ try {
         });
         try {
           var numeroDaOf = String(ofNum || of.numero || of.of || (of && (of.numero || of.of_numero)) || '').trim();
-          document.querySelectorAll('.patch-ofmaq-sem-papel-btn').forEach(function(b) {
+          document.querySelectorAll('#ofmaq-final-actions .patch-ofmaq-sem-papel-btn').forEach(function(b) {
             try {
               var txtG = String(b.textContent || '').trim();
               if (!/Sem Papelão/i.test(txtG) && !/Remover Sem Papelão/i.test(txtG)) return;
@@ -6024,6 +6016,10 @@ try {
         for (var i = 0; i < sheets.length; i++) {
           var s = sheets[i];
           if (!s || !s.getBoundingClientRect) continue;
+          var sheetId = String(s && s.id || '').trim();
+          var parentId = String(s && s.closest && s.closest('#ofmaq-final-actions') && s.closest('#ofmaq-final-actions').id || '').trim();
+          var allowedId = 'ofmaq-final-actions';
+          if (sheetId !== allowedId && parentId !== allowedId) continue;
           var rect = s.getBoundingClientRect();
           if (rect.width < 100 || rect.height < 100) continue;
           var existBtn = s.querySelector('.patch-ofmaq-sem-papel-btn');
@@ -23276,30 +23272,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         kbActions.className = 'kb-acoes';
         card.appendChild(kbActions);
       }
-      var semPapelBtn = kbActions.querySelector('.patch-ofmaq-sem-papel-btn');
-      if (!semPapelBtn) {
-        semPapelBtn = document.createElement('button');
-        semPapelBtn.type = 'button';
-        semPapelBtn.className = 'patch-ofmaq-sem-papel-btn';
-        semPapelBtn.innerHTML = '🟨 Sem Papelão';
-        try { kbActions.appendChild(semPapelBtn); } catch (_) {}
-      }
-      var semPapelAtual = !!(of.sem_papel);
-      semPapelBtn.setAttribute('data-active', semPapelAtual ? '1' : '0');
-      semPapelBtn.textContent = semPapelAtual ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
-      if (!semPapelBtn._patchSemPapelBound) {
-        semPapelBtn._patchSemPapelBound = true;
-        semPapelBtn.onclick = function(ev) {
-          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-          var ofId = String(of && of.id || card.getAttribute('data-of-id') || card.getAttribute('data-id') || '').trim();
-          var ofNum = String(of && (of.numero || of.of) || '').trim();
-          if (!ofId) return;
-          (async function() {
-            try { await window.toggleSemPapelOf(ofId, ofNum, card); }
-            catch (e) { logOfmaq('erro clique sem papel card', String(e && e.message || e)); }
-          })();
-        };
-      }
       var kbRow = kbActions.querySelector('.patch-ofmaq-seq-row');
       if (!kbRow) {
         kbRow = document.createElement('div');
@@ -25897,7 +25869,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
         + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>'
         + '<button type="button" id="ofmaq-action-move-date-zero">🗓️↔ Mover máquina e data</button>'
-        + '<button type="button" id="ofmaq-action-sem-papel-zero" style="' + ((item && item.sem_papel) ? 'background:linear-gradient(135deg,rgba(250,204,21,.35),rgba(234,179,8,.35))!important;border:1px solid rgba(250,204,21,.6)!important;color:#1f2937!important;font-weight:900;margin-top:6px;' : 'background:linear-gradient(135deg,rgba(250,204,21,.14),rgba(234,179,8,.1))!important;border:1px solid rgba(250,204,21,.35)!important;color:#fbbf24!important;font-weight:800;margin-top:6px;') + 'border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;text-align:left;width:100%">🟨 ' + ((item && item.sem_papel) ? 'Remover Sem Papelão' : 'Sem Papelão') + '</button>'
         + '<div style="margin-top:10px;padding:12px;border-radius:10px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.45);display:grid;gap:8px">'
         + '  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:700;color:#e2e8f0"><input type="checkbox" id="ofmaq-zero-papel-comprado" ' + (pCompraAtual ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#10b981"><span>Papel / Chapa comprado</span></label>'
         + '  <label style="display:grid;gap:4px"><span style="font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8">Previsão entrega papel</span><input type="date" id="ofmaq-zero-papel-previsao" value="' + escAttrLocal(pPrevAtual) + '" style="padding:9px 10px;border-radius:10px;border:1px solid rgba(71,85,105,.6);background:rgba(15,23,42,.88);color:#f8fafc;font-size:13px;font-weight:700"></label>'
@@ -25907,19 +25878,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
       var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
       var moveDateBtn = modal.querySelector('#ofmaq-action-move-date-zero');
-      var semPapelBtn = modal.querySelector('#ofmaq-action-sem-papel-zero');
-      if (semPapelBtn) {
-        semPapelBtn.onclick = async function() {
-          try {
-            await window.toggleSemPapelOf(id, item.numero || item.id, item.cardEl);
-            closeModal('ofmaq-actions-zero');
-            try { showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ((item && item.sem_papel) ? ' removida de Sem Papelão.' : ' marcada como Sem Papelão.'), { title: 'Sem Papelão' }); } catch (_) {}
-          } catch (err) {
-            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Sem Papelão (zero-kanban)', err, { ofId: id, ofNum: item && item.numero || null }); } catch (_) {}
-            try { window.toast('Erro Sem Papelão: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-          }
-        };
-      }
       if (passBtn) {
         passBtn.onclick = async function() {
           try {
@@ -50039,7 +49997,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         acoesHtml +=     '<div class="dash-acoes-menu-section">Produção / Máquina</div>';
         acoesHtml +=     '<button type="button" data-dash-acao="passoumaq" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">✔️</span>Passou pela Máquina</button>';
         acoesHtml +=     '<button type="button" data-dash-acao="urgente" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🚨</span>Marcar como Urgente</button>';
-        acoesHtml +=     '<button type="button" data-dash-acao="sempapel" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🟨</span>Marcar Sem Papelão</button>';
         acoesHtml +=     '<button type="button" data-dash-acao="papelcompra" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">📦</span>Papel/Chapa Comprado</button>';
         acoesHtml +=     '<button type="button" data-dash-acao="movermaq" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🔀</span>Mover de Máquina</button>';
         acoesHtml +=     '<button type="button" data-dash-acao="alterardata" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🗓️</span>Alterar Data</button>';
