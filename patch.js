@@ -26781,12 +26781,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var cores = parseColors(of);
       var quantidade = getQtd(of);
       var size = sizeLabel(of);
+      var cliIdRaw = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId || of.cliid || '') || '').trim();
       return {
         id: String(of && of.id || '').trim(),
         ofRaw: of,
         order: Number(of && (of.ordem_maquina != null ? of.ordem_maquina : of.seq) || 0) || (idx + 1),
         numero: numero || '—',
         cliente: cliente,
+        cliId: cliIdRaw || '',
         produto: produto,
         quantidade: quantidade,
         tamanho: size,
@@ -26918,7 +26920,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (state.selectedClienteId) {
           var cidItem = String(item && (item.cliId || item.cli_id || item.clienteId || item.cliente_id || '') || '').trim();
           var cidSel = String(state.selectedClienteId || '').trim();
-          if (!cidItem || cidItem !== cidSel) return false;
+          var nomeItem = normText(item && (item.cliente || '') || '');
+          var nomeSel = normText(state.selectedClienteNome || '');
+          var passaUuid = !!(cidSel && cidItem && cidItem === cidSel);
+          var passaNome = !!(nomeSel && nomeItem && nomeItem === nomeSel);
+          if (!passaUuid && !passaNome) return false;
         }
         return true;
       });
