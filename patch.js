@@ -27165,6 +27165,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    </div>'
           + '    <button type="button" id="ofmaq-final-group">Agrupar Setup</button>'
           + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
+          + '    <button type="button" id="ofmaq-final-history-today">🕒 Histórico de hoje</button>'
           + '  </div>'
           + '</div>'
           + '<div id="ofmaq-final-amostras-semana" class="ofmaq-final-amostras-semana">'
@@ -27201,6 +27202,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         clienteChipClear: root.querySelector('#ofmaq-final-cliente-chip [data-ofmaq-cli-clear]'),
         group: root.querySelector('#ofmaq-final-group'),
         report: root.querySelector('#ofmaq-final-report'),
+        historyToday: root.querySelector('#ofmaq-final-history-today'),
         summaryToggle: root.querySelector('#ofmaq-final-summary-toggle'),
         summaryCompact: root.querySelector('#ofmaq-final-summary-compact'),
         summary: root.querySelector('#ofmaq-final-summary'),
@@ -28645,6 +28647,182 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       });
     }
 
+    function todayBrtIso() {
+      try {
+        return typeof _rrLocalIso === 'function' ? _rrLocalIso(new Date()) : (function(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })(new Date());
+      } catch (_) {
+        var d = new Date();
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      }
+    }
+
+    function buildTodayHistoryFromState() {
+      var today = todayBrtIso();
+      var gruposMap = new Map();
+      var ofsSet = new Set();
+      var totalPassagens = 0;
+      var rows = state && Array.isArray(state.rowsData) ? state.rowsData : [];
+      rows.forEach(function(item) {
+        if (!item) return;
+        var raw = item && item.ofRaw ? item.ofRaw : item;
+        var arr = [];
+        try {
+          var v = raw && raw.passagens_maquina;
+          if (v == null) arr = [];
+          else if (Array.isArray(v)) arr = v.slice();
+          else if (typeof v === 'string') { try { arr = JSON.parse(v) || []; } catch(_){ arr = []; } if (!Array.isArray(arr)) arr = []; }
+          else arr = [];
+        } catch (_) { arr = []; }
+        arr.forEach(function(p) {
+          if (!p || typeof p !== 'object') return;
+          var dp = String(p && (p.data_passagem || p.dataPassagem || p.passou_em || '') || '').slice(0, 10);
+          if (dp !== today) return;
+          var maquina = String(p && (p.maquina || p.maquina_nome || p.maquinaNome || '') || '').trim() || String(item && item.maquina || '').trim() || 'Sem máquina';
+          var ofNumero = String(item && item.numero || item && raw && raw.numero || p && p.of_numero || '').trim() || '—';
+          var cliente = String(item && item.cliente || item && raw && (raw.cliente_nome || raw.cliente) || p && p.cliente || '').trim() || '—';
+          var hora = p && (p.hora_passagem || p.horaPassagem || p.passou_em || p.criado_em || p.dataHora || '');
+          var qtd = Number(p && (p.quantidade || p.qtd || p.qtd_produzida) != null ? (p.quantidade || p.qtd || p.qtd_produzida) : (item && item.quantidade != null ? item.quantidade : 0)) || 0;
+          var rowId = p && (p.id_passagem_tabela_fisica || p.rowid_tabela_fisica || p.passagem_row_id || p.id || p.rowId) != null ? (p.id_passagem_tabela_fisica || p.rowid_tabela_fisica || p.passagem_row_id || p.id || p.rowId) : null;
+          var ofId = String(item && item.id || raw && raw.id || '').trim();
+          if (!gruposMap.has(maquina)) gruposMap.set(maquina, { maquina: maquina, totalPassagens: 0, totalQtd: 0, items: [] });
+          var g = gruposMap.get(maquina);
+          g.totalPassagens += 1;
+          g.totalQtd += qtd;
+          g.items.push({
+            of_numero: ofNumero,
+            of_id: ofId,
+            cliente: cliente,
+            maquina: maquina,
+            hora_passagem: hora,
+            quantidade: qtd,
+            row_id: rowId
+          });
+          totalPassagens += 1;
+          if (ofNumero && ofNumero !== '—') ofsSet.add(ofNumero);
+        });
+      });
+      var grupos = Array.from(gruposMap.values()).sort(function(a, b) {
+        return String(a.maquina || '').localeCompare(String(b.maquina || ''), 'pt-BR');
+      });
+      return {
+        todayIso: today,
+        grupos: grupos,
+        totals: {
+          totalPassagens: totalPassagens,
+          totalMaquinas: grupos.length,
+          totalOfs: ofsSet.size
+        }
+      };
+    }
+
+    function openTodayHistoryModal() {
+      var esc = (typeof escH === 'function') ? escH : (typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v); });
+      var fmtDate = (typeof fmtDateBR === 'function') ? fmtDateBR : (typeof rrFmtDate === 'function' ? rrFmtDate : function(v){ return String(v||''); });
+      var fmtDT = typeof rrFmtDateTime === 'function' ? rrFmtDateTime : (function(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch(_){ return String(v||'—'); } });
+      var fmtNum = typeof rrFmtNum === 'function' ? rrFmtNum : function(v){ return String(Number(v||0)); };
+      var res = buildTodayHistoryFromState();
+      var todayBR = fmtDate(res.todayIso);
+      var tot = res.totals || {};
+      var html = '';
+      html += '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px">';
+      html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Passagens hoje</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalPassagens || 0)) + '</div></div>';
+      html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Máquinas</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalMaquinas || 0)) + '</div></div>';
+      html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">OFs distintas</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalOfs || 0)) + '</div></div>';
+      html += '</div>';
+      if (!res.grupos || res.grupos.length === 0) {
+        html += '<div style="padding:26px 16px;text-align:center;color:#94a3b8;border-radius:12px;background:rgba(15,23,42,.45);border:1px dashed rgba(100,116,139,.55);font-weight:600">Nenhuma passagem registrada hoje (' + esc(todayBR) + ').</div>';
+      } else {
+        res.grupos.forEach(function(g) {
+          var cabQtd = Number(g.totalQtd || 0);
+          html += '<div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.55);border:1px solid rgba(71,85,105,.5)">';
+          html += '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px"><h3 style="margin:0;font-size:14px;font-weight:900;color:#f8fafc">Máquina ' + esc(String(g.maquina || '—')) + '</h3><span style="font-size:12px;font-weight:700;color:#93c5fd">Total passagens: ' + esc(fmtNum(g.totalPassagens || 0)) + (cabQtd ? ' · Caixas: ' + esc(fmtNum(cabQtd, 0)) : '') + '</span></div>';
+          html += '<div style="border-radius:10px;overflow:hidden;border:1px solid rgba(51,65,85,.65)">';
+          html += '<table style="width:100%;border-collapse:collapse;background:rgba(2,6,23,.55)"><thead>';
+          html += '<tr style="background:rgba(15,23,42,.88)">';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">OF</th>';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Cliente</th>';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Horário</th>';
+          html += '<th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Qtd</th>';
+          html += '</tr></thead><tbody>';
+          var items = Array.isArray(g.items) ? g.items : [];
+          if (items.length === 0) {
+            html += '<tr><td colspan="4" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
+          } else {
+            items.forEach(function(it) {
+              html += '<tr style="border-top:1px solid rgba(30,41,59,.75)">';
+              html += '<td style="padding:7px 10px;color:#f8fafc;font-size:13px;font-weight:800">' + esc(String(it.of_numero || '—')) + '</td>';
+              html += '<td style="padding:7px 10px;color:#e2e8f0;font-size:12px;font-weight:600">' + esc(String(it.cliente || '—')) + '</td>';
+              html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600">' + esc(fmtDT(it.hora_passagem)) + '</td>';
+              html += '<td style="padding:7px 10px;color:#f8fafc;font-size:12px;font-weight:800;text-align:right">' + esc(fmtNum(it.quantidade || 0, 0)) + '</td>';
+              html += '</tr>';
+            });
+          }
+          html += '</tbody></table></div></div>';
+        });
+      }
+      html += '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">';
+      html += '<button type="button" id="ofmaq-final-history-print" style="padding:10px 16px;border-radius:10px;background:#1d4ed8;color:#fff;font-weight:800;font-size:13px;border:1px solid rgba(37,99,235,.7);cursor:pointer">🖨️ Imprimir / PDF</button>';
+      html += '</div>';
+      var modal = openModal('ofmaq-final-history-today', '🕒 Histórico de Passagens — Hoje ' + todayBR, html);
+      try {
+        var printBtn = modal && modal.querySelector ? modal.querySelector('#ofmaq-final-history-print') : null;
+        if (printBtn) {
+          printBtn.addEventListener('click', function(ev) {
+            try { if (ev && ev.preventDefault) ev.preventDefault(); } catch(_){}
+            try { printTodayHistory(res); } catch(e) { try { window.toast('Erro ao imprimir: '+String(e && e.message || e),'var(--red)'); } catch(_){} }
+          });
+        }
+      } catch (_) {}
+      return modal;
+    }
+
+    function printTodayHistory(builtData) {
+      var e = typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v); };
+      var fN = typeof rrFmtNum === 'function' ? rrFmtNum : function(v){ return String(Number(v||0)); };
+      var fD = typeof rrFmtDate === 'function' ? rrFmtDate : function(v){ return String(v||''); };
+      var fDT = typeof rrFmtDateTime === 'function' ? rrFmtDateTime : function(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch(_){ return String(v||'—'); } };
+      var data = builtData && typeof builtData === 'object' ? builtData : buildTodayHistoryFromState();
+      var grupos = Array.isArray(data.grupos) ? data.grupos : [];
+      var tot = data.totals || {};
+      var detailRowsAll = [];
+      var summaryRows = grupos.map(function(g) {
+        var items = Array.isArray(g.items) ? g.items : [];
+        items.forEach(function(it) {
+          detailRowsAll.push([
+            e(String(it.of_numero || '—')),
+            e(String(it.cliente || '—')),
+            e(String(it.maquina || '—')),
+            e(fDT(it.hora_passagem)),
+            e(fN(Number(it.quantidade || 0), 0))
+          ]);
+        });
+        return [e(String(g.maquina || '—')), e(fN(Number(g.totalPassagens || 0), 0)), e(fN(Number(g.totalQtd || 0), 0))];
+      });
+      var cards = [
+        { label: 'Passagens hoje', value: fN(Number(tot.totalPassagens || 0), 0), sub: 'Total de registros' },
+        { label: 'Máquinas', value: fN(Number(tot.totalMaquinas || 0), 0), sub: 'Com passagens hoje' },
+        { label: 'OFs distintas', value: fN(Number(tot.totalOfs || 0), 0), sub: 'OFs com pelo menos 1 passagem' },
+        { label: 'Caixas hoje', value: fN(grupos.reduce(function(s,g){ return s + Number(g.totalQtd||0); }, 0), 0), sub: 'Soma das quantidades' }
+      ];
+      var cfg = {
+        title: 'Histórico de Passagens — Hoje',
+        periodo: fD(String(data.todayIso || '')),
+        cards: cards,
+        summaryTitle: 'Resumo por máquina',
+        summaryHeaders: ['Máquina', 'Passagens', 'Caixas'],
+        summaryRows: summaryRows,
+        detailTitle: 'Detalhamento das passagens',
+        detailHeaders: ['OF', 'Cliente', 'Máquina', 'Horário', 'Qtd'],
+        detailRows: detailRowsAll,
+        emptySummaryCols: 3,
+        emptyDetailCols: 5
+      };
+      if (typeof rrOpenPrint === 'function') {
+        return rrOpenPrint(cfg);
+      }
+      throw new Error('Módulo de impressão rrOpenPrint não carregado.');
+    }
+
     function reportDaysForPeriod(period, baseDateIso) {
       var anchor = String(baseDateIso || state.selectedDateIso || '').slice(0, 10) || isoFromDate(currentBusinessDate());
       var start = parseIso(anchor) || currentBusinessDate();
@@ -28863,6 +29041,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           } else {
             try { window.toast('Relatório de máquinas ainda não inicializado.', 'var(--yellow)'); } catch (_) {}
           }
+          return;
+        }
+        var histBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-history-today') : null;
+        if (histBtn) {
+          try { if (typeof openTodayHistoryModal === 'function') openTodayHistoryModal(); else try { window.toast('Módulo Histórico não carregado.', 'var(--yellow)'); } catch(_){} }
+          catch (eHist) { try { window.toast('Erro ao abrir Histórico: '+String(eHist && eHist.message || eHist), 'var(--red)'); } catch(_){} }
           return;
         }
         var imageBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-image]') : null;
