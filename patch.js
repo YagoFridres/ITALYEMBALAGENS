@@ -26867,10 +26867,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return list;
     }
 
-    function machineCatalogFromRows(rows) {
+    function machineCatalogFromRows(rows, dateIso) {
       var baseOrder = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
       var map = {};
+      var diaFiltro = typeof dateIso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateIso) ? dateIso : '';
       (Array.isArray(rows) ? rows : []).forEach(function(item) {
+        if (diaFiltro) {
+          var prazo = String(item && (item.prazoIso || item.dia || item.data_entrega || item.ent || '') || '').slice(0, 10);
+          if (prazo !== diaFiltro) return;
+        }
         var key = normalizeMachine(item && item.maquina);
         if (key) map[key] = key;
       });
@@ -28446,7 +28451,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (row) row.maquina = machine;
           if (row) row.order = nextOrderForMachineDay(machine, row.prazoIso, row.id);
           applyDisplaySeqToState();
-          state.machineCatalog = machineCatalogFromRows(state.rowsData);
+          state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-move');
@@ -28510,7 +28515,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             row.order = nextOrderForMachineDay(machine, value, row.id);
           }
           applyDisplaySeqToState();
-          state.machineCatalog = machineCatalogFromRows(state.rowsData);
+          state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-move-date');
@@ -28570,7 +28575,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             await markPassed(id, row.maquina);
             try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
             closeModal('ofmaq-final-actions');
-            state.machineCatalog = machineCatalogFromRows(state.rowsData);
+            state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
             updateToolbar(ensureShell());
             renderRows(ensureShell());
             try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + ' passou pela máquina ' + String(row.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
@@ -29044,7 +29049,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
       state.rowsData = buildRowsFromOfs(rawRows);
-      state.machineCatalog = machineCatalogFromRows(state.rowsData);
+      state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
       if (!!state.showAllMachines || state.selectedMachine === '__ALL__') state.selectedMachine = '__ALL__';
       state.lastFetchAt = now;
       try {
@@ -29131,7 +29136,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }).sort(function(a, b) {
         return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''), 'pt-BR', { numeric: true });
       });
-      var catalog = Array.from(new Set(rawRows.map(normMachine).filter(Boolean))).sort(function(a, b) {
+      var diaFiltroEmerg = typeof state.selectedDateIso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(state.selectedDateIso) ? state.selectedDateIso : '';
+      var maqSet = new Set();
+      rawRows.forEach(function(row) {
+        if (diaFiltroEmerg) {
+          var prazo = String(row && (row.prazoIso || row.dia || row.data_entrega || row.ent || '') || '').slice(0, 10);
+          if (prazo !== diaFiltroEmerg) return;
+        }
+        var m = normMachine(row);
+        if (m) maqSet.add(m);
+      });
+      var catalog = Array.from(maqSet).sort(function(a, b) {
         return String(a || '').localeCompare(String(b || ''), 'pt-BR');
       });
       state.machineCatalog = catalog.slice();
