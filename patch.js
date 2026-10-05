@@ -5020,7 +5020,7 @@ try {
           try {
             var btns = el.querySelectorAll('.patch-ofmaq-sem-papel-btn');
             btns.forEach(function(b) {
-              var parent = b.closest && b.closest('#ofmaq-final-actions');
+              var parent = b.closest && b.closest('.ofmaq-final-modal[data-modal="ofmaq-final-actions"]');
               if (!parent) return;
               b.setAttribute('data-active', novo ? '1' : '0');
               b.textContent = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
@@ -5030,7 +5030,7 @@ try {
         try {
           var btnTxtNovoGlobal = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
           var ofNumMatch = String((patch && (patch.numero || patch.of_numero || patch.of)) || '').trim();
-          document.querySelectorAll('#ofmaq-final-actions .patch-ofmaq-sem-papel-btn').forEach(function(b) {
+          document.querySelectorAll('.ofmaq-final-modal[data-modal="ofmaq-final-actions"] .patch-ofmaq-sem-papel-btn').forEach(function(b) {
             try {
               var txt = String(b.textContent || '').trim();
               if (!/Sem Papelão/i.test(txt) && !/Remover Sem Papelão/i.test(txt)) return;
@@ -5484,9 +5484,9 @@ try {
       try {
         var btnTxtNovo = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
         var btnSel = [
-          '#ofmaq-final-actions[data-of-id="' + id + '"] .patch-ofmaq-sem-papel-btn',
-          '.modal#ofmaq-final-actions .patch-ofmaq-sem-papel-btn',
-          '#ofmaq-final-actions .patch-ofmaq-sem-papel-btn'
+          '.ofmaq-final-modal[data-modal="ofmaq-final-actions"] .patch-ofmaq-sem-papel-btn',
+          '.ofmaq-final-modal .patch-ofmaq-sem-papel-btn',
+          '.modal .patch-ofmaq-sem-papel-btn'
         ].join(',');
         var botoes = document.querySelectorAll(btnSel);
         botoes.forEach(function(b) {
@@ -5499,7 +5499,7 @@ try {
         });
         try {
           var numeroDaOf = String(ofNum || of.numero || of.of || (of && (of.numero || of.of_numero)) || '').trim();
-          document.querySelectorAll('#ofmaq-final-actions .patch-ofmaq-sem-papel-btn').forEach(function(b) {
+          document.querySelectorAll('.ofmaq-final-modal[data-modal="ofmaq-final-actions"] .patch-ofmaq-sem-papel-btn').forEach(function(b) {
             try {
               var txtG = String(b.textContent || '').trim();
               if (!/Sem Papelão/i.test(txtG) && !/Remover Sem Papelão/i.test(txtG)) return;
@@ -6017,9 +6017,12 @@ try {
           var s = sheets[i];
           if (!s || !s.getBoundingClientRect) continue;
           var sheetId = String(s && s.id || '').trim();
-          var parentId = String(s && s.closest && s.closest('#ofmaq-final-actions') && s.closest('#ofmaq-final-actions').id || '').trim();
-          var allowedId = 'ofmaq-final-actions';
-          if (sheetId !== allowedId && parentId !== allowedId) continue;
+          var sheetClass = String(s && s.className && typeof s.className === 'string' ? s.className : '').trim();
+          var sheetDataModal = String(s && s.getAttribute && s.getAttribute('data-modal') ? s.getAttribute('data-modal') : '').trim();
+          var parentModal = s && s.closest ? s.closest('.ofmaq-final-modal') : null;
+          var parentDataModal = parentModal && parentModal.getAttribute ? String(parentModal.getAttribute('data-modal') || '').trim() : '';
+          var isAllowed = (sheetDataModal === 'ofmaq-final-actions') || (parentDataModal === 'ofmaq-final-actions') || (sheetClass.indexOf('ofmaq-final-modal') >= 0 && sheetDataModal === 'ofmaq-final-actions');
+          if (!isAllowed) continue;
           var rect = s.getBoundingClientRect();
           if (rect.width < 100 || rect.height < 100) continue;
           var existBtn = s.querySelector('.patch-ofmaq-sem-papel-btn');
