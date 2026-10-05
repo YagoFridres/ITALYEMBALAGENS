@@ -5000,6 +5000,23 @@ try {
         if (String(list[j] && list[j].id || '').trim() === sid) return list[j];
       }
     }
+    try {
+      if (typeof window.__ofmaqFinalState !== 'undefined' && window.__ofmaqFinalState && Array.isArray(window.__ofmaqFinalState.rowsData)) {
+        for (var kf = 0; kf < window.__ofmaqFinalState.rowsData.length; kf++) {
+          var item = window.__ofmaqFinalState.rowsData[kf] || {};
+          if (String(item.id || item.of_id || item.uuid || '').trim() === sid) return item;
+        }
+      }
+    } catch (_f) {}
+    try {
+      if (typeof window.renderOfmaqFinal === 'function' && window.__ofmaqFinalState && Array.isArray(window.__ofmaqFinalState.rowsData)) {
+        for (var kz = 0; kz < window.__ofmaqFinalState.rowsData.length; kz++) {
+          var rz = window.__ofmaqFinalState.rowsData[kz] || {};
+          if (String(rz.ofRaw && (rz.ofRaw.id || rz.ofRaw.of_id || rz.ofRaw.uuid) || '').trim() === sid) return rz.ofRaw;
+          if (String(rz.numero || rz.of || '') && (String(rz.id || '').trim() === sid)) return rz;
+        }
+      }
+    } catch (_z) {}
     return null;
   }
 
