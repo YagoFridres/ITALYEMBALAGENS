@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261005193000';
-const SW_RUNTIME_VERSION = '20261005193000';
+const PATCH_RUNTIME_VERSION = '20261005201500';
+const SW_RUNTIME_VERSION = '20261005201500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11036,27 +11036,35 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     // CORREÇÃO 434129 🔴1-A: Gravar também na coluna JSON ofs.passagens_maquina (fonte usada pelo histórico GET)
     // Garante que novas passagens apareçam no histórico mesmo sem merge de fontes.
     try {
+      // ===== HOTFIX RC (20261005201500): operador, qtd, nowIso, hojeIso, _payloadUpsert são locais ao try do upsert (acima) =====
+      // Construir fallback seguro 4 níveis: variável se existir → _payloadUpsert se existir → req.usuario direto / OF direto → Sistema / 0
+      const hasOperadorVar = (typeof operador !== 'undefined');
+      const hasPayloadObj = (typeof _payloadUpsert !== 'undefined' && _payloadUpsert && typeof _payloadUpsert === 'object');
+      const reqNome = (req && req.usuario && typeof req.usuario === 'object') ? String(req.usuario.nome || (typeof req.usuario.email === 'string' ? req.usuario.email.split('@')[0] : '') || '').trim() : '';
+      const opNome = String((hasOperadorVar ? operador : null) || (hasPayloadObj ? _payloadUpsert.operador : null) || reqNome || 'Sistema').trim();
+      const qtdJsonb = Number( (typeof qtd !== 'undefined' ? qtd : null) || (hasPayloadObj ? _payloadUpsert.quantidade : null) || (of && (of.qtd_produzida || of.caixas_boas || of.quantidade || of.qtd || of.qtd_pedida)) || 0) || 0;
+      const nowIsoJsonb = (typeof nowIso !== 'undefined') ? nowIso : (new Date().toISOString());
+      const hojeIsoJsonb = (typeof hojeIso !== 'undefined') ? hojeIso : String(nowIsoJsonb || '').slice(0, 10);
       const colJsonRaw = (of && typeof of === 'object') ? (of.passagens_maquina || of.passagens_por_maquina || []) : [];
       const arrJson = (typeof colJsonRaw === 'string')
         ? (function(){ try { return JSON.parse(colJsonRaw); } catch(_pe){ return []; } })()
         : (Array.isArray(colJsonRaw) ? colJsonRaw : []);
-      const qtd = Number(of?.qtd_produzida || of?.caixas_boas || of?.quantidade || of?.qtd || of?.qtd_pedida || 0) || 0;
       const novaPassagemJson = {
-        maquina_nome: String(maquinaNome || (_payloadUpsert && _payloadUpsert.maquina) || '').trim(),
-        maquina: String(maquinaNome || (_payloadUpsert && _payloadUpsert.maquina) || '').trim(),
-        nome: String(maquinaNome || (_payloadUpsert && _payloadUpsert.maquina) || '').trim(),
-        hora_passagem: nowIso,
-        passou_em: nowIso,
-        criado_em: nowIso,
-        created_at: nowIso,
-        data_passagem: hojeIso,
+        maquina_nome: String(maquinaNome || (hasPayloadObj ? _payloadUpsert.maquina : '') || '').trim(),
+        maquina: String(maquinaNome || (hasPayloadObj ? _payloadUpsert.maquina : '') || '').trim(),
+        nome: String(maquinaNome || (hasPayloadObj ? _payloadUpsert.maquina : '') || '').trim(),
+        hora_passagem: nowIsoJsonb,
+        passou_em: nowIsoJsonb,
+        criado_em: nowIsoJsonb,
+        created_at: nowIsoJsonb,
+        data_passagem: hojeIsoJsonb,
         status: 'Passou pela máquina',
-        operador_nome: String(operador || (_payloadUpsert && _payloadUpsert.operador) || 'Sistema').trim(),
-        operador: String(operador || (_payloadUpsert && _payloadUpsert.operador) || 'Sistema').trim(),
-        usuario_nome: String(operador || (_payloadUpsert && _payloadUpsert.operador) || 'Sistema').trim(),
-        quantidade: qtd,
-        qtd_produzida: qtd,
-        qtd: qtd,
+        operador_nome: opNome,
+        operador: opNome,
+        usuario_nome: opNome,
+        quantidade: qtdJsonb,
+        qtd_produzida: qtdJsonb,
+        qtd: qtdJsonb,
         id_passagem_tabela_fisica: (upsertResult && upsertResult.id) || null,
         rowid_tabela_fisica: (upsertResult && upsertResult.id) || null,
       };
@@ -11069,10 +11077,12 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
           depois_len: Array.isArray(arrJson) ? arrJson.length : -1,
           adicionado_id_passagem_tabela_fisica: (upsertResult && upsertResult.id) || null,
           campos: Object.keys(novaPassagemJson).sort().join(','),
+          hotfix_op_nome_usado: opNome,
+          hotfix_qtd_usada: qtdJsonb,
         };
       } catch(_) {}
-      try { console.log('[PASSOU-MAQUINA] coluna JSON ofs.passagens_maquina ATUALIZADA: of_id=%j of_numero=%j antes_len=%d novo_len=%d maquina=%j',
-        id, ((of && (of.numero || of.of_numero || of.of)) || ofNumero || ''), Math.max(0, (Array.isArray(arrJson)?arrJson.length:0)-1), (Array.isArray(arrJson)?arrJson.length:0), maquinaNome); } catch(_) {}
+      try { console.log('[PASSOU-MAQUINA] coluna JSON ofs.passagens_maquina ATUALIZADA: of_id=%j of_numero=%j antes_len=%d novo_len=%d maquina=%j op=%j qtd=%j',
+        id, ((of && (of.numero || of.of_numero || of.of)) || (hasPayloadObj ? _payloadUpsert.of_numero : '') || ''), Math.max(0, (Array.isArray(arrJson)?arrJson.length:0)-1), (Array.isArray(arrJson)?arrJson.length:0), maquinaNome, opNome, qtdJsonb); } catch(_) {}
     } catch (eColJson) {
       try { console.warn('[PASSOU-MAQUINA] falha AO ATUALIZAR coluna JSON ofs.passagens_maquina (passagem tabela fisica SALVA mesmo assim): of_id=%j err=%j', id, String((eColJson && eColJson.message) || eColJson)); } catch(_) {}
       try { __dbg.coluna_json_of_passagens_maquina_erro = String((eColJson && eColJson.message) || eColJson); } catch(_) {}
