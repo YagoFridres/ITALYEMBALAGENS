@@ -28649,6 +28649,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function todayBrtIso() {
       try {
+        if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+          var parts = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+          var y = '', m = '', d = '';
+          for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'year') y = parts[i].value; else if (parts[i].type === 'month') m = parts[i].value; else if (parts[i].type === 'day') d = parts[i].value; }
+          if (y && m && d) return y + '-' + m + '-' + d;
+        }
         return typeof _rrLocalIso === 'function' ? _rrLocalIso(new Date()) : (function(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })(new Date());
       } catch (_) {
         var d = new Date();
@@ -28656,55 +28662,159 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
     }
 
-    function buildTodayHistoryFromState() {
+    function brtDateFromIso(isoStr) {
+      try {
+        if (!isoStr) return '';
+        var dt = new Date(isoStr);
+        if (isNaN(dt.getTime())) return '';
+        if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+          var parts = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(dt);
+          var y = '', m = '', d = '';
+          for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'year') y = parts[i].value; else if (parts[i].type === 'month') m = parts[i].value; else if (parts[i].type === 'day') d = parts[i].value; }
+          if (y && m && d) return y + '-' + m + '-' + d;
+        }
+        return String(isoStr || '').slice(0, 10);
+      } catch (_) { return String(isoStr || '').slice(0, 10); }
+    }
+
+    function __ofFromCacheByNumero(ofNumero) {
+      var k = String(ofNumero || '').trim();
+      if (!k) return null;
+      var pool = (typeof window !== 'undefined' && Array.isArray(window.__OFMAQ_FINAL_LAST_RAW_ROWS)) ? window.__OFMAQ_FINAL_LAST_RAW_ROWS : (state && Array.isArray(state.rowsData) ? state.rowsData : []);
+      for (var i = 0; i < pool.length; i++) {
+        var item = pool[i] || {};
+        var raw = item.ofRaw || item;
+        var n1 = String(item.numero || (raw && raw.numero) || '').trim();
+        var n2 = String(item.of_numero || (raw && raw.of_numero) || '').trim();
+        if (n1 === k || n2 === k) return item;
+      }
+      return null;
+    }
+
+    function __clienteFromOfObj(ofObj) {
+      if (!ofObj) return '';
+      var raw = ofObj.ofRaw || ofObj;
+      var c = String(ofObj.cliente || (raw && (raw.cliente_nome || raw.cliente || raw.cliNome || raw.cli_nome)) || '').trim();
+      return c;
+    }
+
+    async function buildTodayHistoryFromState() {
       var today = todayBrtIso();
       var gruposMap = new Map();
       var ofsSet = new Set();
       var totalPassagens = 0;
-      var rows = (typeof window !== 'undefined' && Array.isArray(window.__OFMAQ_FINAL_LAST_RAW_ROWS) && window.__OFMAQ_FINAL_LAST_RAW_ROWS.length > 0)
-        ? window.__OFMAQ_FINAL_LAST_RAW_ROWS
-        : (state && Array.isArray(state.rowsData) ? state.rowsData : []);
-      rows.forEach(function(item) {
-        if (!item) return;
-        var raw = item && item.ofRaw ? item.ofRaw : item;
-        var arr = [];
-        try {
-          var v = raw && raw.passagens_maquina;
-          if (v == null) arr = [];
-          else if (Array.isArray(v)) arr = v.slice();
-          else if (typeof v === 'string') { try { arr = JSON.parse(v) || []; } catch(_){ arr = []; } if (!Array.isArray(arr)) arr = []; }
-          else arr = [];
-        } catch (_) { arr = []; }
-        arr.forEach(function(p) {
-          if (!p || typeof p !== 'object') return;
-          var dp = String(p && (p.data_passagem || p.dataPassagem || p.passou_em || '') || '').slice(0, 10);
-          if (dp !== today) return;
-          var maquina = String(p && (p.maquina || p.maquina_nome || p.maquinaNome || '') || '').trim() || String(item && item.maquina || '').trim() || 'Sem máquina';
-          var ofNumero = String(item && item.numero || item && raw && raw.numero || p && p.of_numero || '').trim() || '—';
-          var cliente = String(item && item.cliente || item && raw && (raw.cliente_nome || raw.cliente) || p && p.cliente || '').trim() || '—';
-          var hora = p && (p.hora_passagem || p.horaPassagem || p.passou_em || p.criado_em || p.dataHora || '');
-          var qtd = Number(p && (p.quantidade || p.qtd || p.qtd_produzida) != null ? (p.quantidade || p.qtd || p.qtd_produzida) : (item && item.quantidade != null ? item.quantidade : 0)) || 0;
-          var rowId = p && (p.id_passagem_tabela_fisica || p.rowid_tabela_fisica || p.passagem_row_id || p.id || p.rowId) != null ? (p.id_passagem_tabela_fisica || p.rowid_tabela_fisica || p.passagem_row_id || p.id || p.rowId) : null;
-          var ofId = String(item && item.id || raw && raw.id || '').trim();
-          if (!gruposMap.has(maquina)) gruposMap.set(maquina, { maquina: maquina, totalPassagens: 0, totalQtd: 0, items: [] });
-          var g = gruposMap.get(maquina);
-          g.totalPassagens += 1;
-          g.totalQtd += qtd;
-          g.items.push({
-            of_numero: ofNumero,
-            of_id: ofId,
-            cliente: cliente,
-            maquina: maquina,
-            hora_passagem: hora,
-            quantidade: qtd,
-            row_id: rowId
+      var allPassagens = [];
+
+      var hoje = new Date();
+      var mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
+      var anoAtual = String(hoje.getFullYear());
+
+      try {
+        var url = '/api/passagens/historico?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual) + '&limit=1000';
+        var resp = await fetch(url, { method: 'GET', credentials: 'include', cache: 'no-store', headers: { 'Accept': 'application/json' } });
+        if (resp && resp.ok) {
+          var payload = await resp.json();
+          if (payload && Array.isArray(payload.passagens)) {
+            allPassagens = payload.passagens.slice();
+          }
+        }
+      } catch (eFetch) {
+        try { console.warn('[OFMAQ] buildTodayHistoryFromState fetch historico falhou, usando fallback local:', eFetch && eFetch.message || eFetch); } catch(_){}
+        allPassagens = [];
+      }
+
+      if (!allPassagens.length) {
+        var rows = (typeof window !== 'undefined' && Array.isArray(window.__OFMAQ_FINAL_LAST_RAW_ROWS) && window.__OFMAQ_FINAL_LAST_RAW_ROWS.length > 0)
+          ? window.__OFMAQ_FINAL_LAST_RAW_ROWS
+          : (state && Array.isArray(state.rowsData) ? state.rowsData : []);
+        rows.forEach(function(item) {
+          if (!item) return;
+          var raw = item && item.ofRaw ? item.ofRaw : item;
+          var arr = [];
+          try {
+            var v = raw && raw.passagens_maquina;
+            if (v == null) arr = [];
+            else if (Array.isArray(v)) arr = v.slice();
+            else if (typeof v === 'string') { try { arr = JSON.parse(v) || []; } catch(_){ arr = []; } if (!Array.isArray(arr)) arr = []; }
+            else arr = [];
+          } catch (_) { arr = []; }
+          arr.forEach(function(p) {
+            if (!p || typeof p !== 'object') return;
+            allPassagens.push(Object.assign({}, p, {
+              _of_row_ref: item,
+              _of_raw_ref: raw
+            }));
           });
-          totalPassagens += 1;
-          if (ofNumero && ofNumero !== '—') ofsSet.add(ofNumero);
         });
-      });
+      }
+
+      var dedupeKeys = new Set();
+      var filteredPassagens = [];
+      for (var idx = 0; idx < allPassagens.length; idx++) {
+        var p = allPassagens[idx];
+        if (!p || typeof p !== 'object') continue;
+        var horaIso = String(p && (p.hora_passagem || p.horaPassagem || p.passou_em || p.criado_em || p.dataHora || p.data_passagem || '') || '');
+        var dataBrt = brtDateFromIso(horaIso);
+        if (!dataBrt) {
+          var dpFallback = String(p && (p.data_passagem || p.dataPassagem || p.passou_em || '') || '').slice(0, 10);
+          if (dpFallback !== today) continue;
+        } else if (dataBrt !== today) {
+          continue;
+        }
+        var ofNumeroP = String(p && p.of_numero || p && p.numero || p && p.of || '').trim();
+        var maquinaP = String(p && (p.maquina || p.maquina_nome || p.maquinaNome || p.maq) || '').trim();
+        var statusP = String(p && p.status || '').trim() || 'Passou pela máquina';
+        var dedupeKey = [ofNumeroP, maquinaP, String(horaIso || ''), statusP, String(p && (p._id_tabela_fisica || p.id_passagem_tabela_fisica || p.rowid_tabela_fisica || p.rowId || p.id || idx) || '')].join('|');
+        if (dedupeKeys.has(dedupeKey)) continue;
+        dedupeKeys.add(dedupeKey);
+        filteredPassagens.push(p);
+      }
+
+      for (var j = 0; j < filteredPassagens.length; j++) {
+        var pItem = filteredPassagens[j];
+        var horaIsoItem = String(pItem && (pItem.hora_passagem || pItem.horaPassagem || pItem.passou_em || pItem.criado_em || pItem.dataHora || '') || '');
+        var ofNumeroItem = String(pItem && (pItem.of_numero || pItem.numero || pItem.of || (pItem._of_row_ref && (pItem._of_row_ref.numero || (pItem._of_raw_ref && pItem._of_raw_ref.numero)))) || '').trim() || '—';
+        var clienteItem = String(pItem && (pItem.cliente || pItem.cliente_nome || pItem.nome_cliente) || '').trim();
+        if (!clienteItem && pItem._of_row_ref) {
+          clienteItem = __clienteFromOfObj(pItem._of_row_ref);
+        }
+        if (!clienteItem && ofNumeroItem && ofNumeroItem !== '—') {
+          var cachedOf = __ofFromCacheByNumero(ofNumeroItem);
+          if (cachedOf) clienteItem = __clienteFromOfObj(cachedOf);
+        }
+        clienteItem = clienteItem || '—';
+        var maquinaItem = String(pItem && (pItem.maquina || pItem.maquina_nome || pItem.maquinaNome || pItem.maq) || (pItem._of_row_ref && pItem._of_row_ref.maquina) || '').trim() || 'Sem máquina';
+        var qtdItem = Number(pItem && (pItem.quantidade || pItem.qtd || pItem.qtd_produzida) != null ? (pItem.quantidade || pItem.qtd || pItem.qtd_produzida) : 0) || 0;
+        var statusItem = String(pItem && pItem.status || '').trim() || 'Passou pela máquina';
+        var rowIdItem = pItem && (pItem._id_tabela_fisica || pItem.id_passagem_tabela_fisica || pItem.rowid_tabela_fisica || pItem.passagem_row_id || pItem.rowId || pItem.id) != null ? (pItem._id_tabela_fisica || pItem.id_passagem_tabela_fisica || pItem.rowid_tabela_fisica || pItem.passagem_row_id || pItem.rowId || pItem.id) : null;
+        var ofIdItem = String(pItem && (pItem.of_id || (pItem._of_row_ref && pItem._of_row_ref.id) || (pItem._of_raw_ref && pItem._of_raw_ref.id)) || '').trim();
+        if (!gruposMap.has(maquinaItem)) gruposMap.set(maquinaItem, { maquina: maquinaItem, totalPassagens: 0, totalQtd: 0, items: [] });
+        var g = gruposMap.get(maquinaItem);
+        g.totalPassagens += 1;
+        g.totalQtd += qtdItem;
+        g.items.push({
+          of_numero: ofNumeroItem,
+          of_id: ofIdItem,
+          cliente: clienteItem,
+          maquina: maquinaItem,
+          hora_passagem: horaIsoItem,
+          quantidade: qtdItem,
+          status: statusItem,
+          row_id: rowIdItem
+        });
+        totalPassagens += 1;
+        if (ofNumeroItem && ofNumeroItem !== '—') ofsSet.add(ofNumeroItem);
+      }
+
       var grupos = Array.from(gruposMap.values()).sort(function(a, b) {
         return String(a.maquina || '').localeCompare(String(b.maquina || ''), 'pt-BR');
+      });
+      grupos.forEach(function(grupo) {
+        grupo.items.sort(function(a, b) {
+          var ta = a && a.hora_passagem ? new Date(a.hora_passagem).getTime() : 0;
+          var tb = b && b.hora_passagem ? new Date(b.hora_passagem).getTime() : 0;
+          return tb - ta;
+        });
       });
       return {
         todayIso: today,
@@ -28717,12 +28827,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
     }
 
-    function openTodayHistoryModal() {
+    async function openTodayHistoryModal() {
       var esc = (typeof escH === 'function') ? escH : (typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v); });
       var fmtDate = (typeof fmtDateBR === 'function') ? fmtDateBR : (typeof rrFmtDate === 'function' ? rrFmtDate : function(v){ return String(v||''); });
       var fmtDT = typeof rrFmtDateTime === 'function' ? rrFmtDateTime : (function(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch(_){ return String(v||'—'); } });
       var fmtNum = typeof rrFmtNum === 'function' ? rrFmtNum : function(v){ return String(Number(v||0)); };
-      var res = buildTodayHistoryFromState();
+      try { if (typeof window.toast === 'function') window.toast('Carregando histórico...', 'var(--blue)'); } catch(_){}
+      var res;
+      try {
+        res = await buildTodayHistoryFromState();
+      } catch (eBuild) {
+        try { if (typeof window.toast === 'function') window.toast('Erro ao carregar histórico: ' + String(eBuild && eBuild.message || eBuild), 'var(--red)'); } catch(_){}
+        throw eBuild;
+      }
       var todayBR = fmtDate(res.todayIso);
       var tot = res.totals || {};
       var html = '';
@@ -28744,17 +28861,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">OF</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Cliente</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Horário</th>';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Status</th>';
           html += '<th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Qtd</th>';
           html += '</tr></thead><tbody>';
           var items = Array.isArray(g.items) ? g.items : [];
           if (items.length === 0) {
-            html += '<tr><td colspan="4" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
+            html += '<tr><td colspan="5" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
           } else {
             items.forEach(function(it) {
+              var statusLabel = String(it.status || '—').trim() || '—';
+              var statusColor = statusLabel === 'Despachada' || statusLabel.toLowerCase().indexOf('despach') >= 0 ? '#fca5a5' : (statusLabel === 'Passou pela máquina' ? '#86efac' : '#cbd5e1');
               html += '<tr style="border-top:1px solid rgba(30,41,59,.75)">';
               html += '<td style="padding:7px 10px;color:#f8fafc;font-size:13px;font-weight:800">' + esc(String(it.of_numero || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#e2e8f0;font-size:12px;font-weight:600">' + esc(String(it.cliente || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600">' + esc(fmtDT(it.hora_passagem)) + '</td>';
+              html += '<td style="padding:7px 10px;color:' + statusColor + ';font-size:12px;font-weight:800">' + esc(statusLabel) + '</td>';
               html += '<td style="padding:7px 10px;color:#f8fafc;font-size:12px;font-weight:800;text-align:right">' + esc(fmtNum(it.quantidade || 0, 0)) + '</td>';
               html += '</tr>';
             });
@@ -28778,12 +28899,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return modal;
     }
 
-    function printTodayHistory(builtData) {
+    async function printTodayHistory(builtData) {
       var e = typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v); };
       var fN = typeof rrFmtNum === 'function' ? rrFmtNum : function(v){ return String(Number(v||0)); };
       var fD = typeof rrFmtDate === 'function' ? rrFmtDate : function(v){ return String(v||''); };
       var fDT = typeof rrFmtDateTime === 'function' ? rrFmtDateTime : function(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch(_){ return String(v||'—'); } };
-      var data = builtData && typeof builtData === 'object' ? builtData : buildTodayHistoryFromState();
+      var data = builtData && typeof builtData === 'object' ? builtData : (typeof buildTodayHistoryFromState === 'function' ? (await buildTodayHistoryFromState()) : null);
+      if (!data) throw new Error('Nenhum dado de histórico disponível para impressão.');
       var grupos = Array.isArray(data.grupos) ? data.grupos : [];
       var tot = data.totals || {};
       var detailRowsAll = [];
@@ -28795,6 +28917,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             e(String(it.cliente || '—')),
             e(String(it.maquina || '—')),
             e(fDT(it.hora_passagem)),
+            e(String(it.status || '—')),
             e(fN(Number(it.quantidade || 0), 0))
           ]);
         });
@@ -28814,10 +28937,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         summaryHeaders: ['Máquina', 'Passagens', 'Caixas'],
         summaryRows: summaryRows,
         detailTitle: 'Detalhamento das passagens',
-        detailHeaders: ['OF', 'Cliente', 'Máquina', 'Horário', 'Qtd'],
+        detailHeaders: ['OF', 'Cliente', 'Máquina', 'Horário', 'Status', 'Qtd'],
         detailRows: detailRowsAll,
         emptySummaryCols: 3,
-        emptyDetailCols: 5
+        emptyDetailCols: 6
       };
       if (typeof rrOpenPrint === 'function') {
         return rrOpenPrint(cfg);
@@ -29047,8 +29170,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         var histBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-history-today') : null;
         if (histBtn) {
-          try { if (typeof openTodayHistoryModal === 'function') openTodayHistoryModal(); else try { window.toast('Módulo Histórico não carregado.', 'var(--yellow)'); } catch(_){} }
-          catch (eHist) { try { window.toast('Erro ao abrir Histórico: '+String(eHist && eHist.message || eHist), 'var(--red)'); } catch(_){} }
+          (async function() {
+            try { if (typeof openTodayHistoryModal === 'function') await openTodayHistoryModal(); else try { window.toast('Módulo Histórico não carregado.', 'var(--yellow)'); } catch(_){} }
+            catch (eHist) { try { window.toast('Erro ao abrir Histórico: '+String(eHist && eHist.message || eHist), 'var(--red)'); } catch(_){} }
+          })();
           return;
         }
         var imageBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-image]') : null;
