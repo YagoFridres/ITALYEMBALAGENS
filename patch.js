@@ -28661,7 +28661,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var gruposMap = new Map();
       var ofsSet = new Set();
       var totalPassagens = 0;
-      var rows = state && Array.isArray(state.rowsData) ? state.rowsData : [];
+      var rows = (typeof window !== 'undefined' && Array.isArray(window.__OFMAQ_FINAL_LAST_RAW_ROWS) && window.__OFMAQ_FINAL_LAST_RAW_ROWS.length > 0)
+        ? window.__OFMAQ_FINAL_LAST_RAW_ROWS
+        : (state && Array.isArray(state.rowsData) ? state.rowsData : []);
       rows.forEach(function(item) {
         if (!item) return;
         var raw = item && item.ofRaw ? item.ofRaw : item;
