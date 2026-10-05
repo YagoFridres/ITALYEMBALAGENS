@@ -28764,7 +28764,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var ofNumeroP = String(p && p.of_numero || p && p.numero || p && p.of || '').trim();
         var maquinaP = String(p && (p.maquina || p.maquina_nome || p.maquinaNome || p.maq) || '').trim();
         var statusP = String(p && p.status || '').trim() || 'Passou pela máquina';
-        var dedupeKey = [ofNumeroP, maquinaP, String(horaIso || ''), statusP, String(p && (p._id_tabela_fisica || p.id_passagem_tabela_fisica || p.rowid_tabela_fisica || p.rowId || p.id || idx) || '')].join('|');
+        var horaDedup = String(horaIso || '').replace(/\.\d+Z?$/, '').replace(/:\d{2}$/, '').slice(0, 16);
+        var dedupeKey = [ofNumeroP, maquinaP, horaDedup, statusP].join('|');
         if (dedupeKeys.has(dedupeKey)) continue;
         dedupeKeys.add(dedupeKey);
         filteredPassagens.push(p);
