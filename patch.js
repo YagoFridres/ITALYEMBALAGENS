@@ -27753,6 +27753,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(cols) + '</div></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(facas) + '</strong></td>'
         + (function() {
+            var po = item && (item.papel_observacao != null ? item.papel_observacao : (item.papelObservacao != null ? item.papelObservacao : null));
+            if (po == null) po = raw && (raw.papel_observacao != null ? raw.papel_observacao : (raw.papelObservacao != null ? raw.papelObservacao : null));
+            var poStr = String(po || '').trim();
+            if (poStr) {
+              return '<td><div class="ofmaq-final-cell" title="' + escAttr(poStr) + '"><strong style="font-size:12px;color:#f59e0b;white-space:normal;line-height:1.3;">' + escH(poStr) + '</strong></div></td>';
+            }
             var papelRaw = item && (item.papel_comprado != null ? item.papel_comprado : (item.papelComprado != null ? item.papelComprado : null));
             if (papelRaw == null) papelRaw = raw && (raw.papel_comprado != null ? raw.papel_comprado : (raw.papelComprado != null ? raw.papelComprado : null));
             var prevRaw = item && (item.previsao_entrega_papel != null ? item.previsao_entrega_papel : (item.previsaoEntregaPapel != null ? item.previsaoEntregaPapel : ''));
@@ -28516,15 +28522,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var semPapelActive = !!(row && row.ofRaw && row.ofRaw.sem_papel);
       var papelTextoInit = '';
       try {
-        var pr = row && row.ofRaw && row.ofRaw.papel_comprado != null ? row.ofRaw.papel_comprado : '';
-        var prStr = String(pr || '').trim();
-        var isBool = (pr === true || pr === 1 || prStr === '1' || prStr.toLowerCase() === 'true');
-        if (prStr && !isBool) papelTextoInit = prStr;
-        else if (isBool) papelTextoInit = 'Comprado';
-        var pr2 = String(row && row.ofRaw && (row.ofRaw.previsao_entrega_papel || row.ofRaw.previsaoEntregaPapel) || '').trim();
-        if (pr2) {
-          if (papelTextoInit) papelTextoInit = papelTextoInit + ' | ' + pr2;
-          else papelTextoInit = pr2;
+        var poRaw = row && row.ofRaw && (row.ofRaw.papel_observacao != null ? row.ofRaw.papel_observacao : (row.ofRaw.papelObservacao != null ? row.ofRaw.papelObservacao : null));
+        var poStr = String(poRaw || '').trim();
+        if (poStr) {
+          papelTextoInit = poStr;
+        } else {
+          var pr = row && row.ofRaw && row.ofRaw.papel_comprado != null ? row.ofRaw.papel_comprado : '';
+          var prStr = String(pr || '').trim();
+          var isBool = (pr === true || pr === 1 || prStr === '1' || prStr.toLowerCase() === 'true');
+          if (prStr && !isBool) papelTextoInit = prStr;
+          else if (isBool) papelTextoInit = 'Comprado';
+          var pr2 = String(row && row.ofRaw && (row.ofRaw.previsao_entrega_papel || row.ofRaw.previsaoEntregaPapel) || '').trim();
+          if (pr2) {
+            if (papelTextoInit) papelTextoInit = papelTextoInit + ' | ' + pr2;
+            else papelTextoInit = pr2;
+          }
         }
       } catch (_) { papelTextoInit = ''; }
       if (papelTextoInit.length > 255) papelTextoInit = papelTextoInit.slice(0, 255);
@@ -28601,27 +28613,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               var tArea = document.getElementById('ofmaq-final-papel-texto');
               var rawTxt = String(tArea && tArea.value || '').trim();
               if (rawTxt.length > 255) rawTxt = rawTxt.slice(0, 255);
-              var bodySave = {};
-              if (rawTxt) bodySave.papel_comprado = rawTxt;
-              else bodySave.papel_comprado = null;
-              var extraData = null;
-              if (rawTxt) {
-                var dtMatch = rawTxt.match(/(\d{4}-\d{2}-\d{2})/);
-                if (dtMatch && dtMatch[1]) bodySave.previsao_entrega_papel = dtMatch[1];
-                var lower = rawTxt.toLowerCase();
-                var hasCompra = lower.indexOf('comprado') >= 0 || lower.indexOf('pedido') >= 0;
-                if (hasCompra) bodySave.previsao_entrega_papel = bodySave.previsao_entrega_papel || null;
-              } else {
-                bodySave.previsao_entrega_papel = null;
-              }
+              var bodySave = { papel_observacao: rawTxt ? rawTxt : null };
               var rSav = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySave });
               if (!rSav || !rSav.resp || !rSav.resp.ok || (rSav.data && rSav.data.ok === false)) throw new Error((rSav && rSav.data && (rSav.data.error || rSav.data.message)) || 'Falha ao salvar dados do papel');
               try { window.__OFMAQ_POLLING_SUSPEND_UNTIL = Date.now() + 4000; } catch (_) {}
               if (row && row.ofRaw) {
-                row.ofRaw.papel_comprado = rawTxt ? rawTxt : null;
-                if (bodySave.previsao_entrega_papel) row.ofRaw.previsao_entrega_papel = bodySave.previsao_entrega_papel;
-                else if (rawTxt) { /* keep as-is, papel_comprado drives the display */ }
-                else row.ofRaw.previsao_entrega_papel = null;
+                row.ofRaw.papel_observacao = rawTxt ? rawTxt : null;
               }
               closeModal('ofmaq-final-actions');
               updateToolbar(ensureShell());
