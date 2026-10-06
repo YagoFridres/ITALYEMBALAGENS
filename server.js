@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261006094000';
-const SW_RUNTIME_VERSION = '20261006094000';
+const PATCH_RUNTIME_VERSION = '20261006103000';
+const SW_RUNTIME_VERSION = '20261006103000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12314,7 +12314,8 @@ app.post('/api/of-passagens', authMiddleware, async (req, res) => {
 
 app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
   try { 
-    const { periodo, maquina, cliente } = req.query; 
+    const { periodo, maquina, cliente, empresa_id, empresaId } = req.query; 
+    const empFil = String(empresa_id || empresaId || req.usuario?.emp_id || req.usuario?.empId || '').trim();
     let query = supabase.from('passagens_maquina').select('*'); 
 
     if (periodo === 'ontem') { 
@@ -12330,16 +12331,20 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
       query = query.eq('data_passagem', new Date().toISOString().split('T')[0]); 
     } 
 
+    query = _aplicarFiltroEmpresaPassagensMaquina(query, empFil);
     if (maquina) query = query.eq('maquina', maquina); 
     if (cliente) query = query.ilike('cliente', '%'+cliente+'%'); 
 
     const { data, error } = await query 
-      .order('hora_passagem', { ascending: false }).limit(100); 
+      .order('hora_passagem', { ascending: false }).limit(500); 
 
-    if (error) { console.warn('[passagens/hoje]', error.message); return res.json({ ok:true, passagens:[] }); } 
-    res.json({ ok: true, passagens: data || [] }); 
+    if (error) { 
+      console.warn('[passagens/hoje] ERRO tabela física:', error.message); 
+      return res.json({ ok: true, passagens: [], aviso_fonte_fisica: 'Erro ao carregar passagens da tabela física: ' + String(error.message || 'desconhecido') + '. Tente novamente em alguns segundos.' }); 
+    } 
+    res.json({ ok: true, passagens: data || [], aviso_fonte_fisica: null }); 
   } catch(e) { 
-    res.json({ ok: true, passagens: [], erro: e.message }); 
+    res.json({ ok: true, passagens: [], aviso_fonte_fisica: 'Erro interno histórico de hoje: ' + String(e?.message || e || 'desconhecido') }); 
   } 
 });
 
@@ -12363,6 +12368,26 @@ function _passagensMesAnterior(mes, ano) {
   const base = new Date(parseInt(ref.ano, 10), parseInt(ref.mes, 10) - 1, 1, 12, 0, 0);
   base.setMonth(base.getMonth() - 1);
   return _passagensFiltroMesAnoToRange(base.getMonth() + 1, base.getFullYear());
+}
+
+function _aplicarFiltroEmpresaPassagensMaquina(q, empresaIdRaw) {
+  if (!q || typeof q !== 'object') return q;
+  const empIdRaw = String(empresaIdRaw || '').trim().toUpperCase();
+  if (!empIdRaw || empIdRaw === 'ALL' || empIdRaw === 'TODAS' || empIdRaw === 'TODOS' || empIdRaw.length > 50) return q;
+  const isUuid = /^[0-9a-fA-F]{8}-/.test(empIdRaw);
+  let padraoLike = null;
+  if (isUuid) {
+    if (/^df5f7672-0/i.test(empIdRaw)) padraoLike = '%Italy%';
+    else if (/^e9b734dc-1/i.test(empIdRaw)) padraoLike = '%Cartoeste%';
+    else if (/^a6e5f5d8-1/i.test(empIdRaw)) padraoLike = '%Oestepack%';
+  } else {
+    if (empIdRaw === 'E1') padraoLike = '%Italy%';
+    else if (empIdRaw === 'E2') padraoLike = '%Cartoeste%';
+    else if (empIdRaw === 'E3') padraoLike = '%Oestepack%';
+    else if (empIdRaw.length <= 3) return q;
+  }
+  if (!padraoLike) return q;
+  try { return q.ilike('empresa', padraoLike); } catch (_) { return q; }
 }
 
 async function _buscarPassagensHistoricoCompat(req, opts) {
@@ -14072,13 +14097,9 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
         .lte('data_passagem', fimUsar)
         .order('hora_passagem', { ascending: false })
         .limit(3000);
-      const empIdVal = String(empresaId || '').trim();
-      const isUuidEmp = empIdVal && /^[0-9a-fA-F]{8}-/.test(empIdVal);
-      if (isUuidEmp) {
-        qFis = qFis.eq('empresa_id', empIdVal);
-      } else if (empIdVal && empIdVal.length <= 3) {
-        qFis = qFis.or('emp_id.eq.' + empIdVal + ',empresa_id.is.null,emp_id.is.null');
-      }
+      qFis = _aplicarFiltroEmpresaPassagensMaquina(qFis, empresaId);
+      if (cliente) qFis = qFis.ilike('cliente', '%' + String(cliente || '').replace(/%/g,'') + '%');
+      if (maquina) qFis = qFis.eq('maquina', String(maquina || '').trim());
       const rFis = await qFis;
       if (rFis?.error) throw rFis.error;
       fisicaMergeCountExact = Number(rFis?.count ?? 0) || 0;
@@ -14258,6 +14279,14 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       });
     } catch (_) {}
     // #endregion
+    let avisoFonteFisicaMsg = null;
+    try {
+      const partes = [];
+      if (fisicaErro) partes.push('Amostra tabela física (1/3 meses): ' + String(fisicaErro || 'desconhecido'));
+      if (fisicaMergeErr) partes.push('Histórico tabela física (merge): ' + String(fisicaMergeErr || 'desconhecido'));
+      if (ofsJsonErro) partes.push('Coluna JSON OFs: ' + String(ofsJsonErro || 'desconhecido'));
+      if (partes.length) avisoFonteFisicaMsg = 'Não foi possível carregar parte das passagens (fonte física parcial). Detalhes: ' + partes.join(' | ') + '. Tente novamente em alguns segundos.';
+    } catch (_) { avisoFonteFisicaMsg = null; }
     res.json({
       ok: true,
       passagens: paged,
@@ -14273,6 +14302,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       total_geral_caixas_distinct_ofs: Number(aggHist?.total_geral_caixas_distinct_ofs || 0) || 0,
       total_geral_valor_distinct_ofs: Number(aggHist?.total_geral_valor_distinct_ofs || 0) || 0,
       total_geral_ofs_distintas: Number(aggHist?.total_geral_ofs_distintas || 0) || 0,
+      aviso_fonte_fisica: avisoFonteFisicaMsg,
       _meta_agg_historico: aggHist?._meta_colunas_of || null,
       __query_real: __dbg_hist,
     }); 
@@ -14287,7 +14317,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     } catch (_) {}
     // #endregion
     console.error('[passagens/historico]', e.message); 
-    res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message, __query_real: { excecao_geral: String(e?.message||e) } }); 
+    res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message, aviso_fonte_fisica: 'Falha geral no histórico: ' + String(e?.message || e || 'desconhecido') + '. Tente novamente em alguns segundos.', __query_real: { excecao_geral: String(e?.message||e) } }); 
   } 
 }); 
 

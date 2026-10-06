@@ -28701,6 +28701,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var ofsSet = new Set();
       var totalPassagens = 0;
       var allPassagens = [];
+      var avisoFonteFisica = null;
 
       var hoje = new Date();
       var mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -28711,11 +28712,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var resp = await fetch(url, { method: 'GET', credentials: 'include', cache: 'no-store', headers: { 'Accept': 'application/json' } });
         if (resp && resp.ok) {
           var payload = await resp.json();
-          if (payload && Array.isArray(payload.passagens)) {
-            allPassagens = payload.passagens.slice();
+          if (payload && typeof payload === 'object') {
+            if (payload.aviso_fonte_fisica) avisoFonteFisica = String(payload.aviso_fonte_fisica || '').trim();
+            if (Array.isArray(payload.passagens)) allPassagens = payload.passagens.slice();
           }
         }
       } catch (eFetch) {
+        avisoFonteFisica = 'Não foi possível carregar passagens do histórico (falha de rede). Detalhe: ' + String(eFetch && eFetch.message || eFetch || 'desconhecido');
         try { console.warn('[OFMAQ] buildTodayHistoryFromState fetch historico falhou, usando fallback local:', eFetch && eFetch.message || eFetch); } catch(_){}
         allPassagens = [];
       }
@@ -28821,7 +28824,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           totalPassagens: totalPassagens,
           totalMaquinas: grupos.length,
           totalOfs: ofsSet.size
-        }
+        },
+        aviso_fonte_fisica: avisoFonteFisica
       };
     }
 
@@ -28840,14 +28844,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       var todayBR = fmtDate(res.todayIso);
       var tot = res.totals || {};
+      var aviso = String(res.aviso_fonte_fisica || '').trim();
       var html = '';
+      if (aviso) {
+        html += '<div style="padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(251,146,60,.18),rgba(245,158,11,.22));border:1px solid rgba(249,115,22,.55);margin-bottom:14px">';
+        html += '<div style="display:flex;align-items:flex-start;gap:10px">';
+        html += '<div style="font-size:20px;line-height:1">⚠️</div>';
+        html += '<div style="flex:1"><div style="font-size:12px;font-weight:900;color:#fed7aa;margin-bottom:4px">Aviso: carga parcial de dados</div>';
+        html += '<div style="font-size:12px;color:#fde68a;font-weight:600;line-height:1.45">' + esc(aviso) + '</div>';
+        html += '<div style="font-size:11px;color:#fdba74;font-weight:500;margin-top:6px">Algumas passagens (principalmente "Despachada" geradas na conclusão da OF) podem não aparecer abaixo. Tente novamente em alguns segundos.</div></div></div></div>';
+      }
       html += '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px">';
       html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Passagens hoje</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalPassagens || 0)) + '</div></div>';
       html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Máquinas</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalMaquinas || 0)) + '</div></div>';
       html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">OFs distintas</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalOfs || 0)) + '</div></div>';
       html += '</div>';
       if (!res.grupos || res.grupos.length === 0) {
-        html += '<div style="padding:26px 16px;text-align:center;color:#94a3b8;border-radius:12px;background:rgba(15,23,42,.45);border:1px dashed rgba(100,116,139,.55);font-weight:600">Nenhuma passagem registrada hoje (' + esc(todayBR) + ').</div>';
+        if (aviso) {
+          html += '<div style="padding:26px 16px;text-align:center;color:#fed7aa;border-radius:12px;background:rgba(124,45,18,.32);border:1px dashed rgba(249,115,22,.65);font-weight:600">Nenhuma passagem foi carregada ainda devido ao aviso acima.<br><span style="font-size:12px;font-weight:500;color:#fdba74">Passe F5 ou tente novamente em alguns minutos para carregar do banco.</span></div>';
+        } else {
+          html += '<div style="padding:26px 16px;text-align:center;color:#94a3b8;border-radius:12px;background:rgba(15,23,42,.45);border:1px dashed rgba(100,116,139,.55);font-weight:600">Nenhuma passagem registrada hoje (' + esc(todayBR) + ').</div>';
+        }
       } else {
         res.grupos.forEach(function(g) {
           var cabQtd = Number(g.totalQtd || 0);
