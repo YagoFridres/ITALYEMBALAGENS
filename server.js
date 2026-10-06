@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261006203000';
-const SW_RUNTIME_VERSION = '20261006203000';
+const PATCH_RUNTIME_VERSION = '20261006210000';
+const SW_RUNTIME_VERSION = '20261006210000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12978,15 +12978,13 @@ function _timestampPassagem(row) {
 }
 
 function _passagemDedupKey(row) {
-  const ofId = String(row?.of_id || row?.ofId || '').trim();
   const ofNumero = _normalizarNumeroOfRef(row?.of_numero ?? row?.numero ?? row?.of ?? '');
   const maq = String(_canonMaqNome(row?.maquina_nome || row?.maquina || '') || row?.maquina_nome || row?.maquina || '').trim().toUpperCase();
-  // CORREÇÃO 434131: incluir data/hora na chave para evitar colapsar passagens DIFERENTES da mesma OF+máquina mas horas diferentes
-  const horaSuf = String(row?.hora_passagem || row?.created_at || row?.updated_at || '').trim().slice(0, 19).replace(/[^0-9T]/g, '');
-  const diaSuf = String(row?.data_passagem || row?.dia || row?.data || '').trim().slice(0, 10).replace(/[^0-9]/g, '');
-  const qtdSuf = String(Number(row?.quantidade ?? row?.qtd ?? row?.qtd_produzida ?? NaN) || '').slice(0, 12);
-  const idTblFis = String(row?._id_tabela_fisica || row?.id_passagem_tabela_fisica || row?.id || '').trim().slice(0, 8);
-  return [ofId || ofNumero || 'sem-of', maq || 'SEM-MAQUINA', diaSuf || horaSuf || 'sem-dt', qtdSuf || 'sem-qtd', idTblFis || ''].join('::');
+  const horaRaw = String(row?.hora_passagem || row?.created_at || row?.updated_at || row?.passou_em || '').trim().replace(/\.\d+Z?$/, '');
+  const horaDedup = horaRaw.length >= 16 ? horaRaw.slice(0, 16) : horaRaw;
+  const statusNorm = String(_normalizarStatusPassagem(row?.status || '') || '').trim();
+  const diaFallback = String(row?.data_passagem || row?.dia || row?.data || '').trim().slice(0, 10);
+  return [ofNumero || 'sem-of', maq || 'SEM-MAQUINA', horaDedup || diaFallback || 'sem-dt', statusNorm || 'SEM-STATUS'].join('::');
 }
 
 function _dedupePassagensMaquinaRows(rows) {
@@ -13758,17 +13756,39 @@ async function _calcularAggMaquinasComDistinctOf(req, passagensRows) {
     }
     const pegarOf = (pRow) => {
       const id = String(pRow?.of_id || '').trim();
-      if (id && ofById.has(id)) return ofById.get(id);
       const num = String(pRow?.of_numero ?? pRow?.numero ?? pRow?.of ?? '').trim();
-      if (num && ofByNumero.has(num)) return ofByNumero.get(num);
-      let inlineValor = Number(pRow?.valor_total ?? pRow?.valor_venda ?? pRow?.total ?? pRow?.valor_producao ?? 0) || 0;
-      if (!inlineValor) {
-        const vu = Number(pRow?.valor_unitario ?? pRow?.preco ?? 0) || 0;
-        const qx = Number(pRow?.qtd_produzida ?? pRow?.quantidade ?? pRow?.qtd ?? 0) || 0;
-        if (vu > 0 && qx > 0) inlineValor = vu * qx;
-      }
+      const inlineValorBruto = _resolverValorTotalPassagem(pRow, null);
       const inlineQtd = Number(pRow?.qtd_produzida ?? pRow?.quantidade ?? pRow?.qtd ?? pRow?.caixas_produzidas ?? 0) || 0;
-      return { valor: Number(inlineValor) || 0, qtd_oficial: Number(inlineQtd) || 0, inline: true };
+      let ofChunk = null;
+      if (id && ofById.has(id)) ofChunk = ofById.get(id);
+      else if (num && ofByNumero.has(num)) ofChunk = ofByNumero.get(num);
+      let valorFinal = null;
+      let qtdFinal = inlineQtd && inlineQtd > 0 ? inlineQtd : null;
+      let chunkValor = 0;
+      let chunkQtd = 0;
+      if (ofChunk && typeof ofChunk === 'object') {
+        chunkValor = Number(ofChunk.valor || 0) || 0;
+        chunkQtd = Number(ofChunk.qtd_oficial || 0) || 0;
+      }
+      if (chunkValor > 0 && inlineValorBruto > 0) {
+        valorFinal = Math.max(chunkValor, inlineValorBruto);
+      } else if (chunkValor > 0) {
+        valorFinal = chunkValor;
+      } else if (inlineValorBruto > 0) {
+        valorFinal = inlineValorBruto;
+      } else if (ofChunk) {
+        valorFinal = 0;
+      } else {
+        valorFinal = null;
+      }
+      if (chunkQtd > 0 && inlineQtd > 0) qtdFinal = Math.max(chunkQtd, inlineQtd);
+      else if (chunkQtd > 0) qtdFinal = chunkQtd;
+      return {
+        valor: valorFinal,
+        qtd_oficial: qtdFinal,
+        inline: !ofChunk,
+        _encontrada_no_chunk: !!ofChunk
+      };
     };
     const byMaq = new Map();
     rowsIn.forEach((p) => {
@@ -13781,7 +13801,8 @@ async function _calcularAggMaquinasComDistinctOf(req, passagensRows) {
           caixas_produzidas: 0,
           valor_total_producao: 0,
           _ofs_ids: new Set(),
-          _ofs_numeros: new Set()
+          _ofs_numeros: new Set(),
+          _tem_valor_ausente: false
         });
       }
       const bucket = byMaq.get(maq);
@@ -13793,21 +13814,32 @@ async function _calcularAggMaquinasComDistinctOf(req, passagensRows) {
       let chaveDistintaNaMaq = '';
       if (ofId && /^[0-9a-fA-F]{8}-/.test(ofId)) chaveDistintaNaMaq = 'id:' + ofId;
       else if (ofNum) chaveDistintaNaMaq = 'num:' + ofNum;
+      const incrementarValor = (dadoOf) => {
+        if (dadoOf && dadoOf.valor != null && typeof dadoOf.valor === 'number' && !isNaN(dadoOf.valor)) {
+          bucket.valor_total_producao += dadoOf.valor;
+        } else {
+          bucket._tem_valor_ausente = true;
+        }
+      };
       if (chaveDistintaNaMaq && !bucket._ofs_ids.has(chaveDistintaNaMaq)) {
         bucket._ofs_ids.add(chaveDistintaNaMaq);
         bucket.qtd_ofs_distinct += 1;
         bucket.total_ofs = bucket.qtd_ofs_distinct;
-        bucket.valor_total_producao += Number(ofData.valor || 0) || 0;
+        incrementarValor(ofData);
       } else if (!chaveDistintaNaMaq) {
         bucket.total_ofs += 1;
         bucket.qtd_ofs_distinct = bucket.total_ofs;
-        bucket.valor_total_producao += Number(ofData.valor || 0) || 0;
+        incrementarValor(ofData);
       }
     });
     out.agg_por_maquina = Array.from(byMaq.values()).map((b) => {
       const clean = { ...b };
       delete clean._ofs_ids;
       delete clean._ofs_numeros;
+      if (clean.valor_total_producao === 0 && clean._tem_valor_ausente) {
+        clean.valor_total_producao = null;
+      }
+      delete clean._tem_valor_ausente;
       return clean;
     }).sort((a, b) => (Number(b.total_ofs || 0) - Number(a.total_ofs || 0)) || String(a.maquina || '').localeCompare(String(b.maquina || ''), 'pt-BR'));
     const ofsDistintasPeriodo = new Map();
@@ -13824,13 +13856,20 @@ async function _calcularAggMaquinasComDistinctOf(req, passagensRows) {
     });
     let tCaixas = 0;
     let tValor = 0;
+    let temValorAusente = false;
     ofsDistintasPeriodo.forEach((ofData) => {
-      tCaixas += Number(ofData.qtd_oficial || 0) || 0;
-      tValor += Number(ofData.valor || 0) || 0;
+      if (ofData.qtd_oficial != null && typeof ofData.qtd_oficial === 'number' && !isNaN(ofData.qtd_oficial)) {
+        tCaixas += ofData.qtd_oficial;
+      }
+      if (ofData.valor != null && typeof ofData.valor === 'number' && !isNaN(ofData.valor)) {
+        tValor += ofData.valor;
+      } else {
+        temValorAusente = true;
+      }
     });
     out.total_geral_ofs_distintas = ofsDistintasPeriodo.size;
     out.total_geral_caixas_distinct_ofs = Number(tCaixas) || 0;
-    out.total_geral_valor_distinct_ofs = Number(tValor) || 0;
+    out.total_geral_valor_distinct_ofs = (temValorAusente && tValor === 0) ? null : Number(tValor) || 0;
   } catch (e) {
     console.error('[agg-distinct-of] FALHA GERAL:', String(e?.message || e).slice(0, 200));
   }

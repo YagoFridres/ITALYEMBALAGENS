@@ -15798,9 +15798,13 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
 
   function _histFmtMoney(v) {
     try {
-      return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      if (v == null || v === undefined) return '—';
+      var n = Number(v);
+      if (!isFinite(n)) return '—';
+      if (n === 0 && v !== 0) return '—';
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     } catch (_) {
-      return 'R$ 0,00';
+      return '—';
     }
   }
 
@@ -16145,7 +16149,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         periodo: periodo,
         cards: [
           { label: 'Total de OFs', value: _histFmtNum(resumo.total_ofs || 0), sub: 'OFs no período' },
-          { label: 'Valor de Produção', value: printDesbloq ? _histFmtMoney(resumo.valor_total_producao || 0) : '🔒 Bloqueado', sub: printDesbloq ? 'Soma de produção' : 'Senha 1234 necessária' },
+          { label: 'Valor de Produção', value: printDesbloq ? _histFmtMoney(resumo.valor_total_producao) : '🔒 Bloqueado', sub: printDesbloq ? 'Soma de produção' : 'Senha 1234 necessária' },
           { label: 'Caixas Produzidas', value: _histFmtNum(resumo.caixas_produzidas || 0), sub: 'Volume consolidado' },
           { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' },
           { label: 'Cores Mais Usadas', value: corTop && corTop.cor || 'Sem dados', sub: _histRankingResumoHtml(topCores, 'cor') },
@@ -16517,6 +16521,14 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
           };
         }
         syncToolbar();
+        setTimeout(function() {
+          try {
+            var jaCarregado = window.__histPassagensLoadedKey && String(window.__histPassagensLoadedKey || '').length > 0;
+            if (!jaCarregado) {
+              _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
+            }
+          } catch (_autoLoadErr) {}
+        }, 120);
       } catch (_) {}
     }
 
@@ -16907,13 +16919,28 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   }
 
   function _histPassagemValorUnit(row) {
-    return Number((row && (row.valor_unitario != null ? row.valor_unitario : (row.vl_unit != null ? row.vl_unit : (row.preco != null ? row.preco : row.vunit)))) || 0) || 0;
+    var vu = (row && (row.valor_unitario != null ? row.valor_unitario : (row.vl_unit != null ? row.vl_unit : (row.preco != null ? row.preco : row.vunit))));
+    var n = Number(vu);
+    if (isFinite(n) && n > 0) return n;
+    if (row && typeof row._of_resolved_ref === 'object' && row._of_resolved_ref) {
+      var vuOf = Number(row._of_resolved_ref.valor_unitario || row._of_resolved_ref.preco || row._of_resolved_ref.vunit || 0) || 0;
+      if (vuOf > 0) return vuOf;
+    }
+    return null;
   }
 
   function _histPassagemValorTotal(row) {
-    var direto = Number((row && (row.valor_total != null ? row.valor_total : (row.total != null ? row.total : row.valor_venda))) || 0) || 0;
-    if (direto > 0) return direto;
-    return _histPassagemQuantidade(row) * _histPassagemValorUnit(row);
+    var direto = (row && (row.valor_total != null ? row.valor_total : (row.total != null ? row.total : row.valor_venda)));
+    var n = Number(direto);
+    if (isFinite(n) && n > 0) return n;
+    if (row && typeof row._of_resolved_ref === 'object' && row._of_resolved_ref) {
+      var totOf = Number(row._of_resolved_ref.valor_total || row._of_resolved_ref.total || row._of_resolved_ref.valor_venda || 0) || 0;
+      if (totOf > 0) return totOf;
+    }
+    var qtd = _histPassagemQuantidade(row);
+    var unit = _histPassagemValorUnit(row);
+    if (qtd > 0 && unit != null && unit > 0) return qtd * unit;
+    return null;
   }
 
   function _histPassagemPrimeiraMaquina(row) {
@@ -17209,24 +17236,69 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     window.__histMonthlyRowsSorted = sorted.slice();
 
     var temBackendDistinct = false;
+    var backendAggUsado = false;
     try {
-      var bkOfs = Number(data && data.total_geral_ofs_distintas);
-      var bkCx = Number(data && data.total_geral_caixas_distinct_ofs);
-      var bkVl = Number(data && data.total_geral_valor_distinct_ofs);
-      if (bkOfs > 0 || bkCx > 0 || bkVl > 0 || (data && (data.total_geral_ofs_distintas === 0))) {
+      var bkOfs = data && data.total_geral_ofs_distintas;
+      var bkCx = data && data.total_geral_caixas_distinct_ofs;
+      var bkVl = data && data.total_geral_valor_distinct_ofs;
+      var temBkAgg = Array.isArray(data && data.agg_por_maquina) && data.agg_por_maquina.length > 0;
+      if (temBkAgg) {
+        temBackendDistinct = true;
+        backendAggUsado = true;
+        var aggBk = data.agg_por_maquina.slice();
+        var somaAgg = aggBk.reduce(function(acc, item) {
+          acc.total_maquinas += 1;
+          acc.total_ofs += Number(item.total_ofs || 0) || 0;
+          acc.caixas_produzidas += Number(item.caixas_produzidas || 0) || 0;
+          if (item.valor_total_producao != null && item.valor_total_producao !== undefined) {
+            acc._valor_acumulado = (acc._valor_acumulado || 0) + Number(item.valor_total_producao || 0);
+          } else {
+            acc._tem_valor_ausente = true;
+          }
+          return acc;
+        }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: null, caixas_produzidas: 0, _valor_acumulado: 0, _tem_valor_ausente: false });
+        if (somaAgg._tem_valor_ausente && somaAgg._valor_acumulado === 0) {
+          somaAgg.valor_total_producao = null;
+        } else {
+          somaAgg.valor_total_producao = Number(somaAgg._valor_acumulado || 0) || 0;
+        }
+        delete somaAgg._valor_acumulado;
+        delete somaAgg._tem_valor_ausente;
+        resumo = Object.assign({}, resumo || {}, somaAgg, { _fonte: 'backend_agg_maquina_fecha_total' });
+        var prevMap = new Map();
+        if (Array.isArray(data.rows)) {
+          data.rows.forEach(function(item) { prevMap.set(String(item.maquina || '').trim(), item); });
+        }
+        rows = aggBk.map(function(item) {
+          var prev = prevMap.get(String(item.maquina || '').trim()) || {};
+          return {
+            maquina: item.maquina,
+            total_ofs: Number(item.total_ofs || 0) || 0,
+            valor_total_producao: item.valor_total_producao,
+            caixas_produzidas: Number(item.caixas_produzidas || 0) || 0,
+            ofs_mes_anterior: Number(prev && prev.ofs_mes_anterior || 0) || 0,
+            valor_mes_anterior: Number(prev && prev.valor_mes_anterior || 0) || 0,
+            caixas_mes_anterior: Number(prev && prev.caixas_mes_anterior || 0) || 0,
+            variacao_ofs_pct: null
+          };
+        });
+        window.__histMonthlyRows = rows.slice();
+        sorted = _histSortMonthlyRows(rows);
+        window.__histMonthlyRowsSorted = sorted.slice();
+      } else if (bkOfs !== undefined || bkCx !== undefined || bkVl !== undefined) {
         temBackendDistinct = true;
         resumo = {
           total_maquinas: Number(resumo && resumo.total_maquinas || 0) || 0,
-          total_ofs: Number(bkOfs || 0) || (Number(resumo && resumo.total_ofs || 0) || 0),
-          valor_total_producao: Number(bkVl || 0) || (Number(resumo && resumo.valor_total_producao || 0) || 0),
-          caixas_produzidas: Number(bkCx || 0) || (Number(resumo && resumo.caixas_produzidas || 0) || 0),
+          total_ofs: bkOfs != null ? (Number(bkOfs) || 0) : (Number(resumo && resumo.total_ofs || 0) || 0),
+          valor_total_producao: bkVl !== undefined && bkVl !== null ? (Number(bkVl) || 0) : (resumo && resumo.valor_total_producao),
+          caixas_produzidas: bkCx != null ? (Number(bkCx) || 0) : (Number(resumo && resumo.caixas_produzidas || 0) || 0),
           _fonte: 'backend_distinct_ofs'
         };
         if (data && data.resumo_mes_atual && typeof data.resumo_mes_atual === 'object') {
           resumo.total_maquinas = Number(data.resumo_mes_atual.total_maquinas || 0) || resumo.total_maquinas || 0;
-          if (!bkOfs && Number(data.resumo_mes_atual.total_ofs || 0)) resumo.total_ofs = Number(data.resumo_mes_atual.total_ofs || 0);
-          if (!bkVl && Number(data.resumo_mes_atual.valor_total_producao || 0)) resumo.valor_total_producao = Number(data.resumo_mes_atual.valor_total_producao || 0);
-          if (!bkCx && Number(data.resumo_mes_atual.caixas_produzidas || 0)) resumo.caixas_produzidas = Number(data.resumo_mes_atual.caixas_produzidas || 0);
+          if (bkOfs == null && Number(data.resumo_mes_atual.total_ofs || 0)) resumo.total_ofs = Number(data.resumo_mes_atual.total_ofs || 0);
+          if (bkVl === undefined && Number(data.resumo_mes_atual.valor_total_producao || 0)) resumo.valor_total_producao = Number(data.resumo_mes_atual.valor_total_producao || 0);
+          if (bkCx == null && Number(data.resumo_mes_atual.caixas_produzidas || 0)) resumo.caixas_produzidas = Number(data.resumo_mes_atual.caixas_produzidas || 0);
         }
       }
       var bkAntOfs = Number(data && data.resumo_mes_anterior && data.resumo_mes_anterior.total_ofs);
@@ -17279,7 +17351,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var valorDesbloqueado = !!(window.__histValorProducaoDesbloqueado === true) || temBackendDistinct;
     var cardValorProducaoHtml;
     if (valorDesbloqueado) {
-      cardValorProducaoHtml = '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>';
+      cardValorProducaoHtml = '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>';
     } else {
       cardValorProducaoHtml = ''
         + '<div class="hist-month-card" id="hist-card-valor-bloqueado" style="cursor:pointer">'
@@ -17335,7 +17407,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       : '<th class="num" style="color:#64748b;cursor:not-allowed">Valor de Produção 🔒</th>';
     var rowsHtml = sorted.map(function(row) {
         var valorCell = valorDesbloqueado
-          ? ('  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>')
+          ? ('  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao)) + '</td>')
           : ('  <td class="num" style="color:#64748b">—</td>');
         return ''
           + '<tr>'
