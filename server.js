@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261006201500';
-const SW_RUNTIME_VERSION = '20261006201500';
+const PATCH_RUNTIME_VERSION = '20261006203000';
+const SW_RUNTIME_VERSION = '20261006203000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -6508,83 +6508,53 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     filtered.empresa_id = empresaUuid;
     if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
     delete filtered.id;
-    if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
-      try {
-        // REGRA UNIVERSAL KK3: NÚMEROS DE OF NUNCA SÃO REUTILIZADOS.
-        // NÃO filtra por deleted_at, NÃO filtra por status, NÃO filtra por empresa.
-        // Considera SEMPRE o maior número já gravado em QUALQUER OF na tabela.
-        const proximoNumeroOF = async () => {
-          const campos = ['numero', 'of_num', 'numero_of', 'of', 'seq'];
-          const extrairMax = (rows) => {
-            let maior = 0;
-            (Array.isArray(rows) ? rows : []).forEach((o) => {
-              campos.forEach((c) => {
-                const v = o?.[c];
-                if (v === null || v === undefined || v === '') return;
-                const n = parseInt(String(v).replace(/\D/g, ''), 10);
-                if (!isNaN(n) && n > maior) maior = n;
-              });
-            });
-            return maior;
-          };
-          const promessas = [];
-          promessas.push((async () => {
-            try {
-              const { data, error } = await supabase
-                .from('ofs')
-                .select(campos.join(','))
-                .order('numero', { ascending: false, nullsFirst: false })
-                .limit(10000);
-              return error ? [] : (data || []);
-            } catch (_) { return []; }
-          })());
-          promessas.push((async () => {
-            try {
-              const { data, error } = await supabase
-                .from('ofs')
-                .select(campos.join(','))
-                .order('of', { ascending: false, nullsFirst: false })
-                .limit(10000);
-              return error ? [] : (data || []);
-            } catch (_) { return []; }
-          })());
-          promessas.push((async () => {
-            try {
-              const { data, error } = await supabase
-                .from('ofs')
-                .select(campos.join(','))
-                .order('seq', { ascending: false })
-                .limit(10000);
-              return error ? [] : (data || []);
-            } catch (_) { return []; }
-          })());
-          try {
-            const resultados = await Promise.all(promessas);
-            const unificada = [];
-            const vistos = new Set();
-            resultados.forEach((lista) => {
-              lista.forEach((o) => {
-                const k = String(o?.id || '') + ':' + String(o?.seq || '') + ':' + String(o?.numero || '') + ':' + String(o?.of || '');
-                if (vistos.has(k)) return;
-                vistos.add(k);
-                unificada.push(o);
-              });
-            });
-            const maiorNum = extrairMax(unificada);
-            if (maiorNum > 0) return maiorNum + 1;
-          } catch (_ePri) { try { console.warn('[POST OFS] proximoNumeroOF (tripla) falhou:', _ePri.message); } catch (__) {} }
+    {
+      const calcularProximoNumeroOF = async () => {
+        const camposNegocio = ['numero', 'of_num', 'numero_of', 'of'];
+        const extrairMaxDeUmCampo = (rows, campo) => {
+          let maior = 0;
+          (Array.isArray(rows) ? rows : []).forEach((o) => {
+            const v = o?.[campo];
+            if (v === null || v === undefined || v === '') return;
+            const n = parseInt(String(v).replace(/\D/g, ''), 10);
+            if (!isNaN(n) && n > maior) maior = n;
+          });
+          return maior;
+        };
+        let maxGlobal = 0;
+        for (const campo of camposNegocio) {
           try {
             const { data, error } = await supabase
               .from('ofs')
-              .select(campos.join(','))
-              .order('seq', { ascending: false })
-              .limit(2000);
-            if (error) throw error;
-            const maior = extrairMax(data || []);
-            return maior > 0 ? maior + 1 : null;
-          } catch (eFall) { try { console.warn('[POST OFS] proximoNumeroOF (fallback seq) falhou:', eFall.message); } catch (__) {} return null; }
-        };
-
+              .select(campo + ',id,seq')
+              .order(campo, { ascending: false, nullsFirst: false })
+              .limit(50000);
+            if (!error && Array.isArray(data)) {
+              const m = extrairMaxDeUmCampo(data, campo);
+              if (m > maxGlobal) maxGlobal = m;
+            }
+          } catch (_) {}
+        }
+        try {
+          const { data, error } = await supabase
+            .from('ofs')
+            .select('numero,of_num,numero_of,of,seq')
+            .order('seq', { ascending: false })
+            .limit(10000);
+          if (!error && Array.isArray(data)) {
+            data.forEach((o) => {
+              ['numero','of_num','numero_of','of','seq'].forEach((c) => {
+                const v = o?.[c];
+                if (v === null || v === undefined || v === '') return;
+                const n = parseInt(String(v).replace(/\D/g, ''), 10);
+                if (!isNaN(n) && n > maxGlobal) maxGlobal = n;
+              });
+            });
+          }
+        } catch (_) {}
+        return maxGlobal > 0 ? maxGlobal + 1 : null;
+      };
+      try {
         const { data: last } = await supabase
           .from('ofs')
           .select('seq,of,numero')
@@ -6594,26 +6564,36 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         const lastSeq = Math.trunc(Number(last?.seq || 0) || 0);
         const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
         filtered.seq = nextSeq;
-        let numeroEmpresa = null;
-        try { numeroEmpresa = await proximoNumeroOF(); } catch (_) { numeroEmpresa = null; }
-        // NUNCA usa nextSeq (SERIAL INTERNO) como número da OF — sempre prefere numeros sequenciais reais
-        const baseNumero = Number.isFinite(Number(numeroEmpresa)) && Number(numeroEmpresa) > 0
-          ? Number(numeroEmpresa)
-          : (Number.isFinite(Number(nextSeq)) && Number(nextSeq) > 50 ? Number(nextSeq) : 1);
-        for (let i = 0; i < 50; i += 1) {
-          const cand = String(baseNumero + i);
-          // Verifica EXISTÊNCIA UNIVERSAL (sem filtro de deleted_at/empresa) para nunca reutilizar
-          const { data: exists } = await supabase
-            .from('ofs')
-            .select('id')
-            .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
-            .limit(1);
-          if (Array.isArray(exists) && exists.length) continue;
-          filtered.of = cand;
-          filtered.numero = cand;
-          break;
-        }
       } catch (_) {}
+      try {
+        let numeroNegocio = null;
+        try { numeroNegocio = await calcularProximoNumeroOF(); } catch (_) { numeroNegocio = null; }
+        const nextSeqFallback = Math.trunc(Number(filtered.seq || 0) || 0);
+        const baseNumero = Number.isFinite(Number(numeroNegocio)) && Number(numeroNegocio) > 0
+          ? Number(numeroNegocio)
+          : (Number.isFinite(Number(nextSeqFallback)) && Number(nextSeqFallback) > 1000 ? Number(nextSeqFallback) : (Number(nextSeqFallback) > 0 ? Number(nextSeqFallback) + 4000 : 4001));
+        const numeroAtualRaw = String(filtered.numero || filtered.of || '').trim();
+        const numeroAtualNum = numeroAtualRaw ? parseInt(String(numeroAtualRaw).replace(/\D/g, ''), 10) : NaN;
+        const precisaCorrigir = (
+          !numeroAtualRaw ||
+          (!isNaN(numeroAtualNum) && numeroAtualNum < 1000) ||
+          (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero)
+        );
+        if (precisaCorrigir) {
+          for (let i = 0; i < 50; i += 1) {
+            const cand = String(baseNumero + i);
+            const { data: exists } = await supabase
+              .from('ofs')
+              .select('id')
+              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+              .limit(1);
+            if (Array.isArray(exists) && exists.length) continue;
+            filtered.of = cand;
+            filtered.numero = cand;
+            break;
+          }
+        }
+      } catch (_eNum) { try { console.warn('[POST OFS] bloco cálculo número falhou:', _eNum && _eNum.message); } catch (__) {} }
     }
     {
       // CANONICALIZAÇÃO DE STATUS NA CRIAÇÃO: status enviado como "Aberto"/"Aberta"/vazio → "Em aberto" (apenas na CRIAÇÃO; PATCH continua mapeando para "Aberta" para não tocar OF #3790 etc)
