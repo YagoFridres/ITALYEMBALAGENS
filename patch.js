@@ -29492,9 +29492,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     async function loadCanonicalRows(force) {
-      var now = Date.now();
-      if (!force && state.rowsData.length && (now - Number(state.lastFetchAt || 0) < 800)) return state.rowsData;
+      var _cacheGlob = window.__patchCanonicalOfsCache || (window.__patchCanonicalOfsCache = { ts: 0, data: null, inFlight: null, ttlMs: 60000 });
+      if (!force && _cacheGlob.inFlight && typeof _cacheGlob.inFlight.then === 'function') { try { return await _cacheGlob.inFlight; } catch (_) {} }
+      var _agora = Date.now();
+      if (!force && Array.isArray(_cacheGlob.data) && _cacheGlob.data.length > 0 && (_agora - Number(_cacheGlob.ts || 0) < Number(_cacheGlob.ttlMs || 60000))) {
+        try {
+          state.rowsData = _cacheGlob.data.slice();
+          state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
+          if (!!state.showAllMachines || state.selectedMachine === '__ALL__') state.selectedMachine = '__ALL__';
+          state.lastFetchAt = _agora;
+          return _cacheGlob.data.slice();
+        } catch (_) {}
+      }
+      var _resolv = null;
+      var _rejeit = null;
+      if (!force) {
+        try { _cacheGlob.inFlight = new Promise(function(res, rej){ _resolv = res; _rejeit = rej; }); } catch (_) { _cacheGlob.inFlight = null; }
+      }
+      var now = _agora;
+      if (!force && state.rowsData.length && (now - Number(state.lastFetchAt || 0) < 800)) {
+        try { if (_cacheGlob.inFlight) { try { _resolv && _resolv(state.rowsData); } catch (_) {} _cacheGlob.inFlight = null; } } catch (_) {}
+        return state.rowsData;
+      }
       var rawRows = [];
+      var _fetchErr = null;
       if (Array.isArray(window.__OFMAQ_FINAL_MOCK)) {
         rawRows = window.__OFMAQ_FINAL_MOCK.slice();
       } else {
@@ -29506,21 +29527,31 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         while (hasMore && chunksFetched < safetyMaxChunks) {
           chunksFetched++;
           var qs = 'limit=' + encodeURIComponent(String(chunkSize)) + '&offset=' + encodeURIComponent(String(offset)) + '&t=' + now + '&chunk=' + String(chunksFetched);
-          var result = await apiJson('/api/ofs?' + qs, { method: 'GET' });
-          if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
-          var chunk = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
-          var respHasMore = result.data && typeof result.data.hasMore === 'boolean' ? result.data.hasMore : null;
-          rawRows = rawRows.concat(chunk);
-          if (chunk.length < chunkSize) {
-            hasMore = false;
-          } else if (respHasMore !== null) {
-            hasMore = respHasMore;
-          } else {
-            hasMore = chunk.length >= chunkSize;
+          try {
+            var result = await apiJson('/api/ofs?' + qs, { method: 'GET' });
+            if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
+            var chunk = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
+            var respHasMore = result.data && typeof result.data.hasMore === 'boolean' ? result.data.hasMore : null;
+            rawRows = rawRows.concat(chunk);
+            if (chunk.length < chunkSize) {
+              hasMore = false;
+            } else if (respHasMore !== null) {
+              hasMore = respHasMore;
+            } else {
+              hasMore = chunk.length >= chunkSize;
+            }
+            offset += chunk.length;
+            if (chunk.length === 0) break;
+          } catch (errChunk) {
+            _fetchErr = errChunk;
+            break;
           }
-          offset += chunk.length;
-          if (chunk.length === 0) break;
         }
+      }
+      if (_fetchErr && !(Array.isArray(rawRows) && rawRows.length)) {
+        try { if (_cacheGlob.inFlight && _rejeit) { try { _rejeit(_fetchErr); } catch (_) {} } } catch (_) {}
+        try { _cacheGlob.inFlight = null; } catch (_) {}
+        throw _fetchErr;
       }
       try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
       state.rowsData = buildRowsFromOfs(rawRows);
@@ -29548,10 +29579,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try {
           if (typeof window._refreshBadgesTopo === 'function') {
             setTimeout(function () { try { window._refreshBadgesTopo(); } catch (_) {} }, 50);
+          } else if (typeof window.updateBadges === 'function') {
+            setTimeout(function () { try { window.updateBadges(); } catch (_) {} }, 50);
           }
         } catch (_) {}
       } catch (_) {}
       if (state.machineCatalog.length && state.selectedMachine !== '__ALL__' && !state.showAllMachines && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
+      try { _cacheGlob.ts = Date.now(); _cacheGlob.data = Array.isArray(state.rowsData) ? state.rowsData.slice() : null; } catch (_) {}
+      try { if (_cacheGlob.inFlight && _resolv) { try { _resolv(state.rowsData); } catch (_) {} _cacheGlob.inFlight = null; } } catch (_) {}
       return state.rowsData;
     }
 
@@ -29942,6 +29977,109 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3, 'antes blo
   }
 })();
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(4, 'antes bootstrap principal'); } catch (_) {}
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3.1, 'bloco stability core S1-S2-S3-S5'); } catch (_) {}
+(function() {
+  try {
+    if (window.__patchStabilityCoreInstalled) return;
+    window.__patchStabilityCoreInstalled = true;
+    window._patchSafeWrapWindowFn = function(name, globalFlag, fnFlag, factory) {
+      try {
+        var flagGlob = String(globalFlag || '');
+        if (!flagGlob) return null;
+        if (window[flagGlob]) return typeof window[name] === 'function' ? window[name] : null;
+        var cur = window[name];
+        if (typeof cur !== 'function') return null;
+        if (fnFlag && cur[fnFlag]) { window[flagGlob] = true; return cur; }
+        var wrapped = factory(cur);
+        if (typeof wrapped !== 'function') return cur;
+        try { for (var k in cur) { try { if (typeof cur[k] !== 'function') wrapped[k] = cur[k]; } catch (_) {} } } catch (_) {}
+        try { wrapped.__patchWrapOriginal = cur.__patchWrapOriginal || cur; } catch (_) {}
+        if (fnFlag) wrapped[fnFlag] = true;
+        window[flagGlob] = true;
+        window[name] = wrapped;
+        return wrapped;
+      } catch (_) { return null; }
+    };
+    window.__patchCanonicalOfsCache = { ts: 0, data: null, inFlight: null, ttlMs: 60000 };
+    try {
+      window.__patchBadgesLastValid = { at: 0, ug: 0, ok: 0 };
+      window.__patchBadgesRuleDoc = {
+        regraAntesIndexHtml: 'index.html L5623-L5626: base=TODAS OFs carregadas (inclusive concluídas/canceladas); ATRASADOS=status==="Atrasado" | URGENTES=o.urg===true | CONCLUÍDOS=getConcluidasHoje() só hoje. PROBLEMA CONFIRMADO: 31 urg=TRUE em OFs CONCLUÍDAS antigas → topo mostrava 31 URGENTES errado.',
+        regraNovaPatchJs: 'S2/S3/U3: filtro OFs ABERTAS (status != concluído/cancelado/fechado/arquivado). ATRASADOS=abertas E status=Atrasado. URGENTES=abertas E (urg=true OU urgente=true). CONCLUÍDOS=mantém getConcluidasHoje() original (só hoje). Cache último valor S2: se array vazio ou exceção → mostra último valor + toast aviso laranja, NUNCA 0/0/0.',
+        fonteDados: 'window.OFS (carregado chunks /api/ofs).'
+      };
+      function _statusAberto(rawSt) {
+        try {
+          var s = String(rawSt || '').trim().toLowerCase();
+          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+          if (!s) return true;
+          if (s.indexOf('conclu') >= 0 || s.indexOf('cancel') >= 0 || s.indexOf('fechad') >= 0 || s.indexOf('arquivad') >= 0) return false;
+          return true;
+        } catch (_) { return true; }
+      }
+      function _patchUpdateBadges() {
+        try {
+          var base = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window._ofmaqBaseList) ? window._ofmaqBaseList : []);
+          var temDados = !!(Array.isArray(base) && base.length > 0);
+          var abertas = temDados ? base.filter(function(o){ return _statusAberto(o && o.status); }) : [];
+          var at = abertas.filter(function(o){ return String(o && o.status || '').trim() === 'Atrasado'; }).length;
+          var ug = abertas.filter(function(o){ return !!(o && (o.urg === true || o.urgente === true)); }).length;
+          var elAt = document.getElementById('bdg-at');
+          var elUg = document.getElementById('bdg-ug');
+          var okBadge = document.getElementById('bdg-ok');
+          var semDados = (!temDados || (at === 0 && ug === 0 && !window._concluidasHoje));
+          var ultimoValido = window.__patchBadgesLastValid || { at:0, ug:0, ok:0 };
+          if (semDados && (ultimoValido.at > 0 || ultimoValido.ug > 0 || ultimoValido.ok > 0)) {
+            try { if (typeof window.toast === 'function') window.toast('Aviso: falha temporária ao carregar contadores; exibindo último valor conhecido (S2).', 'var(--orange)'); } catch (_) {}
+            at = ultimoValido.at || at;
+            ug = ultimoValido.ug || ug;
+          } else {
+            if (temDados) {
+              window.__patchBadgesLastValid.at = at;
+              window.__patchBadgesLastValid.ug = ug;
+            }
+          }
+          if (elAt) elAt.textContent = at + ' ATRASADOS';
+          if (elUg) elUg.textContent = ug + ' URGENTES';
+          try {
+            if (typeof window.getConcluidasHoje === 'function') {
+              var prom = window.getConcluidasHoje();
+              if (prom && typeof prom.then === 'function') {
+                prom.then(function(arr){
+                  try {
+                    var total = Array.isArray(arr) ? arr.length : (Number(window._concluidasHoje) || 0);
+                    if (total === 0 && ultimoValido.ok > 0 && semDados) total = ultimoValido.ok;
+                    else if (total > 0) window.__patchBadgesLastValid.ok = total;
+                    if (okBadge) okBadge.textContent = total + ' CONCLUÍDOS';
+                  } catch (_) {}
+                }).catch(function(){
+                  try { if (okBadge) okBadge.textContent = (ultimoValido.ok || 0) + ' CONCLUÍDOS'; } catch (_) {}
+                });
+              }
+            }
+          } catch (_) {}
+        } catch (e) {
+          try {
+            var elAt = document.getElementById('bdg-at');
+            var elUg = document.getElementById('bdg-ug');
+            var elOk = document.getElementById('bdg-ok');
+            var ult = window.__patchBadgesLastValid || { at:0, ug:0, ok:0 };
+            if (elAt) elAt.textContent = (ult.at || 0) + ' ATRASADOS';
+            if (elUg) elUg.textContent = (ult.ug || 0) + ' URGENTES';
+            if (elOk) elOk.textContent = (ult.ok || 0) + ' CONCLUÍDOS';
+          } catch (_) {}
+        }
+      }
+      if (!window.__patchUpdateBadgesInstalled && typeof window.updateBadges === 'function') {
+        window.__patchUpdateBadgesInstalled = true;
+        _patchUpdateBadges._origUpdateBadges = window.updateBadges;
+        window.updateBadges = _patchUpdateBadges;
+      }
+    } catch (_) {}
+  } catch (e) {
+    try { console.error('[PATCH-STABILITY-CORE]', e); } catch (_) {}
+  }
+})();
 if (!window._debounce) {
   window._debounce = function(fn, delay) {
     var timer = null;
@@ -57512,6 +57650,10 @@ function _ocultarGraficoComissoes() {
   async function _renderComissoesPatch() {
     if (window._comRodando) {
       try { console.log('[COM PATCH] já rodando, ignorando'); } catch (_) {}
+      return;
+    }
+    if (!_naComissoesAgora()) {
+      try { console.log('[COM PATCH S4] não está na tela de comissões agora; pulando (evita fetch /api/comissoes/relatorio fora da tela).'); } catch (_) {}
       return;
     }
     window._comRodando = true;
