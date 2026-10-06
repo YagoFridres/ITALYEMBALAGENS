@@ -29753,6 +29753,64 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       });
     }
 
+    function _patchFetchOfsCanonicalKey(urlRaw) {
+      try {
+        var u = String(urlRaw || '');
+        var qmIdx = u.indexOf('?');
+        if (qmIdx < 0) return u;
+        var base = u.substring(0, qmIdx);
+        var qs = u.substring(qmIdx + 1);
+        var parts = qs.split('&');
+        var kept = [];
+        for (var i = 0; i < parts.length; i++) {
+          var p = parts[i];
+          if (!p) continue;
+          var eq = p.indexOf('=');
+          var k = eq >= 0 ? decodeURIComponent(p.substring(0, eq)) : decodeURIComponent(p);
+          var kl = String(k || '').toLowerCase();
+          if (kl === 't' || kl === '_' || kl === 'nocache' || kl === 'cache' || kl === 'timestamp' || kl === '_t') continue;
+          kept.push(p);
+        }
+        kept.sort();
+        return base + '?' + kept.join('&');
+      } catch (_) { return String(urlRaw || ''); }
+    }
+    function _patchFetchOfsCached(urlRaw, opts) {
+      var _store = window.__patchFetchOfsCachedStore || (window.__patchFetchOfsCachedStore = {});
+      var key = _patchFetchOfsCanonicalKey(urlRaw);
+      var agora = Date.now();
+      var entry = _store[key];
+      var TTL_MS = 60000;
+      if (entry && entry.inFlight && typeof entry.inFlight.then === 'function') {
+        return entry.inFlight;
+      }
+      if (entry && entry.resolved && (agora - Number(entry.ts || 0)) < TTL_MS) {
+        return Promise.resolve(entry.resolved);
+      }
+      var _res;
+      var _rej;
+      var prom = new Promise(function(res, rej) { _res = res; _rej = rej; });
+      try { _store[key] = { ts: agora, inFlight: prom, resolved: null }; } catch (_) {}
+      var doFetch;
+      try {
+        if (opts && typeof apiJson === 'function' && (opts.__useApiJson === true)) {
+          var useOpts = {};
+          for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k) && k !== '__useApiJson') useOpts[k] = opts[k];
+          doFetch = apiJson(urlRaw, useOpts);
+        } else {
+          doFetch = fetch(urlRaw, opts || {});
+        }
+      } catch (err) { doFetch = Promise.reject(err); }
+      Promise.resolve(doFetch).then(function(val) {
+        try { if (_store[key]) { _store[key].resolved = val; _store[key].inFlight = null; _store[key].ts = Date.now(); } } catch (_) {}
+        try { _res && _res(val); } catch (_) {}
+      }).catch(function(err) {
+        try { if (_store[key]) { _store[key].inFlight = null; _store[key].resolved = null; _store[key].ts = 0; } } catch (_) {}
+        try { _rej && _rej(err); } catch (_) {}
+      });
+      return prom;
+    }
+
     async function loadCanonicalRows(force) {
       var _cacheGlob = window.__patchCanonicalOfsCache || (window.__patchCanonicalOfsCache = { ts: 0, data: null, inFlight: null, ttlMs: 60000 });
       if (!force && _cacheGlob.inFlight && typeof _cacheGlob.inFlight.then === 'function') { try { return await _cacheGlob.inFlight; } catch (_) {} }
@@ -29788,9 +29846,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var chunksFetched = 0;
         while (hasMore && chunksFetched < safetyMaxChunks) {
           chunksFetched++;
-          var qs = 'limit=' + encodeURIComponent(String(chunkSize)) + '&offset=' + encodeURIComponent(String(offset)) + '&t=' + now + '&chunk=' + String(chunksFetched);
+          var qs = 'limit=' + encodeURIComponent(String(chunkSize)) + '&offset=' + encodeURIComponent(String(offset));
           try {
-            var result = await apiJson('/api/ofs?' + qs, { method: 'GET' });
+            var result = await _patchFetchOfsCached('/api/ofs?' + qs, { method: 'GET', __useApiJson: true });
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
             var chunk = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
             var respHasMore = result.data && typeof result.data.hasMore === 'boolean' ? result.data.hasMore : null;
@@ -31542,7 +31600,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var token = getToken();
     var h = token ? { 'Authorization': 'Bearer ' + token } : {};
     try {
-      var r0 = await fetch('/api/ofs/proximo-numero?t=' + Date.now(), { headers: h });
+      var r0 = await _patchFetchOfsCached('/api/ofs/proximo-numero', { headers: h });
       if (r0.ok) {
         var d0 = await r0.json();
         if (d0 && d0.ok && Number(d0.maior) > 0 && d0.proximo) {
@@ -31557,7 +31615,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch(e0) { console.warn('[PATCH] rota dedicada falhou:', e0.message); }
     try {
-      var r = await fetch('/api/ofs?limit=200&order_by=numero&order=desc&nocache=1&t=' + Date.now(), { headers: h });
+      var r = await _patchFetchOfsCached('/api/ofs?limit=200&order_by=numero&order=desc', { headers: h });
       if (r.ok) {
         var d = await r.json();
         var lista = extractOfsRows(d);
