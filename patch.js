@@ -28120,6 +28120,32 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return maxOrder + 1;
     }
 
+    function _isGroupOrderInconsistent(ordered) {
+      try {
+        if (!Array.isArray(ordered)) return true;
+        var count = 0;
+        var seen = {};
+        var hasZero = false;
+        for (var i = 0; i < ordered.length; i += 1) {
+          var it = ordered[i];
+          if (!it) continue;
+          count += 1;
+          var v = Math.trunc(Number(it.order || it.displaySeq || it.ordem_maquina || 0) || 0);
+          if (v <= 0) { hasZero = true; break; }
+          var k = String(v);
+          if (seen[k]) return true;
+          seen[k] = true;
+        }
+        if (hasZero) return true;
+        if (count > 0) {
+          var keys = Object.keys(seen);
+          if (keys.length !== count) return true;
+          for (var j = 1; j <= count; j += 1) if (!seen[String(j)]) return true;
+        }
+        return false;
+      } catch (_) { return true; }
+    }
+
     async function updateSeq(id, value) {
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
@@ -28158,13 +28184,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var b = ordered[target];
       var ordemA = Number(a && a.order || 0) || 0;
       var ordemB = Number(b && b.order || 0) || 0;
+      var inconsistente = _isGroupOrderInconsistent(ordered);
       var tmp = ordered[idx];
       ordered[idx] = ordered[target];
       ordered[target] = tmp;
       ordered.forEach(function(item, i) { if (item) { item.order = i + 1; item.displaySeq = i + 1; } });
       if (!window.__OFMAQ_FINAL_MOCK && a && b) {
-        await updateSeq(a.id, ordemB || (target + 1));
-        await updateSeq(b.id, ordemA || (idx + 1));
+        if (inconsistente) {
+          await persistGroupOrder(ordered);
+        } else {
+          await updateSeq(a.id, ordemB || (target + 1));
+          await updateSeq(b.id, ordemA || (idx + 1));
+        }
       }
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
@@ -28184,9 +28215,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         renderRows(ensureShell());
         return;
       }
+      var inconsistenteAntes = _isGroupOrderInconsistent(ordered);
+      var vizinhoAdjacente = Math.abs(target - idx) === 1;
+      var usarSwap2Patch = !inconsistenteAntes && vizinhoAdjacente && !window.__OFMAQ_FINAL_MOCK;
+      var a = ordered[idx];
+      var b = vizinhoAdjacente ? ordered[target] : null;
+      var ordemA = Number(a && a.order || 0) || 0;
+      var ordemB = Number(b && b.order || 0) || 0;
       var picked = ordered.splice(idx, 1)[0];
       ordered.splice(target, 0, picked);
-      await persistGroupOrder(ordered);
+      if (usarSwap2Patch && a && b) {
+        ordered.forEach(function(item, i) { if (item) { item.order = i + 1; item.displaySeq = i + 1; } });
+        await updateSeq(a.id, ordemB || (target + 1));
+        await updateSeq(b.id, ordemA || (idx + 1));
+      } else {
+        await persistGroupOrder(ordered);
+      }
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
       renderRows(ensureShell());
