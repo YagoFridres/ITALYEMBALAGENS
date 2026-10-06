@@ -27227,7 +27227,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
           + '</div>'
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
-          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
+          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Dia Agendado<br><small style="font-weight:400;color:#64748b">Produção</small></th><th>Data Entrega<br><small style="font-weight:400;color:#64748b">Cliente Real</small></th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
       }
       purgeLegacyViews();
@@ -27774,7 +27774,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var statusText = sp ? 'Sem Papelão' : statusBase;
       if (sp && urg && urg !== 'normal') statusText = 'Sem Papelão • ' + statusBase;
       var num = item.numero || (raw && (raw.numero || raw.of_num || raw.of_numero || raw.of)) || '—';
-      var prazo = item.prazoIso || (raw && (raw.data_entrega || raw.ent || raw.dia_programacao || raw.dia || raw.data_producao || '')) || '';
+      var diaAgendadoIso = item.prazoIso
+        || (raw && (raw.dia_programacao || raw.dia || raw.data_producao || ''))
+        || '';
+      var diaAgendadoBR = diaAgendadoIso
+        ? fmtDateBR(String(diaAgendadoIso).slice(0, 10))
+        : '<span style="color:#94a3b8">Sem data</span>';
+      var dataEntregaRealRaw = raw && raw.data_entrega ? raw.data_entrega : null;
+      var dataEntregaRealBR = dataEntregaRealRaw
+        ? fmtDateBR(String(dataEntregaRealRaw).slice(0, 10))
+        : '<span style="color:#94a3b8">Sem data</span>';
       var cli = item.cliente || (raw && (raw.cliente_nome || raw.cliente || raw.cliNome || raw.clinome || raw.nome_cliente)) || '—';
       var prod = item.produto || (raw && (raw.produto || raw.descricao || raw.prodDesc || raw.nome_produto)) || '—';
       var qtd = item.quantidade != null ? item.quantidade : (raw && (raw.quantidade != null ? raw.quantidade : (raw.qtd != null ? raw.qtd : raw.qtd_pedida)));
@@ -27788,7 +27797,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<td class="ofmaq-final-seq"><input class="ofmaq-final-seq-input" type="number" min="1" step="1" data-ofmaq-final-seq="' + escAttr(item.id) + '" value="' + escAttr(String(item.displaySeq || item.order || 1)) + '"></td>'
         + '<td>' + img + '</td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(num) + '</strong></td>'
-        + '<td>' + escH(prazo ? fmtDateBR(String(prazo).slice(0,10)) : 'Sem data') + '</td>'
+        + '<td>' + diaAgendadoBR + '</td>'
+        + '<td>' + dataEntregaRealBR + '</td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(cli) + '</strong></td>'
         + '<td><span class="ofmaq-final-status" data-tone="' + escAttr(statusTone) + '">' + escH(statusText) + '</span></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(prod) + '</strong></td>'
@@ -27859,7 +27869,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!tbody) return;
       var len = rowItems ? rowItems.length : 0;
       if (!len) {
-        tbody.innerHTML = '<tr><td colspan="15" class="ofmaq-final-empty">'
+        tbody.innerHTML = '<tr><td colspan="16" class="ofmaq-final-empty">'
           + (tbody.dataset.emptyLabel || 'Nenhuma OF encontrada.') + '</td></tr>';
         return;
       }
@@ -27942,7 +27952,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           });
         }
       }
-      var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
+      var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Dia Agendado<br><small style="font-weight:400;color:#64748b">Produção</small></th><th>Data Entrega<br><small style="font-weight:400;color:#64748b">Cliente Real</small></th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
       if (!state.showAllMachines) {
         Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks')).forEach(function(b) { try { b.remove(); } catch (_) {} });
         if (!oldWrap) {
@@ -27956,7 +27966,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         shell.tbody = oldWrap.querySelector('#ofmaq-final-tbody') || oldWrap.querySelector('tbody');
         if (shell.tbody) {
           if (typeof _applyIncrementalTbody === 'function') _applyIncrementalTbody(shell.tbody, rows);
-          else shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+          else shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="16" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
           if (!rows.length) shell.tbody.dataset.emptyLabel = 'Nenhuma OF encontrada para este filtro.';
         }
       } else {
@@ -27992,7 +28002,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           existingByMaq[mk] = sec;
         }
         if (!order.length) {
-          blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
+          blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="16" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
         } else {
           var frag = document.createDocumentFragment();
           for (var _om = 0; _om < order.length; _om++) {
@@ -28037,7 +28047,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             var tb = sectionEl.querySelector('tbody');
             if (tb) {
               if (typeof _applyIncrementalTbody === 'function') _applyIncrementalTbody(tb, list);
-              else tb.innerHTML = list.length ? list.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>';
+              else tb.innerHTML = list.length ? list.map(rowHtml).join('') : '<tr><td colspan="16" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>';
             }
             if (!sectionEl.parentNode) frag.appendChild(sectionEl);
           }
@@ -29934,7 +29944,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             var cliente = String(row && (row.cliente_nome || row.cliNome || row.clinome || row.cliente || row.nome_cliente) || '—').trim() || '—';
             var produto = String(row && (row.descricao || row.produto || row.nome || row.prodDesc || row.nome_produto) || '—').trim() || '—';
             var qtd = Number(row && (row.quantidade != null ? row.quantidade : (row.qtd != null ? row.qtd : row.qtd_pedida)) || 0) || 0;
-            var entrega = String(row && (row.data_entrega || row.ent || row.dia_programacao || row.dia || row.data_producao || '') || '').slice(0, 10);
+            var diaAgendadoEmerg = String(row && (row.prazoIso || row.dia_programacao || row.dia || row.data_producao || '') || '').slice(0, 10);
+            var diaAgendadoEmergBR = diaAgendadoEmerg
+              ? fmtDateBR(diaAgendadoEmerg)
+              : '<span style="color:#94a3b8">Sem data</span>';
+            var dataEntregaEmergRaw = row && row.data_entrega ? String(row.data_entrega).slice(0, 10) : '';
+            var dataEntregaEmergBR = dataEntregaEmergRaw
+              ? fmtDateBR(dataEntregaEmergRaw)
+              : '<span style="color:#94a3b8">Sem data</span>';
             var maquina = normMachine(row) || 'Pendente';
             var tamanho = String(row && (row.tamanho || row.medidas || row.dimensoes || '') || '').trim() || '—';
             var urgU = row && (row.urg || row.urgente);
@@ -29964,7 +29981,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               + '  <td>' + escHLocal(String(idx + 1)) + '</td>'
               + '  <td><span class="ofmaq-final-thumb-fallback">📦</span></td>'
               + '  <td><strong>' + escHLocal(numero) + '</strong></td>'
-              + '  <td>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</td>'
+              + '  <td>' + diaAgendadoEmergBR + '</td>'
+              + '  <td>' + dataEntregaEmergBR + '</td>'
               + '  <td>' + escHLocal(cliente) + '</td>'
               + '  <td><span class="ofmaq-final-status" data-tone="' + escAttrLocal(urgTone) + '" style="display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:800;">' + escHLocal(urgCell) + '</span></td>'
               + '  <td>' + escHLocal(produto) + '</td>'
@@ -29978,7 +29996,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               + '  <td class="ofmaq-final-actions" style="text-align:right"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (urgU ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttrLocal(id) + '">⚡ Ações</button></td>'
               + '</tr>';
           }).join('')
-        : '<tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada na visualização de contingência.</td></tr>';
+        : '<tr><td colspan="16" class="ofmaq-final-empty">Nenhuma OF encontrada na visualização de contingência.</td></tr>';
       try {
         var meta = shell.root && shell.root.querySelector ? shell.root.querySelector('[data-ofmaq-final-meta]') : null;
         if (meta) meta.textContent = 'Visualização de contingência ativa';
@@ -30012,7 +30030,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try { if (typeof renderAmostrasSemana === 'function') renderAmostrasSemana(shell); else if (typeof window.renderAmostrasSemana === 'function') window.renderAmostrasSemana(shell); } catch (_) {}
       } catch (err) {
         var shellErr = ensureShell();
-        if (!renderOfmaqEmergency(shellErr, err) && shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="15" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
+        if (!renderOfmaqEmergency(shellErr, err) && shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="16" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
         try { console.error('[OFMAQ-FINAL-ERRO]', err); } catch (_) {}
       } finally {
         state.loading = false;
