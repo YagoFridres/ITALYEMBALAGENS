@@ -27208,6 +27208,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <button type="button" id="ofmaq-final-group">Agrupar Setup</button>'
           + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
           + '    <button type="button" id="ofmaq-final-history-today">🕒 Histórico de hoje</button>'
+          + '    <button type="button" id="ofmaq-final-urgentes" title="Listar OFs urgentes em aberto">🚨 OFs urgentes</button>'
           + '  </div>'
           + '</div>'
           + '<div id="ofmaq-final-amostras-semana" class="ofmaq-final-amostras-semana">'
@@ -27245,6 +27246,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         group: root.querySelector('#ofmaq-final-group'),
         report: root.querySelector('#ofmaq-final-report'),
         historyToday: root.querySelector('#ofmaq-final-history-today'),
+        urgentesBtn: root.querySelector('#ofmaq-final-urgentes'),
         summaryToggle: root.querySelector('#ofmaq-final-summary-toggle'),
         summaryCompact: root.querySelector('#ofmaq-final-summary-compact'),
         summary: root.querySelector('#ofmaq-final-summary'),
@@ -28120,14 +28122,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     async function persistGroupOrder(rows) {
       var ordered = Array.isArray(rows) ? rows.slice() : [];
+      var needsSave = [];
       ordered.forEach(function(item, idx) {
         if (!item) return;
-        item.order = idx + 1;
-        item.displaySeq = idx + 1;
+        var novo = idx + 1;
+        var atual = Number(item.order || item.displaySeq || 0) || 0;
+        item.order = novo;
+        item.displaySeq = novo;
+        if (atual !== novo) needsSave.push({ id: item.id, value: novo, idx: idx });
       });
       if (window.__OFMAQ_FINAL_MOCK) return;
-      for (var i = 0; i < ordered.length; i += 1) {
-        await updateSeq(ordered[i].id, i + 1);
+      for (var i = 0; i < needsSave.length; i += 1) {
+        await updateSeq(needsSave[i].id, needsSave[i].value);
       }
     }
 
@@ -28138,10 +28144,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var idx = ordered.findIndex(function(item) { return item && item.id === id; });
       var target = idx + Number(direction || 0);
       if (idx < 0 || target < 0 || target >= ordered.length) return;
+      var a = ordered[idx];
+      var b = ordered[target];
+      var ordemA = Number(a && a.order || 0) || 0;
+      var ordemB = Number(b && b.order || 0) || 0;
       var tmp = ordered[idx];
       ordered[idx] = ordered[target];
       ordered[target] = tmp;
-      await persistGroupOrder(ordered);
+      ordered.forEach(function(item, i) { if (item) { item.order = i + 1; item.displaySeq = i + 1; } });
+      if (!window.__OFMAQ_FINAL_MOCK && a && b) {
+        await updateSeq(a.id, ordemB || (target + 1));
+        await updateSeq(b.id, ordemA || (idx + 1));
+      }
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
       renderRows(ensureShell());
@@ -29074,53 +29088,52 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           });
         }
       } catch (_) {}
-      try {
-        if (modal) {
-          modal.style.maxHeight = 'calc(100vh - 40px)';
-          modal.style.display = 'flex';
-          modal.style.flexDirection = 'column';
-          modal.style.overflow = 'hidden';
-          modal.style.paddingBottom = '0';
-          var bodyEl = modal.querySelector(':scope > .body');
-          if (bodyEl) {
-            bodyEl.style.display = 'flex';
-            bodyEl.style.flexDirection = 'column';
-            bodyEl.style.overflow = 'hidden';
-            bodyEl.style.flex = '1 1 auto';
-            bodyEl.style.minHeight = '0';
-            bodyEl.style.maxHeight = 'calc(100vh - 140px)';
-            var children = Array.from(bodyEl.children);
-            if (children.length > 2) {
-              var headerWrap = document.createElement('div');
-              headerWrap.className = 'ofmaq-hist-header-wrap';
-              headerWrap.style.cssText = 'position:sticky;top:0;z-index:10;background:rgba(2,6,23,0.98);border-bottom:1px solid rgba(51,65,85,0.6);padding-bottom:8px;';
-              var bodyWrap = document.createElement('div');
-              bodyWrap.className = 'ofmaq-hist-body-scroll';
-              bodyWrap.style.cssText = 'flex:1 1 auto;overflow-y:auto;overflow-x:hidden;min-height:0;padding:4px 2px;';
-              var footerWrap = document.createElement('div');
-              footerWrap.className = 'ofmaq-hist-footer-wrap';
-              footerWrap.style.cssText = 'position:sticky;bottom:0;z-index:10;background:rgba(2,6,23,0.98);border-top:1px solid rgba(51,65,85,0.6);padding-top:8px;';
-              var ultimoHeaderIdx = -1;
-              for (var ci = 0; ci < children.length; ci++) {
-                var cst = children[ci].getAttribute && children[ci].getAttribute('style') || '';
-                if (cst.indexOf('grid-template-columns:repeat(4') >= 0) {
-                  ultimoHeaderIdx = ci;
-                }
-              }
-              var footerIdx = children.length - 1;
-              if (ultimoHeaderIdx < 0) ultimoHeaderIdx = Math.min(2, footerIdx - 1);
-              for (var ci2 = 0; ci2 <= ultimoHeaderIdx && ci2 < children.length; ci2++) headerWrap.appendChild(children[ci2]);
-              for (var ci3 = ultimoHeaderIdx + 1; ci3 < footerIdx && ci3 < children.length; ci3++) bodyWrap.appendChild(children[ci3]);
-              if (footerIdx > ultimoHeaderIdx) footerWrap.appendChild(children[footerIdx]);
-              bodyEl.innerHTML = '';
-              bodyEl.appendChild(headerWrap);
-              bodyEl.appendChild(bodyWrap);
-              bodyEl.appendChild(footerWrap);
-            }
-          }
-        }
-      } catch (_u1e) {}
+      try { _applyModalScrollU1(modal); } catch (_u1e) {}
       return modal;
+    }
+
+    function _applyModalScrollU1(modal) {
+      try {
+        if (!modal) return;
+        modal.style.maxHeight = 'calc(100vh - 40px)';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.overflow = 'hidden';
+        modal.style.paddingBottom = '0';
+        var bodyEl = modal.querySelector(':scope > .body');
+        if (!bodyEl) return;
+        bodyEl.style.display = 'flex';
+        bodyEl.style.flexDirection = 'column';
+        bodyEl.style.overflow = 'hidden';
+        bodyEl.style.flex = '1 1 auto';
+        bodyEl.style.minHeight = '0';
+        bodyEl.style.maxHeight = 'calc(100vh - 140px)';
+        var children = Array.from(bodyEl.children);
+        if (children.length <= 2) return;
+        var headerWrap = document.createElement('div');
+        headerWrap.className = 'ofmaq-hist-header-wrap';
+        headerWrap.style.cssText = 'position:sticky;top:0;z-index:10;background:rgba(2,6,23,0.98);border-bottom:1px solid rgba(51,65,85,0.6);padding-bottom:8px;';
+        var bodyWrap = document.createElement('div');
+        bodyWrap.className = 'ofmaq-hist-body-scroll';
+        bodyWrap.style.cssText = 'flex:1 1 auto;overflow-y:auto;overflow-x:hidden;min-height:0;padding:4px 2px;';
+        var footerWrap = document.createElement('div');
+        footerWrap.className = 'ofmaq-hist-footer-wrap';
+        footerWrap.style.cssText = 'position:sticky;bottom:0;z-index:10;background:rgba(2,6,23,0.98);border-top:1px solid rgba(51,65,85,0.6);padding-top:8px;';
+        var ultimoHeaderIdx = -1;
+        for (var ci = 0; ci < children.length; ci++) {
+          var cst = children[ci].getAttribute && children[ci].getAttribute('style') || '';
+          if (cst.indexOf('grid-template-columns:repeat(4') >= 0) ultimoHeaderIdx = ci;
+        }
+        var footerIdx = children.length - 1;
+        if (ultimoHeaderIdx < 0) ultimoHeaderIdx = Math.min(2, footerIdx - 1);
+        for (var ci2 = 0; ci2 <= ultimoHeaderIdx && ci2 < children.length; ci2++) headerWrap.appendChild(children[ci2]);
+        for (var ci3 = ultimoHeaderIdx + 1; ci3 < footerIdx && ci3 < children.length; ci3++) bodyWrap.appendChild(children[ci3]);
+        if (footerIdx > ultimoHeaderIdx) footerWrap.appendChild(children[footerIdx]);
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(headerWrap);
+        bodyEl.appendChild(bodyWrap);
+        bodyEl.appendChild(footerWrap);
+      } catch (_sc1) {}
     }
 
     async function printTodayHistory(builtData) {
@@ -29178,6 +29191,191 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return rrOpenPrint(cfg);
       }
       throw new Error('Módulo de impressão rrOpenPrint não carregado.');
+    }
+
+    function buildUrgentOfsData() {
+      ensureDefaults();
+      var esc = typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v).replace(/[<>"']/g, ''); };
+      var base = Array.isArray(state.rowsData) ? state.rowsData.slice() : [];
+      var _sa = typeof _statusAberto === 'function' ? _statusAberto : function(rawSt) {
+        try { var s = String(rawSt||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(!s) return true; return !(s.indexOf('conclu')>=0||s.indexOf('cancel')>=0||s.indexOf('fechad')>=0||s.indexOf('arquivad')>=0); } catch(_){return true;}
+      };
+      var urgentes = base.filter(function(o) {
+        if (!o) return false;
+        if (!_sa(o.status)) return false;
+        return !!(o.urg === true || o.urgente === true);
+      });
+      var grupoMap = {};
+      var totalUrgOfs = 0;
+      var totalCaixas = 0;
+      var totalSemPapelao = 0;
+      urgentes.forEach(function(o) {
+        var maq = normalizeMachine(String(o.maquina || '—').trim());
+        if (!grupoMap[maq]) grupoMap[maq] = { maquina: maq, totalOfs: 0, totalCaixas: 0, items: [] };
+        var semPapelao = !(o.papel_comprado === true);
+        var qtd = Number(o.quantidade || 0) || 0;
+        var item = {
+          ofId: o.id,
+          numero: String(o.numero || '—'),
+          cliente: String(o.cliente || '—'),
+          produto: String(o.produto || '—'),
+          quantidade: qtd,
+          diaAgendado: fmtDateBR(String(o.prazoIso || o.dia_agendado || '').slice(0,10)) || '—',
+          dataEntrega: fmtDateBR(String(o.data_entrega || o.entrega || '').slice(0,10)) || '—',
+          semPapelao: semPapelao,
+          status: String(o.status || '—')
+        };
+        grupoMap[maq].items.push(item);
+        grupoMap[maq].totalOfs++;
+        grupoMap[maq].totalCaixas += qtd;
+        totalUrgOfs++;
+        totalCaixas += qtd;
+        if (semPapelao) totalSemPapelao++;
+      });
+      var grupos = Object.keys(grupoMap).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); }).map(function(k){ return grupoMap[k]; });
+      var totalMaqs = grupos.length;
+      return {
+        totals: { totalUrgOfs: totalUrgOfs, totalMaquinas: totalMaqs, totalCaixas: totalCaixas, totalSemPapelao: totalSemPapelao },
+        grupos: grupos,
+        hojeIso: todayBrtIso()
+      };
+    }
+
+    function _printUrgentOfs(built) {
+      try {
+        if (typeof rrOpenPrint !== 'function') throw new Error('Módulo de impressão não carregado.');
+        var e = typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v); };
+        var fN = typeof rrFmtNum === 'function' ? rrFmtNum : function(v){ return String(Number(v||0)); };
+        var fD = typeof rrFmtDate === 'function' ? rrFmtDate : function(v){ return String(v||''); };
+        var tot = built && built.totals ? built.totals : {};
+        var grupos = built && Array.isArray(built.grupos) ? built.grupos : [];
+        var cards = [
+          { label: 'OFs urgentes abertas', value: fN(Number(tot.totalUrgOfs||0),0), sub: 'Status diferente de Concluído/Cancelado' },
+          { label: 'Máquinas afetadas', value: fN(Number(tot.totalMaquinas||0),0), sub: 'Com pelo menos 1 urgente' },
+          { label: 'Caixas urgentes', value: fN(Number(tot.totalCaixas||0),0), sub: 'Soma das quantidades' },
+          { label: 'Sem papelão', value: fN(Number(tot.totalSemPapelao||0),0), sub: 'OFs urgentes sem papel comprado' }
+        ];
+        var summaryRows = grupos.map(function(g){
+          return [e(String(g.maquina||'—')), e(fN(Number(g.totalOfs||0),0)), e(fN(Number(g.totalCaixas||0),0))];
+        });
+        var detailRows = [];
+        grupos.forEach(function(g){
+          var items = Array.isArray(g.items) ? g.items : [];
+          items.forEach(function(it){
+            detailRows.push([
+              e(String(it.numero||'—')),
+              e(String(it.cliente||'—')),
+              e(String(it.produto||'—')),
+              e(fN(Number(it.quantidade||0),0)),
+              e(String(it.diaAgendado||'—')),
+              e(String(it.dataEntrega||'—')),
+              e(it.semPapelao ? 'SEM PAPELÃO' : 'OK')
+            ]);
+          });
+        });
+        var cfg = {
+          title: '🚨 OFs Urgentes em Aberto',
+          periodo: 'Relatório gerado em ' + fD(built && built.hojeIso || todayBrtIso() || ''),
+          cards: cards,
+          summaryTitle: 'Resumo por máquina',
+          summaryHeaders: ['Máquina', 'OFs urgentes', 'Caixas'],
+          summaryRows: summaryRows,
+          detailTitle: 'Detalhamento das OFs urgentes',
+          detailHeaders: ['OF', 'Cliente', 'Produto', 'Qtd caixas', 'Dia agendado', 'Data entrega', 'Papelão'],
+          detailRows: detailRows,
+          emptySummaryCols: 3,
+          emptyDetailCols: 7
+        };
+        return rrOpenPrint(cfg);
+      } catch (ePrint) {
+        try { if (typeof window.toast === 'function') window.toast('Erro ao imprimir urgentes: '+String(ePrint && ePrint.message || ePrint),'var(--red)'); } catch(_){}
+        throw ePrint;
+      }
+    }
+
+    async function openUrgentOfsModal() {
+      ensureDefaults();
+      if (!Array.isArray(state.rowsData) || state.rowsData.length === 0) {
+        try { await loadCanonicalRows(false); } catch (_) {}
+      }
+      var built;
+      try { built = buildUrgentOfsData(); }
+      catch (eBuild) {
+        try { if (typeof window.toast === 'function') window.toast('Erro ao montar lista de urgentes: '+String(eBuild&&eBuild.message||eBuild),'var(--red)'); } catch(_){}
+        throw eBuild;
+      }
+      var tot = built.totals;
+      if (tot.totalUrgOfs === 0) {
+        var emptyHtml = '<div style="padding:26px 16px;text-align:center;border-radius:12px;background:rgba(15,23,42,.45);border:1px dashed rgba(100,116,139,.55);color:#94a3b8;font-weight:700;font-size:15px">Nenhuma OF urgente em aberto 🎉</div>';
+        var modalEmpty = openModal('ofmaq-final-urgentes-modal', '🚨 OFs Urgentes em Aberto (0)', emptyHtml);
+        try { _applyModalScrollU1(modalEmpty); } catch(_){}
+        return modalEmpty;
+      }
+      var esc = typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v).replace(/[<>"']/g,''); };
+      var fN = typeof fmtInt === 'function' ? fmtInt : function(v){ return String(Number(v||0)); };
+      var html = '';
+      html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">';
+      html += '<div style="padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35)"><div style="font-size:11px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.3px">OFs Urgentes</div><div style="font-size:20px;font-weight:900;color:#fecaca;margin-top:2px">' + esc(fN(tot.totalUrgOfs)) + '</div></div>';
+      html += '<div style="padding:10px 12px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35)"><div style="font-size:11px;color:#7dd3fc;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Máquinas</div><div style="font-size:20px;font-weight:900;color:#bae6fd;margin-top:2px">' + esc(fN(tot.totalMaquinas)) + '</div></div>';
+      html += '<div style="padding:10px 12px;border-radius:10px;background:rgba(163,230,53,.12);border:1px solid rgba(163,230,53,.35)"><div style="font-size:11px;color:#bef264;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Caixas</div><div style="font-size:20px;font-weight:900;color:#d9f99d;margin-top:2px">' + esc(fN(tot.totalCaixas)) + '</div></div>';
+      html += '<div style="padding:10px 12px;border-radius:10px;background:rgba(251,146,60,.12);border:1px solid rgba(251,146,60,.35)"><div style="font-size:11px;color:#fdba74;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Sem Papelão</div><div style="font-size:20px;font-weight:900;color:#fed7aa;margin-top:2px">' + esc(fN(tot.totalSemPapelao)) + '</div></div>';
+      html += '</div>';
+      html += '<div style="margin:10px 0 6px;font-size:12px;color:#94a3b8">Clique em uma linha para abrir as ações da OF ➡️</div>';
+      built.grupos.forEach(function(g){
+        html += '<div style="margin-top:14px">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:10px 10px 0 0;background:rgba(51,65,85,.35);border:1px solid rgba(71,85,105,.7);border-bottom:none">';
+        html += '<div style="font-weight:800;font-size:14px;color:#e2e8f0">🚨 ' + esc(g.maquina) + '</div>';
+        html += '<div style="font-size:12px;color:#cbd5e1;font-weight:700">' + esc(fN(g.totalOfs)) + ' OF · ' + esc(fN(g.totalCaixas)) + ' cx</div>';
+        html += '</div>';
+        html += '<div style="overflow-x:auto;border:1px solid rgba(71,85,105,.7);border-top:none;border-radius:0 0 10px 10px">';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:rgba(30,41,59,.85)">';
+        var headers = ['OF','Cliente','Produto','Qtd','Dia Agendado','Data Entrega','Papelão'];
+        headers.forEach(function(h){ html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid rgba(71,85,105,.7);color:#cbd5e1;font-weight:800;text-transform:uppercase;font-size:10.5px;letter-spacing:.3px">' + esc(h) + '</th>'; });
+        html += '</tr></thead><tbody>';
+        g.items.forEach(function(it){
+          html += '<tr data-of-id="' + esc(it.ofId) + '" style="cursor:pointer;transition:background .12s ease" onmouseover="this.style.background=\'rgba(56,189,248,.08)\'" onmouseout="this.style.background=\'\'">';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#f1f5f9;font-weight:800;font-size:13px">' + esc(it.numero) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#e2e8f0;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.cliente) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#e2e8f0;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.produto) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#f1f5f9;font-weight:700;text-align:right">' + esc(fN(it.quantidade)) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#cbd5e1">' + esc(it.diaAgendado) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#cbd5e1">' + esc(it.dataEntrega) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5)">';
+          if (it.semPapelao) {
+            html += '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(239,68,68,.18);color:#fca5a5;font-weight:800;font-size:10.5px;letter-spacing:.2px">SEM PAPELÃO</span>';
+          } else {
+            html += '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,.15);color:#86efac;font-weight:800;font-size:10.5px">OK</span>';
+          }
+          html += '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div></div>';
+      });
+      html += '<div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">';
+      html += '<button type="button" id="ofmaq-final-urgentes-print" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(100,116,139,.5);background:rgba(30,41,59,.7);color:#e2e8f0;font-weight:700;font-size:13px;cursor:pointer">🖨️ Imprimir / PDF</button>';
+      html += '</div>';
+      var modal = openModal('ofmaq-final-urgentes-modal', '🚨 OFs Urgentes em Aberto (' + tot.totalUrgOfs + ')', html);
+      try { _applyModalScrollU1(modal); } catch(_){}
+      try {
+        var rows = modal.querySelectorAll('tr[data-of-id]');
+        rows.forEach(function(tr){
+          tr.addEventListener('click', function(){
+            var id = tr.getAttribute('data-of-id');
+            if (!id) return;
+            try { if (typeof openActionsModal === 'function') openActionsModal(id); } catch(_){}
+          });
+        });
+      } catch(_){}
+      try {
+        var printBtn = modal.querySelector('#ofmaq-final-urgentes-print');
+        if (printBtn) {
+          printBtn.addEventListener('click', function(ev){
+            try { if (ev && ev.preventDefault) ev.preventDefault(); } catch(_){}
+            try { _printUrgentOfs(built); } catch(_){}
+          });
+        }
+      } catch(_){}
+      return modal;
     }
 
     function reportDaysForPeriod(period, baseDateIso) {
@@ -29405,6 +29603,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           (async function() {
             try { if (typeof openTodayHistoryModal === 'function') await openTodayHistoryModal(); else try { window.toast('Módulo Histórico não carregado.', 'var(--yellow)'); } catch(_){} }
             catch (eHist) { try { window.toast('Erro ao abrir Histórico: '+String(eHist && eHist.message || eHist), 'var(--red)'); } catch(_){} }
+          })();
+          return;
+        }
+        var urgBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-urgentes') : null;
+        if (urgBtn) {
+          (async function() {
+            try { if (typeof openUrgentOfsModal === 'function') await openUrgentOfsModal(); else try { window.toast('Módulo Urgentes não carregado.', 'var(--yellow)'); } catch(_){} }
+            catch (eUrg) { try { window.toast('Erro ao abrir Urgentes: '+String(eUrg && eUrg.message || eUrg), 'var(--red)'); } catch(_){} }
           })();
           return;
         }
@@ -30121,6 +30327,28 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3.1, 'bloco s
         _patchUpdateBadges._origUpdateBadges = window.updateBadges;
         window.updateBadges = _patchUpdateBadges;
       }
+      try {
+        if (!window.__patchBadgeUrgentesAttached) {
+          window.__patchBadgeUrgentesAttached = true;
+          document.addEventListener('click', function(evBadge){
+            try {
+              var t = evBadge && evBadge.target;
+              if (!t) return;
+              var txt = (t && typeof t.textContent === 'string') ? t.textContent : '';
+              var up = t && t.parentElement ? t.parentElement.textContent : '';
+              var gp = t && t.parentElement && t.parentElement.parentElement ? t.parentElement.parentElement.textContent : '';
+              var reg = /(\d+\s+URGENTES)/i;
+              if (reg.test(txt) || reg.test(up) || reg.test(gp)) {
+                if (typeof openUrgentOfsModal === 'function') {
+                  try { if (evBadge.preventDefault) evBadge.preventDefault(); } catch(_){}
+                  try { if (evBadge.stopPropagation) evBadge.stopPropagation(); } catch(_){}
+                  openUrgentOfsModal().catch(function(e){});
+                }
+              }
+            } catch(_b1){}
+          }, true);
+        }
+      } catch(_b2){}
     } catch (_) {}
   } catch (e) {
     try { console.error('[PATCH-STABILITY-CORE]', e); } catch (_) {}
