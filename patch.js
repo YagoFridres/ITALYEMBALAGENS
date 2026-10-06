@@ -28695,20 +28695,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return c;
     }
 
-    async function buildTodayHistoryFromState() {
-      var today = todayBrtIso();
+    async function buildTodayHistoryFromState(overrideDataIso, overrideMaquinaFiltro) {
+      var savedState = null;
+      try { if (window && typeof window.__ofmaqHistState !== 'undefined') savedState = window.__ofmaqHistState || null; } catch(_){ savedState = null; }
+      var defaultIso = todayBrtIso();
+      var savedIso = savedState && savedState.dataIso ? String(savedState.dataIso).slice(0, 10) : '';
+      var dataAlvo = (overrideDataIso ? String(overrideDataIso).slice(0, 10) : (savedIso || defaultIso)) || defaultIso;
+      var savedMaq = savedState && savedState.maquina ? String(savedState.maquina).trim() : '';
+      var maqRaw = overrideMaquinaFiltro != null ? String(overrideMaquinaFiltro).trim() : (typeof overrideMaquinaFiltro === 'undefined' ? savedMaq : '');
+      var filtroMaquina = (maqRaw === '' || maqRaw.toLowerCase() === 'todas' || maqRaw === 'TODAS' || maqRaw == null) ? 'TODAS' : maqRaw;
       var gruposMap = new Map();
       var ofsSet = new Set();
       var totalPassagens = 0;
+      var totalCaixas = 0;
       var allPassagens = [];
       var avisoFonteFisica = null;
 
-      var hoje = new Date();
-      var mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
-      var anoAtual = String(hoje.getFullYear());
+      var refDate = new Date((dataAlvo || defaultIso) + 'T00:00:00');
+      var mesRef = String(refDate.getMonth() + 1).padStart(2, '0');
+      var anoRef = String(refDate.getFullYear());
+      var maquinaUnicas = new Set();
+      try { maquinaUnicas.add('TODAS'); } catch(_){}
 
       try {
-        var url = '/api/passagens/historico?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual) + '&limit=1000';
+        var url = '/api/passagens/historico?mes=' + encodeURIComponent(mesRef) + '&ano=' + encodeURIComponent(anoRef) + '&limit=1000';
         var resp = await fetch(url, { method: 'GET', credentials: 'include', cache: 'no-store', headers: { 'Accept': 'application/json' } });
         if (resp && resp.ok) {
           var payload = await resp.json();
@@ -28757,17 +28767,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var dataBrt = brtDateFromIso(horaIso);
         if (!dataBrt) {
           var dpFallback = String(p && (p.data_passagem || p.dataPassagem || p.passou_em || '') || '').slice(0, 10);
-          if (dpFallback !== today) continue;
-        } else if (dataBrt !== today) {
+          if (dpFallback !== dataAlvo) continue;
+        } else if (dataBrt !== dataAlvo) {
           continue;
         }
         var ofNumeroP = String(p && p.of_numero || p && p.numero || p && p.of || '').trim();
         var maquinaP = String(p && (p.maquina || p.maquina_nome || p.maquinaNome || p.maq) || '').trim();
+        if (maquinaP) { try { maquinaUnicas.add(maquinaP); } catch(_){} }
         var statusP = String(p && p.status || '').trim() || 'Passou pela máquina';
         var horaDedup = String(horaIso || '').replace(/\.\d+Z?$/, '').replace(/:\d{2}$/, '').slice(0, 16);
         var dedupeKey = [ofNumeroP, maquinaP, horaDedup, statusP].join('|');
         if (dedupeKeys.has(dedupeKey)) continue;
         dedupeKeys.add(dedupeKey);
+        if (filtroMaquina !== 'TODAS' && filtroMaquina && maquinaP !== filtroMaquina) continue;
         filteredPassagens.push(p);
       }
 
@@ -28785,6 +28797,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         clienteItem = clienteItem || '—';
         var maquinaItem = String(pItem && (pItem.maquina || pItem.maquina_nome || pItem.maquinaNome || pItem.maq) || (pItem._of_row_ref && pItem._of_row_ref.maquina) || '').trim() || 'Sem máquina';
+        var operadorItem = String(pItem && (pItem.operador || pItem.operador_nome || pItem.operadorNome || pItem.usuario_nome || pItem.usuarioNome || pItem.operadores_conclusao || 'ADIMINISTRADOR') || '—').trim() || '—';
+        if (operadorItem === 'ADIMINISTRADOR' && pItem && pItem._of_raw_ref && Array.isArray(pItem._of_raw_ref.operadores_conclusao) && pItem._of_raw_ref.operadores_conclusao.length > 0) {
+          operadorItem = String(pItem._of_raw_ref.operadores_conclusao[0] || '—').trim() || operadorItem;
+        }
         var qtdItem = Number(pItem && (pItem.quantidade || pItem.qtd || pItem.qtd_produzida) != null ? (pItem.quantidade || pItem.qtd || pItem.qtd_produzida) : 0) || 0;
         var statusItem = String(pItem && pItem.status || '').trim() || 'Passou pela máquina';
         var rowIdItem = pItem && (pItem._id_tabela_fisica || pItem.id_passagem_tabela_fisica || pItem.rowid_tabela_fisica || pItem.passagem_row_id || pItem.rowId || pItem.id) != null ? (pItem._id_tabela_fisica || pItem.id_passagem_tabela_fisica || pItem.rowid_tabela_fisica || pItem.passagem_row_id || pItem.rowId || pItem.id) : null;
@@ -28798,12 +28814,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           of_id: ofIdItem,
           cliente: clienteItem,
           maquina: maquinaItem,
+          operador: operadorItem,
           hora_passagem: horaIsoItem,
           quantidade: qtdItem,
           status: statusItem,
           row_id: rowIdItem
         });
         totalPassagens += 1;
+        totalCaixas += qtdItem;
         if (ofNumeroItem && ofNumeroItem !== '—') ofsSet.add(ofNumeroItem);
       }
 
@@ -28817,19 +28835,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           return tb - ta;
         });
       });
+      var maqsLista = Array.from(maquinaUnicas).sort(function(a, b){ return String(a).localeCompare(String(b),'pt-BR'); });
       return {
-        todayIso: today,
+        dataIso: dataAlvo,
+        todayIso: dataAlvo,
+        filtros: { dataIso: dataAlvo, maquina: filtroMaquina, maquinasDisponiveis: maqsLista },
         grupos: grupos,
         totals: {
           totalPassagens: totalPassagens,
           totalMaquinas: grupos.length,
-          totalOfs: ofsSet.size
+          totalOfs: ofsSet.size,
+          totalCaixas: totalCaixas
         },
         aviso_fonte_fisica: avisoFonteFisica
       };
     }
 
-    async function openTodayHistoryModal() {
+    async function openTodayHistoryModal(forceDataIso, forceMaquina) {
       var esc = (typeof escH === 'function') ? escH : (typeof rrEsc === 'function' ? rrEsc : function(v){ return String(v==null?'':v); });
       var fmtDate = (typeof fmtDateBR === 'function') ? fmtDateBR : (typeof rrFmtDate === 'function' ? rrFmtDate : function(v){ return String(v||''); });
       var fmtDT = typeof rrFmtDateTime === 'function' ? rrFmtDateTime : (function(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch(_){ return String(v||'—'); } });
@@ -28837,15 +28859,40 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       try { if (typeof window.toast === 'function') window.toast('Carregando histórico...', 'var(--blue)'); } catch(_){}
       var res;
       try {
-        res = await buildTodayHistoryFromState();
+        res = await buildTodayHistoryFromState(forceDataIso, forceMaquina);
       } catch (eBuild) {
         try { if (typeof window.toast === 'function') window.toast('Erro ao carregar histórico: ' + String(eBuild && eBuild.message || eBuild), 'var(--red)'); } catch(_){}
         throw eBuild;
       }
-      var todayBR = fmtDate(res.todayIso);
+      var dataRef = res.dataIso || res.todayIso || todayBrtIso();
+      var dataBR = fmtDate(dataRef);
       var tot = res.totals || {};
       var aviso = String(res.aviso_fonte_fisica || '').trim();
+      var filtros = res.filtros || { maquina: 'TODAS', maquinasDisponiveis: [] };
+      var maqAtual = (forceMaquina != null ? String(forceMaquina).trim() : filtros.maquina) || 'TODAS';
+      if (maqAtual === '') maqAtual = 'TODAS';
+      var maqsOptions = Array.isArray(filtros.maquinasDisponiveis) && filtros.maquinasDisponiveis.length > 0 ? filtros.maquinasDisponiveis : ['TODAS'];
       var html = '';
+      html += '<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.55);border-radius:12px">';
+      html += '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">';
+      html += '<div><div style="font-size:11px;color:#94a3b8;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Data</div>';
+      html += '<input type="date" id="ofmaq-hist-data" value="' + esc(dataRef) + '" style="padding:8px 10px;border-radius:8px;background:#0b1220;border:1px solid rgba(71,85,105,.8);color:#f8fafc;font-weight:700;font-size:13px">';
+      html += '</div>';
+      html += '<div><div style="font-size:11px;color:#94a3b8;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Máquina</div>';
+      html += '<select id="ofmaq-hist-maq" style="padding:8px 10px;border-radius:8px;background:#0b1220;border:1px solid rgba(71,85,105,.8);color:#f8fafc;font-weight:700;font-size:13px;min-width:200px">';
+      for (var mi = 0; mi < maqsOptions.length; mi++) {
+        var optM = String(maqsOptions[mi] || '').trim();
+        if (!optM) continue;
+        var labelOpt = optM === 'TODAS' ? 'Todas as máquinas' : optM;
+        var selectedOpt = (optM === maqAtual || (optM === 'TODAS' && maqAtual.toLowerCase() === 'todas')) ? ' selected' : '';
+        html += '<option value="' + esc(optM) + '"' + selectedOpt + '>' + esc(labelOpt) + '</option>';
+      }
+      html += '</select>';
+      html += '</div>';
+      html += '<button type="button" id="ofmaq-hist-aplicar" style="padding:8px 14px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:1px solid rgba(37,99,235,.9);color:#fff;font-weight:800;font-size:13px;cursor:pointer">🔍 Aplicar</button>';
+      html += '</div>';
+      html += '<div style="font-size:11px;color:#94a3b8;font-weight:600;text-align:right">Filtros ativos:&nbsp;<span style="font-weight:900;color:#cbd5e1">Data ' + esc(dataBR) + (maqAtual !== 'TODAS' ? (' · Máq. ' + esc(maqAtual)) : ' · Todas máquinas') + '</span></div>';
+      html += '</div>';
       if (aviso) {
         html += '<div style="padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(251,146,60,.18),rgba(245,158,11,.22));border:1px solid rgba(249,115,22,.55);margin-bottom:14px">';
         html += '<div style="display:flex;align-items:flex-start;gap:10px">';
@@ -28854,16 +28901,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         html += '<div style="font-size:12px;color:#fde68a;font-weight:600;line-height:1.45">' + esc(aviso) + '</div>';
         html += '<div style="font-size:11px;color:#fdba74;font-weight:500;margin-top:6px">Algumas passagens (principalmente "Despachada" geradas na conclusão da OF) podem não aparecer abaixo. Tente novamente em alguns segundos.</div></div></div></div>';
       }
-      html += '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px">';
-      html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Passagens hoje</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalPassagens || 0)) + '</div></div>';
+      var totalGeralCaixas = Number((res.grupos || []).reduce(function(s, g){ return s + Number(g && g.totalQtd || 0); }, 0) || tot.totalCaixas || 0);
+      html += '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px">';
+      html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Passagens período</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalPassagens || 0)) + '</div></div>';
       html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Máquinas</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalMaquinas || 0)) + '</div></div>';
       html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.5)"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">OFs distintas</div><div style="font-size:22px;font-weight:900;color:#f8fafc;margin-top:4px">' + esc(fmtNum(tot.totalOfs || 0)) + '</div></div>';
+      html += '<div style="padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(34,197,94,.14),rgba(22,163,74,.2));border:1px solid rgba(34,197,94,.55)"><div style="font-size:11px;font-weight:800;color:#86efac;text-transform:uppercase;letter-spacing:.04em">Caixas período</div><div style="font-size:22px;font-weight:900;color:#f0fdf4;margin-top:4px">' + esc(fmtNum(totalGeralCaixas, 0)) + '</div></div>';
       html += '</div>';
       if (!res.grupos || res.grupos.length === 0) {
         if (aviso) {
           html += '<div style="padding:26px 16px;text-align:center;color:#fed7aa;border-radius:12px;background:rgba(124,45,18,.32);border:1px dashed rgba(249,115,22,.65);font-weight:600">Nenhuma passagem foi carregada ainda devido ao aviso acima.<br><span style="font-size:12px;font-weight:500;color:#fdba74">Passe F5 ou tente novamente em alguns minutos para carregar do banco.</span></div>';
         } else {
-          html += '<div style="padding:26px 16px;text-align:center;color:#94a3b8;border-radius:12px;background:rgba(15,23,42,.45);border:1px dashed rgba(100,116,139,.55);font-weight:600">Nenhuma passagem registrada hoje (' + esc(todayBR) + ').</div>';
+          html += '<div style="padding:26px 16px;text-align:center;color:#94a3b8;border-radius:12px;background:rgba(15,23,42,.45);border:1px dashed rgba(100,116,139,.55);font-weight:600">Nenhuma passagem registrada no período (' + esc(dataBR) + (maqAtual !== 'TODAS' ? (' · Máq. ' + esc(maqAtual)) : '') + ').</div>';
         }
       } else {
         res.grupos.forEach(function(g) {
@@ -28875,13 +28924,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           html += '<tr style="background:rgba(15,23,42,.88)">';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">OF</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Cliente</th>';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Máquina</th>';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Operador</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Horário</th>';
+          html += '<th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Caixas</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Status</th>';
-          html += '<th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Qtd</th>';
           html += '</tr></thead><tbody>';
           var items = Array.isArray(g.items) ? g.items : [];
           if (items.length === 0) {
-            html += '<tr><td colspan="5" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
+            html += '<tr><td colspan="7" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
           } else {
             items.forEach(function(it) {
               var statusLabel = String(it.status || '—').trim() || '—';
@@ -28889,21 +28940,64 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               html += '<tr style="border-top:1px solid rgba(30,41,59,.75)">';
               html += '<td style="padding:7px 10px;color:#f8fafc;font-size:13px;font-weight:800">' + esc(String(it.of_numero || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#e2e8f0;font-size:12px;font-weight:600">' + esc(String(it.cliente || '—')) + '</td>';
+              html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:700">' + esc(String(it.maquina || '—')) + '</td>';
+              html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600">' + esc(String(it.operador || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600">' + esc(fmtDT(it.hora_passagem)) + '</td>';
+              html += '<td style="padding:7px 10px;color:#bbf7d0;font-size:12px;font-weight:900;text-align:right">' + esc(fmtNum(it.quantidade || 0, 0)) + '</td>';
               html += '<td style="padding:7px 10px;color:' + statusColor + ';font-size:12px;font-weight:800">' + esc(statusLabel) + '</td>';
-              html += '<td style="padding:7px 10px;color:#f8fafc;font-size:12px;font-weight:800;text-align:right">' + esc(fmtNum(it.quantidade || 0, 0)) + '</td>';
               html += '</tr>';
             });
           }
           html += '</tbody></table></div></div>';
         });
       }
-      html += '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">';
+      html += '<div style="margin-top:16px;display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap">';
+      html += '<div style="font-size:11px;color:#64748b;font-weight:600">Fonte mesclada: coluna JSON da OF + tabela física passagens_maquina (quando disponível).</div>';
+      html += '<div style="display:flex;gap:8px">';
+      html += '<button type="button" id="ofmaq-final-history-limpar" style="padding:10px 14px;border-radius:10px;background:rgba(15,23,42,.6);color:#cbd5e1;font-weight:700;font-size:12px;border:1px solid rgba(100,116,139,.55);cursor:pointer">↩️ Limpar filtros</button>';
       html += '<button type="button" id="ofmaq-final-history-print" style="padding:10px 16px;border-radius:10px;background:#1d4ed8;color:#fff;font-weight:800;font-size:13px;border:1px solid rgba(37,99,235,.7);cursor:pointer">🖨️ Imprimir / PDF</button>';
-      html += '</div>';
-      var modal = openModal('ofmaq-final-history-today', '🕒 Histórico de Passagens — Hoje ' + todayBR, html);
+      html += '</div></div>';
+      var modal = openModal('ofmaq-final-history-today', '🕒 Histórico de Passagens — ' + dataBR + (maqAtual !== 'TODAS' ? (' · ' + maqAtual) : ''), html);
       try {
-        var printBtn = modal && modal.querySelector ? modal.querySelector('#ofmaq-final-history-print') : null;
+        var inpData = modal.querySelector('#ofmaq-hist-data');
+        var selMaq = modal.querySelector('#ofmaq-hist-maq');
+        var btnAplicar = modal.querySelector('#ofmaq-hist-aplicar');
+        var btnLimpar = modal.querySelector('#ofmaq-final-history-limpar');
+        var printBtn = modal.querySelector('#ofmaq-final-history-print');
+        if (inpData) {
+          inpData.addEventListener('change', function() {
+            try {
+              var newDate = String(inpData.value || '').trim().slice(0, 10);
+              if (!newDate) return;
+              var maqSel = selMaq ? String(selMaq.value || '').trim() : maqAtual;
+              window.__ofmaqHistState = { dataIso: newDate, maquina: maqSel };
+              try { if (modal && typeof modal.close === 'function') modal.close(); } catch(_){ try { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); } catch(__){} }
+              setTimeout(function(){ try { openTodayHistoryModal(newDate, maqSel); } catch(e2){} }, 60);
+            } catch(e1){}
+          });
+        }
+        if (btnAplicar) {
+          btnAplicar.addEventListener('click', function(evA) {
+            try { if (evA && evA.preventDefault) evA.preventDefault(); } catch(_){}
+            try {
+              var newDate = inpData ? String(inpData.value || '').trim().slice(0, 10) : dataRef;
+              var maqSel = selMaq ? String(selMaq.value || '').trim() : maqAtual;
+              window.__ofmaqHistState = { dataIso: newDate || dataRef, maquina: maqSel || 'TODAS' };
+              try { if (modal && typeof modal.close === 'function') modal.close(); } catch(_){ try { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); } catch(__){} }
+              setTimeout(function(){ try { openTodayHistoryModal(newDate || null, (maqSel && maqSel !== 'TODAS') ? maqSel : null); } catch(e2){} }, 60);
+            } catch(e1){}
+          });
+        }
+        if (btnLimpar) {
+          btnLimpar.addEventListener('click', function(evL) {
+            try { if (evL && evL.preventDefault) evL.preventDefault(); } catch(_){}
+            try {
+              window.__ofmaqHistState = null;
+              try { if (modal && typeof modal.close === 'function') modal.close(); } catch(_){ try { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); } catch(__){} }
+              setTimeout(function(){ try { openTodayHistoryModal(null, null); } catch(e2){} }, 60);
+            } catch(e1){}
+          });
+        }
         if (printBtn) {
           printBtn.addEventListener('click', function(ev) {
             try { if (ev && ev.preventDefault) ev.preventDefault(); } catch(_){}
@@ -28923,6 +29017,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!data) throw new Error('Nenhum dado de histórico disponível para impressão.');
       var grupos = Array.isArray(data.grupos) ? data.grupos : [];
       var tot = data.totals || {};
+      var filtros = data.filtros || { maquina: 'TODAS', dataIso: (data.dataIso || data.todayIso || '') };
+      var dataIso = String(data.dataIso || data.todayIso || filtros.dataIso || todayBrtIso() || '').slice(0, 10);
+      var maqFiltro = String(filtros.maquina || 'TODAS').trim() || 'TODAS';
       var detailRowsAll = [];
       var summaryRows = grupos.map(function(g) {
         var items = Array.isArray(g.items) ? g.items : [];
@@ -28931,31 +29028,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             e(String(it.of_numero || '—')),
             e(String(it.cliente || '—')),
             e(String(it.maquina || '—')),
+            e(String(it.operador || '—')),
             e(fDT(it.hora_passagem)),
-            e(String(it.status || '—')),
-            e(fN(Number(it.quantidade || 0), 0))
+            e(fN(Number(it.quantidade || 0), 0)),
+            e(String(it.status || '—'))
           ]);
         });
         return [e(String(g.maquina || '—')), e(fN(Number(g.totalPassagens || 0), 0)), e(fN(Number(g.totalQtd || 0), 0))];
       });
+      var totalCaixas = Number(grupos.reduce(function(s,g){ return s + Number(g && g.totalQtd || 0); }, 0) || tot.totalCaixas || 0);
       var cards = [
-        { label: 'Passagens hoje', value: fN(Number(tot.totalPassagens || 0), 0), sub: 'Total de registros' },
-        { label: 'Máquinas', value: fN(Number(tot.totalMaquinas || 0), 0), sub: 'Com passagens hoje' },
+        { label: 'Passagens período', value: fN(Number(tot.totalPassagens || 0), 0), sub: 'Total de registros' },
+        { label: 'Máquinas', value: fN(Number(tot.totalMaquinas || 0), 0), sub: maqFiltro === 'TODAS' ? 'Todas as máquinas' : ('Máq.: ' + maqFiltro) },
         { label: 'OFs distintas', value: fN(Number(tot.totalOfs || 0), 0), sub: 'OFs com pelo menos 1 passagem' },
-        { label: 'Caixas hoje', value: fN(grupos.reduce(function(s,g){ return s + Number(g.totalQtd||0); }, 0), 0), sub: 'Soma das quantidades' }
+        { label: 'Caixas período', value: fN(totalCaixas, 0), sub: 'Soma das quantidades' }
       ];
+      var titulo = 'Histórico de Passagens';
+      if (maqFiltro && maqFiltro !== 'TODAS') titulo += ' — ' + maqFiltro;
+      var periodo = fD(dataIso) + (maqFiltro && maqFiltro !== 'TODAS' ? (' · Máquina: ' + maqFiltro) : ' · Todas as máquinas');
       var cfg = {
-        title: 'Histórico de Passagens — Hoje',
-        periodo: fD(String(data.todayIso || '')),
+        title: titulo,
+        periodo: periodo,
         cards: cards,
         summaryTitle: 'Resumo por máquina',
         summaryHeaders: ['Máquina', 'Passagens', 'Caixas'],
         summaryRows: summaryRows,
         detailTitle: 'Detalhamento das passagens',
-        detailHeaders: ['OF', 'Cliente', 'Máquina', 'Horário', 'Status', 'Qtd'],
+        detailHeaders: ['OF', 'Cliente', 'Máquina', 'Operador', 'Horário', 'Caixas', 'Status'],
         detailRows: detailRowsAll,
         emptySummaryCols: 3,
-        emptyDetailCols: 6
+        emptyDetailCols: 7
       };
       if (typeof rrOpenPrint === 'function') {
         return rrOpenPrint(cfg);
