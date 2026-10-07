@@ -1,6 +1,36 @@
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
+if (!window.__S2FetchWrapMonitorInstalled) {
+  window.__S2FetchWrapMonitorInstalled = true;
+  window.__fetchWrapDepth = 0;
+  window.__fetchWrapInstalled = {};
+  window.__patchFnWrapCount = {};
+  window.__s2BumpWrap = function wrapFlag(keyName, logLabel) {
+    try {
+      if (window.__fetchWrapInstalled[keyName]) return false;
+      window.__fetchWrapInstalled[keyName] = Date.now();
+      window.__fetchWrapDepth = Object.keys(window.__fetchWrapInstalled).length;
+      try { console.log('[S2] fetch wrap instalado [' + (logLabel || keyName) + ']. depth=' + window.__fetchWrapDepth); } catch (_) {}
+      return true;
+    } catch (_) { return false; }
+  };
+  window.__s2BumpFnWrap = function wrapFnFlag(keyName) {
+    try {
+      if (window.__patchFnWrapCount[keyName]) return false;
+      window.__patchFnWrapCount[keyName] = Date.now();
+      return true;
+    } catch (_) { return false; }
+  };
+  setInterval(function() {
+    try {
+      var n = Object.keys(window.__fetchWrapInstalled || {}).length;
+      window.__fetchWrapDepth = n;
+      var m = Object.keys(window.__patchFnWrapCount || {}).length;
+      console.log('[S2 MONITOR] fetch depth=' + n + ' fn wraps=' + m + ' ts=' + new Date().toISOString());
+    } catch (_) {}
+  }, 5000);
+}
 if (!window.__comRodandoWatchdogInstalled) {
   window.__comRodandoWatchdogInstalled = true;
   setInterval(function() {
@@ -496,8 +526,9 @@ try {
   }
 
   try {
-    var origFetch = window.fetch && window.fetch.bind(window);
-    if (origFetch && !origFetch.__patchUnifiedAuthWrapped) {
+    if (window.__patchUnifiedAuthFetchInstalled) return;
+    var origFetch = window.fetch;
+    if (typeof origFetch === 'function') {
       var wrappedFetch = async function(input, init) {
         var requestUrl = typeof input === 'string' ? input : String(input && input.url || '');
         var opts = Object.assign({}, init || {});
@@ -526,8 +557,9 @@ try {
         }
         return resp;
       };
-      wrappedFetch.__patchUnifiedAuthWrapped = true;
       window.fetch = wrappedFetch;
+      window.__patchUnifiedAuthFetchInstalled = true;
+      try { window.__s2BumpWrap && window.__s2BumpWrap('unified-auth', 'Unified Auth 401 refresh'); } catch (_) {}
     }
   } catch (_) {}
 
@@ -42699,16 +42731,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function ensureNormalizeFaca() {
+    if (window.__patchFacasWrap__normalizeFaca__Installed) return;
     var orig = window.normalizeFaca;
-    if (typeof orig !== 'function' || orig._patchFacasNumeroCategoria) return;
+    if (typeof orig !== 'function') return;
     var wrapped = function(r) {
       var out = orig.apply(this, arguments) || {};
       try { out.numero = r && (r.numero || r.num || r.numeracao) ? String(r.numero || r.num || r.numeracao) : (out.numero || ''); } catch (_) {}
       try { out.categoria = r && (r.categoria || r.cat) ? String(r.categoria || r.cat) : (out.categoria || ''); } catch (_) {}
       return out;
     };
-    wrapped._patchFacasNumeroCategoria = true;
     window.normalizeFaca = wrapped;
+    window.__patchFacasWrap__normalizeFaca__Installed = true;
+    try { window.__s2BumpFnWrap && window.__s2BumpFnWrap('facas.normalizeFaca'); } catch (_) {}
   }
 
   function fetchCategorias() {
@@ -42829,8 +42863,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function patchRenderFacas(fnName, bodyId, buscaId, numBuscaId, catSelId) {
+    var flagKey = '__patchFacasWrap__render_' + String(fnName || 'fn') + '__Installed';
+    try { if (window[flagKey]) return; } catch (_) { return; }
     var orig = window[fnName];
-    if (typeof orig !== 'function' || orig._patchFacasNumeroCategoria) return;
+    if (typeof orig !== 'function') return;
     var wrapped = function() {
       ensureFacasTableHeaders();
       var body = document.getElementById(bodyId);
@@ -42883,8 +42919,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '</tr>';
       }).join('');
     };
-    wrapped._patchFacasNumeroCategoria = true;
     window[fnName] = wrapped;
+    try { window[flagKey] = true; } catch (_) {}
+    try { window.__s2BumpFnWrap && window.__s2BumpFnWrap('facas.render.' + String(fnName || '')); } catch (_) {}
   }
 
   function ensureModalFields() {
@@ -42968,21 +43005,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   try { window.openFacaModalSafe = openFacaModalSafe; } catch (_) {}
 
   function patchAbrirModalFaca1() {
+    if (window.__patchFacasWrap__abrirModalFaca1__Installed) return;
     var orig = window.abrirModalFaca1;
-    if (typeof orig !== 'function' || orig._patchFacasNumeroCategoria) return;
+    if (typeof orig !== 'function') return;
     var wrapped = function(id) {
       var r = orig.apply(this, arguments);
       try { syncModalFieldsFromFaca(id); } catch (_) {}
       setTimeout(function() { try { syncModalFieldsFromFaca(id); } catch (_) {} }, 80);
       return r;
     };
-    wrapped._patchFacasNumeroCategoria = true;
     window.abrirModalFaca1 = wrapped;
+    window.__patchFacasWrap__abrirModalFaca1__Installed = true;
+    try { window.__s2BumpFnWrap && window.__s2BumpFnWrap('facas.abrirModalFaca1'); } catch (_) {}
   }
 
   function patchApiForFacas() {
+    if (window.__patchFacasApiFetchInstalled) return;
     var origFetch = window.fetch;
-    if (typeof origFetch !== 'function' || origFetch._patchFacasNumeroCategoria) return;
+    if (typeof origFetch !== 'function') return;
     var wrapped = function(url, opts) {
       var u = '';
       var m = 'GET';
@@ -43030,8 +43070,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return resp;
       });
     };
-    wrapped._patchFacasNumeroCategoria = true;
     window.fetch = wrapped;
+    window.__patchFacasApiFetchInstalled = true;
+    try { window.__s2BumpWrap && window.__s2BumpWrap('facas-api', 'Patch Facas Estoques PUT/POST inject numero/categoria/localizacao'); } catch (_) {}
   }
 
   function tick() {
@@ -43826,8 +43867,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function patchFetchClientesAfterPost() {
+    if (window.__patchClientesAfterFetchInstalled) return;
     var origFetch = window.fetch;
-    if (typeof origFetch !== 'function' || origFetch._patchClientesAfterPost) return;
+    if (typeof origFetch !== 'function') return;
     var wrapped = function(url, opts) {
       var isClientesPost = false;
       try {
@@ -43875,8 +43917,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       return p;
     };
-    wrapped._patchClientesAfterPost = true;
     window.fetch = wrapped;
+    window.__patchClientesAfterFetchInstalled = true;
+    try { window.__s2BumpWrap && window.__s2BumpWrap('clientes-after-post', 'Patch Clientes POST refresh lista + cache'); } catch (_) {}
   }
 
   function getCatalogoRamosCliente() {
@@ -53155,8 +53198,9 @@ window._mbnActive = function(id) {
   } catch (_) {}
 
   try {
+    if (window.__patchLog404FetchInstalled) return;
     var origFetch = window.fetch;
-    if (typeof origFetch === 'function' && !origFetch._patchLog404) {
+    if (typeof origFetch === 'function') {
       var wrapped = function(input, init) {
         var url = '';
         try { url = input && typeof input === 'object' && input.url ? String(input.url) : String(input || ''); } catch (_) { url = ''; }
@@ -53168,8 +53212,9 @@ window._mbnActive = function(id) {
         } catch (_) {}
         return p;
       };
-      wrapped._patchLog404 = true;
       window.fetch = wrapped;
+      window.__patchLog404FetchInstalled = true;
+      try { window.__s2BumpWrap && window.__s2BumpWrap('log-404', 'Log 404 requests fetch'); } catch (_) {}
     }
   } catch (_) {}
 })();
@@ -58918,20 +58963,22 @@ function _ocultarGraficoComissoes() {
   if (window.__patchNotifUnicaInstalled) return;
   window.__patchNotifUnicaInstalled = true;
   var _notifAtiva = false;
+  var _installed = false;
 
   function _instalar() {
     try {
+      if (_installed) return;
       var orig = window._notificacaoOF;
       if (typeof orig !== 'function') return;
-      if (orig.__patchNotifUnicaWrapped) return;
       var wrapped = function(msg, tipo) {
         if (_notifAtiva) return;
         _notifAtiva = true;
         setTimeout(function() { _notifAtiva = false; }, 4000);
         return orig.call(this, msg, tipo);
       };
-      wrapped.__patchNotifUnicaWrapped = true;
       window._notificacaoOF = wrapped;
+      _installed = true;
+      try { window.__s2BumpFnWrap && window.__s2BumpFnWrap('notificacaoOF.unica'); } catch (_) {}
     } catch (_) {}
   }
 
@@ -60354,7 +60401,7 @@ function _ocultarGraficoComissoes() {
   }
 
   function wrapFetch() {
-    if (window.fetch && window.fetch.__patchOfKnifeWrapped) return;
+    if (window.__patchOfKnifeFetchInstalled) return;
     var origFetch = window.fetch;
     if (typeof origFetch !== 'function') return;
     var wrapped = function(input, init) {
@@ -60369,8 +60416,9 @@ function _ocultarGraficoComissoes() {
       }
       return origFetch.call(this, input, req);
     };
-    wrapped.__patchOfKnifeWrapped = true;
     window.fetch = wrapped;
+    window.__patchOfKnifeFetchInstalled = true;
+    try { window.__s2BumpWrap && window.__s2BumpWrap('of-knife-payload', 'OF POST/PATCH augment payload ao salvar'); } catch (_) {}
   }
 
   window.openFacasMaisUtilizadasReport = async function() {
