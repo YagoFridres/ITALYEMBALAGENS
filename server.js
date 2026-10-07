@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261006214000';
-const SW_RUNTIME_VERSION = '20261006214000';
+const PATCH_RUNTIME_VERSION = '20261007083200';
+const SW_RUNTIME_VERSION = '20261007083200';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -10891,6 +10891,15 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório', __dbg });
     const bodyRaw = (req.body && typeof req.body === 'object') ? req.body : {};
     __dbg.maquina_body_raw = bodyRaw.maquina_nome || bodyRaw.maquina || null;
+    // ===== H5 DOC DIVERGÊNCIA MÁQUINA (LOCAL-2 POST /api/ofs/:id/passou-maquina)
+    // - AQUI escolhemos `maquinaNome` que é gravado na LINHA FÍSICA passagens_maquina (via _upsertPassagemMaquinaRegistro) e TAMBÉM na coluna JSON ofs.passagens_maquina.
+    // - ORDEM DE ESCOLHA (candidatos L10923-L10955, se body estiver vazio):
+    //   1°) bodyRaw.maquina_nome (o que o OPERADOR SELECIONOU NO MODAL) — IMP 05/IMP 04 (na prática é IMP 05.
+    //   2°) of.maquina_agendada → (maquina AGENDAMENTO OF) — IMP 01/IMP 02 (padrão).
+    //   3°) of.maq[] (array das máquinas do fluxo)
+    //   4°) fluxo_maquinas[of.maquina_atual_index] → atual do passo do fluxo
+    // - RESULTADO: se o operador selecionou IMP 05 mas o body veio VAZIO (ex: conclusão rápida sem modal completa), cai no 2° → IMP 01 (agendada) e aí a TABELA FÍSICA recebe IMP 01 → 8 OFs 06/10 aparecem IMP 01 na tabela física e IMP 05 no JSON (campo da OF).
+    // - NÃO ALTERAR LÓGICA: usuário decide regra depois.
     let maquinaNome = String(
       bodyRaw.maquina_nome ||
       bodyRaw.maquina ||
@@ -12523,9 +12532,12 @@ function _passagensIsoTsFromAny(v) {
 }
 
 function _passagensHistoricoOfDataRef(of) {
+  // ===== H5 #2: NUNCA use of.data_conclusao como data da passagem JSON.
+  // - data_conclusao foi alterada retroativamente p/ contabilidade (26 OFs reais passaram 01/10 mas data_conclusao foi definida como 30/09).
+  // - Usando-a aqui causava o bug de H1 30/09 mostrar 56 OFs (34 físicas + 22 duplicadas p/ conclusao retroativa = 26 OFs do 01/10 aparecendo em DOIS dias).
+  // - Critério data_ref AGORA: data_faturamento > dia > created_at (APENAS como último fallback). data_conclusao REMOVIDA da lista.
   return _passagensIsoDateFromAny(
     of?.data_faturamento ??
-    of?.data_conclusao ??
     of?.dia ??
     of?.created_at ??
     ''
@@ -12533,9 +12545,9 @@ function _passagensHistoricoOfDataRef(of) {
 }
 
 function _passagensHistoricoOfTsRef(of) {
+  // ===== H5 #2: mesmo critério de data_conclusao REMOVIDA.
   return _passagensIsoTsFromAny(
     of?.data_faturamento ??
-    of?.data_conclusao ??
     of?.dia ??
     of?.created_at ??
     ''
@@ -12714,13 +12726,17 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
       if (!maquinaCanon) return;
       if (maquinaNeedle && maquinaCanon !== maquinaNeedle) return;
 
-      const ts =
-        _passagensIsoTsFromAny(p?.hora_passagem || p?.passou_em || p?.saiu_em || p?.created_at || '')
+      const pHoraPassagem =
+        _passagensIsoTsFromAny(p?.hora_passagem || p?.passou_em || p?.saiu_em || p?.criado_em || p?.created_at || '')
         || String(fluxoMap.get(maquinaCanon) || '')
         || dataRefTs
-        || dataConclusaoIso
         || _passagensIsoTsFromAny(of?.updated_at || of?.created_at || '');
-      const dia = dataRefDia;
+      // ===== H5 #2: NÃO use data_conclusao como fallback para hora passagem JSON → data
+      const ts = pHoraPassagem || '';
+      // ===== H5 #2: data da linha = data do próprio JSON da passagem (hora_passagem ISO dia) OU dataRefDia só NÃO tem data_conclusao
+      const pDataDia = (ts && ts.slice(0, 10)) || dataRefDia || '';
+      const dia = pDataDia;
+      if (!dia || dia < inicioIso || dia > fimIso) return;
 
       rows.push({
         of_id: ofId,
@@ -13172,6 +13188,13 @@ function _limparPayloadPassagens(raw) {
 }
 
 async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
+  // ===== H5 DOC DIVERGÊNCIA MÁQUINA (8 OFs 06/10 RIPKE #3745-3750/#3753 E DKADI #3593)
+  // LOCAL-1 (GRAVAÇÃO NA TABELA FÍSICA passagens_maquina):
+  // - Esta função recebe o `maquinaNome` resolvido ANTES pelo caller (ex: POST /api/ofs/:id/passou-maquina).
+  // - Se o body da requisição NÃO envia `maquina_nome` (modal vazio), o bloco L10919-L10957 do caller) escolhe a PRIMEIRA opção da lista: `of.maquina_agendada` (a máquina do agendamento OF).
+  // - Por outro lado, a coluna JSON `ofs.passagens_maquina` GRAVA NO PASSO 2 (L11110-L11131) grava a `maquinaNome` do BODY (o que o OPERADOR ESCOLHEU NO MODAL, ex: IMP 05), ou IMP 04).
+  // - CONSEQUÊNCIA: 8 OFs hoje: tabela física = máquina AGENDADA (IMP 01 / IMP 02) enquanto JSON.col JSON campo maq = máquina ESCOLHIDA NO MODAL (IMP 05 / IMP 04).
+  // - NÃO ALTERAR ESTA LÓGICA AINDA: usuário vai trazer regra oficial DEPOIS H5 item #4. Aqui só documentar.
   const rawOrig = basePayload && typeof basePayload === 'object' ? { ...basePayload } : {};
   const ofId = String(rawOrig.of_id || '').trim();
   const ofNumero = String(rawOrig.of_numero || rawOrig.ofnumero || rawOrig.ofId || '').trim() || null;
@@ -14284,10 +14307,33 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       __dbg_hist.merge_fisica_raw_count_db = rawArr.length;
       __dbg_hist.merge_fisica_mapeadas_count = fisicaMergeRows.length;
       __dbg_hist.merge_fisica_count_exact_query = fisicaMergeCountExact;
-      // MERGE pair.rows (FONTE 1: col JSON OF) + fisicaMergeRows (FONTE 2: tabela fisica)
+      // ===== H5 #1: REGRA FONTE DE DADOS — TABELA FÍSICA VENCE.
+      // - SE uma OF tiver QUALQUER linha na TABELA FÍSICA passagens_maquina (mesmo período) → DESCARTAR TODAS as linhas dessa OF provenientes da FONTE 1 (coluna JSON ofs.passagens_maquina).
+      // - SOMENTE para OFs LEGADAS (sem NENHUMA linha na física no período) é que mantemos a coluna JSON.
+      // - Motivo: evita "dupla contagem" da mesma OF nos dois dias (ex: 26 OFs 01/10 apareciam também no 30/09 via data_conclusao retroativa).
+      const ofsComLinhaFisica = new Set();
+      fisicaMergeRows.forEach(function (rowF) {
+        const ofNorm = _normalizarNumeroOfDigits(rowF?.of_numero ?? rowF?.numero ?? rowF?.of ?? '');
+        const ofRaw = String(rowF?.of_numero ?? rowF?.numero ?? rowF?.of ?? '').trim();
+        if (ofNorm) ofsComLinhaFisica.add(ofNorm);
+        if (ofRaw) ofsComLinhaFisica.add(ofRaw);
+        const ofIdRaw = String(rowF?.of_id || '').trim();
+        if (ofIdRaw) ofsComLinhaFisica.add('id::' + ofIdRaw);
+      });
       const origRows = Array.isArray(pair?.rows) ? pair.rows.slice() : [];
-      pair.rows = origRows.concat(fisicaMergeRows);
-      pair.count = (Number(pair?.count || 0) || 0) + fisicaMergeCountExact;
+      const origRowsFiltradas = origRows.filter(function (rowJson) {
+        const ofNorm = _normalizarNumeroOfDigits(rowJson?.of_numero ?? rowJson?.numero ?? rowJson?.of ?? '');
+        const ofRaw = String(rowJson?.of_numero ?? rowJson?.numero ?? rowJson?.of ?? '').trim();
+        const ofIdRaw = String(rowJson?.of_id || '').trim();
+        if (ofNorm && ofsComLinhaFisica.has(ofNorm)) return false;
+        if (ofRaw && ofsComLinhaFisica.has(ofRaw)) return false;
+        if (ofIdRaw && ofsComLinhaFisica.has('id::' + ofIdRaw)) return false;
+        return true;
+      });
+      __dbg_hist.merge_fonte1_coljson_rows_removidas_tinham_fisica = origRows.length - origRowsFiltradas.length;
+      __dbg_hist.merge_fonte1_coljson_rows_legadas_mantidas_sem_fisica = origRowsFiltradas.length;
+      pair.rows = origRowsFiltradas.concat(fisicaMergeRows);
+      pair.count = origRowsFiltradas.length + fisicaMergeCountExact;
       __dbg_hist.merge_total_depois_merge_antes_dedup = (Array.isArray(pair?.rows) ? pair.rows.length : -1);
       __dbg_hist.merge_fonte1_coljson_rows_originais_len = origRows.length;
       __dbg_hist.merge_fonte2_tabelafisica_rows_adicionadas_len = fisicaMergeRows.length;

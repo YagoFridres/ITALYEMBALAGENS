@@ -28927,7 +28927,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       try { maquinaUnicas.add('TODAS'); } catch(_){}
 
       try {
-        var url = '/api/passagens/historico?mes=' + encodeURIComponent(mesRef) + '&ano=' + encodeURIComponent(anoRef) + '&limit=1000';
+        // ===== H5 #3: UNIFICAR contagem TELA vs MODAL Histórico de hoje.
+        // - ANTES: usava mes/ano & depois fallback local `state.rowsData` (= cache OFs do cliente) para filtrar. O fallback local usava as passagens JSON COLUNA da OF sem aplicar a REGRA FÍSICA VENCE (H5#1), nem remover data_conclusao retroativa (H5#2). Resultado: modal 19 vs tela 36.
+        // - AGORA: obrigatório endpoint `/api/passagens/historico` com RANGE EXATO data_inicio=data_fim=dataAlvo. O mesmo RENDER é aplicado na tela e no modal (mesma função endpoint e mesma deduplicação backend). Se a API falhar → aviso no modal e ZERO linhas (nunca fallback local desalinhado).
+        var url = '/api/passagens/historico?data_inicio=' + encodeURIComponent(dataAlvo) + '&data_fim=' + encodeURIComponent(dataAlvo) + '&limit=2000';
         var resp = await fetch(url, { method: 'GET', credentials: 'include', cache: 'no-store', headers: { 'Accept': 'application/json' } });
         if (resp && resp.ok) {
           var payload = await resp.json();
@@ -28938,34 +28941,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
       } catch (eFetch) {
         avisoFonteFisica = 'Não foi possível carregar passagens do histórico (falha de rede). Detalhe: ' + String(eFetch && eFetch.message || eFetch || 'desconhecido');
-        try { console.warn('[OFMAQ] buildTodayHistoryFromState fetch historico falhou, usando fallback local:', eFetch && eFetch.message || eFetch); } catch(_){}
+        try { console.warn('[OFMAQ] buildTodayHistoryFromState fetch historico falhou:', eFetch && eFetch.message || eFetch); } catch(_){}
         allPassagens = [];
       }
 
-      if (!allPassagens.length) {
-        var rows = (typeof window !== 'undefined' && Array.isArray(window.__OFMAQ_FINAL_LAST_RAW_ROWS) && window.__OFMAQ_FINAL_LAST_RAW_ROWS.length > 0)
-          ? window.__OFMAQ_FINAL_LAST_RAW_ROWS
-          : (state && Array.isArray(state.rowsData) ? state.rowsData : []);
-        rows.forEach(function(item) {
-          if (!item) return;
-          var raw = item && item.ofRaw ? item.ofRaw : item;
-          var arr = [];
-          try {
-            var v = raw && raw.passagens_maquina;
-            if (v == null) arr = [];
-            else if (Array.isArray(v)) arr = v.slice();
-            else if (typeof v === 'string') { try { arr = JSON.parse(v) || []; } catch(_){ arr = []; } if (!Array.isArray(arr)) arr = []; }
-            else arr = [];
-          } catch (_) { arr = []; }
-          arr.forEach(function(p) {
-            if (!p || typeof p !== 'object') return;
-            allPassagens.push(Object.assign({}, p, {
-              _of_row_ref: item,
-              _of_raw_ref: raw
-            }));
-          });
-        });
-      }
+      // H5 #3: FALLBACK LOCAL REMOVIDO (desalinhava contagem modal vs tela).
+      // Se API falhou → allPassagens fica vazio e avisoFonteFisica é exibido no modal.
 
       var dedupeKeys = new Set();
       var filteredPassagens = [];
