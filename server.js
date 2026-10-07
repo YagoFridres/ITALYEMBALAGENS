@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -350,6 +350,45 @@ if (!_supabaseEnvOk) {
   }
 })();
 
+/* ==========================================================
+   [DOC Q3 — ESTRATÉGIA DE CASAMENTO NOMES OF vs CADASTRO MÁQUINA]
+   Contexto: Nomes usados nas OFs são "simples" (ex: "Riscador", "IMP 01",
+   "CORTE VINCO ROTATIVA", "Acabamento") enquanto a tabela FÍSICA "maquinas"
+   pode ter cadastros com sufixos numéricos, inativos ou variantes:
+     - OF usa ......... "Riscador"
+     - Cadastro físico: "RISCADOR 01" (inativo, producao=0, setup=0)
+     - Cadastro físico: "RISCADOR 02" (inativo, producao=0, setup=0)
+     - Impressoras ..... "IMP 01" vs cadastro idem (OK, match simples)
+     - Corte ........... "CORTE VINCO ROTATIVA" vs cadastro idem mas 9 duplicatas
+
+   ESTRATÉGIA PROPOSTA (NÃO CODIFICAR ATÉ OK DO USUÁRIO):
+   1) NORMALIZAÇÃO CANÔNICA NOME:
+      - uppercase + trim + remove acentos (NFD)
+      - remove múltiplos espaços ("  " → " ")
+      - remove caracteres especiais exceto letras/números/espaço (opcional)
+   2) TOKEN SEM NÚMERO (para busca FUZZY):
+      - Após normalização, remover tokens que são só numéricos ou
+        numerais de fim de nome. Ex: "RISCADOR 01" → token base "RISCADOR"
+   3) REGRAS DE MATCH, ordem PRIORIDADE:
+      a) MATCH EXATO normalizado: nome_OF == nome_cadastro → ✅ usa essa linha
+      b) MATCH TOKEN BASE: nome_OF token base == nome_cadastro token base
+         (aqui "Riscador" casa com "RISCADOR 01" e "RISCADOR 02")
+         - quando houver MÚLTIPLOS matches (ex: RISCADOR 01/02):
+           * filtra ativa=true primeiro
+           * se mais de um ativo, usa a com maior caixas_hora (ou primeira)
+           * se nenhuma ativa, usa a ativa=false com maior caixas_hora
+           * (RISCADOR 01 vs 02 hoje ambos inativos c/ producao=0 → indefinido,
+             usuário precisa dizer qual usar ou ativar um)
+      c) FIM DA LISTA: se nenhum match → usa o virtual MAQUINAS_CATALOGO_PADRAO
+         com flag _sem_cadastro: true (UI mostra "Máquina sem cadastro")
+   4) NÃO ALTERAR a regra acima até o usuário INFORMAR:
+      - para "Riscador": qual cadastro físico vale (01 ou 02? ativar um deles?)
+      - para "CORTE VINCO ROTATIVA": qual das 9 duplicatas manter (1 está ativa)
+      - para "Acabamento": se existe ou precisa cadastrar
+   5) OUTROS CASOS a confirmar: "IMP 01"..05 batem exatos; "Acabamento" talvez
+      não tenha nenhum físico → cai em virtual com aviso.
+   ========================================================== */
+
 function _mergeCanonicalMachineRows(rows) {
   const norm = (v) => {
     try {
@@ -376,6 +415,7 @@ function _mergeCanonicalMachineRows(rows) {
       ordem: item.ordem,
       ativa: true,
       _virtual: true,
+      _sem_cadastro: true
     });
   });
   const ordMap = new Map(MAQUINAS_CATALOGO_PADRAO.map((item) => [norm(item.nome), Number(item.ordem) || 999]));
@@ -1251,8 +1291,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261007110943';
-const SW_RUNTIME_VERSION = '20261007110943';
+const PATCH_RUNTIME_VERSION = '20261007111648';
+const SW_RUNTIME_VERSION = '20261007111648';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -21506,10 +21546,50 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
       ativa: (b.ativa === undefined && b.ativo === undefined) ? true : ((b.ativa ?? b.ativo) === true || (b.ativa ?? b.ativo) === 'true' || (b.ativa ?? b.ativo) === 1 || (b.ativa ?? b.ativo) === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
-    console.log('[maquinas POST] payload:', payload);
+    const nomeNorm = String(payload.nome || '').trim();
+    console.log('[maquinas POST] payload:', payload, '| nome normalizado:', nomeNorm);
+    if (!nomeNorm) return res.status(400).json({ ok: false, error: 'Nome da máquina obrigatório' });
+
+    let empresa_id = '';
+    try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresa_id = ''; }
+    if (!empresa_id) { try { empresa_id = String(await getEmpresaId(req) || '').trim(); } catch (_) { empresa_id = ''; } }
+
+    let existente = null;
+    {
+      const normNome = (s) => {
+        try { return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' '); }
+        catch (_) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+      };
+      const alvoNome = normNome(nomeNorm);
+      const lQ = supabase.from('maquinas').select('*').limit(200);
+      if (empresa_id) { try { lQ.eq('empresa_id', empresa_id); } catch (_) {} }
+      const { data: lData, error: lErr } = await lQ;
+      if (!lErr && Array.isArray(lData)) {
+        existente = lData.find((m) => {
+          const n1 = normNome(m?.nome || m?.col || m?.name || '');
+          const n2 = normNome(m?.codigo || '');
+          return (n1 && n1 === alvoNome) || (n2 && n2 === alvoNome);
+        }) || null;
+      }
+    }
+
+    if (existente && existente.id) {
+      console.log('[maquinas POST] encontrada existente id=', existente.id, 'nome=', existente.nome, '→ fazendo UPDATE por id em vez de INSERT.');
+      const payloadUp = Object.assign({}, payload);
+      delete payloadUp.nome;
+      Object.keys(payloadUp).forEach(k => { if (payloadUp[k] === undefined) delete payloadUp[k]; });
+      if (!Object.keys(payloadUp).length) {
+        cacheClear('maquinas');
+        return ok(res, existente);
+      }
+      const { data: dUp, error: eUp } = await supabase.from('maquinas').update(payloadUp).eq('id', existente.id).select();
+      if (eUp) { console.error('[maquinas POST update] erro:', JSON.stringify(eUp)); throw eUp; }
+      cacheClear('maquinas');
+      return ok(res, (dUp && dUp[0]) ? Object.assign({}, existente, dUp[0]) : existente);
+    }
+
     const { data, error } = await supabase.from('maquinas').insert([payload]).select();
-    if (error) { console.error('[maquinas POST] erro:', JSON.stringify(error)); throw error; }
-    if (error) throw error;
+    if (error) { console.error('[maquinas POST insert] erro:', JSON.stringify(error)); throw error; }
     cacheClear('maquinas');
     ok(res, data[0]);
   } catch (e) { console.error('[maquinas POST] catch:', e && e.message ? e.message : e); err(res, e); }
