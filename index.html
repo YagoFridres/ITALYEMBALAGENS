@@ -59989,6 +59989,23 @@ function calcularCapacidadeMaquina(maqData, ofs){
   };
 }
 
+
+// [M2 DOC FÓRMULA ATUAL - FONTE CANÔNICA POR OF - NÃO ALTERAR SEM APROVAÇÃO]
+// Prioridade de entrada: of.tempo_estimado_min > maqDados (tela Máquinas) > campos da OF > fallbacks fixos.
+// Parâmetros de entrada e onde vêm cada campo:
+//   - qtd: of.quantidade / of.qtd / of.qtd_pedida (qtd de caixas da OF)
+//   - cxHora (fallback cascata): maqDados.producao / phora / caixas_hora / velocidade → of.producao / phora / velocidade / caixas_hora / cxh → 500 cx/h
+//   - setup (fallback cascata): maqDados.setup_medio / passagem_media / tempo_setup_padrao_min / tempo_setup_min / setup_min → 15 minutos
+// Cálculo:
+//   minProducao = teto(qtd / cxHora * 60)   // tempo de produção SEM setup
+//   minTotal    = minProducao + setup     // tempo total da OF (usado nos cards/métricas)
+// VALIDADO vs PEDIDO USUÁRIO (o que está implementado HOJE):
+//   ✓ (OK) usa setup e cx/h da máquina (via getDadosMaquina → tela Máquinas)
+//   ✓ (OK) usa horário e capacidade útil do dia (via capacidadeDia → _CAPACIDADE_MAQUINA uteis_minutos / total_minutos)
+//   ✗ (DIVERGÊNCIA - NÃO IMPLEMENTADO AINDA) tipo de caixa NÃO É CONSIDERADO NA FÓRMULA ATUAL
+//     → hoje é usado fallback único de 500 cx/h + 15 min setup para QUALQUER tipo de caixa,
+//       independente de tamanho, cor, espessura, modelo, faca, cliente, produto, complexidade etc.
+//     → alterar isso impacta todas as OFs e requer validação numérica ANTES do deploy.
 function calcularTempoOf(of, maqDados){
   if (of && of.tempo_estimado_min && parseInt(of.tempo_estimado_min, 10) > 0) {
     return parseInt(of.tempo_estimado_min, 10);

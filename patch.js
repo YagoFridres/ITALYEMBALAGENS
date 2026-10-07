@@ -26622,8 +26622,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       state.selectedClienteNome = '';
       state._acSuggestions = [];
       state._acIndex = -1;
-      if (shell && shell.search) shell.search.value = state.searchTerm || '';
-      if (shell) { updateToolbar(shell); renderRows(shell); }
+      state.searchTerm = '';
+      if (shell && shell.search) shell.search.value = '';
+      if (shell) { updateToolbar(shell); renderAlert(shell); renderRows(shell); }
     }
 
     function ensureDefaults() {
@@ -26843,6 +26844,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return String(imgs[0] || '').trim();
     }
 
+    // [M2 DOC FÓRMULA ATUAL - NÃO ALTERAR SEM APROVAÇÃO]
+    // Cálculo de tempo previsto por OF, utilizado nos cards de máquina (semana + dia),
+    // barra de capacidade e alertas do cabeçalho.
+    // ORDEM DE FALLBACK (prioridade, do mais forte para o mais fraco):
+    //   1. Se of.tempo_estimado_min > 0 → retorna esse valor fixo (campo manual da OF, vence tudo).
+    //   2. Senão, chama calcularTempoOf(of, maqDados) do index.html (fórmula canônica):
+    //        a) qtd = of.quantidade (ou of.qtd / of.qtd_pedida)
+    //        b) cxHora = (MAQUINA: producao / phora / caixas_hora / velocidade) → (OF: producao / phora / velocidade / caixas_hora / cxh) → fallback 500
+    //        c) setup  = (MAQUINA: setup_medio / passagem_media / tempo_setup_padrao_min / tempo_setup_min / setup_min) → fallback 15 min
+    //        d) minProducao = teto(qtd / cxHora * 60)   (tempo de produção sem setup)
+    //        e) minTotal    = minProducao + setup      (tempo total da OF)
+    //   3. Se 1 e 2 falharem → fallback local do patch.js: max(5, round(qtd/12) ou 30 min)
+    // VARIÁVEIS USADAS (diretamente da tela "Máquinas" via window.getDadosMaquina):
+    //   - setup médio / setup min (maqDados.setup_medio / setup_min etc.)
+    //   - caixas por hora / velocidade (maqDados.producao / caixas_hora / phora etc.)
+    //   - capacidade útil do dia (via capacidadeDia → window._CAPACIDADE_MAQUINA: uteis_minutos [seg-sex 480, sex < 480], total_minutos)
+    //   - horário (horaInicio / horaFim via calcularCapacidadeMaquina no cabeçalho Kanban)
+    // DIVERGÊNCIA PEDIDO USUÁRIO (NÃO ALTERAR SEM APROVAÇÃO):
+    //   → Tipo de caixa (tamanho / cor / faca / modelo / cliente / produto) NÃO influencia na fórmula ATUAL.
+    //     A fórmula hoje só usa qtd OF + setup máquina + cx/h máquina (fallback 15 min / 500 cx/h para toda OF).
+    //     Nenhum parâmetro de "tipo de caixa" (pequena/média/grande, específica por cliente/produto) é aplicado atualmente.
     function calcTempo(of, machine) {
       try {
         var maqDados = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(machine) : null;
@@ -26989,6 +27011,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
     }
 
+    // [M2 DOC CARDS MÁQUINA: SEPARAÇÃO SEMANA x DIA - NÃO ALTERAR SEM APROVAÇÃO]
+    // Cada card de máquina exibe DOIS conjuntos independentes, com filtros DIFERENTES:
+    //
+    //  (A) CABEÇALHO DO CARD (<h3> + <small> = CONTEXTO DA SEMANA:
+    //      Filtro: weekDays(state.weekStartIso) → semana corrente (seg a dom)
+    //      Soma: todas as rows da MÁQUINA onde prazoIso está DENTRO da semana
+    //      Exibido: "X OF(s) na semana | HHhMM" (linha 27345 do renderSummary)
+    //      Métricas semana: rows.length (qtd OFs), Σ tempoMin (tempo total semana)
+    //
+    //  (B) GRID 4 COLUNAS (abaixo do small) = MISTO (CUIDADO COM A INTERPRETAÇÃO):
+    //      - "OFs no dia"     → rows do DIA selecionado (state.selectedDateIso) = metric.rows.length
+    //      - "Caixas"           → total da SEMANA (rows semanais, NÃO do dia!)
+    //      - "Tempo previsto"   → tempo total da SEMANA (Σ tempoMin semanal, NÃO do dia!)
+    //      - "Urgências"       → urgências da SEMANA (filter por urgencia !== normal, NÃO por dia)
+    //
+    //  (C) BARRA DE PROGRESSO (%) = DIA selecionado:
+    //      Filtro: state.selectedDateIso (dia do botão clicado)
+    //      Soma: Σ tempoMin da máquina no DIA (mesmo machineMetrics acima)
+    //      Denominador: capacidadeDia(dateIso).uteis (capacidade útil do dia: seg-sex 480, sex < 480 via _CAPACIDADE_MAQUINA)
+    //      Cálculo: round((tempoDia uteisDia) → pct (tom: <80 ok, 80-99 warn, 100+ danger)
+    //
+    // OBS (não alterar sem aprovação): "Caixas", "Tempo previsto" e "Urgências" do grid
+    // são VALORES SEMANAIS, não do dia. Só "OFs no dia" e a barra % refletem o dia selecionado.
+    // Essa separação é o comportamento ATUAL e intencional do bloco M antes da alteração.
     function machineMetrics(machine, dateIso) {
       var rows = state.rowsData.filter(function(item) { return item.maquina === machine && item.prazoIso === dateIso; });
       var qtd = rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0);
