@@ -26997,6 +26997,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function sortRowsByCanonicalOrder(rows) {
       return (Array.isArray(rows) ? rows.slice() : []).sort(function(a, b) {
+        var oa = Number(a && (a.ordem_maquina != null ? a.ordem_maquina : (a.order || 0))) || 0;
+        var ob = Number(b && (b.ordem_maquina != null ? b.ordem_maquina : (b.order || 0))) || 0;
+        if (oa > 0 && ob > 0 && oa !== ob) return oa - ob;
+        var ua = a && (a.urg || a.urgente || a.urgencia === 'urgente' || a.urgencia === 'atrasada') ? 0 : 1;
+        var ub = b && (b.urg || b.urgente || b.urgencia === 'urgente' || b.urgencia === 'atrasada') ? 0 : 1;
+        if (ua !== ub) return ua - ub;
+        var da = String(a && (a.data_entrega || a.entrega || a.prazoIso || '') || '').slice(0, 10);
+        var db = String(b && (b.data_entrega || b.entrega || b.prazoIso || '') || '').slice(0, 10);
+        if (da !== db) return da.localeCompare(db);
         if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
         return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
       });
@@ -27036,6 +27045,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }).sort(function(a, b) {
         if (a.maquina !== b.maquina) return a.maquina.localeCompare(b.maquina, 'pt-BR');
         if (String(a.prazoIso || '') !== String(b.prazoIso || '')) return String(a.prazoIso || '').localeCompare(String(b.prazoIso || ''));
+        var ua = a && (a.urg || a.urgente || a.urgencia === 'urgente' || a.urgencia === 'atrasada') ? 0 : 1;
+        var ub = b && (b.urg || b.urgente || b.urgencia === 'urgente' || b.urgencia === 'atrasada') ? 0 : 1;
+        if (ua !== ub) return ua - ub;
+        var oa = Number(a && (a.ordem_maquina != null ? a.ordem_maquina : 0)) || 0;
+        var ob = Number(b && (b.ordem_maquina != null ? b.ordem_maquina : 0)) || 0;
+        if (oa > 0 && ob > 0 && oa !== ob) return oa - ob;
+        var da = String(a && (a.data_entrega || a.entrega || '') || '').slice(0, 10);
+        var db = String(b && (b.data_entrega || b.entrega || '') || '').slice(0, 10);
+        if (da !== db) return da.localeCompare(db);
         if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
         return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
       });
@@ -27113,7 +27131,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var tempo = rows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0);
       var cap = capacidadeDia(dateIso);
       var pct = cap.uteis > 0 ? Math.round((tempo / cap.uteis) * 100) : 0;
-      var tone = pct >= 100 ? 'danger' : (pct >= 80 ? 'warn' : 'ok');
+      var tone = pct > 100 ? 'danger' : (pct >= 85 ? 'warn' : 'ok');
       return { rows: rows, qtd: qtd, tempo: tempo, pct: pct, tone: tone };
     }
 
@@ -27172,17 +27190,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return list;
       }
       list.sort(function(a, b) {
-        if (!state.grouped) {
-          if (a.urgencia !== b.urgencia) {
-            if (a.urgencia === 'urgente') return -1;
-            if (b.urgencia === 'urgente') return 1;
-          }
-        }
         if (state.grouped) {
           var ga = String(a.corPrincipal || '') + '|' + String(a.tamanhoKey || '');
           var gb = String(b.corPrincipal || '') + '|' + String(b.tamanhoKey || '');
           if (ga !== gb) return ga.localeCompare(gb, 'pt-BR');
         }
+        var ma = normalizeMachine(a && a.maquina || '');
+        var mb = normalizeMachine(b && b.maquina || '');
+        if (ma !== mb) return ma.localeCompare(mb, 'pt-BR');
+        var da = String(a && a.prazoIso || '') || '';
+        var db = String(b && b.prazoIso || '') || '';
+        if (da !== db) return da.localeCompare(db);
+        var ua = a && (a.urg || a.urgente || a.urgencia === 'urgente' || a.urgencia === 'atrasada') ? 0 : 1;
+        var ub = b && (b.urg || b.urgente || b.urgencia === 'urgente' || b.urgencia === 'atrasada') ? 0 : 1;
+        if (ua !== ub) return ua - ub;
+        var oa = Number(a && (a.ordem_maquina != null ? a.ordem_maquina : 0)) || 0;
+        var ob = Number(b && (b.ordem_maquina != null ? b.ordem_maquina : 0)) || 0;
+        if (oa > 0 && ob > 0 && oa !== ob) return oa - ob;
+        var dea = String(a && (a.data_entrega || a.entrega || '') || '').slice(0, 10);
+        var deb = String(b && (b.data_entrega || b.entrega || '') || '').slice(0, 10);
+        if (dea !== deb) return dea.localeCompare(deb);
         if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
         var na = _safeNumeroOfOrdem(a && (a.numero || a.of || a.id || ''));
         var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || b.id || ''));
@@ -27314,6 +27341,28 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-amostra-feito{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 16px;border-radius:12px;border:1px solid rgba(34,197,94,.5);background:linear-gradient(135deg,rgba(22,101,52,.96),rgba(22,163,74,.92));color:#ecfdf5;font-size:13px;font-weight:900;letter-spacing:.02em;cursor:pointer;box-shadow:0 10px 24px rgba(22,101,52,.24)}'
         + '#page-ofmaq .ofmaq-amostra-feito[disabled],#page-ofmaq .ofmaq-amostra-feito[data-loading="1"]{opacity:.65;pointer-events:none}'
         + '#page-ofmaq .ofmaq-amostras-vazio{padding:24px 20px;border-radius:14px;border:1px dashed rgba(148,163,184,.25);text-align:center;color:#cbd5e1;font-size:13px}'
+        + '#page-ofmaq .ofmaq-amostras-semana-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));align-items:stretch}'
+        + '#page-ofmaq .ofmaq-amostra-card{display:grid;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.92));border:1px solid rgba(71,85,105,.7);position:relative;overflow:hidden}'
+        + '#page-ofmaq .ofmaq-amostra-card[data-atrasada="1"]{border-color:rgba(239,68,68,.55);box-shadow:inset 0 0 0 1px rgba(239,68,68,.25),0 0 0 1px rgba(239,68,68,.08) inset}'
+        + '#page-ofmaq .ofmaq-amostra-card-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-amostra-card-img{flex-shrink:0;width:52px;height:52px;border-radius:10px;border:1px solid #334155;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:zoom-in;aspect-ratio:1/1;box-sizing:border-box}'
+        + '#page-ofmaq .ofmaq-amostra-card-img img{width:100%;height:100%;object-fit:cover;display:block}'
+        + '#page-ofmaq .ofmaq-amostra-card-meta{display:grid;gap:3px;min-width:0;flex:1 1 140px}'
+        + '#page-ofmaq .ofmaq-amostra-card-num{font-size:12px;font-weight:900;color:#94a3b8;letter-spacing:.02em}'
+        + '#page-ofmaq .ofmaq-amostra-card-cliente{font-size:13px;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+        + '#page-ofmaq .ofmaq-amostra-card-prod{font-size:12.5px;font-weight:600;color:#f1f5f9;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+        + '#page-ofmaq .ofmaq-amostra-card-status{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.03em;background:rgba(148,163,184,.18);color:#cbd5e1;border:1px solid rgba(255,255,255,.06);align-self:flex-start}'
+        + '#page-ofmaq .ofmaq-amostra-card-dates{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;border-radius:10px;background:rgba(2,6,23,.4);border:1px solid rgba(51,65,85,.45)}'
+        + '#page-ofmaq .ofmaq-amostra-card-date{display:grid;gap:2px}'
+        + '#page-ofmaq .ofmaq-amostra-card-date span:first-child{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#64748b}'
+        + '#page-ofmaq .ofmaq-amostra-card-date span:last-child{font-size:12px;font-weight:700;color:#cbd5e1}'
+        + '#page-ofmaq .ofmaq-amostra-card-date[data-tone="atrasado"] span:last-child{color:#ef4444;font-weight:900}'
+        + '#page-ofmaq .ofmaq-amostra-card-date[data-tone="semana"] span:last-child{color:#f59e0b;font-weight:800}'
+        + '#page-ofmaq .ofmaq-amostra-card-date[data-tone="futuro"] span:last-child{color:#10b981;font-weight:700}'
+        + '#page-ofmaq .ofmaq-amostra-card-actions{display:flex;gap:6px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-amostra-card-actions button{flex:1 1 auto;padding:7px 10px;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-size:11.5px;white-space:nowrap;min-height:32px}'
+        + '#page-ofmaq .ofmaq-amostra-card-actions button[data-acao="feito"]{background:#10b981;color:#fff}'
+        + '#page-ofmaq .ofmaq-amostra-card-actions button[data-acao="cancelar"]{background:#991b1b;color:#fff}'
         + '#page-ofmaq .ofmaq-final-search-wrap{position:relative;display:grid;gap:6px}'
         + '#page-ofmaq .ofmaq-final-cliente-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(37,99,235,.18);border:1px solid #60a5fa;color:#dbeafe;font-size:12px;font-weight:800;letter-spacing:.02em;justify-self:start;line-height:1}'
         + '#page-ofmaq .ofmaq-final-cliente-chip button{min-height:unset;width:20px;height:20px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.3);color:#fff;cursor:pointer;font-size:11px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}'
@@ -27456,21 +27505,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var qtd = rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0);
         var tempo = rows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0);
         var metric = machineMetrics(machine, state.selectedDateIso);
-        var cor = metric.tone === 'danger' ? '#ef4444' : (metric.tone === 'warn' ? '#f59e0b' : '#22c55e');
+        var maqDadosC = (typeof window._ofmaqMaquinasCadastradas === 'function') ? window._ofmaqMaquinasCadastradas(machine) : null;
+        var semCadC = !!(maqDadosC && maqDadosC._sem_cadastro);
+        var capC = capacidadeDia(state.selectedDateIso);
+        var ocupC = capC.uteis > 0 ? Math.round((metric.tempo / capC.uteis) * 100) : 0;
+        var cor = ocupC > 100 ? '#ef4444' : (ocupC >= 85 ? '#f59e0b' : '#22c55e');
+        var cardPct = semCadC ? 0 : ocupC;
+        var pctLabel = semCadC ? '<span style="color:#f59e0b;font-weight:800">⚠ SEM CADASTRO</span>' : (String(ocupC) + '% ocupação');
         return ''
           + '<div class="ofmaq-final-card" data-machine="' + escAttr(machine) + '">'
           + '<h3>' + escH(machine) + '</h3>'
-          + '<small>' + escH(String(rows.length) + ' OF(s) na semana | ' + fmtTempo(tempo)) + '</small>'
+          + '<small>' + escH(String(rows.length) + ' OF(s) na semana | ' + fmtTempo(tempo)) + (semCadC ? ' · <span style="color:#f59e0b">⚠ sem cadastro físico</span>' : '') + '</small>'
           + '<div class="ofmaq-final-card-grid">'
           + '<div><span>OFs no dia</span><b>' + escH(String(metric.rows.length)) + '</b></div>'
           + '<div><span>Caixas</span><b>' + escH(fmtInt(qtd)) + '</b></div>'
           + '<div><span>Tempo previsto</span><b>' + escH(fmtTempo(tempo)) + '</b></div>'
           + '<div><span>Urgências</span><b>' + escH(String(rows.filter(function(item) { return item.urgencia !== 'normal'; }).length)) + '</b></div>'
-          + '</div><div class="ofmaq-final-progress"><span style="width:' + escAttr(String(Math.min(100, Math.max(0, metric.pct)))) + '%;background:' + escAttr(cor) + '"></span></div></div>';
+          + '</div>'
+          + '<div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          + '  <span style="font-size:11px;font-weight:800;letter-spacing:.03em;color:#94a3b8;text-transform:uppercase">Ocupação do dia: <span style="color:' + escAttr(cor) + '">' + pctLabel + '</span></span>'
+          + '</div>'
+          + '<div class="ofmaq-final-progress"><span style="width:' + escAttr(String(Math.min(100, Math.max(0, cardPct)))) + '%;background:' + escAttr(cor) + '"></span></div></div>';
       }).join('') || '<div class="ofmaq-final-card"><h3>Sem máquinas ativas</h3><small>Nenhuma OF ativa encontrada no período selecionado.</small></div>';
       var compactHtml = state.machineCatalog.map(function(machine) {
         var metric = machineMetrics(machine, state.selectedDateIso);
-        return '<button type="button" class="ofmaq-final-summary-mini" data-machine-chip="' + escAttr(machine) + '">' + escH(machine) + ' · ' + escH(String(metric.rows.length)) + '</button>';
+        var cap2 = capacidadeDia(state.selectedDateIso);
+        var ocup2 = cap2.uteis > 0 ? Math.round((metric.tempo / cap2.uteis) * 100) : 0;
+        var maqD2 = (typeof window._ofmaqMaquinasCadastradas === 'function') ? window._ofmaqMaquinasCadastradas(machine) : null;
+        var semC2 = !!(maqD2 && maqD2._sem_cadastro);
+        var cor2 = semC2 ? '#f59e0b' : (ocup2 > 100 ? '#ef4444' : (ocup2 >= 85 ? '#f59e0b' : '#22c55e'));
+        return '<button type="button" class="ofmaq-final-summary-mini" data-machine-chip="' + escAttr(machine) + '">' + escH(machine) + ' · ' + escH(String(metric.rows.length)) + ' OFs · <b style="color:' + escAttr(cor2) + '">' + escH(semC2 ? 's/cad' : (ocup2 + '%')) + '</b></button>';
       }).join('') || '<div class="ofmaq-final-empty">Sem máquinas ativas.</div>';
       shell.summary.innerHTML = cardsHtml;
       shell.summary.setAttribute('data-collapsed', state.summaryCollapsed ? '1' : '0');
@@ -27485,7 +27549,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!shell || !shell.chips) return;
       shell.chips.innerHTML = state.machineCatalog.map(function(machine) {
         var metric = machineMetrics(machine, state.selectedDateIso);
-        return '<button type="button" class="ofmaq-final-chip" data-machine-chip="' + escAttr(machine) + '" data-active="' + (machine === state.selectedMachine ? '1' : '0') + '" data-tone="' + escAttr(metric.tone) + '">' + escH(machine + ' • ' + metric.rows.length + ' OFs • ' + fmtTempo(metric.tempo)) + '</button>';
+        var cap = capacidadeDia(state.selectedDateIso);
+        var ocupPct = cap.uteis > 0 ? Math.round((metric.tempo / cap.uteis) * 100) : 0;
+        var ocupTone = ocupPct > 100 ? 'danger' : (ocupPct >= 85 ? 'warn' : 'ok');
+        var maqDados = (typeof window._ofmaqMaquinasCadastradas === 'function') ? window._ofmaqMaquinasCadastradas(machine) : null;
+        var semCad = !!(maqDados && maqDados._sem_cadastro);
+        var ocupLabel = semCad ? 'sem cadastro' : (ocupPct + '% ocup');
+        var corOcup = semCad ? '#f59e0b' : (ocupPct > 100 ? '#ef4444' : (ocupPct >= 85 ? '#f59e0b' : '#22c55e'));
+        return '<button type="button" class="ofmaq-final-chip" data-machine-chip="' + escAttr(machine) + '" data-active="' + (machine === state.selectedMachine ? '1' : '0') + '" data-tone="' + escAttr(ocupTone) + '">'
+          + escH(machine)
+          + ' • <b style="color:' + escAttr(corOcup) + ';font-weight:900">' + escH(String(metric.rows.length) + ' OFs') + '</b>'
+          + ' • <span style="opacity:.85">' + escH(fmtTempo(metric.tempo)) + '</span>'
+          + ' • <b style="color:' + escAttr(corOcup) + ';font-weight:900;margin-left:2px">' + escH(ocupLabel) + '</b>'
+          + '</button>';
       }).join('') || '<div class="ofmaq-final-empty">Sem faixa de redistribuição disponível.</div>';
     }
 
@@ -27634,19 +27710,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           grid.innerHTML = '<div class="ofmaq-amostras-vazio">Nenhuma amostra pendente. 🎉</div>';
           return;
         }
-        var thead = '<thead style="position:sticky;top:0;background:#0f172a;z-index:2"><tr>'
-          + '<th style="width:70px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Nº</th>'
-          + '<th style="width:72px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Imagem</th>'
-          + '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Cliente</th>'
-          + '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Produto</th>'
-          + '<th style="width:130px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Data Pedido</th>'
-          + '<th style="width:130px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Data Entrega</th>'
-          + '<th style="width:170px;text-align:center;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Ação</th>'
-          + '</tr></thead>';
-        var colgroup = '<colgroup>'
-          + '<col style="width:70px"><col style="width:72px"><col style="width:1fr"><col style="width:1.4fr"><col style="width:130px"><col style="width:130px"><col style="width:170px">'
-          + '</colgroup>';
-        var tbodyRows = pendentes.map(function(p, idx) {
+        var cardsHtml = pendentes.map(function(p, idx) {
           var a = p.raw || {};
           var id = String(a.id || '').trim();
           var cliente = String(a.cliente_nome || a.cliente || 'Amostra').trim();
@@ -27662,58 +27726,35 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           else if (statusKey === 'em producao' || statusKey === 'em processo' || statusKey === 'em andamento' || statusKey.startsWith('em ')) { statusBg = 'rgba(245,158,11,.22)'; statusCor = '#fed7aa'; }
           else if (statusKey === 'pendente' || statusKey === 'aguardando' || statusKey === 'na fila' || !statusKey) { statusBg = 'rgba(59,130,246,.2)'; statusCor = '#bfdbfe'; }
           else if (p.futura) { statusBg = 'rgba(16,185,129,.18)'; statusCor = '#a7f3d0'; }
-          var dataEntregaCor = '#fbbf24';
-          var dataEntregaPeso = '600';
-          var dataEntregaPrefixo = '';
-          var linhaStyle = 'border-bottom:1px solid #1e293b;vertical-align:middle;';
-          if (p.atrasada) {
-            dataEntregaCor = '#ef4444';
-            dataEntregaPeso = '900';
-            dataEntregaPrefixo = '⚠️ ';
-            linhaStyle += 'background:rgba(153,27,27,.14);border-left:5px solid #ef4444;';
-          } else if (p.naSemana) {
-            dataEntregaCor = '#f59e0b';
-            dataEntregaPeso = '700';
-          } else if (p.futura) {
-            dataEntregaCor = '#10b981';
-            dataEntregaPeso = '600';
-          }
+          var entregaTone = p.atrasada ? 'atrasado' : (p.naSemana ? 'semana' : (p.futura ? 'futuro' : ''));
           var imgHtml = img
-            ? ('<button type="button" class="ofmaq-final-thumb" data-amostra-image="' + escAttr(id) + '" style="width:48px;height:48px;padding:0;border:1px solid #334155;border-radius:6px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:zoom-in;aspect-ratio:1/1;box-sizing:border-box;"><img loading="lazy" decoding="async" src="' + escAttr(img) + '" alt="Imagem amostra" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"></button>')
-            : '<span style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px dashed #334155;border-radius:6px;background:#0f172a;color:#64748b;font-size:1.1rem;aspect-ratio:1/1;box-sizing:border-box;">🧪</span>';
+            ? ('<button type="button" class="ofmaq-amostra-card-img" data-amostra-image="' + escAttr(id) + '" title="Ampliar imagem"><img loading="lazy" decoding="async" src="' + escAttr(img) + '" alt="Imagem amostra"></button>')
+            : '<div class="ofmaq-amostra-card-img" title="Sem imagem" style="cursor:default;color:#64748b;font-size:1.2rem">🧪</div>';
+          var entregaPrefixo = p.atrasada ? '⚠️ ' : '';
           return ''
-            + '<tr data-amostra-id="' + escAttr(id) + '" data-atrasada="' + (p.atrasada ? '1' : '0') + '" style="' + linhaStyle + '">'
-            + '<td style="padding:10px;">' + _amostraNumero(a, idx) + '</td>'
-            + '<td style="padding:8px 10px;">' + imgHtml + '</td>'
-            + '<td style="padding:8px 10px;"><div style="font-weight:600;color:#e2e8f0;font-size:.88rem;">' + escH(cliente) + '</div></td>'
-            + '<td style="padding:8px 10px;">'
-            + '  <div style="font-weight:500;color:#f1f5f9;font-size:.88rem;">' + escH(produto) + '</div>'
-            + '  <div style="margin-top:6px;"><span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:.03em;background:' + statusBg + ';color:' + statusCor + ';border:1px solid rgba(255,255,255,.06);">' + escH(statusLabel) + '</span></div>'
-            + '</td>'
-            + '<td style="padding:8px 10px;color:#94a3b8;font-size:.85rem;">' + escH(fmtD(dpedido)) + '</td>'
-            + '<td style="padding:8px 10px;color:' + dataEntregaCor + ';font-size:.85rem;font-weight:' + dataEntregaPeso + ';white-space:nowrap;">' + dataEntregaPrefixo + escH(fmtD(dentrega)) + '</td>'
-            + '<td style="padding:8px 10px;text-align:center;">'
-            + '  <div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;">'
-            + '    <button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '" '
-            + '      style="padding:6px 12px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap;">'
-            + '      ✔ Feito'
-            + '    </button>'
-            + '    <button type="button" class="ofmaq-amostra-cancelar" data-cancelar-amostra="' + escAttr(id) + '" '
-            + '      style="padding:6px 12px;border-radius:6px;border:none;background:#991b1b;color:#fff;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap;">'
-            + '      ✖ Cancelar'
-            + '    </button>'
+            + '<div class="ofmaq-amostra-card" data-amostra-id="' + escAttr(id) + '" data-atrasada="' + (p.atrasada ? '1' : '0') + '">'
+            + '  <div class="ofmaq-amostra-card-head">'
+            + '    <div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1 1 180px">'
+            +       imgHtml
+            + '      <div class="ofmaq-amostra-card-meta">'
+            + '        <div class="ofmaq-amostra-card-num">' + _amostraNumero(a, idx) + '</div>'
+            + '        <div class="ofmaq-amostra-card-cliente" title="' + escAttr(cliente) + '">' + escH(cliente) + '</div>'
+            + '      </div>'
+            + '    </div>'
+            + '    <span class="ofmaq-amostra-card-status" style="background:' + escAttr(statusBg) + ';color:' + escAttr(statusCor) + '">' + escH(statusLabel) + '</span>'
             + '  </div>'
-            + '</td>'
-            + '</tr>';
+            + '  <div class="ofmaq-amostra-card-prod" title="' + escAttr(produto) + '">' + escH(produto) + '</div>'
+            + '  <div class="ofmaq-amostra-card-dates">'
+            + '    <div class="ofmaq-amostra-card-date"><span>Pedido</span><span>' + escH(fmtD(dpedido)) + '</span></div>'
+            + '    <div class="ofmaq-amostra-card-date" data-tone="' + escAttr(entregaTone) + '"><span>Entrega</span><span>' + entregaPrefixo + escH(fmtD(dentrega)) + '</span></div>'
+            + '  </div>'
+            + '  <div class="ofmaq-amostra-card-actions">'
+            + '    <button type="button" data-feito-amostra="' + escAttr(id) + '" data-acao="feito">✔ Feito</button>'
+            + '    <button type="button" data-cancelar-amostra="' + escAttr(id) + '" data-acao="cancelar">✖ Cancelar</button>'
+            + '  </div>'
+            + '</div>';
         }).join('');
-        grid.innerHTML = ''
-          + '<div style="border:1px solid #334155;border-radius:10px;overflow:hidden;background:#111827;">'
-          + '  <table class="ofmaq-final-table" style="width:100%;border-collapse:separate;border-spacing:0;display:block;max-height:380px;overflow:auto;table-layout:auto;">'
-          +      colgroup
-          +      thead
-          + '    <tbody>' + tbodyRows + '</tbody>'
-          + '  </table>'
-          + '</div>';
+        grid.innerHTML = cardsHtml || '<div class="ofmaq-amostras-vazio">Nenhuma amostra pendente. 🎉</div>';
 
         grid.querySelectorAll('[data-amostra-image]').forEach(function(btn) {
           btn.addEventListener('click', function(ev) {
@@ -27758,7 +27799,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
                 })
               });
               if (!res || !res.ok) throw new Error('Erro HTTP: ' + (res && res.status));
-              var row = ev.target.closest('tr');
+              var row = ev.target.closest('.ofmaq-amostra-card') || ev.target.closest('tr');
               if (row) {
                 row.style.transition = 'opacity .25s, transform .25s, background .25s';
                 row.style.opacity = '0';
@@ -27783,9 +27824,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               var idBtn = String(btn.getAttribute('data-cancelar-amostra') || '').trim();
               if (!idBtn) return;
               var numRow = '';
-              var r = ev.target.closest('tr');
+              var r = ev.target.closest('.ofmaq-amostra-card') || ev.target.closest('tr');
               if (r) {
-                var cel = r.querySelector('td:first-child');
+                var cel = r.querySelector('.ofmaq-amostra-card-num') || r.querySelector('td:first-child');
                 if (cel) numRow = String(cel.textContent || '').replace(/\s+/g, ' ').trim();
               }
               var ok = confirm('Cancelar amostra ' + (numRow || 'selecionada') + '? Essa ação não pode ser desfeita.');
@@ -27806,7 +27847,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
                 })
               });
               if (!res || !res.ok) throw new Error('Erro HTTP: ' + (res && res.status));
-              var row = ev.target.closest('tr');
+              var row = ev.target.closest('.ofmaq-amostra-card') || ev.target.closest('tr');
               if (row) {
                 row.style.transition = 'opacity .25s, transform .25s, background .25s';
                 row.style.opacity = '0';
@@ -28213,7 +28254,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           var frag = document.createDocumentFragment();
           for (var _om = 0; _om < order.length; _om++) {
             var maq = order[_om];
-            var list = grouped[maq] || [];
+            var list = sortRowsByCanonicalOrder(grouped[maq] || []);
             var qtd = list.reduce(function(s, r) { return s + (Number(r.quantidade || 0) || 0); }, 0);
             var tempo = list.reduce(function(s, r) { return s + (Number(r.tempoMin || 0) || 0); }, 0);
             var urg = list.filter(function(r) { return r.urgencia === 'urgente'; }).length;
@@ -29255,6 +29296,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           html += '<tr style="background:rgba(15,23,42,.88)">';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">OF</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Cliente</th>';
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Produto</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Máquina</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Operador</th>';
           html += '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(51,65,85,.7)">Horário</th>';
@@ -29263,14 +29305,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           html += '</tr></thead><tbody>';
           var items = Array.isArray(g.items) ? g.items : [];
           if (items.length === 0) {
-            html += '<tr><td colspan="7" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
+            html += '<tr><td colspan="8" style="padding:14px 10px;text-align:center;color:#64748b;font-weight:600">Sem linhas.</td></tr>';
           } else {
             items.forEach(function(it) {
               var statusLabel = String(it.status || '—').trim() || '—';
               var statusColor = statusLabel === 'Despachada' || statusLabel.toLowerCase().indexOf('despach') >= 0 ? '#fca5a5' : (statusLabel === 'Passou pela máquina' ? '#86efac' : '#cbd5e1');
+              var produtoCell = String(it.produto || '').trim();
+              if (!produtoCell && (typeof window._ofByIdCached === 'function')) {
+                try {
+                  var ofRef = window._ofByIdCached(String(it.of_id || it.ofId || ''));
+                  if (ofRef) produtoCell = String(ofRef.produto || ofRef.descricao || '').trim();
+                } catch (_pOF) {}
+              }
+              if (!produtoCell) produtoCell = '—';
               html += '<tr style="border-top:1px solid rgba(30,41,59,.75)">';
               html += '<td style="padding:7px 10px;color:#f8fafc;font-size:13px;font-weight:800">' + esc(String(it.of_numero || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#e2e8f0;font-size:12px;font-weight:600">' + esc(String(it.cliente || '—')) + '</td>';
+              html += '<td style="padding:7px 10px;color:#e2e8f0;font-size:12px;font-weight:600;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(produtoCell) + '</td>';
               html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:700">' + esc(String(it.maquina || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600">' + esc(String(it.operador || '—')) + '</td>';
               html += '<td style="padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600">' + esc(fmtDT(it.hora_passagem)) + '</td>';
@@ -29400,9 +29451,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var summaryRows = grupos.map(function(g) {
         var items = Array.isArray(g.items) ? g.items : [];
         items.forEach(function(it) {
+          var prodPrint = String(it.produto || '').trim();
+          if (!prodPrint && (typeof window._ofByIdCached === 'function')) {
+            try { var ofP = window._ofByIdCached(String(it.of_id || it.ofId || '')); if (ofP) prodPrint = String(ofP.produto || ofP.descricao || '').trim(); } catch (_pPr) {}
+          }
+          if (!prodPrint) prodPrint = '—';
           detailRowsAll.push([
             e(String(it.of_numero || '—')),
             e(String(it.cliente || '—')),
+            e(prodPrint),
             e(String(it.maquina || '—')),
             e(String(it.operador || '—')),
             e(fDT(it.hora_passagem)),
@@ -29430,10 +29487,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         summaryHeaders: ['Máquina', 'Passagens', 'Caixas'],
         summaryRows: summaryRows,
         detailTitle: 'Detalhamento das passagens',
-        detailHeaders: ['OF', 'Cliente', 'Máquina', 'Operador', 'Horário', 'Caixas', 'Status'],
+        detailHeaders: ['OF', 'Cliente', 'Produto', 'Máquina', 'Operador', 'Horário', 'Caixas', 'Status'],
         detailRows: detailRowsAll,
         emptySummaryCols: 3,
-        emptyDetailCols: 7
+        emptyDetailCols: 8
       };
       if (typeof rrOpenPrint === 'function') {
         return rrOpenPrint(cfg);
@@ -29468,6 +29525,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           cliente: String(o.cliente || '—'),
           produto: String(o.produto || '—'),
           quantidade: qtd,
+          maquina: String(o.maquina || '—').trim() || '—',
           diaAgendado: fmtDateBR(String(o.prazoIso || o.dia_agendado || '').slice(0,10)) || '—',
           dataEntrega: fmtDateBR(String(o.data_entrega || o.entrega || '').slice(0,10)) || '—',
           semPapelao: semPapelao,
@@ -29515,6 +29573,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               e(String(it.cliente||'—')),
               e(String(it.produto||'—')),
               e(fN(Number(it.quantidade||0),0)),
+              e(String(it.maquina||'—')),
               e(String(it.diaAgendado||'—')),
               e(String(it.dataEntrega||'—')),
               e(it.semPapelao ? 'SEM PAPELÃO' : 'OK')
@@ -29529,10 +29588,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           summaryHeaders: ['Máquina', 'OFs urgentes', 'Caixas'],
           summaryRows: summaryRows,
           detailTitle: 'Detalhamento das OFs urgentes',
-          detailHeaders: ['OF', 'Cliente', 'Produto', 'Qtd caixas', 'Dia agendado', 'Data entrega', 'Papelão'],
+          detailHeaders: ['OF', 'Cliente', 'Produto', 'Qtd caixas', 'Máquina', 'Dia agendado', 'Data entrega', 'Papelão'],
           detailRows: detailRows,
           emptySummaryCols: 3,
-          emptyDetailCols: 7
+          emptyDetailCols: 8
         };
         return rrOpenPrint(cfg);
       } catch (ePrint) {
@@ -29543,6 +29602,43 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     async function openUrgentOfsModal() {
       ensureDefaults();
+      try {
+        var tokenUrgent = '';
+        try { tokenUrgent = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_tkU) {}
+        var qUrgent = ['urgente=true', 'abertas=1', 'limit=500', 't=' + Date.now()];
+        try {
+          if (typeof window.rrEmpresaQueryParts === 'function') {
+            var rrU = window.rrEmpresaQueryParts();
+            if (Array.isArray(rrU) && rrU.length) qUrgent = rrU.concat(qUrgent);
+          } else {
+            var stU = (typeof rrState === 'function') ? rrState() : null;
+            var vU = String(stU && stU.empresa || 'todas').trim().toLowerCase() || 'todas';
+            if (vU === 'todas' || vU === 'all' || vU === '*' || vU === '') qUrgent.unshift('todas_empresas=1');
+            else qUrgent.unshift('emp_id=' + encodeURIComponent(vU));
+          }
+        } catch (_eUr) { qUrgent.unshift('todas_empresas=1'); }
+        var respUrg = null;
+        try {
+          var fOptsU = { headers: tokenUrgent ? { Authorization: 'Bearer ' + tokenUrgent } : {} };
+          respUrg = await fetch('/api/ofs?' + qUrgent.join('&'), fOptsU);
+        } catch (_fU) {
+          if (respUrg == null) respUrg = { ok: false, status: 0 };
+        }
+        var urgFromApi = [];
+        try { urgFromApi = respUrg && typeof respUrg.json === 'function' ? await respUrg.json() : []; } catch (_pU) { urgFromApi = []; }
+        if (!Array.isArray(urgFromApi)) urgFromApi = (urgFromApi && urgFromApi.data) || [];
+        if (Array.isArray(urgFromApi) && urgFromApi.length) {
+          urgFromApi.forEach(function(ofApi) {
+            var idxR = state.rowsData.findIndex(function(r) { return r && String(r.id) === String(ofApi && ofApi.id); });
+            if (idxR >= 0) state.rowsData[idxR] = activeOfRow(ofApi);
+            else state.rowsData.push(activeOfRow(ofApi));
+          });
+          state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
+          applyDisplaySeqToState();
+        }
+      } catch (_eFreshU) {
+        try { console.warn('[Urgentes] fetch API falhou (fallback local):', String(_eFreshU && _eFreshU.message || _eFreshU)); } catch (_) {}
+      }
       if (!Array.isArray(state.rowsData) || state.rowsData.length === 0) {
         try { await loadCanonicalRows(false); } catch (_) {}
       }
@@ -29577,7 +29673,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         html += '</div>';
         html += '<div style="overflow-x:auto;border:1px solid rgba(71,85,105,.7);border-top:none;border-radius:0 0 10px 10px">';
         html += '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:rgba(30,41,59,.85)">';
-        var headers = ['OF','Cliente','Produto','Qtd','Dia Agendado','Data Entrega','Papelão'];
+        var headers = ['OF','Cliente','Produto','Qtd','Máquina','Dia Agendado','Data Entrega','Papelão'];
         headers.forEach(function(h){ html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid rgba(71,85,105,.7);color:#cbd5e1;font-weight:800;text-transform:uppercase;font-size:10.5px;letter-spacing:.3px">' + esc(h) + '</th>'; });
         html += '</tr></thead><tbody>';
         g.items.forEach(function(it){
@@ -29586,6 +29682,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#e2e8f0;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.cliente) + '</td>';
           html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#e2e8f0;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.produto) + '</td>';
           html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#f1f5f9;font-weight:700;text-align:right">' + esc(fN(it.quantidade)) + '</td>';
+          html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#93c5fd;font-weight:700">' + esc(String(it.maquina || '—')) + '</td>';
           html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#cbd5e1">' + esc(it.diaAgendado) + '</td>';
           html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5);color:#cbd5e1">' + esc(it.dataEntrega) + '</td>';
           html += '<td style="padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.5)">';
