@@ -5565,7 +5565,7 @@ function _goBase(id){
     else renderFluxos();
   }
   if(id==='maquinas'){
-    if(_apiConectado && CURRENT_USER) carregarMaquinas(false).then(()=>renderMaquinasConf()).catch(()=>renderMaquinasConf());
+    if(_apiConectado && CURRENT_USER) carregarMaquinas(true).then(()=>renderMaquinasConf()).catch(()=>renderMaquinasConf());
     else renderMaquinasConf();
   }
   if(id==='tipos-caixa'){
@@ -33733,7 +33733,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261007141807';
+      const swVersion = '20261007144131';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -36189,6 +36189,16 @@ setInterval(async () => {
 }, 60000);
 
 // ===================== MÁQUINAS CRUD =====================
+function abrirModalNovaMaquinaNome(nome){
+  try{ abrirModalMaquina(); }catch(e){}
+  setTimeout(()=>{
+    try{
+      const el = document.getElementById('maq-e-col') || document.getElementById('maq-e-nome') || document.querySelector('[name="maq-e-col"]');
+      if(el){ el.value = String(nome||'').trim(); try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(_){} }
+      maqEditRecalc && maqEditRecalc();
+    }catch(e){}
+  }, 80);
+}
 function renderMaquinasConf(){
   const grid = document.getElementById('maq-conf-grid');
   if(!grid) return;
@@ -36199,10 +36209,19 @@ function renderMaquinasConf(){
     if(!nome) return;
     byNome[nome] = { m, idx };
   });
+  const totalCadastradasAtivas = (Array.isArray(MAQUINAS) ? MAQUINAS.filter(m => m && m.ativa !== false).length : 0);
+  try{
+    const st = document.querySelector('.maquinas-subtitulo');
+    if(st){
+      const n = totalCadastradasAtivas > 0 ? totalCadastradasAtivas : MAQUINAS_ATIVAS.length;
+      st.textContent = String(n) + ' máquina' + (n===1?'':'s') + ' ativa' + (n===1?'':'s') + ' no fluxo de produção';
+    }
+  }catch(e){}
   grid.innerHTML = MAQUINAS_ATIVAS.map((nome)=>{
     const ref = byNome[nome] || null;
     const m = ref ? ref.m : { col:nome, nome:nome, ativa:false };
     const mi = ref ? ref.idx : null;
+    const semCadastro = (mi === null);
     const tipo = (String(nome).toUpperCase().startsWith('IMP')) ? 'tipo-impressao' : 'tipo-corte';
     const badgeCls = (tipo === 'tipo-impressao') ? 'badge-impressao' : 'badge-corte';
     const setorLabel = String(m.setor || (tipo === 'tipo-impressao' ? 'IMPRESSÃO' : 'CORTE')).trim() || '—';
@@ -36217,18 +36236,26 @@ function renderMaquinasConf(){
     const apontN = aps.length;
     const ico = String(m.icone || m.ico || '⚙');
 
+    const botoesHeader = semCadastro
+      ? ('<div style="display:flex;gap:6px;flex-shrink:0">' +
+          '<button class="btn-icon btn-criar-maq" onclick="abrirModalNovaMaquinaNome(\''+escAttr(String(nome||''))+'\')" title="Criar cadastro para '+escAttr(String(nome||''))+'" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer">➕ Criar</button>' +
+        '</div>')
+      : ('<div style="display:flex;gap:6px;flex-shrink:0">' +
+          '<button class="btn-icon btn-editar-maq" onclick="editarMaquina('+mi+')" title="Editar '+escAttr(String(nome||''))+'" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer">✏ Editar</button>' +
+          '<button class="btn-icon" style="color:'+(m.ativa===false?'var(--green)':'var(--red)')+'" onclick="toggleMaquina('+mi+')" title="'+(m.ativa===false?'Ativar':'Desativar')+'">'+(m.ativa===false?'▶':'⏸')+'</button>' +
+          '<button class="btn-icon" onclick="excluirMaquina('+mi+')" title="Excluir" style="color:var(--red)">🗑</button>' +
+        '</div>');
+
+    const bannerSemCadastro = semCadastro
+      ? '<div style="background:#fff7cd;border:1px solid #eab30855;color:#926700;border-radius:8px;padding:7px 9px;margin:0 0 10px 0;font-size:.8rem;font-weight:600">⚠ Sem cadastro — clique em ➕ Criar para salvar valores de produção, setup e horários.</div>'
+      : '';
+
     return '<div class="maquina-card '+tipo+'" style="'+(m.ativa===false?'opacity:.55':'')+'">'+
       '<div class="maquina-card-header">'+
         '<div class="maquina-nome">'+escH(ico)+' '+escH(nome)+'</div>'+
-        (mi!==null
-          ? ('<div style="display:flex;gap:6px;flex-shrink:0">'+
-              '<button class="btn-icon" onclick="editarMaquina('+mi+')" title="Editar">✏</button>'+
-              '<button class="btn-icon" style="color:'+(m.ativa===false?'var(--green)':'var(--red)')+'" onclick="toggleMaquina('+mi+')" title="'+(m.ativa===false?'Ativar':'Desativar')+'">'+(m.ativa===false?'▶':'⏸')+'</button>'+
-              '<button class="btn-icon" onclick="excluirMaquina('+mi+')" title="Excluir" style="color:var(--red)">🗑</button>'+
-            '</div>')
-          : '')+
+        botoesHeader +
       '</div>'+
-
+      bannerSemCadastro +
       '<div class="maquina-card-body">'+
         '<div><span class="maquina-setor-badge '+badgeCls+'">🏭 '+escH(setorLabel)+'</span></div>'+
         '<div>'+
@@ -36500,8 +36527,6 @@ async function salvarMaquina(){
   });
 
   try{
-    if(payload.setor && !isUUID(payload.setor)) delete payload.setor;
-    if(payload.icone && !isUUID(payload.icone)) delete payload.icone;
     if(payload.grupo_id && !isUUID(payload.grupo_id)) delete payload.grupo_id;
     if(payload.setor_id && !isUUID(payload.setor_id)) delete payload.setor_id;
     if(payload.icone_id && !isUUID(payload.icone_id)) delete payload.icone_id;
@@ -61188,6 +61213,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261007141807"></script>
+<script src="/patch.js?v=20261007144131"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
