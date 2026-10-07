@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1251,8 +1251,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261007090600';
-const SW_RUNTIME_VERSION = '20261007090600';
+const PATCH_RUNTIME_VERSION = '20261007100230';
+const SW_RUNTIME_VERSION = '20261007100230';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11891,6 +11891,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       console.debug('[CONCLUIR OF] after db:', ofAfter);
     } catch (_) {}
 
+    // ===== [H5b CALLER-4] Vars escopo pai (acessíveis no response final 200) =====
+    let h5b_avisoPassagemFisica = null;
+    let h5b_upsertResult = null;
+    let h5b_caller4Ok = false;
+    let h5b_tentativas = 0;
     try {
       const hoje = nowIso.slice(0, 10);
       const picked = fluxoPickMaquina();
@@ -11905,41 +11910,77 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         ''
       ).trim() || 'Sem máquina';
       const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
-      console.log('[PASSAGENS-MAQUINA] [CALLER-4] POST /api/ofs/:id/concluir (concluir operador endpoint L10052): of_id=%j of_numero=%j maquina=%j',
+      console.log('[PASSAGENS-MAQUINA] [CALLER-4-H5b] POST /api/ofs/:id/concluir (concluir operador endpoint): of_id=%j of_numero=%j maquina=%j',
         sid, ofNumero, maquinaNome);
-      let upsertResult = null;
-      let caller4Ok = false;
+      const maxTentativas = 2; // 1 tentativa normal + 1 retry = 2 total (regra H5b do usuário)
       let caller4Err = null;
+      for (h5b_tentativas = 1; h5b_tentativas <= maxTentativas; h5b_tentativas++) {
+        try {
+          h5b_upsertResult = await _upsertPassagemMaquinaRegistro({
+            of_id: sid,
+            of_numero: ofNumero,
+            cliente: String(of?.cliente || '').trim() || null,
+            produto: String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null,
+            referencia: String(of?.referencia || of?.ref || '').trim() || null,
+            imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
+            maquina: maquinaNome,
+            operador: String(req.usuario?.nome || 'Sistema').trim(),
+            quantidade: Number(qtdFinal || 0) || 0,
+            data_passagem: hoje,
+            hora_passagem: nowIso,
+            status: 'Despachada',
+            empresa: String(of?.empresa || 'Italy Embalagens'),
+          }, { status: 'Despachada' });
+          h5b_caller4Ok = !!(h5b_upsertResult && h5b_upsertResult.ok);
+          caller4Err = String(h5b_upsertResult?.lastError || h5b_upsertResult?.motivo || (h5b_upsertResult && h5b_upsertResult.ok === false ? 'ok_false_sem_motivo' : '') || '').trim() || null;
+        } catch (eUpsert) {
+          caller4Err = String(eUpsert?.message || eUpsert) + ' [tentativa=' + h5b_tentativas + ']';
+          try {
+            console.error('[PASSOU-MAQUINA] [CALLER-4-H5b] upsert EXCEPTION tentativa #%d: of_id=%j of_numero=%j erro=%j stack=%j',
+              h5b_tentativas, sid, (ofNumero || null), caller4Err,
+              (eUpsert && eUpsert.stack ? String(eUpsert.stack).slice(0, 1200) : 'sem_stack'));
+          } catch (_) {}
+          h5b_caller4Ok = false;
+        }
+        if (h5b_caller4Ok) break;
+        if (h5b_tentativas === 1 && !h5b_caller4Ok) {
+          // Log 1ª falha + espera 300ms para retry (H5b regra)
+          try {
+            console.warn('[PASSOU-MAQUINA] [CALLER-4-H5b] FALHA tentativa #1 (de %d) → RETRY em 300ms: of_id=%j of_numero=%j lastError=%j upsertMode=%j',
+              maxTentativas, sid, (ofNumero || null), (caller4Err || 'null'), (h5b_upsertResult?.mode || '?'));
+          } catch (_) {}
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+      // Log após todas as tentativas (sucesso ou falha)
       try {
-        upsertResult = await _upsertPassagemMaquinaRegistro({
+        if (h5b_caller4Ok) {
+          console.log('[PASSOU-MAQUINA] [CALLER-4-H5b] upsert SUCESSO (tentativa #%d de %d): of_id=%j of_numero=%j modo=%j id_row=%j',
+            h5b_tentativas, maxTentativas, sid, (ofNumero || null), (h5b_upsertResult?.mode || '?'), (h5b_upsertResult?.id || null));
+        } else {
+          console.error('[PASSOU-MAQUINA] [CALLER-4-H5b] UPSERT FALHOU APÓS %d TENTATIVAS: of_id=%j of_numero=%j modo=%j lastError=%j resultKeys=%j',
+            maxTentativas, sid, (ofNumero || null), (h5b_upsertResult?.mode || null), (caller4Err || 'null'),
+            (h5b_upsertResult && typeof h5b_upsertResult === 'object') ? Object.keys(h5b_upsertResult).sort().join(',') : 'not_obj');
+        }
+        console.debug('[PASSAGENS] concluir OF upsert H5b:', { ofId: sid, maquinaNome, mode: h5b_upsertResult?.mode || 'none', ok: h5b_caller4Ok, lastError: caller4Err, tentativas_usadas: h5b_tentativas });
+      } catch (_) {}
+      // Monta aviso_passagem_fisica (para incluir em TANTO response 500 quanto 200)
+      if (h5b_caller4Ok) {
+        h5b_avisoPassagemFisica = { ok: true, modo: h5b_upsertResult?.mode || null, id_row: h5b_upsertResult?.id || null, tentativas: h5b_tentativas };
+      } else {
+        h5b_avisoPassagemFisica = {
+          ok: false,
+          erro: 'falha_passagem_fisica_apos_2_tentativas',
+          mensagem: 'A OF foi concluída e a passagem foi gravada no histórico interno JSON (ofs.passagens_maquina), mas a gravação na tabela física passagens_maquina falhou após 2 tentativas. Contate o suporte para registrar a passagem manualmente (OF id=' + sid + ' numero=' + (ofNumero || 'null') + ').',
+          detalhes_tecnicos: caller4Err || null,
+          tentativas: h5b_tentativas,
           of_id: sid,
           of_numero: ofNumero,
-          cliente: String(of?.cliente || '').trim() || null,
-          produto: String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null,
-          referencia: String(of?.referencia || of?.ref || '').trim() || null,
-          imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
-          maquina: maquinaNome,
-          operador: String(req.usuario?.nome || 'Sistema').trim(),
-          quantidade: Number(qtdFinal || 0) || 0,
-          data_passagem: hoje,
-          hora_passagem: nowIso,
-          status: 'Despachada',
-          empresa: String(of?.empresa || 'Italy Embalagens'),
-        }, { status: 'Despachada' });
-        caller4Ok = !!(upsertResult && upsertResult.ok);
-        caller4Err = String(upsertResult?.lastError || upsertResult?.motivo || (upsertResult && upsertResult.ok === false ? 'ok_false_sem_motivo' : '') || '').trim() || null;
-        if (caller4Ok) {
-          try { console.log('[PASSOU-MAQUINA] [CALLER-4] upsert SUCESSO: of_id=%j of_numero=%j modo=%j id_row=%j', sid, ofNumero, (upsertResult?.mode || '?'), (upsertResult?.id || null)); } catch (_) {}
-        } else {
-          try { console.error('[PASSOU-MAQUINA] [CALLER-4] upsert FALHOU: of_id=%j of_numero=%j modo=%j lastError=%j resultKeys=%j', sid, ofNumero, (upsertResult?.mode || null), (caller4Err || 'null'), (upsertResult && typeof upsertResult === 'object') ? Object.keys(upsertResult).sort().join(',') : 'not_obj'); } catch (_) {}
-        }
-      } catch (eUpsert) {
-        caller4Err = String(eUpsert?.message || eUpsert);
-        try { console.warn('[PASSOU-MAQUINA] [CALLER-4] upsert EXCEPTION:', caller4Err); } catch (_) {}
+          maquina: maquinaNome
+        };
       }
-      try { console.debug('[PASSAGENS] concluir OF upsert:', { ofId: sid, maquinaNome, mode: upsertResult?.mode || 'none', ok: caller4Ok, lastError: caller4Err }); } catch (_) {}
-      if (!caller4Ok) {
-        try { console.error('[PASSOU-MAQUINA] [CALLER-4] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + sid + ' motivo=' + String(caller4Err || '?') + ' retornando HTTP 500 para nao enganar UI.'); } catch (_) {}
+      if (!h5b_caller4Ok) {
+        try { console.error('[PASSOU-MAQUINA] [CALLER-4-H5b] REGISTRO NAO INSERIDO em passagens_maquina. OF id=' + sid + ' retornando HTTP 500 com aviso_passagem_fisica.'); } catch (_) {}
         _clearOfsCaches();
         const dataOutFallback = upd?.data ? { ...upd.data, ...updateSeguro } : { id: sid, ...updateSeguro };
         return res.status(500).json({
@@ -11949,6 +11990,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           data: { ..._sanitizeOfImagesForResponse(dataOutFallback), maquina_producao: maquinaProducaoOut || null },
           passagem_registrada: false,
           passagem_erro: caller4Err || null,
+          aviso_passagem_fisica: h5b_avisoPassagemFisica,
           concluida: true,
           proxima: null,
           status: 'Concluído',
@@ -11957,10 +11999,28 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           ignored_columns: colunasDescartadas,
           ignored_columns_perda: Array.isArray(updateData.__ignored_columns_perda) ? updateData.__ignored_columns_perda : [],
           caixas_perdidas_erro: updateData.__caixas_perdidas_erro || null,
-          mensagem: `OF concluída mas passagem nao gravada.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
+          mensagem: `OF concluída mas passagem nao gravada na tabela física (ver aviso_passagem_fisica).${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
         });
       }
-    } catch (_) {}
+    } catch (outerErr) {
+      // ===== [H5b] Outer catch NÃO ENGole mais silencioso. Log TUDO com stack. =====
+      try {
+        console.error('[PASSOU-MAQUINA] [CALLER-4-H5b] EXCECAO BLOCO OUTER: of_id=%j of_numero=%j mensagem=%j stack=%j',
+          sid,
+          (of && (of.numero || of.of_num || of.of || '')) || null,
+          String(outerErr?.message || outerErr || '?'),
+          (outerErr?.stack ? String(outerErr.stack).slice(0, 2000) : 'sem_stack'));
+      } catch (_) {}
+      h5b_avisoPassagemFisica = {
+        ok: false,
+        erro: 'excecao_bloco_outer_concluir_passagem',
+        mensagem: 'Ocorreu uma exceção não tratada durante a preparação da gravação física da passagem de máquina. A OF foi concluída e o histórico JSON foi gravado, mas a linha física pode não ter sido inserida. Verifique manualmente na tabela passagens_maquina a OF id=' + sid + '.',
+        detalhes_tecnicos: outerErr?.message || String(outerErr || ''),
+        stack: outerErr?.stack ? String(outerErr.stack).slice(0, 1500) : null,
+        of_id: sid,
+        maquina: (of?.maquina_agendada || of?.maquina || (Array.isArray(of.maq) ? of.maq[0] : of.maq) || '')
+      };
+    }
 
     try {
       const { data: ofVerif } = await supabase
@@ -12177,6 +12237,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       ignored_columns: colunasDescartadas,
       ignored_columns_perda: Array.isArray(updateData.__ignored_columns_perda) ? updateData.__ignored_columns_perda : [],
       caixas_perdidas_erro: updateData.__caixas_perdidas_erro || null,
+      aviso_passagem_fisica: h5b_avisoPassagemFisica,
       mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
     });
   } catch (e) {
