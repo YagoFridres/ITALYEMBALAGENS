@@ -4651,6 +4651,25 @@ window.verificarDisponibilidadeMaquinaOfRapida = async function(){
 };
 
 window.salvarOfRapida = async function(){
+  if (window.__OF_SALVANDO_RAPIDA__) {
+    try { if (typeof window.toast === 'function') window.toast('⏳ Já salvando uma OF... aguarde.', 'rgba(245,158,11,.95)', 2800); } catch (_) {}
+    return { ok: false, error: 'ja_salvando', __busy: true };
+  }
+  window.__OF_SALVANDO_RAPIDA__ = true;
+  var _ofSaveCleanupDone = false;
+  var _ofSaveCleanup = function(errMsg) {
+    if (_ofSaveCleanupDone) return;
+    _ofSaveCleanupDone = true;
+    window.__OF_SALVANDO_RAPIDA__ = false;
+    var b = document.getElementById('btn-salvar-of-rapida');
+    if (b) {
+      try { b.disabled = false; } catch (_) {}
+      if (b.textContent === 'Salvando...') {
+        b.textContent = '⚡ Salvar OF';
+        if (errMsg) { b.style.background = '#ef4444'; var _ = setTimeout(function(){ try { b.style.background = ''; } catch (_) {} }, 2500); }
+      }
+    }
+  };
   const clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
   const produto = String(document.getElementById('of-r-produto')?.value || '').trim();
   const empId = String(document.getElementById('of-r-empresa')?.value || 'E1').trim() || 'E1';
@@ -4788,9 +4807,34 @@ window.salvarOfRapida = async function(){
   };
 
   try{
+    try { payload.confirmarDuplicata = (window.__OF_RAPIDA_FORCAR_DUPLICATA === true) ? true : !!payload.confirmarDuplicata; } catch (_) {}
     const r = await apiFetch('/api/ofs', { method:'POST', body: payload });
     const d = r ? await r.json().catch(()=>null) : null;
-    if(!(r && r.ok) || (d && d.ok === false)) throw new Error(d?.error || d?.message || 'Erro ao salvar');
+    var _throwMode = false;
+    if (!(r && r.ok) || (d && d.ok === false)) {
+      if (r && (r.status === 409) || (d && d.duplicata === true)) {
+        _throwMode = false; // tratamento via RETORNO no after hook (409 confirmar duplicata)
+      } else {
+        _throwMode = true;
+      }
+    }
+    if (_throwMode) throw new Error(d?.error || d?.message || (r && (r.statusText || ('HTTP '+r.status)) ) || 'Erro ao salvar');
+    if (!(r && r.ok) && !_throwMode) {
+      // HTTP 4xx (especialmente 409 duplicata): retorna d com campos enriquecidos, NÃO throw, para o hook disparar modal
+      var ret409 = Object.assign({}, d || {}, {
+        ok: false, error: (d && d.error) || 'Erro ao salvar',
+        mensagem: (d && (d.mensagem || d.error)) || '',
+        _httpStatus: r ? r.status : 0, _httpOk: !!(r && r.ok), _fromBase: true
+      });
+      try { if (r && typeof r.statusText === 'string') ret409.statusText = r.statusText; } catch (_) {}
+      if (typeof ret409.duplicata === 'undefined') ret409.duplicata = !!(r && r.status === 409);
+      try { _ofSaveCleanup(true); } catch (_) {}
+      try {
+        var b2 = document.getElementById('btn-salvar-of-rapida');
+        if (b2) { b2.disabled = false; b2.style.opacity = ''; b2.style.cursor = ''; if (b2._oldTxtSalvar) b2.textContent = b2._oldTxtSalvar; else b2.textContent = '⚡ Salvar OF'; }
+      } catch (_) {}
+      return ret409;
+    }
     const ofCriada = d?.data || d;
     try{
       if(Array.isArray(window.OFS_ARQUIVO) && ofCriada) window.OFS_ARQUIVO.unshift(ofCriada);
@@ -4892,15 +4936,20 @@ window.salvarOfRapida = async function(){
         if(okN > 0) toast('✓ Itens adicionais criados: ' + okN + '/' + totalN, 'var(--green)');
       }
     }catch(e){}
-    fecharNovaOfRapida();
-    toast('✓ OF criada com sucesso!', 'var(--green)');
     try{ if(typeof renderHub === 'function') renderHub(true); }catch(e){}
     try{ if(typeof carregarOFs === 'function') carregarOFs(); }catch(e){}
     try{ if(typeof renderPCP === 'function') renderPCP(); }catch(e){}
     try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
+    fecharNovaOfRapida();
+    var retOk = Object.assign({}, d || {}, {
+      _fromBase: true, _httpStatus: r ? r.status : 200, _httpOk: !!(r && r.ok) });
+    if (!(retOk.ok === true)) retOk.ok = true;
+    try { _ofSaveCleanup(false); } catch (_) {}
+    return retOk;
   }catch(e){
     try{ console.error('[OF RAPIDA]', e); }catch(_){}
-    if(btn){
+    var errTxt = String(e && e.message ? e.message : (e ? String(e) : 'Erro ao salvar OF'));
+    if (btn){
       btn.textContent = '✗ Erro ao salvar';
       btn.style.background = '#ef4444';
       setTimeout(()=>{
@@ -4911,14 +4960,17 @@ window.salvarOfRapida = async function(){
         }catch(_){}
       }, 2500);
     }
-    return;
+    try { _ofSaveCleanup(true); } catch (_) {}
+    var retFail = { ok: false, error: errTxt, _fromBase: true };
+    if (r && typeof r === 'object') {
+      try { retFail._httpStatus = r.status || 0; } catch (_) {}
+      try { retFail._httpOk = !!r.ok; } catch (_) {}
+    }
+    var _rawd = null; try { if (typeof d !== 'undefined') _rawd = d; } catch (_) {}
+    if (_rawd && typeof _rawd === 'object' && _rawd) Object.assign(retFail, _rawd);
+    return retFail;
   }finally{
-    try{
-      if(btn && btn.textContent === 'Salvando...'){
-        btn.textContent = '⚡ Salvar OF';
-        btn.disabled = false;
-      }
-    }catch(e){}
+    try{ _ofSaveCleanup(); }catch(_){}
   }
 };
 
@@ -33733,7 +33785,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261008113000';
+      const swVersion = '20261008131500';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61213,6 +61265,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261008113000"></script>
+<script src="/patch.js?v=20261008131500"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

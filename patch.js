@@ -26905,15 +26905,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }).join('') || '<span style="color:#94a3b8">Sem Impressão</span>';
     }
 
+    function _safeImgUrl(s) {
+      var u = String(s || '').trim();
+      if (!u) return '';
+      if (u.length === 1) return '';
+      var c0 = u.charAt(0);
+      if (c0 === '[' || c0 === ']' || c0 === '{' || c0 === '}' || c0 === ',') return '';
+      if (!/^(https?:\/\/|data:|blob:|file:\/\/|ftp:\/\/|\/|\.\.?\/|[a-zA-Z]:[\\\/]|[a-z0-9_\-]+\.(png|jpe?g|gif|webp|svg|bmp))/i.test(u)) {
+        if (/^img[\s=:]|^\d|^[a-z]$/i.test(u)) return '';
+      }
+      return u;
+    }
     function pickImage(of) {
-      var direct = String(of && (of.imagem_url || of.imagem || of.image_url) || '').trim();
+      var direct = _safeImgUrl(of && (of.imagem_url || of.imagem || of.image_url) || '');
       if (direct) return direct;
       var imgs = of && of.imgs;
       if (!Array.isArray(imgs) && typeof imgs === 'string') {
         try { imgs = JSON.parse(imgs); } catch (_) { imgs = []; }
       }
       imgs = Array.isArray(imgs) ? imgs : [];
-      return String(imgs[0] || '').trim();
+      return _safeImgUrl(imgs[0] || '');
     }
 
     // [M2 DOC FÓRMULA ATUAL - NÃO ALTERAR SEM APROVAÇÃO]
@@ -32176,7 +32187,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                 try { console.error('[salvarOfRapida][before hook]', beforeHook.id, e); } catch (_) {}
               }
             }
-            result = await window.__salvarOfRapida_BASE__.apply(this, args);
+            try {
+              result = await window.__salvarOfRapida_BASE__.apply(this, args);
+              meta.baseFailed = false;
+            } catch (e) {
+              meta.baseFailed = true;
+              meta.baseError = e;
+              result = { ok: false, error: String((e && e.message) || e || 'Erro interno ao salvar OF'), __dispatcherCatch: true, __baseThrew: true };
+              try { result._httpStatus = 500; } catch (_) {}
+              try { result._httpOk = false; } catch (_) {}
+            }
+            if (result == null || typeof result !== 'object') {
+              meta.baseFailed = true;
+              result = { ok: false, error: 'Retorno inválido da função salvar OF (result=' + String(result) + ')', __dispatcherNormalize: true };
+              try { result._httpStatus = 0; } catch (_) {}
+            }
           }
           meta.result = result;
           meta.handled = handled;
@@ -32290,6 +32315,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window.__clearOfRapidaEditContext = _clearOfRapidaEditContext;
 
   // ── PATCH 3: garantir numero no payload ao salvar OF Rapida ───
+  _salvarOfRapidaRegisterHook('__patch_of_rapida_pre_salvamento__', 'before', function(meta) {
+    // (a) Trava o botão SALVAR imediatamente (redundante com BASE, mas reforça anti-duplo-clique em hooks override)
+    try {
+      var sv = document.getElementById('btn-salvar-of-rapida');
+      if (sv) { sv.disabled = true; if (sv.textContent && sv.textContent !== 'Salvando...') sv._oldTxtSalvar = sv.textContent; sv.textContent = 'Salvando...'; sv.style.opacity = '0.6'; sv.style.cursor = 'not-allowed'; }
+    } catch (_) {}
+    // (b) Injeta confirmarDuplicata=true no payload do body se window.__OF_RAPIDA_FORCAR_DUPLICATA === true (confirmou modal 409)
+    try {
+      if (window.__OF_RAPIDA_FORCAR_DUPLICATA === true) {
+        try {
+          var payloadRef = window.__OF_RAPIDA_PAYLOAD_TEMP__;
+          if (payloadRef && typeof payloadRef === 'object') { payloadRef.confirmarDuplicata = true; }
+        } catch (_) {}
+        try {
+          var paylRaw = document.getElementById('__of_rapida_payload_temp__');
+          if (paylRaw && paylRaw.value) {
+            try { var p = JSON.parse(paylRaw.value); if (p && typeof p === 'object') { p.confirmarDuplicata = true; paylRaw.value = JSON.stringify(p); } } catch (_) {}
+          }
+        } catch (_) {}
+        try { if (typeof window.__ofRapidaInjetarConfirmarDup === 'function') window.__ofRapidaInjetarConfirmarDup(true); } catch (_) {}
+      }
+    } catch (_) {}
+    try { meta._salvando = true; } catch (_) {}
+    return undefined;
+  }, 5);
   _salvarOfRapidaRegisterHook('__patch_of_rapida_numero__', 'before', function() {
     var el = document.getElementById('of-r-numero');
     var num = window._ofRapidaNumero ||
@@ -32303,27 +32353,55 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   // ── PATCH 3B: after salvar OF Rapida → invalidar cache, chamar proximoNumeroOf e travar botão/campo enquanto atualiza
   _salvarOfRapidaRegisterHook('__patch_numero_apos_salvar__', 'after', async function(meta) {
     var editando = (meta && (meta.editandoIdAntes || String(window._ofRapidaEditandoId || '').trim()));
-    // Aplica SOMENTE para CRIAÇÃO de nova OF (edição não queremos re-numerar o formulário)
     if (editando && String(editando).trim()) {
       try { console.log('[OF NUM] after hook ignorado: modo edicao id=' + String(editando)); } catch (_) {}
       return;
     }
-    // 1) invalidar TODOS caches de OFs imediatamente
     try { if (typeof window._invalidateOfsCachedStore === 'function') window._invalidateOfsCachedStore(); } catch (_) {}
     try { if (typeof window._invalidateOfsCache === 'function') window._invalidateOfsCache(); } catch (_) {}
     var result = meta && meta.result;
-    var okCriacao = !!(result && (result.ok === true || result.success === true || (result && result.data && result.data.id)));
+    var _resultHttpStatus = 0;
+    var _resultHttpOk = true;
+    try { if (result && typeof result === 'object') { if (result._httpStatus != null) _resultHttpStatus = Number(result._httpStatus) || 0; if (result._httpOk === false) _resultHttpOk = false; } } catch (_) {}
+    var okCriacao = !!(
+      result &&
+      typeof result === 'object' &&
+      result.ok === true &&
+      _resultHttpStatus !== 409 &&
+      result.duplicata !== true &&
+      _resultHttpOk !== false
+    );
+    var isDuplicata409 = !!(result && typeof result === 'object' && (result.duplicata === true || _resultHttpStatus === 409));
     var numSolicitado = '';
     var numFinal = '';
     var numeroMudou = false;
     try {
       if (result && typeof result === 'object') {
-        numSolicitado = String(result.numero_solicitado || result.numeroSolicitado || (result.data && (result.data.numero || result.data.of || result.data.of_num || result.data.numero_of)) || window._ofRapidaNumero || '').trim();
-        numFinal = String(result.numero_final || result.numeroFinal || (result.data && (result.data.numero || result.data.of || result.data.of_num || result.data.numero_of)) || numSolicitado).trim();
+        numSolicitado = String(result.numero_solicitado || result.numeroSolicitado || (result.data && (result.data.numero || result.data.of || result.data.of_num || result.data.of_seq)) || window._ofRapidaNumero || '').trim();
+        numFinal = String(result.numero_final || result.numeroFinal || (result.data && (result.data.numero || result.data.of || result.data.of_num || result.data.of_seq)) || numSolicitado).trim();
         numeroMudou = !!result.numero_mudou;
       }
     } catch (_) {}
-    // 2) Notificar usuário do resultado (toast verde / vermelho)
+    var _extrairMsgErro = function(obj) {
+      try {
+        var o = obj && typeof obj === 'object' ? obj : null;
+        if (!o) { return obj == null ? 'Erro desconhecido ao salvar OF.' : String(obj); }
+        var candidatos = [];
+        var picks = [
+          o.mensagem, o.error, o.message, o.erro, o.msg, o.details, o.detalhe,
+          (o.data && (o.data.mensagem || o.data.error || o.data.message || o.data.erro || o.data.msg)),
+          (o.body && (o.body.error || o.body.message || o.body.erro || o.body.mensagem)),
+          (o._bodyText && String(o._bodyText).slice(0, 500)),
+          (o.statusText ? ('HTTP ' + (o.status || o._httpStatus || '?') + ': ' + o.statusText) : '')
+        ];
+        for (var _pi = 0; _pi < picks.length; _pi++) { var _vv = picks[_pi]; if (_vv != null && String(_vv).trim()) candidatos.push(String(_vv).trim()); }
+        if (!candidatos.length) {
+          try { var js = JSON.stringify(o); if (js && js !== '{}' && js.length < 600) candidatos.push(js); } catch (_) {}
+        }
+        return candidatos[0] || 'Erro desconhecido ao salvar OF.';
+      } catch (_eEx) { return 'Erro desconhecido ao salvar OF. (extração falhou)'; }
+    };
+    var notificou = false;
     try {
       if (okCriacao && numFinal) {
         var msgOk;
@@ -32333,27 +32411,53 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           msgOk = '✅ OF #' + numFinal + ' criada com sucesso.';
         }
         try { if (typeof window.toast === 'function') window.toast(msgOk, '#10b981', 5200); else alert(msgOk); } catch (_) {}
-        try { console.log('[OF NUM] criação OK:', { solicitado: numSolicitado, final: numFinal, mudou: numeroMudou, dataId: result && result.data && result.data.id }); } catch (_) {}
+        try { console.log('[OF NUM] criação OK:', { solicitado: numSolicitado, final: numFinal, mudou: numeroMudou, dataId: result && result.data && result.data.id, httpStatus: _resultHttpStatus }); } catch (_) {}
+        notificou = true;
+        try { window.__OF_RAPIDA_FORCAR_DUPLICATA = false; } catch (_) {}
+      } else if (isDuplicata409) {
+        var dupMsg = _extrairMsgErro(result);
+        var dupLista = Array.isArray(result.ofs_duplicadas) ? result.ofs_duplicadas : [];
+        var dupItensHtml = '';
+        if (dupLista.length) {
+          dupItensHtml = '<ul style="margin:8px 0;padding-left:20px;color:#cbd5e1;font-size:13px;line-height:1.5">' +
+            dupLista.slice(0,5).map(function(d){ return '<li>#' + String(d.numero||'?') + ' — criada em ' + String(d.created_at||'?').replace('T',' ').slice(0,16) + (d.qtd ? ' • qtd='+d.qtd : '') + '</li>'; }).join('') +
+            (dupLista.length > 5 ? '<li>… mais ' + (dupLista.length-5) + ' semelhantes</li>' : '') +
+            '</ul>';
+        }
+        try {
+          window.__OF_RAPIDA_ULTIMA_DUP_INFO__ = {
+            mensagem: dupMsg, lista: dupLista.slice(),
+            _gerado: new Date().toISOString()
+          };
+        } catch (_) {}
+        var continuar = false;
+        try {
+          var txtFull = '⚠ OF semelhante encontrada recentemente (últimos 2 minutos).\n\n' +
+            String(dupMsg || 'Já existe OF criada com mesmo cliente / produto / quantidade.') +
+            (dupLista.length ? ('\n\nExemplo(s):\n' + dupLista.slice(0,3).map(function(d){ return '  • OF #' + String(d.numero||'?') + ' de ' + String(d.created_at||'?').replace('T',' ').slice(0,16) + (d.qtd?' (qtd '+d.qtd+')':''); }).join('\n')) : '') +
+            '\n\nCriar MESMO ASSIM (pode gerar duplicata real)?\n\nOK = Criar de qualquer forma.\nCancelar = Voltar para conferir.';
+          continuar = !!window.confirm(txtFull);
+        } catch (_c) { continuar = false; }
+        try {
+          if (typeof window.toast === 'function') {
+            window.toast('⚠ OF possivelmente duplicada: ' + String(dupMsg || 'verifique antes de criar novamente.'), 'rgba(245,158,11,.95)', 7500);
+          }
+        } catch (_t) {}
+        notificou = true;
+        try {
+          var btnEl = document.getElementById('btn-salvar-of-rapida');
+          if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = ''; btnEl.style.cursor = ''; if (btnEl._oldTxtSalvar) btnEl.textContent = btnEl._oldTxtSalvar; else btnEl.textContent = '⚡ Salvar OF'; }
+        } catch (_) {}
+        if (continuar) {
+          try { window.__OF_RAPIDA_FORCAR_DUPLICATA = true; } catch (_) {}
+          try { if (typeof window.__OF_RAPIDA_SALVAR_DE_NOVO__ === 'function') window.__OF_RAPIDA_SALVAR_DE_NOVO__(); } catch (_) {}
+          try { window.salvarOfRapida && window.salvarOfRapida(); } catch (_) {}
+        } else {
+          try { window.__OF_RAPIDA_FORCAR_DUPLICATA = false; } catch (_) {}
+          try { if (typeof window.__ofCriacaoNaoLimparProximo === 'object') window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; else window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; } catch (_) {}
+        }
+        return;
       } else if (!okCriacao) {
-        var _extrairMsgErro = function(obj) {
-          try {
-            var o = obj && typeof obj === 'object' ? obj : null;
-            if (!o) { return obj == null ? 'Erro desconhecido ao salvar OF.' : String(obj); }
-            var candidatos = [];
-            var picks = [
-              o.error, o.message, o.mensagem, o.erro, o.msg, o.details, o.detalhe,
-              (o.data && (o.data.error || o.data.message || o.data.mensagem || o.data.erro || o.data.msg)),
-              (o.body && (o.body.error || o.body.message || o.body.erro)),
-              (o._bodyText && String(o._bodyText).slice(0, 500)),
-              (o.statusText ? ('HTTP ' + (o.status || '?') + ': ' + o.statusText) : '')
-            ];
-            for (var _pi = 0; _pi < picks.length; _pi++) { var _vv = picks[_pi]; if (_vv != null && String(_vv).trim()) candidatos.push(String(_vv).trim()); }
-            if (!candidatos.length) {
-              try { var js = JSON.stringify(o); if (js && js !== '{}' && js.length < 600) candidatos.push(js); } catch (_) {}
-            }
-            return candidatos[0] || 'Erro desconhecido ao salvar OF.';
-          } catch (_eEx) { return 'Erro desconhecido ao salvar OF. (extração falhou)'; }
-        };
         var errMsg = _extrairMsgErro(result);
         var popupMsg = '❌ Não foi possível salvar esta OF. Dados foram MANTIDOS no formulário. Detalhe: ' + String(errMsg || 'erro interno');
         try {
@@ -32366,47 +32470,60 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try {
           var resultStr = '?';
           try { resultStr = (result && typeof result === 'object') ? JSON.stringify(result) : String(result); } catch (_ss) {}
-          console.error('[OF NUM] criação falhou. errMsg=', String(errMsg || 'vazio'), ' | result=', String(resultStr || '').slice(0, 1200));
+          console.error('[OF NUM] criação falhou. errMsg=', String(errMsg || 'vazio'), ' | httpStatus=', _resultHttpStatus, ' | result=', String(resultStr || '').slice(0, 1200));
         } catch (_eLog) {}
-        // NÃO LIMPA o formulário (mantém dados digitados)
         try { if (typeof window.__ofCriacaoNaoLimparProximo === 'object') window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; else window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; } catch (_) {}
+        notificou = true;
+        try { window.__OF_RAPIDA_FORCAR_DUPLICATA = false; } catch (_) {}
+        try {
+          var b2 = document.getElementById('btn-salvar-of-rapida');
+          if (b2) { b2.disabled = false; b2.style.opacity = ''; b2.style.cursor = ''; if (b2._oldTxtSalvar) b2.textContent = b2._oldTxtSalvar; else b2.textContent = '⚡ Salvar OF'; }
+        } catch (_) {}
         return;
       }
     } catch (_eNot) {
       try { console.warn('[OF NUM] notificacao falhou:', _eNot && _eNot.message || String(_eNot)); } catch (__) {}
     }
-    // 3) Travar input NUMERO e botão SALVAR enquanto recalcula número novo
+    // A PARTIR DAQUI: APENAS SE SUCESSO (okCriacao). Travar campo numero + chamar proximoNumeroOf EM MODO TOTALMENTE SILENCIOSO.
+    // Chamada proximoNumeroOf EM try/catch TOTAL. NÃO gera toast de ERRO de jeito nenhum.
     var numEl = document.getElementById('of-r-numero');
     var saveBtn = document.querySelector('[data-acao-of-rapida="salvar"]')
       || document.querySelector('#modal-of-rapida button#salvar-of-rapida')
       || document.querySelector('#modal-nova-of-rapida button[type="submit"]')
       || document.querySelector('#modal-of-rapida button.btn-primary')
       || null;
-    if (numEl) {
-      numEl.setAttribute('readonly', 'readonly');
-      numEl.dataset.originalReadOnly = '1';
-      if (numEl.tagName === 'INPUT') { numEl.style.opacity = '0.5'; numEl.placeholder = 'Atualizando número…'; numEl.value = ''; }
-      else { numEl.textContent = 'Atualizando número…'; numEl.style.color = '#f59e0b'; }
+    if (okCriacao && numEl) {
+      try { numEl.setAttribute('readonly', 'readonly'); numEl.dataset.originalReadOnly = '1'; } catch (_) {}
+      try {
+        if (numEl.tagName === 'INPUT') { numEl.style.opacity = '0.5'; numEl.placeholder = 'Atualizando número…'; }
+        else { numEl.textContent = 'Atualizando número…'; numEl.style.color = '#f59e0b'; }
+      } catch (_) {}
     }
-    if (saveBtn) { saveBtn.setAttribute('disabled', 'disabled'); saveBtn.style.opacity = '0.6'; saveBtn.style.cursor = 'not-allowed'; }
-    // 4) Buscar NOVO numero (rota dedicada no_cache)
+    if (okCriacao && saveBtn) { try { saveBtn.setAttribute('disabled', 'disabled'); saveBtn.style.opacity = '0.6'; saveBtn.style.cursor = 'not-allowed'; } catch (_) {} }
+    var _reabrirCasoFechou = notificou === false ? false : false;
     try {
-      var novoNum = typeof window.proximoNumeroOf === 'function' ? await window.proximoNumeroOf({ __forceFresh: true }) : '';
+      var novoNum = '';
+      try {
+        if (okCriacao && typeof window.proximoNumeroOf === 'function') {
+          novoNum = await window.proximoNumeroOf({ __forceFresh: true });
+        }
+      } catch (_eNNum) {}
       if (novoNum) {
         try { window._ofRapidaNumero = String(novoNum); } catch (_) {}
       }
-      if (numEl && novoNum) {
-        if (numEl.tagName === 'INPUT') {
-          numEl.value = String(novoNum);
-          numEl.style.opacity = '1';
-        } else {
-          numEl.textContent = String(novoNum);
-          numEl.style.color = '';
-        }
+      if (okCriacao && numEl && novoNum) {
+        try {
+          if (numEl.tagName === 'INPUT') {
+            numEl.value = String(novoNum);
+            numEl.style.opacity = '1';
+          } else {
+            numEl.textContent = String(novoNum);
+            numEl.style.color = '';
+          }
+        } catch (_) {}
       }
-    } catch (_eNNum) {
-      try { console.warn('[OF NUM] erro buscar proximo numero apos salvar:', _eNNum && _eNNum.message || String(_eNNum)); } catch (_) {}
-    } finally {
+    } catch (_eSilent) {}
+    try {
       if (numEl) {
         try { delete numEl.dataset.originalReadOnly; } catch (_) {}
         if (numEl.tagName === 'INPUT') {
@@ -32419,7 +32536,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       }
       if (saveBtn) { try { saveBtn.removeAttribute('disabled'); } catch (_) {} saveBtn.style.opacity = ''; saveBtn.style.cursor = ''; }
-    }
+    } catch (_eFim) {}
   }, 99999);
 
   // ── PATCH 4: carregarPassagensHoje com filtros ─────────────────

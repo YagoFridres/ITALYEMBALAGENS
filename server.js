@@ -1291,8 +1291,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261008113000';
-const SW_RUNTIME_VERSION = '20261008113000';
+const PATCH_RUNTIME_VERSION = '20261008131500';
+const SW_RUNTIME_VERSION = '20261008131500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -6764,6 +6764,63 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         vendNome: String(merged.vendNome ?? merged.vendedor ?? merged.vendedor_nome ?? '').trim(),
       };
     }
+    // #region anti-duplicata 2min cliente+produto+qtd
+    try {
+      var _dupBody = body || {};
+      var confirmarDup = false;
+      try {
+        if (_dupBody.confirmarDuplicata === true || _dupBody.confirmar_duplicata === true || String(_dupBody.confirmarDuplicata || _dupBody.confirmar_duplicata || '').trim().toLowerCase() === 'true' || _dupBody.forcar === true || String(_dupBody.forcar || '').toLowerCase() === 'true') confirmarDup = true;
+      } catch (_) { confirmarDup = false; }
+      if (!confirmarDup && !req.params.id) {
+        var _dupCliId = String(merged && merged.cli_id != null ? merged.cli_id : (filtered.cli_id || '')).trim();
+        var _dupProd = String(merged && merged.produto != null ? merged.produto : (merged.descricao || filtered.descricao || filtered.produto || '')).trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/s+/g,' ').toLowerCase();
+        var _dupQtd = Math.trunc(Number(merged && merged.qtd != null ? (Number(merged.qtd)||0) : (Number(merged.quantidade) || Number(filtered.qtd) || Number(filtered.quantidade) || 0)) || 0);
+        var _dupEmpresa = String(filtered.empresa_id || empresaUuid || '').trim();
+        if (_dupCliId && _dupProd && _dupQtd > 0 && _dupEmpresa) {
+          var _dupCorteIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+          var _dupQuery = supabase
+            .from('ofs')
+            .select('id,numero,of,of_num,created_at,cli_id,cliente_id,clinome,cliente_nome,produto,descricao,qtd,quantidade')
+            .eq('empresa_id', _dupEmpresa)
+            .gte('created_at', _dupCorteIso)
+            .or('cli_id.eq.' + _dupCliId + ',cliente_id.eq.' + _dupCliId)
+            .limit(30);
+          try { _dupQuery = _dupQuery.eq('qtd', _dupQtd); } catch (_) { try { _dupQuery = _dupQuery.eq('quantidade', _dupQtd); } catch (__) {} }
+          var _dupRes = await _dupQuery;
+          var _dupMatches = [];
+          if (_dupRes && !_dupRes.error && Array.isArray(_dupRes.data)) {
+            _dupRes.data.forEach(function (o) {
+              var pA = String(o.produto || o.descricao || '').trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/s+/g,' ').toLowerCase();
+              var pB = _dupProd;
+              if (pA !== pB) return;
+              var q1 = Math.trunc(Number(o.qtd || o.quantidade || 0) || 0);
+              if (q1 !== _dupQtd) return;
+              _dupMatches.push({
+                id: String(o.id || ''),
+                numero: String(o.numero || o.of || o.of_num || ''),
+                created_at: String(o.created_at || ''),
+                cliente_nome: String(o.clinome || o.cliente_nome || ''),
+                produto: String(o.produto || o.descricao || ''),
+                qtd: q1,
+              });
+            });
+          }
+          if (_dupMatches.length > 0) {
+            var _dupPrim = _dupMatches[0];
+            var _dupMsg = 'Já existe OF criada em ' + String(_dupPrim.created_at || '?').replace('T',' ').slice(0,16) + ' com o mesmo cliente, produto e quantidade (#' + String(_dupPrim.numero || '') + '). Confirme para criar novamente.';
+            return res.status(409).json({
+              ok: false,
+              duplicata: true,
+              error: _dupMsg,
+              mensagem: _dupMsg,
+              ofs_duplicadas: _dupMatches.slice(0, 10),
+              _hint: 'reenvie POST /api/ofs com body.confirmarDuplicata = true para ignorar este aviso',
+            });
+          }
+        }
+      }
+    } catch (_eDup) { try { console.warn('[POST OFS] anti-duplicata pulado (erro interno, ignorado):', _eDup && _eDup.message || String(_eDup)); } catch (__) {} }
+    // #endregion
     console.debug('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     // #region debug-point B:ofs-post-before-insert
     _dbgOfStage = 'before-insert';
