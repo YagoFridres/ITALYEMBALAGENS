@@ -20985,7 +20985,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.18),transparent)}'
       + '#page-ofmaq .patch-ofmaq-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.18),transparent)}'
       + '#page-ofmaq .patch-ofmaq-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.22),rgba(202,138,4,.18))!important;background-color:rgba(250,204,21,.08)!important}'
-      + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.2),rgba(202,138,4,.16))!important;background-color:rgba(250,204,21,.08)!important}'
+      + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.2),rgba(202,138,4,.16))!important;background-color:rgba(250,204,21,.08)!important}' + '#page-ofmaq .patch-ofmaq-summary-grid:empty{display:none!important;margin:0!important;padding:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;border:0!important}'
+      + '#page-ofmaq .patch-ofmaq-col-summary:empty{display:none!important;margin:0!important;padding:0!important;min-height:0!important;overflow:hidden!important}'
+      + '#page-ofmaq .kb-board-ofmaq:empty,#page-ofmaq .kb-col.kb-col-ofmaq:empty{display:none!important;margin:0!important;padding:0!important;height:0!important;min-height:0!important;overflow:hidden!important}'
+      + '#page-ofmaq .patch-ofmaq-table-wrap{margin-top:0!important}'
+      + '#page-ofmaq .ofmaq-final-table-wrap{margin-top:0!important}'
+      + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar + #ofs-por-maquina-container{margin-top:12px!important}'
+      + '#page-ofmaq .patch-ofmaq-toolbar-zero + .ofmaq-final-table-wrap{margin-top:12px!important}'
+      + '#page-ofmaq .patch-ofmaq-toolbar-zero{margin-bottom:0!important}'
+      + '@media (max-width:768px){#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar{padding:14px 14px 10px!important}#page-ofmaq .patch-ofmaq-toolbar{gap:10px!important;padding:10px 14px!important}#page-ofmaq .patch-ofmaq-v2-days button{min-height:34px!important;padding:6px 10px!important;font-size:11px!important}#page-ofmaq #ofs-por-maquina-container.patch-ofmaq-container{padding:12px!important;border-radius:14px!important}#page-ofmaq .ofmaq-final-table-wrap{margin-top:8px!important}}'
       + '#ofmaq-tbody-zero tr[data-sem-papel="1"],#page-ofmaq .ofmaq-final-table .ofmaq-row[data-sem-papel="1"]{background-image:linear-gradient(180deg,rgba(146,64,14,.22),rgba(202,138,4,.22))!important;background-color:rgba(250,204,21,.12)!important}'
       + '#page-ofmaq .patch-ofmaq-cell-main{display:grid;gap:3px;min-width:0}'
       + '#page-ofmaq .patch-ofmaq-cell-main strong{font-size:14px;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
@@ -22570,7 +22578,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           var ofs = Array.isArray(grupos[nome]) ? grupos[nome] : [];
           if (!ofs.length) return;
           if (!gruposFiltrados[n]) gruposFiltrados[n] = [];
-          ofs.forEach(function(of) { if (of) gruposFiltrados[n].push(of); });
+          ofs.forEach(function(of) { if (of && !(window._isClosedOfmaqStatus && window._isClosedOfmaqStatus(of && (of.status || of.stat || of.state || "")))) gruposFiltrados[n].push(of); });
           addOrdem(n);
         });
         var ordemFinal = [];
@@ -30231,6 +30239,35 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         throw _fetchErr;
       }
       try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
+      (function() {
+        function _normSt(v) { try { v = String(v == null ? "" : v).trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " "); } catch (_) { v = ""; } return v; }
+        function _isFechado(st) { st = _normSt(st); if (!st) return false; var f = ["concluida","concluido","despachada","despachado","entregue","entregue para o cliente","entregue cliente","faturada","faturado","cancelada","cancelado","arquivada","arquivado","fechada","fechado","pedido pronto"]; for (var i=0;i<f.length;i++) if (f[i] === st || st.indexOf(f[i]) >= 0) return true; return false; }
+        function _maquinaVazia(ofRow) { var m = _normSt(ofRow && (ofRow.maquina || ofRow.machine || ofRow.maq || "")); return !m || m === "sem maquina definida" || m === "sem maquina" || m === "nenhuma"; }
+        try {
+          var todas = Array.isArray(rawRows) ? rawRows.slice() : [];
+          var semMqTodas = [];
+          for (var _i = 0; _i < todas.length; _i++) {
+            if (_maquinaVazia(todas[_i])) semMqTodas.push({
+              numero: todas[_i] && (todas[_i].numero || todas[_i].of || todas[_i].of_num || todas[_i].of_seq || null),
+              status: (todas[_i] && (todas[_i].status || todas[_i].stat || todas[_i].state || "")) || "",
+              cliente: (todas[_i] && (todas[_i].cliente || todas[_i].client || "")) || "",
+              produto: (todas[_i] && (todas[_i].produto || todas[_i].product || "")) || "",
+              _fechado: _isFechado(todas[_i] && (todas[_i].status || todas[_i].stat || todas[_i].state || "")),
+              _fechadoRazao: (function(st){st=_normSt(st);var r=[];if(st.indexOf("conclu")>=0)r.push("concluido");if(st.indexOf("cancel")>=0)r.push("cancelado");if(st==="pedido pronto")r.push("pedido_pronto");return r.join(",")||"aberta"})(todas[_i] && (todas[_i].status || todas[_i].stat || todas[_i].state || ""))
+            });
+          }
+          semMqTodas.sort(function(a, b) { var fa = a._fechado ? 1 : 0; var fb = b._fechado ? 1 : 0; if (fa !== fb) return fa - fb; return 0; });
+          window.__OFMAQ_10_OFS_ANTES = semMqTodas.slice(0, 50);
+          window.__OFMAQ_SEM_MAQ_COUNT_TOTAL = semMqTodas.length;
+          window.__OFMAQ_SEM_MAQ_COUNT_FECHADAS = semMqTodas.filter(function(x){return x._fechado}).length;
+          window.__OFMAQ_SEM_MAQ_COUNT_ABERTAS = semMqTodas.filter(function(x){return !x._fechado}).length;
+        } catch (_e) { try { console.error("[OFMAQ-FILTRO-DEBUG-ERR]", _e); } catch (_) {} }
+        try {
+          if (Array.isArray(rawRows)) {
+            rawRows = rawRows.filter(function(r) { return !_isFechado(r && (r.status || r.stat || r.state || "")); });
+          }
+        } catch (_e2) { try { console.error("[OFMAQ-FILTRO-APLICAR-ERR]", _e2); } catch (_) {} }
+      })();
       state.rowsData = buildRowsFromOfs(rawRows);
       (function() {
         function _normOfOpenStatus(s) {
