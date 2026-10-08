@@ -1291,8 +1291,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261007174205';
-const SW_RUNTIME_VERSION = '20261007174205';
+const PATCH_RUNTIME_VERSION = '20261008094500';
+const SW_RUNTIME_VERSION = '20261008094500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5101,13 +5101,13 @@ async function ofsInsertWithRetry(row) {
         const n = parseInt(String(item?.numero || '').replace(/\D/g, ''), 10) || 0;
         if (n > maior) maior = n;
       });
-      for (let i = 1; i <= 20; i += 1) {
+      for (let i = 1; i <= 500; i += 1) {
         const cand = String(maior + i);
         const { data: exists, error: existsErr } = await supabase
           .from('ofs')
           .select('id')
           .eq('empresa_id', empresaId)
-          .eq('numero', cand)
+          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
           .limit(1);
         if (existsErr) break;
         if (Array.isArray(exists) && exists.length) continue;
@@ -6051,28 +6051,50 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 // Considera SEMPRE TODAS as OFs da tabela, independente de status, deleted_at, empresa ou qualquer outro filtro.
 app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('ofs')
-      .select('numero, of_num, of, id, created_at, deleted_at')
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    if (error) throw error;
-
+    setNoCache(res);
     let maior = 0;
-    (data || []).forEach((of) => {
-      ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
-        const v = of?.[campo];
-        if (v === null || v === undefined || v === '') return;
-        const n = parseInt(String(v).replace(/\D/g, ''), 10);
-        if (!isNaN(n) && n > maior) maior = n;
-      });
-    });
-
-    const proximo = String(maior + 1).padStart(String(maior).length >= 3 ? String(maior).length : 3, '0');
-    return res.json({ ok: true, proximo, maior });
+    const campos = ['numero', 'of_num', 'numero_of', 'of'];
+    for (const campo of campos) {
+      try {
+        const { data, error } = await supabase
+          .from('ofs')
+          .select(campo + ',id')
+          .not(campo, 'is', null)
+          .order(campo, { ascending: false, nullsFirst: false })
+          .limit(50000);
+        if (!error && Array.isArray(data)) {
+          for (let i = 0; i < data.length; i++) {
+            const v = data[i]?.[campo];
+            if (v == null || v === '') continue;
+            const n = parseInt(String(v).replace(/\D/g, ''), 10);
+            if (!isNaN(n) && n > maior) maior = n;
+          }
+        }
+      } catch (_) {}
+    }
+    try {
+      const { data: recent } = await supabase
+        .from('ofs')
+        .select('numero,of_num,numero_of,of,id')
+        .order('created_at', { ascending: false })
+        .limit(20000);
+      if (Array.isArray(recent)) {
+        for (let j = 0; j < recent.length; j++) {
+          for (const campo of campos) {
+            const v = recent[j]?.[campo];
+            if (v == null || v === '') continue;
+            const n = parseInt(String(v).replace(/\D/g, ''), 10);
+            if (!isNaN(n) && n > maior) maior = n;
+          }
+        }
+      }
+    } catch (_) {}
+    const digits = String(maior || '').length >= 3 ? String(maior || '').length : 3;
+    const proximo = String(maior + 1).padStart(digits, '0');
+    const resp = { ok: true, proximo, maior: maior > 0 ? String(maior) : '0', gerado_em: new Date().toISOString(), no_cache: true, observacao: 'Numeros canceladas/deletadas NAO sao reutilizados. Consulta SEM cache.' };
+    return res.json(resp);
   } catch (e) {
-    return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e) });
+    return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e), no_cache: true });
   }
 });
 
@@ -6614,13 +6636,32 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           : (Number.isFinite(Number(nextSeqFallback)) && Number(nextSeqFallback) > 1000 ? Number(nextSeqFallback) : (Number(nextSeqFallback) > 0 ? Number(nextSeqFallback) + 4000 : 4001));
         const numeroAtualRaw = String(filtered.numero || filtered.of || '').trim();
         const numeroAtualNum = numeroAtualRaw ? parseInt(String(numeroAtualRaw).replace(/\D/g, ''), 10) : NaN;
+        var usuarioNumeroRaw = numeroAtualRaw;
+        var usuarioNumeroNum = (!isNaN(numeroAtualNum) && numeroAtualNum > 0) ? numeroAtualNum : null;
+        var usuarioPreencheuNumero = !!(numeroAtualRaw && (!isNaN(numeroAtualNum) && numeroAtualNum > 0));
+        var usuarioNumeroJaExiste = false;
+        if (usuarioPreencheuNumero) {
+          try {
+            const candUsr = String(usuarioNumeroNum);
+            const { data: exUsr } = await supabase
+              .from('ofs')
+              .select('id')
+              .or(`numero.eq.${candUsr},of.eq.${candUsr},of_num.eq.${candUsr},numero_of.eq.${candUsr}`)
+              .limit(1);
+            usuarioNumeroJaExiste = Array.isArray(exUsr) && exUsr.length > 0;
+            if (usuarioNumeroJaExiste) {
+              try { console.warn('[POST OFS] numero usuario ja existe:', candUsr); } catch (_) {}
+            }
+          } catch (_) {}
+        }
         const precisaCorrigir = (
           !numeroAtualRaw ||
           (!isNaN(numeroAtualNum) && numeroAtualNum < 1000) ||
-          (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero)
+          (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero) ||
+          usuarioNumeroJaExiste
         );
         if (precisaCorrigir) {
-          for (let i = 0; i < 50; i += 1) {
+          for (let i = 0; i < 500; i += 1) {
             const cand = String(baseNumero + i);
             const { data: exists } = await supabase
               .from('ofs')
@@ -6633,6 +6674,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             break;
           }
         }
+        try {
+          req._ofNumeroSolicitado = usuarioPreencheuNumero ? String(usuarioNumeroNum || usuarioNumeroRaw || '') : '';
+          req._ofNumeroAjustado = usuarioPreencheuNumero ? String(filtered.numero || filtered.of || '') : '';
+        } catch (_) {}
       } catch (_eNum) { try { console.warn('[POST OFS] bloco cálculo número falhou:', _eNum && _eNum.message); } catch (__) {} }
     }
     {
@@ -6842,7 +6887,30 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       });
     } catch (_) {}
     // #endregion
-    return res.json({ ok: true, data: created, ...(warnings ? { warnings } : {}) });
+    try {
+      const numeroFinal = String((created && (created.numero || created.of)) || (filtered && (filtered.numero || filtered.of)) || '').trim();
+      const numeroSolicitadoRaw = String((req && req._ofNumeroSolicitado) ? req._ofNumeroSolicitado : ((body && (body.numero || body.of)) || '')).trim();
+      const numeroSolicitadoNum = numeroSolicitadoRaw ? parseInt(String(numeroSolicitadoRaw).replace(/\D/g, ''), 10) : NaN;
+      const numeroFinalNum = numeroFinal ? parseInt(String(numeroFinal).replace(/\D/g, ''), 10) : NaN;
+      const numeroMudou = !!(
+        numeroSolicitadoRaw &&
+        !isNaN(numeroSolicitadoNum) &&
+        !isNaN(numeroFinalNum) &&
+        numeroFinalNum > 0 &&
+        String(numeroSolicitadoNum) !== String(numeroFinalNum)
+      );
+      const numeroAjustadoResp = String((req && req._ofNumeroAjustado) ? req._ofNumeroAjustado : '').trim();
+      const extraResp = {
+        numero_solicitado: numeroSolicitadoRaw || null,
+        numero_final: numeroFinal || null,
+        numero_mudou: !!numeroMudou,
+        numero_reaproveitou_cancelada: false,
+        numero_ajustado_antes_insert: numeroAjustadoResp || null,
+      };
+      return res.json({ ok: true, data: created, ...extraResp, ...(warnings ? { warnings } : {}) });
+    } catch (_eFinal) {
+      return res.json({ ok: true, data: created, ...(warnings ? { warnings } : {}) });
+    }
   } catch (e) {
     // #region debug-point B:ofs-post-error
     try {

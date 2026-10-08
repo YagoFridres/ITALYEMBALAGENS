@@ -30124,6 +30124,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       var _res;
       var _rej;
+      var _noCacheBypass = !!(opts && (opts.__noCache === true || opts.__nocache === true || opts.__bypassCache === true));
+      if (_noCacheBypass) {
+        try { delete _store[key]; } catch (_) {}
+        var _doFetchBypass;
+        try {
+          if (opts && typeof apiJson === 'function' && (opts.__useApiJson === true)) {
+            var _useOptsB = {};
+            for (var _kb in opts) if (Object.prototype.hasOwnProperty.call(opts, _kb) && _kb !== '__useApiJson' && _kb !== '__noCache' && _kb !== '__nocache' && _kb !== '__bypassCache') _useOptsB[_kb] = opts[_kb];
+            _doFetchBypass = apiJson(urlRaw, _useOptsB);
+          } else {
+            var _cleanOptsB = opts || {};
+            try { delete _cleanOptsB.__noCache; delete _cleanOptsB.__nocache; delete _cleanOptsB.__bypassCache; } catch (_) {}
+            _doFetchBypass = fetch(urlRaw, _cleanOptsB);
+          }
+        } catch (_errB) { _doFetchBypass = Promise.reject(_errB); }
+        return Promise.resolve(_doFetchBypass);
+      }
       var prom = new Promise(function(res, rej) { _res = res; _rej = rej; });
       try { _store[key] = { ts: agora, inFlight: prom, resolved: null }; } catch (_) {}
       var doFetch;
@@ -30145,6 +30162,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       });
       return prom;
     }
+    try {
+      window._invalidateOfsCachedStore = function() {
+        try { window.__patchFetchOfsCachedStore = {}; } catch (_) {}
+        try { window.__patchCanonicalOfsCache = { ts: 0, data: null, inFlight: null, ttlMs: 0 }; } catch (_) {}
+        try { window._ofsCachedForceNextRefresh = true; } catch (_) {}
+        try { console.log('[OF CACHE] invalidado por _invalidateOfsCachedStore'); } catch (_) {}
+        return true;
+      };
+      window._ofNextNumberBypass = function() { return { __noCache: true }; };
+    } catch (_) {}
 
     async function loadCanonicalRows(force) {
       var _cacheGlob = window.__patchCanonicalOfsCache || (window.__patchCanonicalOfsCache = { ts: 0, data: null, inFlight: null, ttlMs: 60000 });
@@ -31931,26 +31958,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   // REGRA UNIVERSAL KK3: NÚMEROS DE OF NUNCA SÃO REUTILIZADOS.
   // CONSIDERA SEMPRE TODAS AS OFS, MESMO CANCELADAS, DELETADAS (deleted_at preenchido) OU DE OUTRAS EMPRESAS.
   // NÃO FILTRA MAIS POR !deleted_at em NENHUM nível.
-  window.proximoNumeroOf = async function() {
+  window.proximoNumeroOf = async function(opts) {
+    opts = opts || {};
     var token = getToken();
     var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+    // SEMPRE buscar do banco (não usar cache). Evita números repetidos após POST.
+    var bypass = true;
     try {
-      var r0 = await _patchFetchOfsCached('/api/ofs/proximo-numero', { headers: h });
+      var r0 = await _patchFetchOfsCached('/api/ofs/proximo-numero?t=' + Date.now(), Object.assign({}, { headers: h }, bypass ? window._ofNextNumberBypass ? window._ofNextNumberBypass() : { __noCache: true } : {}));
       if (r0.ok) {
         var d0 = await r0.json();
-        if (d0 && d0.ok && Number(d0.maior) > 0 && d0.proximo) {
-          var proximoNum = parseInt(d0.proximo, 10);
-          var maiorNum = parseInt(d0.maior, 10);
-          if (!isNaN(proximoNum) && !isNaN(maiorNum) && proximoNum === maiorNum) {
-            d0.proximo = String(maiorNum + 1).padStart(String(d0.proximo).length, '0');
+        if (d0 && d0.ok && d0.proximo) {
+          var proximoNum = parseInt(String(d0.proximo).replace(/\D/g, ''), 10);
+          var maiorNum = parseInt(String(d0.maior || '0').replace(/\D/g, ''), 10);
+          if (!isNaN(proximoNum) && !isNaN(maiorNum) && maiorNum > 0 && proximoNum <= maiorNum) {
+            proximoNum = maiorNum + 1;
           }
-          console.log('[PATCH] proximoNumeroOf via rota dedicada: maior=' + d0.maior + ' proximo=' + d0.proximo);
-          return String(d0.proximo);
+          var digits = !isNaN(maiorNum) && maiorNum > 0 ? Math.max(3, String(maiorNum).length) : 3;
+          var proxStr = String(isNaN(proximoNum) || proximoNum <= 0 ? 1 : proximoNum).padStart(digits, '0');
+          console.log('[PATCH] proximoNumeroOf via rota dedicada (no_cache): maior=' + (isNaN(maiorNum) ? 0 : maiorNum) + ' proximo=' + proxStr);
+          return proxStr;
         }
       }
-    } catch(e0) { console.warn('[PATCH] rota dedicada falhou:', e0.message); }
+    } catch(e0) { console.warn('[PATCH] rota dedicada falhou (fallback):', e0 && e0.message || String(e0)); }
     try {
-      var r = await _patchFetchOfsCached('/api/ofs?limit=200&order_by=numero&order=desc', { headers: h });
+      var r = await _patchFetchOfsCached('/api/ofs?limit=200&order_by=numero&order=desc&t=' + Date.now(), Object.assign({}, { headers: h }, { __noCache: true }));
       if (r.ok) {
         var d = await r.json();
         var lista = extractOfsRows(d);
@@ -32174,6 +32206,99 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (el) { if (el.tagName === 'INPUT') el.value = num; else el.textContent = num; }
     try { console.log('[PATCH] salvar OF Rapida numero:', num); } catch (_) {}
   }, 10);
+
+  // ── PATCH 3B: after salvar OF Rapida → invalidar cache, chamar proximoNumeroOf e travar botão/campo enquanto atualiza
+  _salvarOfRapidaRegisterHook('__patch_numero_apos_salvar__', 'after', async function(meta) {
+    var editando = (meta && (meta.editandoIdAntes || String(window._ofRapidaEditandoId || '').trim()));
+    // Aplica SOMENTE para CRIAÇÃO de nova OF (edição não queremos re-numerar o formulário)
+    if (editando && String(editando).trim()) {
+      try { console.log('[OF NUM] after hook ignorado: modo edicao id=' + String(editando)); } catch (_) {}
+      return;
+    }
+    // 1) invalidar TODOS caches de OFs imediatamente
+    try { if (typeof window._invalidateOfsCachedStore === 'function') window._invalidateOfsCachedStore(); } catch (_) {}
+    try { if (typeof window._invalidateOfsCache === 'function') window._invalidateOfsCache(); } catch (_) {}
+    var result = meta && meta.result;
+    var okCriacao = !!(result && (result.ok === true || result.success === true || (result && result.data && result.data.id)));
+    var numSolicitado = '';
+    var numFinal = '';
+    var numeroMudou = false;
+    try {
+      if (result && typeof result === 'object') {
+        numSolicitado = String(result.numero_solicitado || result.numeroSolicitado || (result.data && (result.data.numero || result.data.of || result.data.of_num || result.data.numero_of)) || window._ofRapidaNumero || '').trim();
+        numFinal = String(result.numero_final || result.numeroFinal || (result.data && (result.data.numero || result.data.of || result.data.of_num || result.data.numero_of)) || numSolicitado).trim();
+        numeroMudou = !!result.numero_mudou;
+      }
+    } catch (_) {}
+    // 2) Notificar usuário do resultado (toast verde / vermelho)
+    try {
+      if (okCriacao && numFinal) {
+        var msgOk;
+        if (numeroMudou && numSolicitado && numSolicitado !== numFinal) {
+          msgOk = '✅ OF #' + numFinal + ' criada. Número ajustado automaticamente (#' + numSolicitado + ' → #' + numFinal + ') por conflito de sequência.';
+        } else {
+          msgOk = '✅ OF #' + numFinal + ' criada com sucesso.';
+        }
+        try { if (typeof window.toast === 'function') window.toast(msgOk, '#10b981', 5200); else alert(msgOk); } catch (_) {}
+        try { console.log('[OF NUM] criação OK:', { solicitado: numSolicitado, final: numFinal, mudou: numeroMudou, dataId: result && result.data && result.data.id }); } catch (_) {}
+      } else if (!okCriacao) {
+        var errMsg = (result && (result.error || result.message || result.mensagem)) ? String(result.error || result.message || result.mensagem) : 'Erro desconhecido ao salvar OF.';
+        var popupMsg = '❌ Não foi possível salvar esta OF. Dados foram MANTIDOS no formulário.\n\nDetalhe: ' + errMsg;
+        try { if (typeof window.toast === 'function') window.toast(popupMsg.replace(/\n/g, ' '), '#ef4444', 9000); } catch (_) {}
+        try { console.error('[OF NUM] criação falhou:', { err: errMsg, metaResult: typeof result === 'object' && result ? Object.keys(result).join(',') : typeof result }); } catch (_) {}
+        // NÃO LIMPA o formulário (mantém dados digitados)
+        try { if (typeof window.__ofCriacaoNaoLimparProximo === 'object') window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; else window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; } catch (_) {}
+        return;
+      }
+    } catch (_eNot) {
+      try { console.warn('[OF NUM] notificacao falhou:', _eNot && _eNot.message || String(_eNot)); } catch (__) {}
+    }
+    // 3) Travar input NUMERO e botão SALVAR enquanto recalcula número novo
+    var numEl = document.getElementById('of-r-numero');
+    var saveBtn = document.querySelector('[data-acao-of-rapida="salvar"]')
+      || document.querySelector('#modal-of-rapida button#salvar-of-rapida')
+      || document.querySelector('#modal-nova-of-rapida button[type="submit"]')
+      || document.querySelector('#modal-of-rapida button.btn-primary')
+      || null;
+    if (numEl) {
+      numEl.setAttribute('readonly', 'readonly');
+      numEl.dataset.originalReadOnly = '1';
+      if (numEl.tagName === 'INPUT') { numEl.style.opacity = '0.5'; numEl.placeholder = 'Atualizando número…'; numEl.value = ''; }
+      else { numEl.textContent = 'Atualizando número…'; numEl.style.color = '#f59e0b'; }
+    }
+    if (saveBtn) { saveBtn.setAttribute('disabled', 'disabled'); saveBtn.style.opacity = '0.6'; saveBtn.style.cursor = 'not-allowed'; }
+    // 4) Buscar NOVO numero (rota dedicada no_cache)
+    try {
+      var novoNum = typeof window.proximoNumeroOf === 'function' ? await window.proximoNumeroOf({ __forceFresh: true }) : '';
+      if (novoNum) {
+        try { window._ofRapidaNumero = String(novoNum); } catch (_) {}
+      }
+      if (numEl && novoNum) {
+        if (numEl.tagName === 'INPUT') {
+          numEl.value = String(novoNum);
+          numEl.style.opacity = '1';
+        } else {
+          numEl.textContent = String(novoNum);
+          numEl.style.color = '';
+        }
+      }
+    } catch (_eNNum) {
+      try { console.warn('[OF NUM] erro buscar proximo numero apos salvar:', _eNNum && _eNNum.message || String(_eNNum)); } catch (_) {}
+    } finally {
+      if (numEl) {
+        try { delete numEl.dataset.originalReadOnly; } catch (_) {}
+        if (numEl.tagName === 'INPUT') {
+          try { numEl.removeAttribute('readonly'); } catch (_) {}
+          if (!numEl.value) numEl.value = String(window._ofRapidaNumero || '001');
+          numEl.style.opacity = '1';
+        } else if (String(numEl.textContent || '').indexOf('Atualizando') >= 0) {
+          numEl.textContent = String(window._ofRapidaNumero || '001');
+          numEl.style.color = '';
+        }
+      }
+      if (saveBtn) { try { saveBtn.removeAttribute('disabled'); } catch (_) {} saveBtn.style.opacity = ''; saveBtn.style.cursor = ''; }
+    }
+  }, 99999);
 
   // ── PATCH 4: carregarPassagensHoje com filtros ─────────────────
   window.carregarPassagensHoje = async function(opts) {
@@ -42475,6 +42600,84 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var empSel = document.getElementById('of-r-empresa');
           var empId = getEmpIdSan((empSel && empSel.value) || getEmpIdBoot() || window.EMP_FILTRO || '');
           setRapidaState('loading', '', empId);
+          // Chamar proximoNumeroOf SEMPRE ao abrir modal nova OF (garante valor do banco, sem cache)
+          (function() {
+            try {
+              var empSelR = document.getElementById('of-r-empresa');
+              var empIdR = getEmpIdSan((empSelR && empSelR.value) || getEmpIdBoot() || window.EMP_FILTRO || '');
+              var numEl = document.getElementById('of-r-numero');
+              var saveBtn = document.querySelector('[data-acao-of-rapida="salvar"]')
+                || document.querySelector('button[data-salvar-of-rapida]')
+                || document.querySelector('#modal-of-rapida button#salvar-of-rapida')
+                || document.querySelector('#modal-nova-of-rapida button[type="submit"]')
+                || document.querySelector('#modal-of-rapida button.btn-primary')
+                || null;
+              if (numEl) {
+                numEl.dataset.originalReadOnly = numEl.hasAttribute('readonly') ? '1' : '0';
+                numEl.setAttribute('readonly', 'readonly');
+                if (numEl.tagName === 'INPUT') numEl.style.opacity = '0.55';
+                var oldContent = '';
+                if (numEl.tagName === 'INPUT') { oldContent = numEl.value; numEl.placeholder = 'Atualizando número…'; numEl.value = ''; }
+                else { oldContent = numEl.textContent; numEl.textContent = 'Atualizando número…'; numEl.style.color = '#f59e0b'; }
+                numEl.dataset.oldContent = String(oldContent || '');
+                if (saveBtn) { saveBtn.setAttribute('disabled', 'disabled'); saveBtn.style.opacity = '0.6'; saveBtn.style.cursor = 'not-allowed'; }
+              }
+              (typeof window.proximoNumeroOf === 'function' ? window.proximoNumeroOf({ empresa_id: empIdR }) : Promise.resolve(null)).then(function(proxN) {
+                try {
+                  var numeroFinal = String(proxN || '').trim();
+                  if (!numeroFinal && numEl) {
+                    var fallback = String(numEl.dataset.oldContent || '001').trim() || '001';
+                    if (/^\d+$/.test(fallback)) numeroFinal = fallback;
+                    else numeroFinal = '001';
+                  }
+                  if (numeroFinal) {
+                    try { window._ofRapidaNumero = numeroFinal; } catch (_) {}
+                    try { if (typeof window._setOfRapidaNumero === 'function') window._setOfRapidaNumero(numeroFinal); } catch (_) {}
+                  }
+                  if (numEl) {
+                    if (numEl.tagName === 'INPUT') {
+                      numEl.value = numeroFinal;
+                      numEl.style.opacity = numEl.dataset.originalReadOnly === '1' ? '0.85' : '1';
+                      if (numEl.dataset.originalReadOnly !== '1') { try { numEl.removeAttribute('readonly'); } catch (_) {} }
+                    } else {
+                      numEl.textContent = numeroFinal;
+                      numEl.style.color = '';
+                    }
+                    try { delete numEl.dataset.oldContent; delete numEl.dataset.originalReadOnly; } catch (_) {}
+                  }
+                  var saveBtnR = document.querySelector('[data-acao-of-rapida="salvar"]')
+                    || document.querySelector('button[data-salvar-of-rapida]')
+                    || document.querySelector('#modal-of-rapida button#salvar-of-rapida')
+                    || document.querySelector('#modal-nova-of-rapida button[type="submit"]')
+                    || document.querySelector('#modal-of-rapida button.btn-primary')
+                    || null;
+                  if (saveBtnR && saveBtnR.dataset.ofRapidaAguardandoEdicao !== '1') {
+                    try { saveBtnR.removeAttribute('disabled'); } catch (_) {}
+                    saveBtnR.style.opacity = '';
+                    saveBtnR.style.cursor = '';
+                  }
+                } catch (_eDep) { try { console.warn('[OF NUM] erro aplicar novo numero:', _eDep && _eDep.message || String(_eDep)); } catch (__) {} }
+              }).catch(function(_errPn) {
+                try { console.warn('[OF NUM] proximoNumeroOf rejeitou:', _errPn && _errPn.message || String(_errPn)); } catch (_) {}
+                var saveBtnR = document.querySelector('[data-acao-of-rapida="salvar"]')
+                  || document.querySelector('#modal-of-rapida button#salvar-of-rapida')
+                  || document.querySelector('#modal-nova-of-rapida button[type="submit"]')
+                  || null;
+                if (saveBtnR && saveBtnR.dataset.ofRapidaAguardandoEdicao !== '1') { try { saveBtnR.removeAttribute('disabled'); } catch (_) {} saveBtnR && (saveBtnR.style.opacity = '', saveBtnR.style.cursor = ''); }
+                if (numEl) {
+                  if (numEl.tagName === 'INPUT') {
+                    numEl.value = String(numEl.dataset.oldContent || '001') || '001';
+                    if (numEl.dataset.originalReadOnly !== '1') { try { numEl.removeAttribute('readonly'); } catch (_) {} }
+                    numEl.style.opacity = '1';
+                  } else {
+                    numEl.textContent = String(numEl.dataset.oldContent || '001') || '001';
+                    numEl.style.color = '';
+                  }
+                  try { delete numEl.dataset.oldContent; delete numEl.dataset.originalReadOnly; } catch (_) {}
+                }
+              });
+            } catch (_eInitNum) { try { console.warn('[OF NUM] bloco inicialização numero falhou:', _eInitNum && _eInitNum.message || String(_eInitNum)); } catch (__) {} }
+          })();
           window.carregarCoresImpressao(empId, { retryOnce: true }).then(function() {
             try {
               if (typeof window.renderSeletorCores === 'function') {
