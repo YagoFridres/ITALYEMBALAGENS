@@ -5564,6 +5564,7 @@ async function livePollingTick(){
     }
     window._livePollFailStreak = 0;
     window._livePollNextRetryAt = 0;
+    try{ window._livePollToastPausouMostrado = false; }catch(_){}
   }catch(e){
     erroTick = e;
   } finally {
@@ -5576,8 +5577,13 @@ async function livePollingTick(){
       }catch(_){}
       if(streak >= 5){
         try{
-          if(_livePollTimer){ clearInterval(_livePollTimer); _livePollTimer = null; }
-          toast('🔄 Atualizações automáticas pausadas por erros. Recarregue a página para tentar novamente.', 'var(--orange)');
+          window._livePollFailStreak = 4;
+          window._livePollNextRetryAt = Date.now() + 120000;
+          if(typeof window._livePollToastPausouMostrado === 'undefined') window._livePollToastPausouMostrado = false;
+          if(!window._livePollToastPausouMostrado){
+            window._livePollToastPausouMostrado = true;
+            toast('🔄 Atualizações automáticas pausadas por 2 minutos por erros… Depois voltam sozinhas.', 'var(--orange)');
+          }
         }catch(_){}
       } else {
         const backoffMs = Math.min(60000, 1000 * Math.pow(2, streak - 1));
@@ -33870,7 +33876,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261008153000';
+      const swVersion = '20261008162500';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61350,6 +61356,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261008153000"></script>
+<script src="/patch.js?v=20261008162500"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

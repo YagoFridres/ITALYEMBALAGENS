@@ -1304,8 +1304,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261008153000';
-const SW_RUNTIME_VERSION = '20261008153000';
+const PATCH_RUNTIME_VERSION = '20261008162500';
+const SW_RUNTIME_VERSION = '20261008162500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1734,21 +1734,54 @@ app.post('/api/auth/login', async (req, res) => {
       const m2 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
       return (m1 && m1[1]) || (m2 && m2[1]) || null;
     };
-    const findUser = async (colName, value) => {
-      let q = supabase.from('usuarios').select('*');
-      if (colName === 'email') q = q.ilike(colName, String(value || '').trim().toLowerCase());
-      else q = q.eq(colName, value);
-      q = q.limit(1);
-      const r1 = await q;
-      if (!r1?.error) return r1;
-      if (isMissingColumnErr(r1.error) && extractMissingCol(r1.error) === 'ativo') {
-        let q2 = supabase.from('usuarios').select('*');
-        if (colName === 'email') q2 = q2.ilike(colName, String(value || '').trim().toLowerCase());
-        else q2 = q2.eq(colName, value);
-        const r2 = await q2.limit(1);
-        return r2;
+    const _loginTimeoutMs = 10000;
+    const _withLoginTimeout = async (promiseFn) => {
+      let ctrl = null;
+      try {
+        ctrl = new AbortController();
+      } catch (_) { ctrl = null; }
+      let done = false;
+      let resultRef = null;
+      let errRef = null;
+      const work = (async () => {
+        try {
+          const r = await promiseFn();
+          if (!done) { resultRef = r; done = true; }
+        } catch (e) {
+          if (!done) { errRef = e; done = true; }
+        }
+      })();
+      const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+      const startTs = Date.now();
+      while (!done && (Date.now() - startTs) < _loginTimeoutMs) {
+        await sleep(30);
       }
-      return r1;
+      if (done) {
+        if (errRef) throw errRef;
+        return resultRef;
+      }
+      const err = new Error('Login busca usuário timeout 10s excedido');
+      err.name = 'AbortError';
+      err.code = 'LOGIN_FETCH_TIMEOUT';
+      throw err;
+    };
+    const findUser = async (colName, value) => {
+      return _withLoginTimeout(async () => {
+        let q = supabase.from('usuarios').select('*');
+        if (colName === 'email') q = q.ilike(colName, String(value || '').trim().toLowerCase());
+        else q = q.eq(colName, value);
+        q = q.limit(1);
+        const r1 = await q;
+        if (!r1?.error) return r1;
+        if (isMissingColumnErr(r1.error) && extractMissingCol(r1.error) === 'ativo') {
+          let q2 = supabase.from('usuarios').select('*');
+          if (colName === 'email') q2 = q2.ilike(colName, String(value || '').trim().toLowerCase());
+          else q2 = q2.eq(colName, value);
+          const r2 = await q2.limit(1);
+          return r2;
+        }
+        return r1;
+      });
     };
     const idCandidates = [
       { col: 'email', val: emailNorm },
@@ -6764,17 +6797,16 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             rid: req._rid || null,
           });
         }
-        if (usuarioNumeroJaExiste) {
-          return res.status(400).json({
-            ok: false,
-            error: 'Número da OF já existe. Recarregue a página para obter um novo número.',
-            bloqueio: 'numero_duplicado_cliente',
-            numero_recebido: String(usuarioNumeroNum || usuarioNumeroRaw || ''),
-            rid: req._rid || null,
-          });
+        const usuarioDuplicadoMaior = !!(
+          usuarioPreencheuNumero &&
+          (!isNaN(numeroAtualNum) && numeroAtualNum >= 1000) &&
+          usuarioNumeroJaExiste
+        );
+        if (usuarioDuplicadoMaior) {
+          try { console.warn('[POST OFS AJUSTE] usuario numero >=1000 ja existe, buscando proximo livre. solicitado:', usuarioNumeroNum, 'rid:', req._rid); } catch (__) {}
         }
         const servidorCalculouNumero = String(
-          (usuarioPreencheuNumero && !isNaN(numeroAtualNum) && numeroAtualNum >= 1000)
+          (usuarioPreencheuNumero && !usuarioDuplicadoMaior && !isNaN(numeroAtualNum) && numeroAtualNum >= 1000)
             ? numeroAtualNum
             : (Number.isFinite(baseNumero) && baseNumero >= 1000 ? baseNumero : 0)
         ).trim();
@@ -6788,7 +6820,12 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             rid: req._rid || null,
           });
         }
-        if (!usuarioPreencheuNumero || (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero)) {
+        const precisaProcurarLivre = (
+          !usuarioPreencheuNumero ||
+          (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero) ||
+          usuarioDuplicadoMaior
+        );
+        if (precisaProcurarLivre) {
           let achouCand = false;
           for (let i = 0; i < 500; i += 1) {
             const cand = String(servidorCalculouNum + i);
