@@ -27457,14 +27457,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  </div>'
           + '  <div data-ofmaq-amostras-grid class="ofmaq-amostras-semana-grid"><div class="ofmaq-amostras-vazio">Carregando amostras...</div></div>'
           + '</div>'
-          + '<div class="ofmaq-final-summary-shell">'
-          + '  <div class="ofmaq-final-summary-head">'
-          + '    <div class="ofmaq-final-summary-title">Resumo por máquina</div>'
-          + '    <button type="button" id="ofmaq-final-summary-toggle" class="ofmaq-final-summary-toggle">▾ Recolher cards</button>'
-          + '  </div>'
-          + '  <div id="ofmaq-final-summary-compact" class="ofmaq-final-summary-compact"></div>'
-          + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
-          + '</div>'
+
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
           + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Dia Agendado<br><small style="font-weight:400;color:#64748b">Produção</small></th><th>Data Entrega<br><small style="font-weight:400;color:#64748b">Cliente Real</small></th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
@@ -27486,9 +27479,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         report: root.querySelector('#ofmaq-final-report'),
         historyToday: root.querySelector('#ofmaq-final-history-today'),
         urgentesBtn: root.querySelector('#ofmaq-final-urgentes'),
-        summaryToggle: root.querySelector('#ofmaq-final-summary-toggle'),
-        summaryCompact: root.querySelector('#ofmaq-final-summary-compact'),
-        summary: root.querySelector('#ofmaq-final-summary'),
         chips: root.querySelector('#ofmaq-final-redistribuicao'),
         tbody: root.querySelector('#ofmaq-final-tbody'),
         amostrasSemanaRoot: root.querySelector('#ofmaq-final-amostras-semana'),
@@ -27988,7 +27978,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       shell.group.textContent = state.grouped ? 'Agrupado por Setup ✓' : 'Agrupar Setup';
       renderAlert(shell);
-      renderSummary(shell);
       renderRedistribuicao(shell);
       try { if (typeof renderAmostrasSemana === 'function') renderAmostrasSemana(shell); else if (typeof window.renderAmostrasSemana === 'function') window.renderAmostrasSemana(shell); } catch (_) {}
     }
@@ -29923,12 +29912,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           renderRows(shell);
           return;
         }
-        var summaryToggle = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-summary-toggle') : null;
-        if (summaryToggle) {
-          state.summaryCollapsed = !state.summaryCollapsed;
-          renderSummary(shell);
-          return;
-        }
+
         var reportBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-report') : null;
         if (reportBtn) {
           if (typeof window.rrOpenMaquinasPeriodoModal === 'function') {
@@ -30237,6 +30221,115 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
       state.rowsData = buildRowsFromOfs(rawRows);
+      (function() {
+        function _normOfOpenStatus(s) {
+          try { s = String(s == null ? '' : s).trim(); } catch (_) { s = ''; }
+          if (!s) return '';
+          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+          return s.replace(/\s+/g, ' ').trim().toLowerCase();
+        }
+        function _isOfAberta(ofRow) {
+          if (!ofRow) return true;
+          var st = _normOfOpenStatus(ofRow.status || ofRow.stat || ofRow.state || '');
+          if (!st) return true;
+          var fechados = [
+            'concluida','concluido','despachada','despachado','entregue','entregue para o cliente',
+            'entregue cliente','faturada','faturado','cancelada','cancelado','arquivada','arquivado',
+            'fechada','fechado'
+          ];
+          for (var fi = 0; fi < fechados.length; fi++) {
+            if (fechados[fi] === st) return false;
+          }
+          return true;
+        }
+        function _normalizarMaqNome(s) {
+          var x = String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
+          try { x = x.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+          return x;
+        }
+        function _countByMachine(rows, nome) {
+          var n = _normalizarMaqNome(nome);
+          if (!Array.isArray(rows) || !rows.length || !n) return 0;
+          var c = 0;
+          for (var ci = 0; ci < rows.length; ci++) {
+            var m = _normalizarMaqNome(rows[ci] && (rows[ci].maquina || rows[ci].machine || rows[ci].maq || ''));
+            if (m === n) c++;
+          }
+          return c;
+        }
+        function _countSemMaq(rows, labelSem) {
+          if (!Array.isArray(rows) || !rows.length) return 0;
+          var labelNorm = _normalizarMaqNome(labelSem);
+          var c2 = 0;
+          for (var si = 0; si < rows.length; si++) {
+            var r2 = rows[si];
+            var mn = _normalizarMaqNome(r2 && (r2.maquina || r2.machine || r2.maq || ''));
+            var ehUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(r2 && (r2.maquina || r2.machine || '') || ''));
+            if (mn === '' || mn === labelNorm || ehUuid) c2++;
+          }
+          return c2;
+        }
+        function _listSemMaq(rows, labelSem, top) {
+          top = top || 10;
+          var out = [];
+          if (!Array.isArray(rows) || !rows.length) return out;
+          var labelNorm = _normalizarMaqNome(labelSem);
+          for (var li = 0; li < rows.length && out.length < top; li++) {
+            var r3 = rows[li];
+            var mn3 = _normalizarMaqNome(r3 && (r3.maquina || r3.machine || r3.maq || ''));
+            var ehUuid3 = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(r3 && (r3.maquina || r3.machine || '') || ''));
+            if (mn3 === '' || mn3 === labelNorm || ehUuid3) {
+              var numRaw = r3 && (r3.numero || r3.of_num || r3.of || r3.id || '');
+              out.push({
+                numero: String(numRaw || '').replace(/\D/g, '') || '?',
+                status: String(r3 && r3.status || ''),
+                cliente: String(r3 && (r3.cliente || r3.cliNome || r3.clinome || r3.cliente_nome || '')),
+                produto: String(r3 && (r3.produto || r3.descricao || r3.desc || ''))
+              });
+            }
+          }
+          return out;
+        }
+        var LABEL_SEM = (typeof window._YY2_LABEL_SEM_MAQUINA !== 'undefined') ? window._YY2_LABEL_SEM_MAQUINA : 'Sem Máquina Definida';
+        try { window.__OFMAQ_FINAL_TODAS_SEM_FILTRO = Array.isArray(state.rowsData) ? state.rowsData.slice() : []; } catch (_) {}
+        if (Array.isArray(state.rowsData) && state.rowsData.length) {
+          state.rowsData = state.rowsData.filter(function(r) { return _isOfAberta(r); });
+        }
+        // Gera relatório pré/pós filtro (console e variáveis globais)
+        try {
+          var todas = Array.isArray(window.__OFMAQ_FINAL_TODAS_SEM_FILTRO) ? window.__OFMAQ_FINAL_TODAS_SEM_FILTRO : [];
+          var abertas = Array.isArray(state.rowsData) ? state.rowsData : [];
+          window.__OFMAQ_REL_SEM_MAQ_ANTES = _listSemMaq(todas, LABEL_SEM, 10);
+          window.__OFMAQ_REL_SEM_MAQ_DEPOIS = _listSemMaq(abertas, LABEL_SEM, 10);
+          var riscAntes = _countByMachine(todas, 'Riscador') + _countByMachine(todas, 'RISCADOR');
+          var riscDep = _countByMachine(abertas, 'Riscador') + _countByMachine(abertas, 'RISCADOR');
+          var cvAntes = _countByMachine(todas, 'Corte Vinco Rotativa') + _countByMachine(todas, 'CORTE VINCO ROTATIVA') + _countByMachine(todas, 'Corte e Vinco') + _countByMachine(todas, 'CORTE E VINCO');
+          var cvDep = _countByMachine(abertas, 'Corte Vinco Rotativa') + _countByMachine(abertas, 'CORTE VINCO ROTATIVA') + _countByMachine(abertas, 'Corte e Vinco') + _countByMachine(abertas, 'CORTE E VINCO');
+          var semMaqAntesCount = _countSemMaq(todas, LABEL_SEM);
+          var semMaqDepoisCount = _countSemMaq(abertas, LABEL_SEM);
+          window.__OFMAQ_REL_CHIPS = {
+            riscador_antes: riscAntes,
+            riscador_depois: riscDep,
+            corte_vinco_antes: cvAntes,
+            corte_vinco_depois: cvDep,
+            sem_maq_antes_count: semMaqAntesCount,
+            sem_maq_depois_count: semMaqDepoisCount,
+            total_antes: todas.length,
+            total_depois: abertas.length,
+            _gerado: new Date().toISOString()
+          };
+          console.groupCollapsed('[OFs por Máquina] Relatório pré/pós filtro (SOMENTE abertas)');
+          try { console.log('→ Total antes (todas):', window.__OFMAQ_REL_CHIPS.total_antes, ' | depois (abertas):', window.__OFMAQ_REL_CHIPS.total_depois); } catch (_) {}
+          try { console.log('→ Sem Máquina Definida (10 primeiros — ANTES):', window.__OFMAQ_REL_SEM_MAQ_ANTES); } catch (_) {}
+          try { console.log('→ Sem Máquina Definida (10 primeiros — DEPOIS):', window.__OFMAQ_REL_SEM_MAQ_DEPOIS); } catch (_) {}
+          try { console.log('→ Chips (Riscador | Corte Vinco) antes → depois:', window.__OFMAQ_REL_CHIPS); } catch (_) {}
+          console.groupEnd && console.groupEnd();
+          // 'Sem Máquina Definida' só aparece se houver OF ABERTA sem máquina:
+          // - machineCatalogFromRows é recalculado abaixo com state.rowsData já filtrado, então se 0 → botão some automaticamente.
+        } catch (_reportErr) {
+          try { console.warn('[OFs por Máquina] relatório pré/pós falhou:', (_reportErr && (_reportErr.message || String(_reportErr))) || String(_reportErr)); } catch (__) {}
+        }
+      })();
       state.machineCatalog = machineCatalogFromRows(state.rowsData, state.selectedDateIso);
       if (!!state.showAllMachines || state.selectedMachine === '__ALL__') state.selectedMachine = '__ALL__';
       state.lastFetchAt = now;
@@ -32242,10 +32335,39 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { if (typeof window.toast === 'function') window.toast(msgOk, '#10b981', 5200); else alert(msgOk); } catch (_) {}
         try { console.log('[OF NUM] criação OK:', { solicitado: numSolicitado, final: numFinal, mudou: numeroMudou, dataId: result && result.data && result.data.id }); } catch (_) {}
       } else if (!okCriacao) {
-        var errMsg = (result && (result.error || result.message || result.mensagem)) ? String(result.error || result.message || result.mensagem) : 'Erro desconhecido ao salvar OF.';
-        var popupMsg = '❌ Não foi possível salvar esta OF. Dados foram MANTIDOS no formulário.\n\nDetalhe: ' + errMsg;
-        try { if (typeof window.toast === 'function') window.toast(popupMsg.replace(/\n/g, ' '), '#ef4444', 9000); } catch (_) {}
-        try { console.error('[OF NUM] criação falhou:', { err: errMsg, metaResult: typeof result === 'object' && result ? Object.keys(result).join(',') : typeof result }); } catch (_) {}
+        var _extrairMsgErro = function(obj) {
+          try {
+            var o = obj && typeof obj === 'object' ? obj : null;
+            if (!o) { return obj == null ? 'Erro desconhecido ao salvar OF.' : String(obj); }
+            var candidatos = [];
+            var picks = [
+              o.error, o.message, o.mensagem, o.erro, o.msg, o.details, o.detalhe,
+              (o.data && (o.data.error || o.data.message || o.data.mensagem || o.data.erro || o.data.msg)),
+              (o.body && (o.body.error || o.body.message || o.body.erro)),
+              (o._bodyText && String(o._bodyText).slice(0, 500)),
+              (o.statusText ? ('HTTP ' + (o.status || '?') + ': ' + o.statusText) : '')
+            ];
+            for (var _pi = 0; _pi < picks.length; _pi++) { var _vv = picks[_pi]; if (_vv != null && String(_vv).trim()) candidatos.push(String(_vv).trim()); }
+            if (!candidatos.length) {
+              try { var js = JSON.stringify(o); if (js && js !== '{}' && js.length < 600) candidatos.push(js); } catch (_) {}
+            }
+            return candidatos[0] || 'Erro desconhecido ao salvar OF.';
+          } catch (_eEx) { return 'Erro desconhecido ao salvar OF. (extração falhou)'; }
+        };
+        var errMsg = _extrairMsgErro(result);
+        var popupMsg = '❌ Não foi possível salvar esta OF. Dados foram MANTIDOS no formulário. Detalhe: ' + String(errMsg || 'erro interno');
+        try {
+          if (typeof window.toast === 'function') {
+            window.toast(popupMsg, '#ef4444', 10000);
+          } else {
+            try { alert(popupMsg); } catch (_a) {}
+          }
+        } catch (_eToast) {}
+        try {
+          var resultStr = '?';
+          try { resultStr = (result && typeof result === 'object') ? JSON.stringify(result) : String(result); } catch (_ss) {}
+          console.error('[OF NUM] criação falhou. errMsg=', String(errMsg || 'vazio'), ' | result=', String(resultStr || '').slice(0, 1200));
+        } catch (_eLog) {}
         // NÃO LIMPA o formulário (mantém dados digitados)
         try { if (typeof window.__ofCriacaoNaoLimparProximo === 'object') window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; else window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; } catch (_) {}
         return;

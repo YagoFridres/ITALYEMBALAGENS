@@ -1291,8 +1291,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261008094500';
-const SW_RUNTIME_VERSION = '20261008094500';
+const PATCH_RUNTIME_VERSION = '20261008113000';
+const SW_RUNTIME_VERSION = '20261008113000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5107,7 +5107,7 @@ async function ofsInsertWithRetry(row) {
           .from('ofs')
           .select('id')
           .eq('empresa_id', empresaId)
-          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},of_seq.eq.${cand}`)
           .limit(1);
         if (existsErr) break;
         if (Array.isArray(exists) && exists.length) continue;
@@ -6053,7 +6053,7 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     let maior = 0;
-    const campos = ['numero', 'of_num', 'numero_of', 'of'];
+    const campos = ['numero', 'of_num', 'of_seq', 'of'];
     for (const campo of campos) {
       try {
         const { data, error } = await supabase
@@ -6075,7 +6075,7 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
     try {
       const { data: recent } = await supabase
         .from('ofs')
-        .select('numero,of_num,numero_of,of,id')
+        .select('numero,of_num,of_seq,of,id')
         .order('created_at', { ascending: false })
         .limit(20000);
       if (Array.isArray(recent)) {
@@ -6572,7 +6572,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     delete filtered.id;
     {
       const calcularProximoNumeroOF = async () => {
-        const camposNegocio = ['numero', 'of_num', 'numero_of', 'of'];
+        const camposNegocio = ['numero', 'of_num', 'of_seq', 'of'];
         const extrairMaxDeUmCampo = (rows, campo) => {
           let maior = 0;
           (Array.isArray(rows) ? rows : []).forEach((o) => {
@@ -6600,12 +6600,12 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         try {
           const { data, error } = await supabase
             .from('ofs')
-            .select('numero,of_num,numero_of,of,seq')
+            .select('numero,of_num,of_seq,of,seq')
             .order('seq', { ascending: false })
             .limit(10000);
           if (!error && Array.isArray(data)) {
             data.forEach((o) => {
-              ['numero','of_num','numero_of','of','seq'].forEach((c) => {
+              ['numero','of_num','of_seq','of','seq'].forEach((c) => {
                 const v = o?.[c];
                 if (v === null || v === undefined || v === '') return;
                 const n = parseInt(String(v).replace(/\D/g, ''), 10);
@@ -6646,7 +6646,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             const { data: exUsr } = await supabase
               .from('ofs')
               .select('id')
-              .or(`numero.eq.${candUsr},of.eq.${candUsr},of_num.eq.${candUsr},numero_of.eq.${candUsr}`)
+              .or(`numero.eq.${candUsr},of.eq.${candUsr},of_num.eq.${candUsr},of_seq.eq.${candUsr}`)
               .limit(1);
             usuarioNumeroJaExiste = Array.isArray(exUsr) && exUsr.length > 0;
             if (usuarioNumeroJaExiste) {
@@ -6666,7 +6666,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             const { data: exists } = await supabase
               .from('ofs')
               .select('id')
-              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},of_seq.eq.${cand}`)
               .limit(1);
             if (Array.isArray(exists) && exists.length) continue;
             filtered.of = cand;
