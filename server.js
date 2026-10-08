@@ -304,6 +304,19 @@ if (!_supabaseEnvOk) {
   console.log('✅ Supabase conectado:', supabaseUrl);
 }
 
+function _isTransientSupabaseError(err) {
+  if (!err) return false;
+  const name = String(err?.name || '').toLowerCase();
+  const msg = String(err?.message || err || '').toLowerCase();
+  const code = String(err?.code || '').toLowerCase();
+  if (name === 'aborterror' || msg.includes('abort') || msg.includes('timeout') || msg.includes('timed out')) return true;
+  if (code.includes('etimedout') || code.includes('econnreset') || code.includes('econnrefused') || code.includes('enetunreach') || code.includes('host unreachable')) return true;
+  if (msg.includes('connect etimedout') || msg.includes('request to ') && msg.includes('failed')) return true;
+  if (msg.includes('502') || msg.includes('503') || msg.includes('504') || msg.includes('bad gateway') || msg.includes('service unavailable') || msg.includes('gateway timeout')) return true;
+  if (msg.includes('tls') || msg.includes('ssl') || msg.includes('socket hang up')) return true;
+  return false;
+}
+
 (async () => {
   try {
     if (!supabase) return;
@@ -1291,8 +1304,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261008131500';
-const SW_RUNTIME_VERSION = '20261008131500';
+const PATCH_RUNTIME_VERSION = '20261008153000';
+const SW_RUNTIME_VERSION = '20261008153000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1765,8 +1778,55 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     if (e1) {
-      console.error('Erro busca usuario:', e1);
-      return res.status(500).json({ error: 'Erro ao buscar usuário: ' + e1.message });
+      const errIsTransient = _isTransientSupabaseError(e1);
+      console.error('[LOGIN ERRO BUSCA USUARIO]', {
+        transient: errIsTransient,
+        email: emailNorm,
+        err_name: e1?.name || null,
+        err_message: e1?.message ? String(e1.message).slice(0, 300) : null,
+        err_code: e1?.code || null,
+        ts: new Date().toISOString(),
+        rid: req._rid || null,
+      });
+      if (errIsTransient) {
+        let rows2 = null;
+        let e2 = null;
+        try {
+          await new Promise((r) => setTimeout(r, 600));
+          for (const c of idCandidates) {
+            try {
+              const r = await findUser(c.col, c.val);
+              if (r?.error) {
+                if (isMissingColumnErr(r.error)) continue;
+                rows2 = r.data;
+                e2 = r.error;
+                break;
+              }
+              rows2 = r.data;
+              e2 = null;
+              if (Array.isArray(rows2) && rows2.length) break;
+            } catch (e) { e2 = e; break; }
+          }
+        } catch (_eRetry) { e2 = _eRetry; }
+        if (!e2 && Array.isArray(rows2) && rows2.length) {
+          rows = rows2;
+          e1 = null;
+        } else {
+          return res.status(503).json({
+            ok: false,
+            error: 'Serviço de login temporariamente indisponível. Tente novamente em 1 minuto.',
+            motivo: 'banco_indisponivel_transitorio',
+            retries: 1,
+            rid: req._rid || null,
+          });
+        }
+      } else {
+        return res.status(500).json({
+          ok: false,
+          error: 'Erro ao buscar usuário: ' + String(e1?.message || e1),
+          rid: req._rid || null,
+        });
+      }
     }
     if (!rows || rows.length === 0) {
       console.error('Usuário não encontrado (ou acesso bloqueado por RLS).', {
@@ -1900,8 +1960,34 @@ app.post('/api/auth/login', async (req, res) => {
       },
     });
   } catch (err) {
-    try { console.error('[LOGIN ERROR]', err?.message, err?.stack); } catch (_) {}
-    res.status(500).json({ ok: false, error: 'Erro interno: ' + String(err?.message || err) });
+    const errIsTransient = _isTransientSupabaseError(err);
+    try {
+      console.error('[LOGIN ERROR CATCH EXTERNO]', {
+        transient: errIsTransient,
+        email: emailNorm,
+        err_name: err?.name || null,
+        err_message: err?.message ? String(err.message).slice(0, 300) : null,
+        err_code: err?.code || null,
+        stack_head: err?.stack ? String(err.stack).split('\n').slice(0, 5).join(' | ') : null,
+        ts: new Date().toISOString(),
+        rid: req._rid || null,
+      });
+    } catch (_) {}
+    if (errIsTransient) {
+      res.status(503).json({
+        ok: false,
+        error: 'Serviço de login temporariamente indisponível. Tente novamente em 1 minuto.',
+        motivo: 'banco_indisponivel_transitorio',
+        retries: 0,
+        rid: req._rid || null,
+      });
+    } else {
+      res.status(500).json({
+        ok: false,
+        error: 'Erro interno: ' + String(err?.message || err),
+        rid: req._rid || null,
+      });
+    }
   }
 });
 
@@ -6094,7 +6180,21 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
     const resp = { ok: true, proximo, maior: maior > 0 ? String(maior) : '0', gerado_em: new Date().toISOString(), no_cache: true, observacao: 'Numeros canceladas/deletadas NAO sao reutilizados. Consulta SEM cache.' };
     return res.json(resp);
   } catch (e) {
-    return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e), no_cache: true });
+    try {
+      console.error('[PROXIMO-NUMERO ERRO CATCH]', {
+        err_name: e?.name || null,
+        err_message: e?.message ? String(e.message).slice(0, 300) : null,
+        err_code: e?.code || null,
+        ts: new Date().toISOString(),
+        rid: req._rid || null,
+      });
+    } catch (_) {}
+    return res.status(503).json({
+      ok: false,
+      error: 'Não foi possível calcular o próximo número da OF. Tente novamente em alguns segundos.',
+      no_cache: true,
+      rid: req._rid || null,
+    });
   }
 });
 
@@ -6654,15 +6754,44 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             }
           } catch (_) {}
         }
-        const precisaCorrigir = (
-          !numeroAtualRaw ||
-          (!isNaN(numeroAtualNum) && numeroAtualNum < 1000) ||
-          (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero) ||
-          usuarioNumeroJaExiste
-        );
-        if (precisaCorrigir) {
+        if (usuarioPreencheuNumero && (!isNaN(numeroAtualNum) && numeroAtualNum < 1000)) {
+          try { console.warn('[POST OFS BLOQUEADO] usuario enviou numero <1000:', usuarioNumeroNum, 'rid:', req._rid); } catch (__) {}
+          return res.status(400).json({
+            ok: false,
+            error: 'Número da OF inválido (menor que 1000). Recarregue a página e tente novamente.',
+            bloqueio: 'numero_menor_1000_cliente',
+            numero_recebido: String(usuarioNumeroNum || numeroAtualRaw || ''),
+            rid: req._rid || null,
+          });
+        }
+        if (usuarioNumeroJaExiste) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Número da OF já existe. Recarregue a página para obter um novo número.',
+            bloqueio: 'numero_duplicado_cliente',
+            numero_recebido: String(usuarioNumeroNum || usuarioNumeroRaw || ''),
+            rid: req._rid || null,
+          });
+        }
+        const servidorCalculouNumero = String(
+          (usuarioPreencheuNumero && !isNaN(numeroAtualNum) && numeroAtualNum >= 1000)
+            ? numeroAtualNum
+            : (Number.isFinite(baseNumero) && baseNumero >= 1000 ? baseNumero : 0)
+        ).trim();
+        const servidorCalculouNum = servidorCalculouNumero ? parseInt(servidorCalculouNumero, 10) : NaN;
+        if (isNaN(servidorCalculouNum) || servidorCalculouNum < 1000) {
+          try { console.warn('[POST OFS BLOQUEADO] servidor falhou em alocar numero >=1000, got:', servidorCalculouNumero, 'baseNumero:', baseNumero, 'rid:', req._rid); } catch (__) {}
+          return res.status(400).json({
+            ok: false,
+            error: 'Não foi possível alocar um número único de OF. Tente novamente.',
+            bloqueio: 'numero_alocacao_falhou_servidor',
+            rid: req._rid || null,
+          });
+        }
+        if (!usuarioPreencheuNumero || (!isNaN(numeroAtualNum) && numeroAtualNum < baseNumero)) {
+          let achouCand = false;
           for (let i = 0; i < 500; i += 1) {
-            const cand = String(baseNumero + i);
+            const cand = String(servidorCalculouNum + i);
             const { data: exists } = await supabase
               .from('ofs')
               .select('id')
@@ -6671,8 +6800,20 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             if (Array.isArray(exists) && exists.length) continue;
             filtered.of = cand;
             filtered.numero = cand;
+            achouCand = true;
             break;
           }
+          if (!achouCand) {
+            return res.status(400).json({
+              ok: false,
+              error: 'Não foi possível alocar um número único de OF (faixa ocupada). Tente novamente.',
+              bloqueio: 'numero_faixa_ocupada',
+              rid: req._rid || null,
+            });
+          }
+        } else if (usuarioPreencheuNumero) {
+          filtered.of = String(usuarioNumeroNum);
+          filtered.numero = String(usuarioNumeroNum);
         }
         try {
           req._ofNumeroSolicitado = usuarioPreencheuNumero ? String(usuarioNumeroNum || usuarioNumeroRaw || '') : '';

@@ -4032,7 +4032,66 @@ async function proximoNumeroOf() {
     }
   }
 
-  return '001';
+  return '';
+}
+
+function _atualizarEstadoNumeroOfRapida(numStr) {
+  const numClean = String(numStr || '').trim().replace(/\D/g, '');
+  const num = numClean ? parseInt(numClean, 10) : NaN;
+  const valido = !isNaN(num) && num >= 1000;
+  const spanNum = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
+  const btnSalvar = document.getElementById('btn-salvar-of-rapida');
+  let boxAviso = document.getElementById('of-r-aviso-numero');
+  if (valido) {
+    if (spanNum) spanNum.textContent = String(num).padStart(Math.max(String(num).length, 3), '0');
+    if (btnSalvar) {
+      btnSalvar.disabled = false;
+      btnSalvar.style.opacity = '1';
+      btnSalvar.style.cursor = 'pointer';
+      btnSalvar.style.filter = 'none';
+      btnSalvar.textContent = '⚡ Salvar OF';
+    }
+    if (boxAviso) boxAviso.remove();
+    try { window._ofRapidaNumeroValido = true; } catch (e) {}
+    return true;
+  }
+  if (spanNum) spanNum.innerHTML = '<span style="color:#f59e0b">⚠️ indisponível</span>';
+  if (btnSalvar) {
+    btnSalvar.disabled = true;
+    btnSalvar.style.opacity = '0.45';
+    btnSalvar.style.cursor = 'not-allowed';
+    btnSalvar.style.filter = 'grayscale(0.6)';
+    btnSalvar.textContent = 'Nº da OF indisponível';
+  }
+  try { window._ofRapidaNumeroValido = false; } catch (e) {}
+  if (!boxAviso) {
+    const elHeaderNum = (spanNum && spanNum.parentElement && spanNum.parentElement.parentElement) ? spanNum.parentElement.parentElement : null;
+    const refInsertBefore = document.getElementById('of-r-cliente')?.parentElement?.parentElement?.firstElementChild || null;
+    boxAviso = document.createElement('div');
+    boxAviso.id = 'of-r-aviso-numero';
+    boxAviso.style.cssText = 'margin:12px 0 2px;padding:10px 12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px';
+    boxAviso.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <span style="font-size:18px">⚠️</span>
+        <div style="min-width:0">
+          <div style="font-size:12px;font-weight:700;color:#f59e0b">Não foi possível obter o número da OF</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">Clique em "Tentar de novo" para recarregar</div>
+        </div>
+      </div>
+      <button type="button" onclick="(async function(){const btn=document.getElementById('of-r-btn-tentar-numero');if(btn){btn.disabled=true;btn.textContent='Carregando...';}try{const n=await proximoNumeroOf();_atualizarEstadoNumeroOfRapida(n);}catch(e){_atualizarEstadoNumeroOfRapida('');}finally{const b2=document.getElementById('of-r-btn-tentar-numero');if(b2){b2.disabled=false;b2.textContent='🔄 Tentar de novo';}}})()" id="of-r-btn-tentar-numero" style="flex-shrink:0;padding:7px 12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:7px;color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🔄 Tentar de novo</button>
+    `;
+    const containerInputs = btnSalvar?.closest('#modal-of-rapida')?.querySelector('div[style*="padding:16px 20px"]');
+    if (containerInputs) {
+      containerInputs.insertBefore(boxAviso, containerInputs.firstChild);
+    } else if (elHeaderNum) {
+      elHeaderNum.parentElement.insertBefore(boxAviso, elHeaderNum.nextSibling);
+    } else if (refInsertBefore && refInsertBefore.parentElement) {
+      refInsertBefore.parentElement.insertBefore(boxAviso, refInsertBefore);
+    } else if (spanNum && spanNum.closest('.page, div')) {
+      spanNum.closest('div').parentElement.appendChild(boxAviso);
+    }
+  }
+  return false;
 }
 
 function abrirNovaOfRapida(){
@@ -4297,15 +4356,16 @@ function abrirNovaOfRapida(){
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
   const numDisplay = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
   if (numDisplay) numDisplay.textContent = '...';
+  try { window._ofRapidaNumero = ''; } catch (e) {}
+  try { window._ofRapidaNumeroValido = false; } catch (e) {}
   try{
     proximoNumeroOf().then((num)=>{
-      const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
       const v = String(num || '').trim();
       try { window._ofRapidaNumero = v; } catch (e) {}
-      if (el) el.textContent = v ? v : '';
       try { console.log('[OF RÁPIDA] Próximo número calculado:', v); } catch (e) {}
-    }).catch(()=>{});
-  }catch(e){}
+      _atualizarEstadoNumeroOfRapida(v);
+    }).catch(()=>{ _atualizarEstadoNumeroOfRapida(''); });
+  }catch(e){ _atualizarEstadoNumeroOfRapida(''); }
   try{
     const chk = document.getElementById('of-r-urgente');
     const track = document.getElementById('of-r-urg-track');
@@ -5472,6 +5532,9 @@ function _liveSetBadge(pid, on){
 async function livePollingTick(){
   if(_livePollBusy) return;
   if(document.hidden) return;
+  if(typeof window._livePollFailStreak === 'undefined') window._livePollFailStreak = 0;
+  if(typeof window._livePollNextRetryAt === 'undefined') window._livePollNextRetryAt = 0;
+  if(window._livePollNextRetryAt > 0 && Date.now() < window._livePollNextRetryAt) return;
   const pid = String(window._PAGE_ATUAL || '').trim();
   const isLive = (pid === 'pcp' || pid === 'dashboard' || pid === 'ofmaq');
   _liveSetBadge('pcp', isLive && pid === 'pcp');
@@ -5480,26 +5543,48 @@ async function livePollingTick(){
   if(!isLive) return;
   if(!_apiConectado || !CURRENT_USER) return;
   _livePollBusy = true;
+  let erroTick = null;
   try{
     if(pid === 'ofmaq'){
       await renderOFsPorMaquina();
-      return;
-    }
-    const before = _liveLastSig instanceof Map ? _liveLastSig : _liveSigFromOFs(Array.isArray(window.OFS)?window.OFS:OFs);
-    await carregarOFs({ forcar: true });
-    const after = _liveSigFromOFs(Array.isArray(window.OFS)?window.OFS:OFs);
-    const changed = _liveCountChanged(before, after);
-    _liveLastSig = after;
-    if(changed > 0){
-      if(Date.now() - _liveLastToastAt > 15000){
-        _liveLastToastAt = Date.now();
-        toast(`🔄 ${changed} OF${changed!==1?'s':''} atualizada${changed!==1?'s':''}`, 'var(--accent)');
+    } else {
+      const before = _liveLastSig instanceof Map ? _liveLastSig : _liveSigFromOFs(Array.isArray(window.OFS)?window.OFS:OFs);
+      await carregarOFs({ forcar: true });
+      const after = _liveSigFromOFs(Array.isArray(window.OFS)?window.OFS:OFs);
+      const changed = _liveCountChanged(before, after);
+      _liveLastSig = after;
+      if(changed > 0){
+        if(Date.now() - _liveLastToastAt > 15000){
+          _liveLastToastAt = Date.now();
+          toast(`🔄 ${changed} OF${changed!==1?'s':''} atualizada${changed!==1?'s':''}`, 'var(--accent)');
+        }
+        if(pid === 'pcp'){ try{ renderPCP(); }catch(e){} }
+        if(pid === 'dashboard'){ try{ renderDashboard(); }catch(e){} }
       }
-      if(pid === 'pcp'){ try{ renderPCP(); }catch(e){} }
-      if(pid === 'dashboard'){ try{ renderDashboard(); }catch(e){} }
     }
-  }catch(e){}
-  finally{ _livePollBusy = false; }
+    window._livePollFailStreak = 0;
+    window._livePollNextRetryAt = 0;
+  }catch(e){
+    erroTick = e;
+  } finally {
+    _livePollBusy = false;
+    if(erroTick){
+      window._livePollFailStreak = (window._livePollFailStreak || 0) + 1;
+      const streak = window._livePollFailStreak;
+      try{
+        console.warn('[LIVE POLL] falhou streak=' + streak + ' pid=' + pid + ' erro=' + (erroTick?.message || String(erroTick || '').slice(0,120)));
+      }catch(_){}
+      if(streak >= 5){
+        try{
+          if(_livePollTimer){ clearInterval(_livePollTimer); _livePollTimer = null; }
+          toast('🔄 Atualizações automáticas pausadas por erros. Recarregue a página para tentar novamente.', 'var(--orange)');
+        }catch(_){}
+      } else {
+        const backoffMs = Math.min(60000, 1000 * Math.pow(2, streak - 1));
+        window._livePollNextRetryAt = Date.now() + backoffMs;
+      }
+    }
+  }
 }
 function livePollingStart(){
   if(_livePollTimer) return;
@@ -33785,7 +33870,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261008131500';
+      const swVersion = '20261008153000';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61265,6 +61350,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261008131500"></script>
+<script src="/patch.js?v=20261008153000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
