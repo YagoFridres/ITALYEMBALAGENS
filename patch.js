@@ -20781,10 +20781,65 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (us.length === 1) continue;
       if (/^(https?:\/\/|data:image|blob:|\/|file:\/\/|ftp:\/\/)/i.test(us)) out.push(us);
       else if (/^[a-z0-9_\-\/\.]+\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(us)) out.push(us);
+      else if (/^[a-zA-Z0-9_\-][a-zA-Z0-9_\-\/\.]*$/.test(us) && /[\/]/.test(us)) out.push(us);
     }
     return out;
   }
   window._normalizeImgs = _normalizeImgsAny;
+
+  (function(){
+    try {
+      var _nativeFetch = window.fetch ? window.fetch.bind(window) : null;
+      if (!_nativeFetch) return;
+      window.__nativeFetchReal = _nativeFetch;
+      function _avisarListaIncompleta(pag, tentativa) {
+        try {
+          var t = 'Aviso: falha ao carregar página ' + (pag.offset || 0) + '-' + ((pag.offset || 0) + (pag.limit || 0)) + ' das OFs; lista exibida pode estar incompleta. Tentando de novo (T' + (tentativa || 1) + ')...';
+          if (window.toast) { try { window.toast(t, 'var(--orange)'); } catch (_) {} }
+          else { try { console.warn(t); } catch(_) {} }
+        } catch (_) {}
+      }
+      function _tentarDeNovo(pagina, tentativa) {
+        try {
+          if (tentativa > 3) return;
+          if (!pagina || !pagina.url || !window.__nativeFetchReal) return;
+          setTimeout(function(){
+            try {
+              _avisarListaIncompleta(pagina, tentativa);
+              window.__nativeFetchReal(pagina.url, pagina.init || { credentials: 'same-origin' });
+            } catch(_) {}
+          }, 2500 * tentativa);
+        } catch(_) {}
+      }
+      function _intercept(url, init, responsePromise) {
+        try {
+          if (typeof url !== 'string') return responsePromise;
+          var urlN = String(url || '');
+          if (!/\/api\/ofs(\?|$)/i.test(urlN)) return responsePromise;
+          var temOffset = /[?&]offset=\d+/.test(urlN);
+          var temLimit = /[?&]limit=\d+/.test(urlN);
+          if (!temOffset && !temLimit) return responsePromise;
+          var mOff = urlN.match(/[?&]offset=(\d+)/); var mL = urlN.match(/[?&]limit=(\d+)/);
+          var pagina = { url: urlN, init: init || null, offset: mOff ? parseInt(mOff[1],10) : 0, limit: mL ? parseInt(mL[1],10) : 150 };
+          return responsePromise.then(function(resp){
+            try {
+              var st = Number(resp.status || 0);
+              if (st === 200 || st === 416) return resp;
+              if (st >= 500 && st < 600) _tentarDeNovo(pagina, 1);
+              return resp;
+            } catch(_){ return resp; }
+          }).catch(function(err){
+            try { _tentarDeNovo(pagina, 1); } catch(_) {}
+            throw err;
+          });
+        } catch(_) { return responsePromise; }
+      }
+      window.fetch = function fetchPatched(url, init) {
+        var p = _nativeFetch(url, init);
+        return _intercept(url, init, p);
+      };
+    } catch (_) {}
+  })();
 
 
   function _nextBusinessIsoFrom(baseDate) {
