@@ -1304,8 +1304,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261008175500';
-const SW_RUNTIME_VERSION = '20261008175500';
+const PATCH_RUNTIME_VERSION = '20261009094000';
+const SW_RUNTIME_VERSION = '20261009094000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4342,7 +4342,30 @@ function ofIn(p) {
     out.passagens_maquina = _normalizarPassagensMaquinaPayload(p.passagens_maquina);
   }
   if (has('imgs')) {
-    out.imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
+    var _rawImgs = p.imgs;
+    var _parsedImgs = null;
+    for (var _pi = 0; _pi < 2; _pi++) {
+      if (Array.isArray(_rawImgs)) { _parsedImgs = _rawImgs; break; }
+      if (typeof _rawImgs === 'string') {
+        var _s = String(_rawImgs || '').trim();
+        if (!_s) { _parsedImgs = []; break; }
+        if (_s.charAt(0) !== '[' && _s.charAt(0) !== '{' && /^(https?:\/\/|data:image|blob:|\/)/i.test(_s)) { _parsedImgs = [_s]; break; }
+        try { _rawImgs = JSON.parse(_s); } catch (_e) { _parsedImgs = []; break; }
+      } else if (_rawImgs == null) { _parsedImgs = []; break; }
+      else { _parsedImgs = []; break; }
+    }
+    if (!Array.isArray(_parsedImgs)) _parsedImgs = [];
+    var _imgsOut = [];
+    for (var _ii = 0; _ii < _parsedImgs.length; _ii++) {
+      var _iu = _parsedImgs[_ii];
+      if (typeof _iu !== 'string') continue;
+      var _ut = String(_iu || '').trim();
+      if (!_ut || _ut.length === 1) continue;
+      var _c0 = _ut.charAt(0);
+      if (_c0 === '[' || _c0 === ']' || _c0 === '{' || _c0 === '}' || _c0 === ',') continue;
+      if (/^(https?:\/\/|data:image|blob:|\/|file:\/\/|ftp:\/\/|[a-z0-9_\-\/\.]+\.(png|jpe?g|gif|webp|svg|bmp))/i.test(_ut)) _imgsOut.push(_ut);
+    }
+    out.imgs = _imgsOut;
   }
   if (has('itens')) {
     if (Array.isArray(p.itens)) {
@@ -5954,17 +5977,34 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
     let fetched = null;
+    function _isRangeOutOfBounds(e) {
+      if (!e) return false;
+      var m = String(e?.message || e?.details || e?.hint || e || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      if (/invalid range|out of range|range exceeds|range start|must be less than or equal|cannot exceed|offset exceeds|greater than the maximum/.test(m)) return true;
+      return false;
+    }
     try {
       fetched = shouldFetchAll
         ? await buscarTodasOFsPaginadas(buildQuery)
         : await (async () => {
             const { data, error, count } = await buildQuery().range(offset, offset + limit - 1);
-            if (error) throw error;
+            if (error) {
+              if (_isRangeOutOfBounds(error)) {
+                try { console.warn('[GET /api/ofs] range offset=', offset, ' limit=', limit, ' fora do total; retornando lista vazia. count=', count || 0, ' err=', error?.message || error); } catch (_) {}
+                return { data: [], count: Number(count) || 0 };
+              }
+              throw error;
+            }
             return { data: data || [], count: count || 0 };
           })();
     } catch (queryErr) {
-      try { console.error('[GET /api/ofs] erro query principal:', queryErr?.message || queryErr); } catch (_) {}
-      try { console.error('[GET /api/ofs] stack query principal:', queryErr?.stack || ''); } catch (_) {}
+      if (_isRangeOutOfBounds(queryErr) && !shouldFetchAll) {
+        try { console.warn('[GET /api/ofs] range out-of-bounds detectado no catch (fallback level). offset=', offset, ' limit=', limit, ' retornando vazio. err=', queryErr?.message || queryErr); } catch (_) {}
+        fetched = { data: [], count: fetched?.count || 0 };
+      } else {
+        try { console.error('[GET /api/ofs] erro query principal:', queryErr?.message || queryErr); } catch (_) {}
+        try { console.error('[GET /api/ofs] stack query principal:', queryErr?.stack || ''); } catch (_) {}
+
       const fallbackQueryBase = () => {
         let query = supabase
           .from('ofs')
@@ -5991,13 +6031,29 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (!incluirExcluidas) query = query.is('deleted_at', null);
         return query;
       };
-      fetched = shouldFetchAll
-        ? await buscarTodasOFsPaginadas(fallbackQueryBase)
-        : await (async () => {
-            const { data, error, count } = await fallbackQueryBase().range(offset, offset + limit - 1);
-            if (error) throw error;
-            return { data: data || [], count: count || 0 };
-          })();
+      try {
+        fetched = shouldFetchAll
+          ? await buscarTodasOFsPaginadas(fallbackQueryBase)
+          : await (async () => {
+              const { data, error, count } = await fallbackQueryBase().range(offset, offset + limit - 1);
+              if (error) {
+                if (_isRangeOutOfBounds(error)) {
+                  try { console.warn('[GET /api/ofs] FALLBACK range out-of-bounds; retornando vazio. offset=', offset, ' limit=', limit, ' count=', count || 0, ' err=', error?.message || error); } catch (_) {}
+                  return { data: [], count: Number(count) || 0 };
+                }
+                throw error;
+              }
+              return { data: data || [], count: count || 0 };
+            })();
+      } catch (fbErr) {
+        if (_isRangeOutOfBounds(fbErr) && !shouldFetchAll) {
+          try { console.warn('[GET /api/ofs] FALLBACK range catch também; retornando vazio.'); } catch (_) {}
+          fetched = { data: [], count: fetched?.count || 0 };
+        } else {
+          throw fbErr;
+        }
+      }
+    }
     }
 
     const data = fetched.data || [];
@@ -6107,7 +6163,19 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       let imgsArr = [];
       try {
-        imgsArr = Array.isArray(of?.imgs) ? of.imgs : (typeof of?.imgs === 'string' ? JSON.parse(of.imgs) : []);
+        var __cur = of?.imgs;
+        for (var __pass = 0; __pass < 2; __pass++) {
+          if (Array.isArray(__cur)) { imgsArr = __cur; break; }
+          if (typeof __cur === 'string') {
+            var __s = String(__cur || '').trim();
+            if (!__s) { imgsArr = []; break; }
+            if (__s.length === 1) { imgsArr = []; break; }
+            var __c0 = __s.charAt(0);
+            if (__c0 !== '[' && __c0 !== '{' && /^(https?:\/\/|data:image|blob:|\/)/i.test(__s)) { imgsArr = [__s]; break; }
+            try { __cur = JSON.parse(__s); } catch (_) { imgsArr = []; break; }
+          } else if (__cur == null) { imgsArr = []; break; }
+          else { imgsArr = []; break; }
+        }
       } catch (_) {
         imgsArr = [];
       }
@@ -6128,7 +6196,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         maquina_atual: maquinaNome,
         produto: produtoNome,
         imagem_url: imagemUrl,
-        imgs: ofSafe?.imgs ?? of?.imgs,
+        imgs: imgsArr,
         total: totalCanonico,
         valor_total: totalCanonico,
         valor_venda: Number(of?.valor_venda ?? totalCanonico) || totalCanonico,
@@ -6161,6 +6229,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     try { console.error('[GET /api/ofs] erro:', e.message); } catch (_) {}
     try { console.error('[GET /api/ofs] stack:', e.stack); } catch (_) {}
     try { console.error('[GET /api/ofs] req.query:', JSON.stringify(req.query || {})); } catch (_) {}
+    var _errRange = _isRangeOutOfBounds(e);
+    if (_errRange && !shouldFetchAll) {
+      try { console.warn('[GET /api/ofs] catch final: erro de range (offset=', offset, ' limit=', limit, ') → retornando lista vazia HTTP 200, não 500.'); } catch (_) {}
+      var _safeRes = { ok: true, data: [], total: Number(count || fetched?.count || 0), offset: Number(offset) || 0, limit: Number(limit) || 0, hasMore: false, aviso: 'range_offset_excedeu_total' };
+      return res.json(_safeRes);
+    }
+    if (_isTransientSupabaseError(e)) {
+      try { console.warn('[GET /api/ofs] erro transitório supabase detectado → HTTP 503, não 500.'); } catch (_) {}
+      return res.status(503).json({ ok: false, error: (e && e.message) || 'Falha temporária de banco. Tente novamente.', data: [], ofs: [], total: 0, offset: 0, limit: 0, hasMore: false });
+    }
     return res.status(500).json({ ok: false, error: e.message, ofs: [], data: [], total: 0, offset: 0, limit: 0, hasMore: false });
   }
 });
@@ -7560,7 +7638,7 @@ app.post('/api/ofs/:id/imagem', authMiddleware, async (req, res) => {
     const imgs = Array.from(new Set([finalUrl].concat(imgsAtual).map((v) => String(v || '').trim()).filter(Boolean))).slice(0, 10);
     const payload = {
       imagem_url: finalUrl || String(ofAtual?.imagem_url || '').trim() || null,
-      imgs: JSON.stringify(imgs),
+      imgs: imgs,
       updated_at: new Date().toISOString(),
     };
 

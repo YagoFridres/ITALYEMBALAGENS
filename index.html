@@ -5047,14 +5047,42 @@ function imprimirUrlImagem(url){
   }catch(e){ try{ window.print(); }catch(_){} }
 }
 
-function ofParseImgArray(v){
-  if(Array.isArray(v)) return v;
-  if(typeof v === 'string'){
-    const a = tryParse(v, []);
-    return Array.isArray(a) ? a : [];
+
+function _normalizeImgsGlobal(v, extraRaw){
+  let cur = v;
+  for (let pass = 0; pass < 2; pass++) {
+    if (Array.isArray(cur)) break;
+    if (typeof cur === 'string') {
+      const s = String(cur || '').trim();
+      if (!s) { cur = []; break; }
+      if (s.length === 1) { cur = []; break; }
+      if (s.charAt(0) !== '[' && s.charAt(0) !== '{' && /^(https?:\/\/|data:image|blob:|\/|file:\/\/|ftp:\/\/)/i.test(s)) { cur = [s]; break; }
+      try { cur = JSON.parse(s); } catch (_) { cur = []; break; }
+    } else if (cur == null) { cur = []; break; }
+    else { cur = []; break; }
   }
-  return [];
+  if (!Array.isArray(cur)) cur = [];
+  const extra = Array.isArray(extraRaw) ? extraRaw : (typeof extraRaw === 'string' ? [extraRaw] : []);
+  const todos = cur.concat(extra);
+  const out = [];
+  const visto = new Set();
+  for (let i = 0; i < todos.length; i++) {
+    let u = todos[i];
+    if (typeof u !== 'string') continue;
+    u = String(u || '').trim();
+    if (!u || u.length === 1) continue;
+    const c0 = u.charAt(0);
+    if (c0 === '[' || c0 === ']' || c0 === '{' || c0 === '}' || c0 === ',') continue;
+    if (!/^(https?:\/\/|data:image|blob:|file:\/\/|ftp:\/\/|\/|\.\.?\/|[a-zA-Z]:[\\\/]|[a-z0-9_\-]+\.(png|jpe?g|gif|webp|svg|bmp))/i.test(u)) continue;
+    if (visto.has(u)) continue;
+    visto.add(u);
+    out.push(u);
+  }
+  return out;
 }
+window._normalizeImgs = _normalizeImgsGlobal;
+function ofParseImgArray(v){ return _normalizeImgsGlobal(v); }
+
 function ofGetImagemUrl(of){
   const imgs = ofParseImgArray(of?.imgs);
   const u1 = String(imgs?.[0] || '').trim();
@@ -6062,7 +6090,7 @@ function renderPCP(){
     }).join('');
     const imgPrintUrl = ofGetImagemUrl(o);
     // Build imgs from item images too
-    const allImgs=[...(o.imgs||[]),...((o.itens||[]).map(it=>it.img).filter(Boolean))];
+    const allImgs=[..._normalizeImgsGlobal(o.imgs ?? o.imagens),...((o.itens||[]).map(it=>it.img).filter(Boolean))];
     const firstImg=allImgs[0];
     const imgC=firstImg
       ?`<img src="${firstImg}" class="img-thumb" onclick="event.stopPropagation();zoomImg('${firstImg}')" title="Clique para ampliar">`
@@ -8750,12 +8778,9 @@ function _ensureOfImgInputPC(){
       if(!up.ok || j?.ok === false || !url) throw new Error(String(j?.error || 'upload_falhou'));
       try{
         const of = ofmaqGetOFById(ofId);
-        let imgs = [];
-        const raw = of?.imgs;
-        if(Array.isArray(raw)) imgs = raw;
-        else if(typeof raw === 'string'){ try{ imgs = JSON.parse(raw || '[]'); }catch(_){ imgs = []; } }
-        imgs = [...new Set([url, ...imgs.map(x=>String(x||'').trim()).filter(Boolean)])].slice(0, 10);
-        await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PUT', body:{ imagem_url: url, imgs: JSON.stringify(imgs) } });
+        const base = _normalizeImgsGlobal(of?.imgs ?? of?.imagens);
+        const imgs = [...new Set([url, ...base.map(x=>String(x||'').trim()).filter(Boolean)])].slice(0, 10);
+        await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PUT', body:{ imagem_url: url, imgs: imgs } });
         if(of){ of.imagem_url = url; of.imgs = imgs; }
       }catch(_){}
       toast('✅ Imagem atualizada na OF #' + (ofNum || ofId), 'var(--green)');
@@ -8772,11 +8797,8 @@ function _ensureOfImgInputPC(){
 function verImagemOfPC(ofId, ofNum){
   const of = ofmaqGetOFById(String(ofId||''));
   const iu = String(of?.imagem_url || '').trim();
-  let imgs = [];
-  const raw = of?.imgs;
-  if(Array.isArray(raw)) imgs = raw;
-  else if(typeof raw === 'string'){ try{ imgs = JSON.parse(raw || '[]'); }catch(_){ imgs = []; } }
-  const url = iu || (Array.isArray(imgs) ? (imgs.map(x=>String(x||'').trim()).filter(Boolean)[0] || '') : '');
+  const imgs = _normalizeImgsGlobal(of?.imgs ?? of?.imagens);
+  const url = iu || (imgs[0] || '');
   if(url){
     try{ abrirFotoModal(String(url).replace(/'/g,'%27'), 'OF ' + String(ofNum||'')); }catch(e){ try{ window.open(url,'_blank'); }catch(_e){} }
     if(confirm('Trocar a imagem desta OF?')) {
@@ -9441,7 +9463,7 @@ function renderCardOfDia(of, nomeMaquina, opts){
     }
     const hoje = new Date().toISOString().slice(0,10);
     const atrasadaEntrega = !!(entregaRaw && entregaRaw < hoje);
-    const imgUrl = (of.imagem_url || of.imgUrl || (Array.isArray(of.imgs) ? of.imgs[0] : '') || (Array.isArray(of.imagens) ? of.imagens[0] : '') || '');
+    const imgUrl = (of.imagem_url || of.imgUrl || (_normalizeImgsGlobal(of.imgs ?? of.imagens)[0] || '') || '');
     const imgUrlSafe = imgUrl ? String(imgUrl).replace(/'/g,'%27') : '';
     const maq = String(nomeMaquina||'').trim();
     const podeConcluir = !!(maq && maq !== 'Sem Máquina');
@@ -10349,7 +10371,7 @@ function cardOFMaquina(of, maquinaAtual){
     else { bg = '#1a56db'; lbl = 'Em aberto'; }
     return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:.78rem;background:${bg};color:#fff;white-space:nowrap">${escH(lbl)}</span>`;
   })();
-  const urlImagem = of.imagem_url || (Array.isArray(of.imgs)&&of.imgs.length?of.imgs[0]:'') || of.img || of.imagem || '';
+  const urlImagem = of.imagem_url || (_normalizeImgsGlobal(of.imgs ?? of.imagens)[0] || '') || of.img || of.imagem || '';
   const temImagem = !!urlImagem;
   const numeroBase = (of.of ?? of.numero ?? of.of_num ?? of.numero_of ?? '');
   const numeroDigits = String(numeroBase || '').replace(/\D/g,'');
@@ -10421,7 +10443,7 @@ function cardOFMaquina(of, maquinaAtual){
     : null;
 
   if(isMobile){
-    const _img = of.imagem_url || (Array.isArray(of.imgs) && of.imgs.length ? of.imgs[0] : '') || of.img || '';
+    const _img = of.imagem_url || (_normalizeImgsGlobal(of.imgs ?? of.imagens)[0] || '') || of.img || '';
     const _num = of.numero || of.of_num || of.of || numeroDigits || '?';
     const _prod = String(of.descricao || of.produto || produto || '').replace(/"/g,"'");
     const _cli = String(of.cliNome || of.clinome || of.cliente_nome || nomeCliente || '').replace(/"/g,"'");
@@ -11894,7 +11916,7 @@ function ofmaqSetFiltroData(m){
 function ofmaqVerImagem(id){
   const o=(OFs||[]).find(x=>x.id===id);
   if(!o){toast('OF não encontrada','var(--red)');return;}
-  const img=o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
+  const img=o.imagem_url || (_normalizeImgsGlobal(o.imgs ?? o.imagens)[0] || '');
   if(!img){toast('Sem imagem cadastrada','var(--yellow)');return;}
   zoomImg(img);
 }
@@ -12582,12 +12604,7 @@ async function buscarHistoricoPassagens(arg, append) {
       '</div>';
 
     var cardsHtml = (lista || []).map(function(p) {
-      var imgsArr = [];
-      try{
-        if (Array.isArray(p.imgs)) imgsArr = p.imgs;
-        else if (typeof p.imgs === 'string') imgsArr = JSON.parse(p.imgs || '[]');
-      }catch(e){ imgsArr = []; }
-      if (!Array.isArray(imgsArr)) imgsArr = [];
+      var imgsArr = _normalizeImgsGlobal(p.imgs ?? p.imagens);
       var imgUrl = String(
         p.imagem_url || p.img || p.imagem || p.foto ||
         (imgsArr.length ? imgsArr[0] : '') ||
@@ -33876,7 +33893,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261008175500';
+      const swVersion = '20261009094000';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61356,6 +61373,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261008175500"></script>
+<script src="/patch.js?v=20261009094000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

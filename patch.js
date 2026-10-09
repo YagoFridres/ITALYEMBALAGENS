@@ -20756,7 +20756,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
   window._isClosedOfmaqStatus = _isClosedOfmaqStatus;
   window._parseIsoDayLocal = _parseIsoDayLocal;
-  window._resolveOfmaqDisplayDate = _resolveOfmaqDisplayDate;
+  window._resolveOfmaqDisplayDate = _resolveOfmaqDisplayDate;  function _normalizeImgsAny(v) {
+    var arr = [];
+    var cur = v;
+    for (var pass = 0; pass < 2; pass++) {
+      if (Array.isArray(cur)) { arr = cur; break; }
+      if (typeof cur === "string") {
+        var s = String(cur || "").trim();
+        if (!s) { arr = []; break; }
+        if (s.charAt(0) !== "[" && s.charAt(0) !== "{" && /^(https?:\/\/|data:image|blob:|\/|file:\/\/|ftp:\/\/)/i.test(s)) {
+          arr = [s]; break;
+        }
+        try { cur = JSON.parse(s); } catch (_e) { arr = []; break; }
+      } else if (cur == null) { arr = []; break; }
+      else { arr = []; break; }
+    }
+    if (!Array.isArray(arr)) arr = [];
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var x = arr[i];
+      if (typeof x !== "string") continue;
+      var us = String(x || "").trim();
+      if (!us) continue;
+      if (us.length === 1) continue;
+      if (/^(https?:\/\/|data:image|blob:|\/|file:\/\/|ftp:\/\/)/i.test(us)) out.push(us);
+      else if (/^[a-z0-9_\-\/\.]+\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(us)) out.push(us);
+    }
+    return out;
+  }
+  window._normalizeImgs = _normalizeImgsAny;
+
 
   function _nextBusinessIsoFrom(baseDate) {
     var d = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate);
@@ -20985,7 +21014,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.18),transparent)}'
       + '#page-ofmaq .patch-ofmaq-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.18),transparent)}'
       + '#page-ofmaq .patch-ofmaq-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.22),rgba(202,138,4,.18))!important;background-color:rgba(250,204,21,.08)!important}'
-      + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.2),rgba(202,138,4,.16))!important;background-color:rgba(250,204,21,.08)!important}' + '#page-ofmaq .patch-ofmaq-summary-grid:empty{display:none!important;margin:0!important;padding:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;border:0!important}'
+      + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.2),rgba(202,138,4,.16))!important;background-color:rgba(250,204,21,.08)!important}' 
+      + 'img[src="["],img[src="]"],img[src="{"],img[src="}"],img[src=","]{display:none!important;visibility:hidden!important;width:0!important;height:0!important;opacity:0!important;pointer-events:none!important}'
+      + 'img[src^="[" i],img[src^="{"]{display:none!important;visibility:hidden!important}'
++ '#page-ofmaq .patch-ofmaq-summary-grid:empty{display:none!important;margin:0!important;padding:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;border:0!important}'
       + '#page-ofmaq .patch-ofmaq-col-summary:empty{display:none!important;margin:0!important;padding:0!important;min-height:0!important;overflow:hidden!important}'
       + '#page-ofmaq .kb-board-ofmaq:empty,#page-ofmaq .kb-col.kb-col-ofmaq:empty{display:none!important;margin:0!important;padding:0!important;height:0!important;min-height:0!important;overflow:hidden!important}'
       + '#page-ofmaq .patch-ofmaq-table-wrap{margin-top:0!important}'
@@ -26927,12 +26959,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function pickImage(of) {
       var direct = _safeImgUrl(of && (of.imagem_url || of.imagem || of.image_url) || '');
       if (direct) return direct;
-      var imgs = of && of.imgs;
-      if (!Array.isArray(imgs) && typeof imgs === 'string') {
-        try { imgs = JSON.parse(imgs); } catch (_) { imgs = []; }
-      }
-      imgs = Array.isArray(imgs) ? imgs : [];
-      return _safeImgUrl(imgs[0] || '');
+      var imgs = (typeof window._normalizeImgs === 'function') ? window._normalizeImgs(of && (of.imgs ?? of?.imagens)) : (
+        Array.isArray(of?.imgs) ? of.imgs : (
+          typeof of?.imgs === 'string' ? (function(){try{var a=JSON.parse(of.imgs||'[]');return Array.isArray(a)?a:[];}catch(_){return [];}})() : (
+            Array.isArray(of?.imagens) ? of.imagens : [])));
+      return _safeImgUrl(Array.isArray(imgs) ? (imgs[0] || '') : '');
     }
 
     // [M2 DOC FÓRMULA ATUAL - NÃO ALTERAR SEM APROVAÇÃO]
@@ -50680,7 +50711,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       for (var i = 0; i < acum.length; i++) {
         var o = acum[i];
         var ofNum = String(o?.numero || o?.of || '—');
-        var imgUrl = String(o?.imagem_url || o?.imagem || o?.image_url || '');
+        var imgUrl = String(o?.imagem_url || o?.imagem || o?.image_url || '') || (window._normalizeImgs ? window._normalizeImgs(o?.imgs ?? o?.imagens)[0] || '' : '');
         var dtPedido = __dashFmtDtEnt(o?.data_pedido || o?.pedido || o?.dia_pedido || '');
         var dtCriacao = __dashFmtDtEnt(o?.dia || o?.data_criacao || o?.created_at || '');
         var dtEnt = __dashFmtDtEnt(o?.data_entrega || o?.ent || o?.dia || '');
@@ -51836,7 +51867,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         acoesHtml +=     '<button type="button" data-dash-acao="adiar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">⬇️</span>Mover para Baixo (Adiar)</button>';
         acoesHtml +=   '</div>';
         acoesHtml += '</div>';
-        var _imgUrl = String(of?.imagem_url || of?.imagem || of?.image_url || '').trim();
+        var _imgUrl = String(of?.imagem_url || of?.imagem || of?.image_url || '').trim()
+          || (typeof window._normalizeImgs === 'function' ? (window._normalizeImgs(of?.imgs ?? of?.imagens)[0] || '') : '');
         var _imgTd = '<td class="center" style="padding:6px 12px">' + (_imgUrl
           ? '<img src="' + esc(_imgUrl) + '" alt="" style="display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid #334155;cursor:zoom-in" data-dash-img-of="' + esc(ofId) + '">'
           : '<span class="kb-img-ph kb-of-img-ph" style="display:inline-flex;width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:18px">?</span>') + '</td>';
@@ -52944,7 +52976,9 @@ window._mbnActive = function(id) {
     var maquina = String(item && (item.maquina || item.maquina_nome || item.maquina_perda) || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual || ofData.maquina_nome) || '').trim() || '—';
     var tipoCaixa = String(item && (item.tipo_caixa || item.tipo || item.tipo_nome) || '').trim() || String(ofData && (ofData.tipo_caixa || ofData.tipoCaixa) || '').trim() || 'Sem tipo';
     var ofNumero = String(item && (item.of_numero || item.of_num || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || '—';
-    var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
+    var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim()
+      || (typeof window._normalizeImgs === 'function' ? (window._normalizeImgs((ofData && (ofData.imgs ?? ofData.imagens)) ?? (item && (item.imgs ?? item.imagens)))[0] || '') : '')
+      || String(ofData && (ofData.imagem_url || ofData.imgUrl || '') || '').trim();
     try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
     return {
       id: String(item && item.id || '').trim(),
