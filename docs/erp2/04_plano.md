@@ -40,8 +40,13 @@
 | `index.html` | **apenas** o bump de versão |
 
 ### 1.2 Identidade
-- **Direção aprovada:** moderno, profissional e **extremamente fácil de usar**, mantendo o
-  **tema escuro** e a **identidade Italy Embalagens**.
+- **Direção aprovada em 19/10** (aprovação **só da direção visual**, **não** autorização de publicação):
+  moderno, limpo e profissional, **simples e fácil de compreender**, sobretudo para o **chão de fábrica**.
+- **Identidade do site:** fontes **Archivo** (títulos) + **Source Sans 3** (texto); cores
+  **azul-petróleo `#1E4D57`, teal `#55A4AD`, verde `#A8CF4E`** e **detalhes em kraft `#C9A47E`**.
+  Tema **escuro** mantido.
+- **Botões (decisão aprovada):** **discretos e com cantos levemente arredondados** em todo o sistema
+  — **não** usar pílula (`999px`) do site; adotar `--raio-s` (≈8 px). Verde-folha como ação positiva.
 - Base: azul-petróleo `#1E4D57` do site novo → tokens escuros do prompt (§5 de `02_diagnostico.md`),
   com o **tema claro mantido funcionando**.
 - Fontes do site: **Archivo** (títulos) + **Source Sans 3** (texto); números em JetBrains Mono (já usada).
@@ -58,6 +63,7 @@
 Redefinir `--bg --surface --s2..s4 --border --accent --text --text2 --text3 --font` em
 `html[data-ui="2"]`; depois estilizar `.btn`, `.btn-accent`, `.btn-ghost`, inputs, selects,
 `.modal`, tabelas, cards, abas, toasts, foco visível de teclado — **sem** HTML/JS de tela.
+Botões: **cantos levemente arredondados** (`--raio-s` ≈8 px), **não** pílula.
 
 ### 1.4 Testes obrigatórios (antes de seguir para módulos)
 - **Chave desligada:** `toHaveScreenshot` (Playwright) nas telas principais contra o **mock** —

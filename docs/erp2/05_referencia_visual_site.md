@@ -112,10 +112,10 @@ Mapeamento direto — **troca de valores** dos tokens que o ERP já tem
 | branco sobre petróleo `#1E4D57` | **9,32:1** | ✔ |
 | `#123239` sobre verde `#A8CF4E` (texto de botão) | **8,40:1** | ✔ |
 
-**Decisão pendente do Yago:** o site usa **botão principal verde-folha em pílula**; o ERP é
-denso e escuro. Sugestão: **adotar a paleta** (petróleo/teal/verde/kraft) e o **verde-folha
-como cor de ação positiva**, mantendo botões mais contidos (raio 8–10 px) para não perder
-densidade — ajustável na aprovação visual da Etapa 2.
+**Decisão aprovada pelo Yago (19/10):** adotar a **paleta** (azul-petróleo + teal + verde + kraft),
+com o **verde-folha como cor de ação positiva**, e **botões discretos de cantos levemente
+arredondados** (`--raio-s` ≈8 px) — **não** a pílula (`999px`) do site. Manter o **tema escuro**,
+limpo e simples para o chão de fábrica. (Aprovação de direção; **não** é autorização de publicação.)
 
 ---
 
