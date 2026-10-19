@@ -13,6 +13,7 @@ const nodemailer = require('nodemailer');
 const { XMLParser } = require('fast-xml-parser');
 let cron = null;
 try { cron = require('node-cron'); } catch (_) { cron = null; }
+const { normalizarEmpresa, corrigirUuid, EMPRESAS_FALLBACK } = require('./lib/empresa');
 
 process.on('uncaughtException', (e) => {
   try { console.error('[CRASH] uncaughtException:', e?.message || e); } catch (_) {}
@@ -1304,8 +1305,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261009100500';
-const SW_RUNTIME_VERSION = '20261009100500';
+const PATCH_RUNTIME_VERSION = '20261019103000';
+const SW_RUNTIME_VERSION = '20261019103000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4462,9 +4463,13 @@ function ofIn(p) {
   if (has('data_conclusao')) out.data_conclusao = sanitizeDate(p.data_conclusao);
   if (has('data_faturamento')) out.data_faturamento = sanitizeDate(p.data_faturamento);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  // P1: NÃO apagar empresa_id em silêncio. Um valor não-UUID aqui é erro do chamador
+  // (ex.: código "E2" no lugar do UUID) e precisa falhar alto, jamais gravar OF sem empresa.
   if (out.empresa_id && !isUuid(out.empresa_id)) {
-    if (!out.emp_id) out.emp_id = out.empresa_id;
-    delete out.empresa_id;
+    const errEmp = new Error('empresa_id inválido (não é UUID): ' + String(out.empresa_id));
+    errEmp.codigo = 'EMPRESA_ID_INVALIDO';
+    errEmp.status = 400;
+    throw errEmp;
   }
   if (out.cliente_id && !isUuid(out.cliente_id)) {
     if (!out.cli_id) out.cli_id = out.cliente_id;
@@ -6788,10 +6793,20 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     const body = req.body || {};
-    const empresaCtx = await _resolveEmpresaMutationContext(req, body);
-    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
-    const empLegacy = String(empresaCtx?.emp_id || '').trim();
-    if (!empresaUuid) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
+    const empresaNorm = await _normalizarEmpresaMutacao(req, body);
+    if (!empresaNorm || empresaNorm.erro) {
+      try { console.warn('[POST OFS BLOQUEADO] empresa inválida/ausente:', (empresaNorm && empresaNorm.erro) || 'empresa_invalida', 'motivo:', empresaNorm && empresaNorm.motivo, 'rid:', req._rid); } catch (_) {}
+      return res.status(400).json({
+        ok: false,
+        error: 'Empresa inválida ou não informada',
+        campo: 'empresa',
+        motivo: (empresaNorm && (empresaNorm.motivo || empresaNorm.erro)) || 'empresa_invalida',
+        rid: req._rid || null,
+      });
+    }
+    const empresaUuid = String(empresaNorm.empresa_id || '').trim();
+    const empLegacy = String(empresaNorm.emp_id || '').trim();
+    if (!_isUuid(empresaUuid)) return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', rid: req._rid || null });
     let filtered = ofPayloadFiltrado(body);
     filtered.empresa_id = empresaUuid;
     if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
@@ -7109,10 +7124,39 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       });
     } catch (_) {}
     // #endregion
-    const createdRes = await ofsInsertWithRetry(ofIn(filtered));
+    // P1 · assert: empresa_id precisa ser UUID e emp_id coerente antes do insert.
+    if (!_isUuid(String(filtered.empresa_id || ''))) {
+      try { console.warn('[POST OFS BLOQUEADO] assert pre-insert: empresa_id não é UUID:', filtered.empresa_id, 'rid:', req._rid); } catch (_) {}
+      return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', rid: req._rid || null });
+    }
+    if (empLegacy && String(filtered.emp_id || '') && String(filtered.emp_id) !== String(empLegacy)) {
+      try { console.warn('[POST OFS] emp_id ajustado pelo normalizador:', filtered.emp_id, '->', empLegacy); } catch (_) {}
+      filtered.emp_id = empLegacy;
+    }
+    let _payloadInsert;
+    try {
+      _payloadInsert = ofIn(filtered);
+    } catch (eIn) {
+      if (eIn && eIn.codigo === 'EMPRESA_ID_INVALIDO') {
+        try { console.warn('[POST OFS BLOQUEADO] ofIn rejeitou empresa_id:', eIn.message, 'rid:', req._rid); } catch (_) {}
+        return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', rid: req._rid || null });
+      }
+      throw eIn;
+    }
+    const createdRes = await ofsInsertWithRetry(_payloadInsert);
     if (createdRes.error) throw createdRes.error;
     let created = createdRes.data;
     _dbgCreated = created;
+    // P1 · pós-insert: nunca devolver sucesso se a empresa se perdeu.
+    if (!String(created?.empresa_id || '').trim()) {
+      try { console.error('[POST OFS] empresa_id perdido no insert', req._rid, 'id:', created?.id); } catch (_) {}
+      return res.status(500).json({
+        ok: false,
+        error: 'A OF foi criada, mas a empresa não foi gravada. Contate o suporte informando este código.',
+        rid: req._rid || null,
+        of_id: created?.id || null,
+      });
+    }
     // #region debug-point B:ofs-post-after-insert
     _dbgOfStage = 'after-insert';
     try {
@@ -7477,11 +7521,16 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     setNoCache(res);
     let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
     body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body));
-    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key));
+    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some(
+      (key) => Object.prototype.hasOwnProperty.call(req.body || {}, key) && String(req.body[key] == null ? '' : req.body[key]).trim() !== ''
+    );
     if (hasEmpresaOverride) {
-      const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
-      if (empresaCtx?.empresa_id) body.empresa_id = empresaCtx.empresa_id;
-      if (empresaCtx?.emp_id) body.emp_id = empresaCtx.emp_id;
+      const empresaNorm = await _normalizarEmpresaMutacao(req, req.body || {});
+      if (!empresaNorm || empresaNorm.erro || !_isUuid(String(empresaNorm.empresa_id || ''))) {
+        return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', motivo: (empresaNorm && (empresaNorm.motivo || empresaNorm.erro)) || 'empresa_invalida' });
+      }
+      body.empresa_id = empresaNorm.empresa_id;
+      if (empresaNorm.emp_id) body.emp_id = empresaNorm.emp_id;
     }
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
@@ -11072,6 +11121,24 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     const bodyIn = normalizeOfUpdateBody(req.body || {});
+    // P1 · empresa: normaliza/corrige ANTES do ofIn() e nunca cai para a empresa da sessão
+    // quando o corpo trouxer uma empresa que não resolve.
+    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some(
+      (key) => Object.prototype.hasOwnProperty.call(req.body || {}, key) && String(req.body[key] == null ? '' : req.body[key]).trim() !== ''
+    );
+    if (hasEmpresaOverride) {
+      const empresaNorm = await _normalizarEmpresaMutacao(req, req.body || {});
+      if (!empresaNorm || empresaNorm.erro || !_isUuid(String(empresaNorm.empresa_id || ''))) {
+        return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', motivo: (empresaNorm && (empresaNorm.motivo || empresaNorm.erro)) || 'empresa_invalida' });
+      }
+      bodyIn.empresa_id = empresaNorm.empresa_id;
+      if (empresaNorm.emp_id) bodyIn.emp_id = empresaNorm.emp_id;
+    } else {
+      delete bodyIn.empresa_id;
+      delete bodyIn.empresaId;
+      delete bodyIn.emp_id;
+      delete bodyIn.empId;
+    }
     const mapped =
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
@@ -11123,12 +11190,6 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
     payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload));
-    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key));
-    if (hasEmpresaOverride) {
-      const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
-      if (empresaCtx?.empresa_id) payload.empresa_id = empresaCtx.empresa_id;
-      if (empresaCtx?.emp_id) payload.emp_id = empresaCtx.emp_id;
-    }
     try { console.log('[PATCH OF] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
@@ -21491,6 +21552,73 @@ async function _resolveEmpresaMutationContext(req, body) {
     empresa_id: empresa_id || null,
     emp_id: emp_id || null,
   };
+}
+
+// ── P1 · Normalização de empresa para mutações de OF ─────────────────────────
+// Cache (5 min) das linhas de `empresas` usadas pelo normalizador puro.
+const _empresaNormCache = { rows: null, exp: 0 };
+async function _getEmpresasRowsCached() {
+  const now = Date.now();
+  if (Array.isArray(_empresaNormCache.rows) && _empresaNormCache.rows.length && now < _empresaNormCache.exp) {
+    return _empresaNormCache.rows;
+  }
+  let rows = null;
+  const selects = ['id,nome,sigla,codigo', 'id,nome,sigla', 'id,nome'];
+  for (const sel of selects) {
+    try {
+      const { data, error } = await supabase.from('empresas').select(sel).order('nome');
+      if (!error && Array.isArray(data) && data.length) { rows = data; break; }
+    } catch (_) {}
+  }
+  if (!Array.isArray(rows) || !rows.length) {
+    try { console.warn('[EMPRESA NORM] tabela empresas indisponível/vazia — usando mapa canônico de fallback'); } catch (_) {}
+    rows = EMPRESAS_FALLBACK;
+  }
+  _empresaNormCache.rows = rows;
+  _empresaNormCache.exp = now + 5 * 60 * 1000;
+  return rows;
+}
+
+/**
+ * Resolve a empresa de uma mutação de OF.
+ *  - corpo com empresa válida → usa a empresa do corpo;
+ *  - corpo com empresa INVÁLIDA → erro (NUNCA cai para a empresa do usuário logado);
+ *  - corpo sem empresa → usa a empresa da sessão (comportamento legado).
+ * Retorna { empresa_id, emp_id, origem } ou { erro }.
+ */
+async function _normalizarEmpresaMutacao(req, body) {
+  const b = body || {};
+  const temEmpresaNoCorpo = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some(
+    (k) => Object.prototype.hasOwnProperty.call(b, k) && String(b[k] == null ? '' : b[k]).trim() !== ''
+  );
+  const rows = await _getEmpresasRowsCached();
+  const norm = normalizarEmpresa(
+    {
+      empresa_id: b.empresa_id != null ? b.empresa_id : b.empresaId,
+      emp_id: b.emp_id != null ? b.emp_id : b.empId,
+    },
+    rows
+  );
+  if (norm && !norm.erro) {
+    return { empresa_id: norm.empresa_id, emp_id: norm.emp_id, origem: 'corpo' };
+  }
+  if (temEmpresaNoCorpo) {
+    return { erro: 'empresa_invalida', motivo: (norm && norm.erro) || 'empresa_invalida' };
+  }
+  // Corpo sem empresa: resolve pela sessão do usuário logado.
+  let uuidSessao = '';
+  try {
+    uuidSessao = String(await _resolveEmpresaUuid({ ...req, body: {}, query: {} }) || '').trim();
+  } catch (_) {}
+  if (!uuidSessao) {
+    try { uuidSessao = String(await getEmpresaId(req) || '').trim(); } catch (_) {}
+  }
+  if (!uuidSessao) return { erro: 'empresa_obrigatoria' };
+  const normSessao = normalizarEmpresa({ empresa_id: uuidSessao }, rows);
+  if (normSessao && !normSessao.erro) {
+    return { empresa_id: normSessao.empresa_id, emp_id: normSessao.emp_id, origem: 'sessao' };
+  }
+  return { empresa_id: corrigirUuid(uuidSessao), emp_id: null, origem: 'sessao_raw' };
 }
 
 function _gramaturaTexto(v) {

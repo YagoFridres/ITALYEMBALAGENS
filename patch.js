@@ -39921,7 +39921,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: '', label: 'Todas as empresas' },
     { id: 'df5f7672-0a6b-402d-ae65-296554236c31', label: 'Italy Embalagens' },
     { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', label: 'Cartoeste' },
-    { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', label: 'Oestepack' }
+    { id: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a', label: 'Oestepack' }
   ];
   function _empresaIdAtual() {
     try { return String(window.__comissoesFiltroEmpresaId || '').trim(); } catch (_) { return ''; }
@@ -50612,7 +50612,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var mapa = {
         'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
         'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack'
+        'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'Oestepack'
       };
       if (mapa[id]) return mapa[id];
       var idUp = id.toUpperCase();
@@ -59000,7 +59000,7 @@ function _ocultarGraficoComissoes() {
             { id: '', label: 'Todas as empresas' },
             { id: 'df5f7672-0a6b-402d-ae65-296554236c31', label: 'Italy Embalagens' },
             { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', label: 'Cartoeste' },
-            { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', label: 'Oestepack' }
+            { id: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a', label: 'Oestepack' }
           ];
           if (_optsEmp[0] && _optsEmp[0].id !== '') {
             _optsEmp.unshift({ id: '', label: 'Todas as empresas' });
@@ -66946,7 +66946,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var EMPRESAS_OFICIAIS = [
       { id:'df5f7672-0a6b-402d-ae65-296554236c31', sigla:'E1', nome:'Italy Embalagens' },
       { id:'e9b734dc-c7d5-4b04-898d-1ec7affa721e', sigla:'E2', nome:'Cartoeste' },
-      { id:'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', sigla:'E3', nome:'Oestepack' }
+      { id:'a6e5f5d8-4743-4ebe-885e-c2f0741a667a', sigla:'E3', nome:'Oestepack' }
     ];
     var CATEGORIAS_MAP = {};
     CATEGORIAS_OFICIAIS.forEach(function(c){ CATEGORIAS_MAP[c.key] = c; });
