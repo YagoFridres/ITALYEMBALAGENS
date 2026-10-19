@@ -68762,32 +68762,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } catch (_) { return false; }
   }
 
-  // reaplica a sobrescrita depois que a OF Rápida é aberta (as chamadas internas
-  // do index.html usam o nome global _atualizarEstadoNumeroOfRapida).
-  function decorarAbrir() {
-    try {
-      var fn = window.abrirNovaOfRapida;
-      if (typeof fn !== 'function' || fn.__p1NumeroNaoBloquear) return false;
-      var orig = fn;
-      var wrapped = function() {
-        var out;
-        try { out = orig.apply(this, arguments); } catch (e) { instalar(); throw e; }
-        try { instalar(); } catch (_) {}
-        return out;
-      };
-      wrapped.__p1NumeroNaoBloquear = true;
-      window.abrirNovaOfRapida = wrapped;
-      return true;
-    } catch (_) { return false; }
-  }
-
+  // HOTFIX P1 (reentrada): NÃO envolver window.abrirNovaOfRapida aqui.
+  // Um envelope extra fazia o guarda de reentrada (patchFinalReentryGuards) se
+  // aplicar duas vezes com o mesmo estado, bloqueando a abertura da OF Rápida
+  // ("[PATCH][REENTRY-BLOCKED] abrirNovaOfRapida"). A troca de
+  // window._atualizarEstadoNumeroOfRapida já vale para as chamadas internas do
+  // index.html (função global), então basta reaplicar instalar().
   instalar();
-  decorarAbrir();
   [0, 250, 1200, 2500, 5000].forEach(function(d) {
-    setTimeout(function() { instalar(); decorarAbrir(); }, d);
+    setTimeout(function() { instalar(); }, d);
   });
 
-  try { window.__p1NumeroRapida = { aplicarEstado: aplicarEstado, instalar: instalar, decorarAbrir: decorarAbrir }; } catch (_) {}
+  try { window.__p1NumeroRapida = { aplicarEstado: aplicarEstado, instalar: instalar }; } catch (_) {}
 })();
 
 /* -------------------------------------------------------------------------- *
