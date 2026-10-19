@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261019110843';
-const SW_RUNTIME_VERSION = '20261019110843';
+const PATCH_RUNTIME_VERSION = '20261019170720';
+const SW_RUNTIME_VERSION = '20261019170720';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -6775,6 +6775,10 @@ async function _autoSugerirMaquinaParaOF(body, created){
   }
 }
 
+// AUD-2: anti-duplicata de OF (mesmo cliente + produto + qtd em < 2 min).
+// Desligada por padrao. Ligar apenas apos aprovacao (OF_ANTIDUPLICATA_ATIVA=true).
+const OF_ANTIDUPLICATA_ATIVA = String(process.env.OF_ANTIDUPLICATA_ATIVA || '').trim().toLowerCase() === 'true';
+
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   // #region debug-point B:ofs-post-state
   let _dbgOfStage = 'start';
@@ -6938,13 +6942,15 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         filtered.status = canonBase;
       }
     }
+    // AUD-2: `merged` precisa existir fora deste bloco — o bloco anti-duplicata (abaixo) o consome.
+    let merged = null;
     {
       const parseItens = (v) => {
         if (Array.isArray(v)) return v;
         if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
         return [];
       };
-      let merged = { ...(body || {}), ...(filtered || {}) };
+      merged = { ...(body || {}), ...(filtered || {}) };
       const cliRef = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
       const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef) : null;
       if (cliRef && !cliResolved) {
@@ -7016,9 +7022,9 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       try {
         if (_dupBody.confirmarDuplicata === true || _dupBody.confirmar_duplicata === true || String(_dupBody.confirmarDuplicata || _dupBody.confirmar_duplicata || '').trim().toLowerCase() === 'true' || _dupBody.forcar === true || String(_dupBody.forcar || '').toLowerCase() === 'true') confirmarDup = true;
       } catch (_) { confirmarDup = false; }
-      if (!confirmarDup && !req.params.id) {
+      if (OF_ANTIDUPLICATA_ATIVA && !confirmarDup && !req.params.id) {
         var _dupCliId = String(merged && merged.cli_id != null ? merged.cli_id : (filtered.cli_id || '')).trim();
-        var _dupProd = String(merged && merged.produto != null ? merged.produto : (merged.descricao || filtered.descricao || filtered.produto || '')).trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/s+/g,' ').toLowerCase();
+        var _dupProd = String(merged && merged.produto != null ? merged.produto : (merged.descricao || filtered.descricao || filtered.produto || '')).trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').toLowerCase();
         var _dupQtd = Math.trunc(Number(merged && merged.qtd != null ? (Number(merged.qtd)||0) : (Number(merged.quantidade) || Number(filtered.qtd) || Number(filtered.quantidade) || 0)) || 0);
         var _dupEmpresa = String(filtered.empresa_id || empresaUuid || '').trim();
         if (_dupCliId && _dupProd && _dupQtd > 0 && _dupEmpresa) {
@@ -7035,7 +7041,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           var _dupMatches = [];
           if (_dupRes && !_dupRes.error && Array.isArray(_dupRes.data)) {
             _dupRes.data.forEach(function (o) {
-              var pA = String(o.produto || o.descricao || '').trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/s+/g,' ').toLowerCase();
+              var pA = String(o.produto || o.descricao || '').trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').toLowerCase();
               var pB = _dupProd;
               if (pA !== pB) return;
               var q1 = Math.trunc(Number(o.qtd || o.quantidade || 0) || 0);
