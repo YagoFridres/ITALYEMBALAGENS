@@ -44,12 +44,15 @@
   **tema escuro** e a **identidade Italy Embalagens**.
 - Base: azul-petróleo `#1E4D57` do site novo → tokens escuros do prompt (§5 de `02_diagnostico.md`),
   com o **tema claro mantido funcionando**.
-- Fonte legível (Plus Jakarta Sans / a do site); números em JetBrains Mono (já usada).
+- Fontes do site: **Archivo** (títulos) + **Source Sans 3** (texto); números em JetBrains Mono (já usada).
 - Toque ≥ 44 px; texto base ≥ 15 px no celular; ícone acompanhado de texto.
 - **Preservar a essência de todas as telas, especialmente OFs por Máquina** (organização e lógica
   inalteradas). **Não criar** novas ações nem processos.
-- Extrair fontes, raios e demais cores **do CSS do site** (o Yago confirmou que só a cor
-  `#1E4D57` estava legível) — **pendente: acesso ao repositório/CSS do site**.
+- **Referências extraídas do site publicado** (fontes, cores, raios, sombras, foco,
+  breakpoints): ver [`05_referencia_visual_site.md`](05_referencia_visual_site.md). O site é
+  **claro**; o ERP permanece **escuro**, transpondo a identidade (petróleo + teal + verde-folha +
+  kraft) — com contraste comprovado ≥ 4,5:1.
+- (Opcional) **logo em SVG** da marca, se o Yago tiver o vetor.
 
 ### 1.3 Tokens e componentes (só CSS)
 Redefinir `--bg --surface --s2..s4 --border --accent --text --text2 --text3 --font` em
@@ -139,7 +142,8 @@ Cada item entra como **commit isolado**, com prova de que nada mudou de comporta
 ## 5. Pendências que dependem do Yago
 
 1. **Merge do P1 na `main`** e validação — pré-requisito para criar a branch da Etapa 2.
-2. **Acesso ao CSS/fontes do site novo** (para extrair paleta, fontes e raios).
+2. ~~Acesso ao CSS/fontes do site novo~~ **RESOLVIDO** em 19/10: site publicado, CSS extraído
+   em [`05_referencia_visual_site.md`](05_referencia_visual_site.md). Pendente só o **logo em SVG** (opcional).
 3. **Aprovação do visual** ao fim da Etapa 2 (via `componentes.html` antes/depois).
 4. **Confirmação das telas mortas/órfãs** (§3 de `01_inventario_telas.md`) antes de qualquer decisão.
 5. **Verificar se o `modal-iniciar-producao` é usado** (§2.1) — não remover nem ativar até lá.
