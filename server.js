@@ -14,6 +14,7 @@ const { XMLParser } = require('fast-xml-parser');
 let cron = null;
 try { cron = require('node-cron'); } catch (_) { cron = null; }
 const { normalizarEmpresa, corrigirUuid, EMPRESAS_FALLBACK } = require('./lib/empresa');
+const { extrairMaximo: _numExtrairMaximo, coletarTomados: _numColetarTomados, proximoNumeroLivre: _numProximoLivre, CAMPOS_NEGOCIO: _NUM_CAMPOS } = require('./lib/numeracao');
 
 process.on('uncaughtException', (e) => {
   try { console.error('[CRASH] uncaughtException:', e?.message || e); } catch (_) {}
@@ -5099,6 +5100,28 @@ async function _enriquecerRespostaOFs(listaInput) {
   });
 }
 
+// P1 · leitura única das colunas de negócio da OF (máximo + tomados).
+async function _lerTodasOfsNumeros() {
+  try {
+    const { data, error } = await supabase
+      .from('ofs')
+      .select(_NUM_CAMPOS.join(','))
+      .order('seq', { ascending: false, nullsFirst: false })
+      .limit(50000);
+    if (!error && Array.isArray(data)) return data;
+  } catch (_) {}
+  return [];
+}
+
+// P1 · próximo número de OF calculado GLOBALMENTE (sem filtro de empresa).
+// O banco tem UNIQUE (numero) global, então o próximo número é sempre o maior
+// número existente (em qualquer uma das colunas de negócio) + 1.
+async function calcularProximoNumeroOFGlobal() {
+  const rows = await _lerTodasOfsNumeros();
+  const maior = _numExtrairMaximo(rows, _NUM_CAMPOS);
+  return maior > 0 ? maior + 1 : null;
+}
+
 async function ofsInsertWithRetry(row) {
   function sanitizarPayloadOF(payload) {
     const inteiros = [
@@ -5233,34 +5256,17 @@ async function ofsInsertWithRetry(row) {
       if (seq > 0) next.seq = seq + 1;
     } catch (_) {}
     if (!refreshNumero) return next;
-    const empresaId = String(next?.empresa_id || '').trim();
-    if (!empresaId) return next;
+    // P1 · numeração GLOBAL: o UNIQUE(ofs.numero) é global, então o retry por
+    // conflito NÃO pode filtrar por empresa_id (isso escolheria um número já
+    // usado por outra empresa). Recalcula sobre TODAS as OFs.
     try {
-      const { data, error } = await supabase
-        .from('ofs')
-        .select('numero')
-        .eq('empresa_id', empresaId)
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (error) return next;
-      let maior = 0;
-      (Array.isArray(data) ? data : []).forEach((item) => {
-        const n = parseInt(String(item?.numero || '').replace(/\D/g, ''), 10) || 0;
-        if (n > maior) maior = n;
-      });
-      for (let i = 1; i <= 500; i += 1) {
-        const cand = String(maior + i);
-        const { data: exists, error: existsErr } = await supabase
-          .from('ofs')
-          .select('id')
-          .eq('empresa_id', empresaId)
-          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},of_seq.eq.${cand}`)
-          .limit(1);
-        if (existsErr) break;
-        if (Array.isArray(exists) && exists.length) continue;
+      const rows = await _lerTodasOfsNumeros();
+      const base = _numExtrairMaximo(rows, _NUM_CAMPOS);
+      const tomados = _numColetarTomados(rows, _NUM_CAMPOS);
+      const cand = _numProximoLivre(base > 0 ? base + 1 : 0, tomados);
+      if (cand) {
         next.numero = cand;
         next.of = cand;
-        break;
       }
     } catch (_) {}
     return next;
@@ -5268,6 +5274,7 @@ async function ofsInsertWithRetry(row) {
 
   let p = sanitizarPayloadOF({ ...(row || {}) });
   const ignoredColumns = [];
+  let ultimoConflitoNumero = false;
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
@@ -5282,7 +5289,8 @@ async function ofsInsertWithRetry(row) {
       continue;
     }
     if (erroDuplicado(r.error)) {
-      p = await recalcularIdentificadores(p, erroDuplicadoNumero(r.error));
+      ultimoConflitoNumero = erroDuplicadoNumero(r.error);
+      p = await recalcularIdentificadores(p, ultimoConflitoNumero);
       try { console.warn('[OFS INSERT] retry por conflito:', msg); } catch (_) {}
       continue;
     }
@@ -5297,6 +5305,13 @@ async function ofsInsertWithRetry(row) {
     if (r.error && typeof r.error === 'object' && !r.error.message) r.error.message = msg;
     r.ignoredColumns = ignoredColumns;
     return r;
+  }
+  if (ultimoConflitoNumero) {
+    return {
+      data: null,
+      error: { message: 'Não foi possível reservar número, tente de novo', codigo: 'NUMERO_INDISPONIVEL', status: 409 },
+      ignoredColumns,
+    };
   }
   return { data: null, error: { message: 'Falha ao inserir OF após tentativas' }, ignoredColumns };
 }
@@ -6274,42 +6289,26 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     let maior = 0;
-    const campos = ['numero', 'of_num', 'of_seq', 'of'];
-    for (const campo of campos) {
-      try {
-        const { data, error } = await supabase
-          .from('ofs')
-          .select(campo + ',id')
-          .not(campo, 'is', null)
-          .order(campo, { ascending: false, nullsFirst: false })
-          .limit(50000);
-        if (!error && Array.isArray(data)) {
-          for (let i = 0; i < data.length; i++) {
-            const v = data[i]?.[campo];
-            if (v == null || v === '') continue;
-            const n = parseInt(String(v).replace(/\D/g, ''), 10);
-            if (!isNaN(n) && n > maior) maior = n;
-          }
-        }
-      } catch (_) {}
-    }
-    try {
-      const { data: recent } = await supabase
-        .from('ofs')
-        .select('numero,of_num,of_seq,of,id')
-        .order('created_at', { ascending: false })
-        .limit(20000);
-      if (Array.isArray(recent)) {
-        for (let j = 0; j < recent.length; j++) {
-          for (const campo of campos) {
-            const v = recent[j]?.[campo];
-            if (v == null || v === '') continue;
-            const n = parseInt(String(v).replace(/\D/g, ''), 10);
-            if (!isNaN(n) && n > maior) maior = n;
-          }
+    const campos = ['numero', 'of_num', 'of_seq', 'of', 'seq'];
+    // P1 · prévia rápida: apenas as 500 OFs mais recentes. O número REAL é sempre
+    // definido/revalidado pelo servidor no momento do save (POST /api/ofs), então
+    // esta rota é só exibição. Antes varria até 50.000 linhas × 4 campos (lento).
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('numero,of_num,of_seq,of,seq,id')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    if (Array.isArray(data)) {
+      for (let j = 0; j < data.length; j++) {
+        for (const campo of campos) {
+          const v = data[j]?.[campo];
+          if (v == null || v === '') continue;
+          const n = parseInt(String(v).replace(/\D/g, ''), 10);
+          if (!isNaN(n) && n > maior) maior = n;
         }
       }
-    } catch (_) {}
+    }
     const digits = String(maior || '').length >= 3 ? String(maior || '').length : 3;
     const proximo = String(maior + 1).padStart(digits, '0');
     const resp = { ok: true, proximo, maior: maior > 0 ? String(maior) : '0', gerado_em: new Date().toISOString(), no_cache: true, observacao: 'Numeros canceladas/deletadas NAO sao reutilizados. Consulta SEM cache.' };
@@ -6816,51 +6815,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
     delete filtered.id;
     {
-      const calcularProximoNumeroOF = async () => {
-        const camposNegocio = ['numero', 'of_num', 'of_seq', 'of'];
-        const extrairMaxDeUmCampo = (rows, campo) => {
-          let maior = 0;
-          (Array.isArray(rows) ? rows : []).forEach((o) => {
-            const v = o?.[campo];
-            if (v === null || v === undefined || v === '') return;
-            const n = parseInt(String(v).replace(/\D/g, ''), 10);
-            if (!isNaN(n) && n > maior) maior = n;
-          });
-          return maior;
-        };
-        let maxGlobal = 0;
-        for (const campo of camposNegocio) {
-          try {
-            const { data, error } = await supabase
-              .from('ofs')
-              .select(campo + ',id,seq')
-              .order(campo, { ascending: false, nullsFirst: false })
-              .limit(50000);
-            if (!error && Array.isArray(data)) {
-              const m = extrairMaxDeUmCampo(data, campo);
-              if (m > maxGlobal) maxGlobal = m;
-            }
-          } catch (_) {}
-        }
-        try {
-          const { data, error } = await supabase
-            .from('ofs')
-            .select('numero,of_num,of_seq,of,seq')
-            .order('seq', { ascending: false })
-            .limit(10000);
-          if (!error && Array.isArray(data)) {
-            data.forEach((o) => {
-              ['numero','of_num','of_seq','of','seq'].forEach((c) => {
-                const v = o?.[c];
-                if (v === null || v === undefined || v === '') return;
-                const n = parseInt(String(v).replace(/\D/g, ''), 10);
-                if (!isNaN(n) && n > maxGlobal) maxGlobal = n;
-              });
-            });
-          }
-        } catch (_) {}
-        return maxGlobal > 0 ? maxGlobal + 1 : null;
-      };
+      const calcularProximoNumeroOF = calcularProximoNumeroOFGlobal;
       try {
         const { data: last } = await supabase
           .from('ofs')
@@ -7304,7 +7259,14 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const errorText = (e && typeof e === 'object' && String(e?.message || '').trim())
       ? String(e.message).trim()
       : (_safeJson(e) || String(e));
-    return res.status(500).json({ ok: false, error: errorText === '"[unserializable]"' ? 'Falha interna ao criar OF' : errorText, rid: req._rid || null });
+    // P1 · conflito de numeração esgotado devolve 409 (não 500).
+    const _statusInsert = Number(e?.status) || 500;
+    return res.status(_statusInsert).json({
+      ok: false,
+      error: errorText === '"[unserializable]"' ? 'Falha interna ao criar OF' : errorText,
+      ...(e && e.codigo ? { codigo: e.codigo } : {}),
+      rid: req._rid || null,
+    });
   }
 });
 
