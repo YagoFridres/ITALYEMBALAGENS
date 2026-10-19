@@ -68550,5 +68550,252 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   bootstrap();
 })();
 
+/* -------------------------------------------------------------------------- *
+ * P1 · listas limpas · Commit 4
+ *  - máquina no lançamento: exatamente IMP 01..05, Riscador e CORTE VINCO
+ *    ROTATIVA (deduplicadas por nome normalizado, sem "Acabamento"/"Coladeira");
+ *    um valor legado já selecionado é preservado para não perder edição;
+ *  - datalist de clientes: deduplicado por nome normalizado, exibindo
+ *    documento/cidade para diferenciar homônimos (nada é apagado no banco);
+ *  - vendedor: apenas ativos; na edição de OF antiga com vendedor inativo o
+ *    valor é preservado e marcado "(inativo)".
+ * Nenhuma tabela, rota, API ou função é removida.
+ * -------------------------------------------------------------------------- */
+(function patchListasLimpasP1() {
+  if (window.__p1ListasLimpas) return;
+  window.__p1ListasLimpas = true;
+
+  var CANON_MAQUINAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+
+  function norm(v) {
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function escH(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function escAttr(v) {
+    return escH(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function clientesRef() {
+    try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES; } catch (_) {}
+    if (Array.isArray(window.CLIENTES)) return window.CLIENTES;
+    if (Array.isArray(window.clientes)) return window.clientes;
+    return [];
+  }
+
+  function vendedoresRef() {
+    try { if (typeof VENDEDORES !== 'undefined' && Array.isArray(VENDEDORES)) return VENDEDORES; } catch (_) {}
+    if (Array.isArray(window.VENDEDORES)) return window.VENDEDORES;
+    if (Array.isArray(window.vendedores)) return window.vendedores;
+    return [];
+  }
+
+  function vendedorAtivo(v) {
+    if (!v) return false;
+    if (v.ativo === false || v.ativo === 0) return false;
+    if (String(v.ativo || '').trim().toLowerCase() === 'false') return false;
+    if (String(v.status || v.situacao || '').trim().toLowerCase() === 'inativo') return false;
+    return true;
+  }
+
+  // ── construtores puros (sem DOM) — usados na UI e cobertos por testes ────
+  function buildMaquinasOptions(placeholderTxt, atual) {
+    var canonNorm = {};
+    CANON_MAQUINAS.forEach(function(m) { canonNorm[norm(m)] = m; });
+    var extras = [];
+    if (atual && !canonNorm[norm(atual)]) extras.push(atual);
+    var sig = String(placeholderTxt || '') + '||' + CANON_MAQUINAS.join('|') + '||' + extras.join('|');
+    var html = '<option value="">' + escH(placeholderTxt) + '</option>';
+    CANON_MAQUINAS.forEach(function(m) {
+      html += '<option value="' + escAttr(m) + '">' + escH(m) + '</option>';
+    });
+    extras.forEach(function(m) {
+      html += '<option value="' + escAttr(m) + '">' + escH(m) + '</option>';
+    });
+    return { html: html, sig: sig, selected: atual || '', extras: extras };
+  }
+
+  function buildVendedoresOptions(lista, atual) {
+    var porId = {};
+    var ativos = [];
+    (Array.isArray(lista) ? lista : []).forEach(function(v) {
+      if (!v) return;
+      var id = String(v.id || v.vendedor_id || v.vend_id || '').trim();
+      if (!id || porId[id]) return;
+      porId[id] = v;
+      if (vendedorAtivo(v)) ativos.push(v);
+    });
+    var inativoSel = null;
+    if (atual && porId[atual] && !ativos.some(function(v) { return String(v.id || '').trim() === atual; })) {
+      inativoSel = porId[atual];
+    }
+    var sig = ativos.map(function(v) { return String(v.id || '').trim(); }).join(',')
+      + '||' + (inativoSel ? atual : '');
+    var html = '<option value="">Sem vendedor</option>';
+    ativos.forEach(function(v) {
+      var id = String(v.id || '').trim();
+      html += '<option value="' + escAttr(id) + '">' + escH(String(v.nome || v.name || '')) + '</option>';
+    });
+    if (inativoSel) {
+      html += '<option value="' + escAttr(atual) + '">'
+        + escH(String(inativoSel.nome || inativoSel.name || atual)) + ' (inativo)</option>';
+    }
+    return { html: html, sig: sig, selected: atual || '', inativo: !!inativoSel };
+  }
+
+  function buildClientesOptions(lista) {
+    var vistos = {};
+    var opts = [];
+    (Array.isArray(lista) ? lista : []).forEach(function(c) {
+      if (!c) return;
+      var nome = String(c.nome || c.razao_social || c.razao || c.cliente_nome || '').trim();
+      if (!nome) return;
+      var nrm = norm(nome);
+      if (!nrm || vistos[nrm]) return;
+      vistos[nrm] = true;
+      var doc = String(c.documento || c.cnpj || c.cpf || c.cnpj_cpf || c.doc || '').trim();
+      var cid = String(c.cidade || c.municipio || '').trim();
+      var uf = String(c.uf || c.estado || '').trim();
+      var extra = [];
+      if (doc) extra.push(doc);
+      if (cid) extra.push(uf ? (cid + '/' + uf) : cid);
+      opts.push({ nome: nome, label: extra.join(' · ') });
+    });
+    opts.sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    var sig = opts.map(function(o) { return o.nome + '@' + o.label; }).join('|');
+    var html = opts.map(function(o) {
+      return '<option value="' + escAttr(o.nome) + '"'
+        + (o.label ? (' label="' + escAttr(o.label) + '"') : '') + '></option>';
+    }).join('');
+    return { html: html, sig: sig, nomes: opts.map(function(o) { return o.nome; }), items: opts };
+  }
+
+  // ── (1) Máquina principal da OF Rápida: exatamente as 7 canônicas ────────
+  function canonicalizarMaquinas() {
+    var sel = document.getElementById('of-r-maquina');
+    if (!sel) return;
+    var atual = String(sel.value || '').trim();
+    var placeholderTxt = '';
+    try {
+      var ph = sel.querySelector('option[value=""]');
+      if (ph) placeholderTxt = String(ph.textContent || '').trim();
+    } catch (_) {}
+    if (!placeholderTxt) placeholderTxt = '-- Selecionar máquina --';
+
+    var built = buildMaquinasOptions(placeholderTxt, atual);
+    try {
+      if (sel.dataset && sel.dataset.p1CanonSig === built.sig) {
+        if (built.selected && sel.value !== built.selected) { try { sel.value = built.selected; } catch (_) {} }
+        return;
+      }
+    } catch (_) {}
+    sel.innerHTML = built.html;
+    try { sel.dataset.p1CanonSig = built.sig; } catch (_) {}
+    if (built.selected) { try { sel.value = built.selected; } catch (_) {} }
+  }
+
+  // ── (2) Vendedor: apenas ativos; inativo selecionado vira "(inativo)" ────
+  function canonicalizarVendedores() {
+    var sel = document.getElementById('of-r-vendedor');
+    if (!sel) return;
+    var lista = vendedoresRef();
+    if (!Array.isArray(lista) || !lista.length) return; // mantém o HTML original
+    var atual = String(sel.value || '').trim();
+
+    var built = buildVendedoresOptions(lista, atual);
+    try {
+      if (sel.dataset && sel.dataset.p1VendSig === built.sig) {
+        if (built.selected && sel.value !== built.selected) { try { sel.value = built.selected; } catch (_) {} }
+        return;
+      }
+    } catch (_) {}
+    sel.innerHTML = built.html;
+    try { sel.dataset.p1VendSig = built.sig; } catch (_) {}
+    if (built.selected) { try { sel.value = built.selected; } catch (_) {} }
+  }
+
+  // ── (3) Datalist de clientes: dedupe + documento/cidade ──────────────────
+  function dedupClientesDatalist() {
+    var dl = document.getElementById('of-r-clientes-list');
+    if (!dl) return;
+    var lista = clientesRef();
+    if (!Array.isArray(lista) || !lista.length) return;
+
+    var built = buildClientesOptions(lista);
+    try {
+      if (dl.dataset && dl.dataset.p1CliSig === built.sig) return;
+    } catch (_) {}
+    dl.innerHTML = built.html;
+    try { dl.dataset.p1CliSig = built.sig; } catch (_) {}
+  }
+
+  function aplicar() {
+    try { canonicalizarMaquinas(); } catch (_) {}
+    try { canonicalizarVendedores(); } catch (_) {}
+    try { dedupClientesDatalist(); } catch (_) {}
+  }
+
+  var _timer = null;
+  function agendar(ms) {
+    try { clearTimeout(_timer); } catch (_) {}
+    _timer = setTimeout(aplicar, Number(ms) || 60);
+  }
+
+  function wrapCarregarMaquinas() {
+    var fn = window.carregarMaquinasOfRapida;
+    if (typeof fn !== 'function' || fn.__p1ListasWrap) return;
+    var orig = fn;
+    window.carregarMaquinasOfRapida = function() {
+      var ret = orig.apply(this, arguments);
+      if (ret && typeof ret.then === 'function') {
+        return ret.then(function(v) { agendar(0); return v; }, function(e) { agendar(0); throw e; });
+      }
+      agendar(0);
+      return ret;
+    };
+    window.carregarMaquinasOfRapida.__p1ListasWrap = true;
+  }
+
+  function observar() {
+    try {
+      var mo = new MutationObserver(function() { agendar(60); });
+      mo.observe(document.documentElement, { childList: true, subtree: true });
+    } catch (_) {}
+    [0, 150, 400, 900, 1800, 3500].forEach(function(d) { setTimeout(aplicar, d); });
+  }
+
+  function bootstrap() {
+    wrapCarregarMaquinas();
+    [300, 900, 2000, 5000].forEach(function(d) { setTimeout(wrapCarregarMaquinas, d); });
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { wrapCarregarMaquinas(); aplicar(); });
+    } else {
+      applyNow();
+    }
+  }
+
+  function applyNow() { wrapCarregarMaquinas(); aplicar(); }
+
+  // API pura exposta para testes unitários (node --test); sem efeito na UI.
+  try {
+    window.__p1Listas = {
+      canonMaquinas: CANON_MAQUINAS.slice(),
+      norm: norm,
+      vendedorAtivo: vendedorAtivo,
+      buildMaquinasOptions: buildMaquinasOptions,
+      buildVendedoresOptions: buildVendedoresOptions,
+      buildClientesOptions: buildClientesOptions
+    };
+  } catch (_) {}
+
+  observar();
+  bootstrap();
+})();
+
 
 
