@@ -65,6 +65,61 @@ where empresa_id is null
 order by created_at desc
 limit 20;
 
+-- 1.4) DIVERGÊNCIAS (somente leitura): OFs em que `empresa_id` (UUID) e `emp_id`
+--      (código) apontam para empresas DIFERENTES.
+--      NÃO são corrigidas automaticamente por este script — o Yago decide qual
+--      empresa vale em cada caso (§2 e §3 continuam corrigindo apenas
+--      `empresa_id is null` e o UUID da Oestepack com erro de digitação).
+--      Referência (19/10): 104 OFs divergentes —
+--        36 'corrigivel_typo' (E3 + UUID da Oestepack digitado errado) e
+--        68 'divergencia_real' (30 E2→Italy, 23 E3→Italy, 12 E1→Cartoeste, 3 E1→Oestepack).
+with canon as (
+  select 'df5f7672-0a6b-402d-ae65-296554236c31'::uuid as uuid, 'E1'::text as codigo, 'Italy'::text     as nome
+  union all select 'e9b734dc-c7d5-4b04-898d-1ec7affa721e'::uuid, 'E2', 'Cartoeste'
+  union all select 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a'::uuid, 'E3', 'Oestepack'
+)
+select
+  case
+    when o.empresa_id::text = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667' then 'corrigivel_typo'
+    else 'divergencia_real'
+  end                                            as classificacao,
+  upper(trim(coalesce(o.emp_id, '')))            as emp_id_codigo,
+  coalesce(cu.codigo, '(desconhecida)')          as empresa_do_uuid_codigo,
+  coalesce(cu.nome,   '(desconhecida)')          as empresa_do_uuid_nome,
+  o.empresa_id::text                             as empresa_id_uuid,
+  count(*)                                       as total
+from public.ofs o
+left join canon cu on cu.uuid = o.empresa_id
+join canon cc on cc.codigo = upper(trim(coalesce(o.emp_id, '')))
+where o.empresa_id is not null
+  and cu.uuid is distinct from cc.uuid
+group by 1, 2, 3, 4, 5
+order by 6 desc;
+
+-- 1.4.b) Amostra das divergências com numero / emp_id / empresa do UUID / created_at.
+with canon as (
+  select 'df5f7672-0a6b-402d-ae65-296554236c31'::uuid as uuid, 'E1'::text as codigo, 'Italy'::text     as nome
+  union all select 'e9b734dc-c7d5-4b04-898d-1ec7affa721e'::uuid, 'E2', 'Cartoeste'
+  union all select 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a'::uuid, 'E3', 'Oestepack'
+)
+select
+  case
+    when o.empresa_id::text = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667' then 'corrigivel_typo'
+    else 'divergencia_real'
+  end                                                              as classificacao,
+  o.numero,
+  upper(trim(coalesce(o.emp_id, '')))                              as emp_id,
+  coalesce(cu.codigo || ' · ' || cu.nome, o.empresa_id::text)      as empresa_pelo_uuid,
+  o.empresa_id::text                                               as empresa_id_uuid,
+  o.created_at
+from public.ofs o
+left join canon cu on cu.uuid = o.empresa_id
+join canon cc on cc.codigo = upper(trim(coalesce(o.emp_id, '')))
+where o.empresa_id is not null
+  and cu.uuid is distinct from cc.uuid
+order by o.created_at desc
+limit 200;
+
 
 -- ============================================================================
 -- 2) BACKUP + UPDATE (transação) — termina com ROLLBACK por padrão
