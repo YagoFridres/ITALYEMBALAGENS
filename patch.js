@@ -68646,6 +68646,151 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 })();
 
 /* -------------------------------------------------------------------------- *
+ * P1 · Nº da OF indisponível NÃO bloqueia o salvar (correção da revisão)
+ *  - sobrescreve window._atualizarEstadoNumeroOfRapida (definida no index.html
+ *    ~4038): com número válido (>= 1000) mantém o comportamento atual;
+ *  - sem número, NÃO desabilita o #btn-salvar-of-rapida, mostra
+ *    "Nº definido ao salvar" no lugar do número, deixa o botão como
+ *    "⚡ Salvar OF" habilitado e mantém o aviso discreto com "Tentar de novo"
+ *    (o servidor define o número real ao salvar);
+ *  - reaplica a sobrescrita logo após abrirNovaOfRapida para as chamadas
+ *    internas do index.html usarem sempre esta versão.
+ * Nenhuma tabela, rota, API ou função é removida.
+ * -------------------------------------------------------------------------- */
+(function patchNumeroOfRapidaNaoBloquearP1() {
+  if (window.__p1NumeroOFNaoBloquear) return;
+  window.__p1NumeroOFNaoBloquear = true;
+
+  function spanNumero() {
+    return document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
+  }
+  function btnSalvar() {
+    return document.getElementById('btn-salvar-of-rapida');
+  }
+  function habilitarBotaoSalvar() {
+    var btn = btnSalvar();
+    if (!btn) return;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    btn.style.filter = 'none';
+    btn.textContent = '⚡ Salvar OF';
+  }
+  function removerAviso() {
+    try { var box = document.getElementById('of-r-aviso-numero'); if (box && box.remove) box.remove(); } catch (_) {}
+  }
+  function mostrarAviso() {
+    try {
+      if (document.getElementById('of-r-aviso-numero')) return;
+      var spanNum = spanNumero();
+      var btn = btnSalvar();
+      var box = document.createElement('div');
+      box.id = 'of-r-aviso-numero';
+      box.style.cssText = 'margin:12px 0 2px;padding:10px 12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px';
+      box.innerHTML = '<div style="display:flex;align-items:center;gap:8px;min-width:0">' +
+        '<span style="font-size:18px">⚠️</span>' +
+        '<div style="min-width:0">' +
+        '<div style="font-size:12px;font-weight:700;color:#f59e0b">Não foi possível obter o número da OF</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">O número será definido pelo servidor ao salvar — clique em "Tentar de novo" para recarregar</div>' +
+        '</div></div>' +
+        '<button type="button" id="of-r-btn-tentar-numero" style="flex-shrink:0;padding:7px 12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:7px;color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🔄 Tentar de novo</button>';
+      var btnTentar = (box.querySelector ? box.querySelector('#of-r-btn-tentar-numero') : null);
+      if (btnTentar && btnTentar.addEventListener) {
+        btnTentar.addEventListener('click', function() {
+          try { btnTentar.disabled = true; btnTentar.textContent = 'Carregando...'; } catch (_) {}
+          Promise.resolve()
+            .then(function() { return (typeof window.proximoNumeroOf === 'function') ? window.proximoNumeroOf() : null; })
+            .then(function(n) { aplicarEstado(n); })
+            .catch(function() { aplicarEstado(''); })
+            .then(function() {
+              try { btnTentar.disabled = false; btnTentar.textContent = '🔄 Tentar de novo'; } catch (_) {}
+            });
+        });
+      }
+      var elHeaderNum = (spanNum && spanNum.parentElement && spanNum.parentElement.parentElement) ? spanNum.parentElement.parentElement : null;
+      var refInsertBefore = null;
+      try {
+        var cliSel = document.getElementById('of-r-cliente');
+        refInsertBefore = (cliSel && cliSel.parentElement && cliSel.parentElement.parentElement)
+          ? cliSel.parentElement.parentElement.firstElementChild : null;
+      } catch (_) { refInsertBefore = null; }
+      var containerInputs = (btn && btn.closest) ? btn.closest('#modal-of-rapida') : null;
+      containerInputs = (containerInputs && containerInputs.querySelector) ? containerInputs.querySelector('div[style*="padding:16px 20px"]') : null;
+      if (containerInputs && containerInputs.insertBefore) {
+        containerInputs.insertBefore(box, containerInputs.firstChild || null);
+      } else if (elHeaderNum && elHeaderNum.parentElement && elHeaderNum.parentElement.insertBefore) {
+        elHeaderNum.parentElement.insertBefore(box, elHeaderNum.nextSibling || null);
+      } else if (refInsertBefore && refInsertBefore.parentElement && refInsertBefore.parentElement.insertBefore) {
+        refInsertBefore.parentElement.insertBefore(box, refInsertBefore);
+      }
+    } catch (_) {}
+  }
+
+  // válido (>= 1000): igual ao index.html (mostra o número, botão "⚡ Salvar OF");
+  // inválido/ausente: NÃO bloqueia o salvar — o servidor define o número real.
+  function aplicarEstado(numStr) {
+    var numClean = String(numStr == null ? '' : numStr).trim().replace(/\D/g, '');
+    var num = numClean ? parseInt(numClean, 10) : NaN;
+    var valido = !isNaN(num) && num >= 1000;
+    var spanNum = spanNumero();
+    if (valido) {
+      if (spanNum) {
+        spanNum.textContent = String(num).padStart(Math.max(String(num).length, 3), '0');
+        try { spanNum.style.color = ''; } catch (_) {}
+      }
+      habilitarBotaoSalvar();
+      removerAviso();
+      try { window._ofRapidaNumeroValido = true; } catch (_) {}
+      return true;
+    }
+    if (spanNum) {
+      spanNum.textContent = 'Nº definido ao salvar';
+      try { spanNum.style.color = '#94a3b8'; } catch (_) {}
+    }
+    habilitarBotaoSalvar();
+    try { window._ofRapidaNumeroValido = false; } catch (_) {}
+    mostrarAviso();
+    return false;
+  }
+
+  function instalar() {
+    try {
+      if (typeof window._atualizarEstadoNumeroOfRapida !== 'function') return false;
+      window._atualizarEstadoNumeroOfRapida = aplicarEstado;
+      window._atualizarEstadoNumeroOfRapida.__p1NaoBloquear = true;
+      return true;
+    } catch (_) { return false; }
+  }
+
+  // reaplica a sobrescrita depois que a OF Rápida é aberta (as chamadas internas
+  // do index.html usam o nome global _atualizarEstadoNumeroOfRapida).
+  function decorarAbrir() {
+    try {
+      var fn = window.abrirNovaOfRapida;
+      if (typeof fn !== 'function' || fn.__p1NumeroNaoBloquear) return false;
+      var orig = fn;
+      var wrapped = function() {
+        var out;
+        try { out = orig.apply(this, arguments); } catch (e) { instalar(); throw e; }
+        try { instalar(); } catch (_) {}
+        return out;
+      };
+      wrapped.__p1NumeroNaoBloquear = true;
+      window.abrirNovaOfRapida = wrapped;
+      return true;
+    } catch (_) { return false; }
+  }
+
+  instalar();
+  decorarAbrir();
+  [0, 250, 1200, 2500, 5000].forEach(function(d) {
+    setTimeout(function() { instalar(); decorarAbrir(); }, d);
+  });
+
+  try { window.__p1NumeroRapida = { aplicarEstado: aplicarEstado, instalar: instalar, decorarAbrir: decorarAbrir }; } catch (_) {}
+})();
+
+/* -------------------------------------------------------------------------- *
  * P1 · listas limpas · Commit 4
  *  - máquina no lançamento: exatamente IMP 01..05, Riscador e CORTE VINCO
  *    ROTATIVA (deduplicadas por nome normalizado, sem "Acabamento"/"Coladeira");
