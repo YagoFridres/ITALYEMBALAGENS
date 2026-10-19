@@ -10,6 +10,9 @@
 - **Aguardar o merge do PR P1** (`trae/p1-of-rapida`) na `main`. Só então criar
   `trae/erp-italy-modernizacao` **a partir da `main`** (para não conflitar no `patch.js`).
 - Sem merge/deploy/force-push/commit na `main`. PR por bloco, revisão antes de publicar.
+- **Design separado do P1 e das correções de segurança:** esta frente **não** toca lógica de OFs,
+  numeração, permissões nem rotas. É só aparência, atrás da chave. A trilha de segurança/desempenho
+  corre em paralelo e **independente** (ver §3).
 - **Não editar `index.html`** — só o bump de versão (5 pontos).
 - Trecho novo vive em `public/ui2/` (CSS + JS) e é carregado pelo `patch.js`.
 - **Tudo atrás da chave:** `localStorage.pcpro_ui='2'` **ou** `?ui=2` → `data-ui="2"` no `<html>`.
@@ -37,10 +40,14 @@
 | `index.html` | **apenas** o bump de versão |
 
 ### 1.2 Identidade
+- **Direção aprovada:** moderno, profissional e **extremamente fácil de usar**, mantendo o
+  **tema escuro** e a **identidade Italy Embalagens**.
 - Base: azul-petróleo `#1E4D57` do site novo → tokens escuros do prompt (§5 de `02_diagnostico.md`),
   com o **tema claro mantido funcionando**.
 - Fonte legível (Plus Jakarta Sans / a do site); números em JetBrains Mono (já usada).
 - Toque ≥ 44 px; texto base ≥ 15 px no celular; ícone acompanhado de texto.
+- **Preservar a essência de todas as telas, especialmente OFs por Máquina** (organização e lógica
+  inalteradas). **Não criar** novas ações nem processos.
 - Extrair fontes, raios e demais cores **do CSS do site** (o Yago confirmou que só a cor
   `#1E4D57` estava legível) — **pendente: acesso ao repositório/CSS do site**.
 
@@ -62,6 +69,17 @@ Redefinir `--bg --surface --s2..s4 --border --accent --text --text2 --text3 --fo
 ### 1.5 Entrega da Etapa 2
 Commits na branch com prints reais (mock) de antes/depois + saída dos testes.
 
+### 1.6 Comparação antigo × novo e prova de isolamento (exigências do Yago)
+1. **`public/ui2/componentes.html`** mostra, lado a lado, **cada componente antigo × novo**
+   (botões, campos, modais, tabelas, cards, abas, toasts, estados vazio/carregando), renderizado
+   pelos **dois** modos (chave off/on). É a página para o Yago aprovar.
+2. **Testes que provam isolamento** (chave **desligada**, contra o **mock**, nunca produção):
+   - screenshot `toHaveScreenshot` das telas principais → **diff = 0** vs o estado atual;
+   - `#btn-salvar-of-rapida` e demais elementos: **visível, clicável e funcional** iguais aos de hoje;
+   - nenhum recurso de `ui2/` é baixado/aplicado quando a chave está desligada (verificar no DOM e na rede).
+3. **Com a chave ligada:** mesma contagem de botões/campos/colunas e os mesmos fluxos funcionando
+   (clique real), só com aparência nova; contraste ≥ 4,5:1.
+
 ---
 
 ## 2. Ordem dos módulos (após aprovação do visual)
@@ -80,6 +98,11 @@ Ordem combinada: **menu e cabeçalho → OFs por Máquina → OF Rápida → PCP
 > **Proibido em toda a modernização:** criar botões/status/etapas novos (ex.: "Iniciar/Pausar
 > produção"), remover/esconder função, mudar cálculos/numeração/textos de regra, e mudar a
 > lógica de OFs por Máquina.
+
+### 2.1 Registro pendente — `modal-iniciar-producao`
+Encontrado na auditoria ([index.html L8831](../../index.html#L8831)). **Decisão do Yago:
+não remover e não ativar automaticamente.** Fica apenas **registrado** até verificarmos se é
+usado. A Etapa 2 **não** mexe nele (nem visual, nem lógica). Verificação pendente com o Yago.
 
 ---
 
@@ -115,15 +138,20 @@ Cada item entra como **commit isolado**, com prova de que nada mudou de comporta
 
 ## 5. Pendências que dependem do Yago
 
-1. **Acesso ao CSS/fontes do site novo** (para extrair paleta, fontes e raios).
-2. **Aprovação do visual** ao fim da Etapa 2 (via `componentes.html`).
-3. **Confirmação das telas mortas/órfãs** (§3 de `01_inventario_telas.md`) antes de qualquer decisão.
-4. **Deploy do P1:** o Yago pediu para ser avisado quando o deploy for feito — **não** farei sem autorização.
+1. **Merge do P1 na `main`** e validação — pré-requisito para criar a branch da Etapa 2.
+2. **Acesso ao CSS/fontes do site novo** (para extrair paleta, fontes e raios).
+3. **Aprovação do visual** ao fim da Etapa 2 (via `componentes.html` antes/depois).
+4. **Confirmação das telas mortas/órfãs** (§3 de `01_inventario_telas.md`) antes de qualquer decisão.
+5. **Verificar se o `modal-iniciar-producao` é usado** (§2.1) — não remover nem ativar até lá.
+6. **Deploy do P1:** o Yago pediu para ser avisado quando o deploy for feito — **não** farei sem autorização.
 
 ---
 
-## 6. Estado atual (entrega da Etapa 1)
+## 6. Estado atual
 
-- Branch `trae/erp2-auditoria` (a partir da `main` = `e2c8930`), **só documentação**.
+- Branch `trae/erp2-auditoria` (a partir da `main` = `e2c8930`), **só documentação** —
+  inventário/diagnóstico/padrões/plano.
+- **Verificado em 19/10:** `origin/main` ainda é `e2c8930` e **não contém** as IIFEs do P1
+  (`patchOfRapidaUnicaEntradaP1`/`patchNumeroOfRapidaNaoBloquearP1`) → **P1 não integrado**.
 - Nenhuma linha de código de produção alterada. Nenhum merge/deploy/SQL.
-- Aguardando: (a) merge do P1 na `main`; (b) aprovação deste inventário/diagnóstico; (c) acesso ao CSS do site.
+- **Etapa 2 não iniciada** (aguarda o merge do P1). Nada será tocado até lá.
