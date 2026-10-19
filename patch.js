@@ -41642,18 +41642,88 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (window.abrirModalOF._patchToOfRapidaEdit) return;
     var orig = window.abrirModalOF;
     // P1 · "OF Rápida" é a única entrada para NOVA OF.
-    //   sem id (undefined/''/null) → abre a OF Rápida;
-    //   com id → comportamento original (edição de OF existente).
+    //   sem id (undefined/''/null) → abre a OF Rápida (nova);
+    //   com id → abre a OF existente na OF Rápida em modo EDIÇÃO.
     window.abrirModalOF = async function(ofId) {
       var sid = String(ofId == null ? '' : ofId).trim();
-      if (sid) return orig.apply(this, arguments);
-      if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
-      try {
-        window.abrirNovaOfRapida();
-        return;
-      } catch (_) {
-        return orig.apply(this, arguments);
+
+      // sem id → NOVA OF pela OF Rápida
+      if (!sid) {
+        if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
+        try { window.abrirNovaOfRapida(); return; } catch (_) { return orig.apply(this, arguments); }
       }
+
+      // com id → ABRIR/EDITAR OF existente na OF Rápida
+      if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
+
+      try { window.__ofRapidaPendingEditId = sid; } catch (_) {}
+      try {
+        if (typeof window.__setOfRapidaEditContext === 'function') window.__setOfRapidaEditContext(sid, '');
+        else window._ofRapidaEditandoId = sid;
+      } catch (_) {}
+      try { window.abrirNovaOfRapida(); } catch (_) { return orig.apply(this, arguments); }
+
+      await new Promise(function(r) { setTimeout(r, 450); });
+      var of = await fetchOf(sid);
+      if (!of || of.error) {
+        try {
+          if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
+        } catch (_) {}
+        return;
+      }
+
+      var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
+      var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
+      var empId = String(of.emp_id || of.empId || 'E1').trim() || 'E1';
+      var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+      var qtd = of.quantidade ?? of.qtd ?? of.qtd_pedida ?? '';
+      var vlunit = of.vl_unit ?? of.valor_unitario ?? of.vunit ?? '';
+      var total = of.total ?? of.valor_total ?? of.valor_venda ?? '';
+      var entrega = String(of.data_entrega || of.ent || '').slice(0, 10);
+      var pedido = String(of.data_pedido || of.dia || of.created_at || '').slice(0, 10);
+      var comp = of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? '';
+      var larg = of.caixa_largura ?? of.dim_largura ?? of.largura ?? '';
+      var maquina = '';
+      try {
+        if (Array.isArray(of.maq) && of.maq.length) maquina = String(of.maq[0] || '').trim();
+      } catch (_) {}
+      maquina = maquina || String(of.maquina_agendada || of.maquina || of.maquina_atual || '').trim();
+
+      try { setVal('of-r-cliente', cliNome); } catch (_) {}
+      try { setVal('of-r-produto', produto); } catch (_) {}
+      try { setVal('of-r-empresa', empId); } catch (_) {}
+      try { setVal('of-r-vendedor', vendId); } catch (_) {}
+      try { setVal('of-r-qtd', qtd); } catch (_) {}
+      try { setVal('of-r-vlunit', vlunit); } catch (_) {}
+      try { setVal('of-r-total', total); } catch (_) {}
+      try { setVal('of-r-entrega', entrega); } catch (_) {}
+      try { if (pedido) setVal('of-r-pedido', pedido); } catch (_) {}
+      try { setVal('of-r-comp', comp); } catch (_) {}
+      try { setVal('of-r-larg', larg); } catch (_) {}
+      try { setVal('of-r-maquina', maquina); } catch (_) {}
+      try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
+
+      try {
+        var numSpan = document.getElementById('of-r-numero');
+        if (numSpan) numSpan.textContent = String(of.numero || of.of || sid.slice(0, 8));
+      } catch (_) {}
+      try { window._ofRapidaNumero = String(of.numero || of.of || '').trim(); } catch (_) {}
+      try {
+        if (typeof window.__setOfRapidaEditContext === 'function') {
+          window.__setOfRapidaEditContext(sid, String(of.numero || of.of || '').trim());
+        }
+      } catch (_) {}
+
+      try {
+        var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
+        if (header) header.textContent = '✏️ Editar OF Rápida';
+      } catch (_) {}
+      try {
+        var btn = document.getElementById('btn-salvar-of-rapida');
+        if (btn) btn.textContent = '💾 Salvar Alterações';
+      } catch (_) {}
+
+      patchSalvarOfRapida();
     };
     window.abrirModalOF._patchToOfRapidaEdit = true;
   }
@@ -68493,8 +68563,33 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function varrer() { esconderBotoesNovaOF(); patchAjudaTexto(); }
 
   function observar() {
+    // P1 · debounce (150 ms) + requestAnimationFrame: sem isso, CADA mutação do
+    // DOM inteiro rodava querySelectorAll('button,a,.btn,[onclick]') + varredura
+    // de texto, pesando no PCP / OFs por Máquina (tabelas grandes) e no celular.
+    var gating = false;
+    function agendarScan() {
+      if (gating) return;
+      gating = true;
+      setTimeout(function() {
+        function rodar() { gating = false; try { varrer(); } catch (_) {} }
+        try {
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(rodar);
+          else rodar();
+        } catch (_) { rodar(); }
+      }, 150);
+    }
     try {
-      var mo = new MutationObserver(function() { varrer(); });
+      var mo = new MutationObserver(function(mutations) {
+        // reage só quando nós foram ADICIONADOS (ignora atributos/remoções).
+        var adicionou = false;
+        try {
+          for (var i = 0; i < mutations.length; i++) {
+            var m = mutations[i];
+            if (m && m.addedNodes && m.addedNodes.length > 0) { adicionou = true; break; }
+          }
+        } catch (_) { adicionou = true; }
+        if (adicionou) agendarScan();
+      });
       mo.observe(document.documentElement, { childList: true, subtree: true });
     } catch (_) {}
     [0, 200, 600, 1500, 3000, 6000].forEach(function(d) { setTimeout(varrer, d); });
