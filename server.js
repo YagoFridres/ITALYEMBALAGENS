@@ -13,6 +13,8 @@ const nodemailer = require('nodemailer');
 const { XMLParser } = require('fast-xml-parser');
 let cron = null;
 try { cron = require('node-cron'); } catch (_) { cron = null; }
+const { normalizarEmpresa, corrigirUuid, EMPRESAS_FALLBACK } = require('./lib/empresa');
+const { extrairMaximo: _numExtrairMaximo, coletarTomados: _numColetarTomados, proximoNumeroLivre: _numProximoLivre, CAMPOS_NEGOCIO: _NUM_CAMPOS } = require('./lib/numeracao');
 
 process.on('uncaughtException', (e) => {
   try { console.error('[CRASH] uncaughtException:', e?.message || e); } catch (_) {}
@@ -1304,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261009100500';
-const SW_RUNTIME_VERSION = '20261009100500';
+const PATCH_RUNTIME_VERSION = '20261019110843';
+const SW_RUNTIME_VERSION = '20261019110843';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4462,9 +4464,13 @@ function ofIn(p) {
   if (has('data_conclusao')) out.data_conclusao = sanitizeDate(p.data_conclusao);
   if (has('data_faturamento')) out.data_faturamento = sanitizeDate(p.data_faturamento);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  // P1: NÃO apagar empresa_id em silêncio. Um valor não-UUID aqui é erro do chamador
+  // (ex.: código "E2" no lugar do UUID) e precisa falhar alto, jamais gravar OF sem empresa.
   if (out.empresa_id && !isUuid(out.empresa_id)) {
-    if (!out.emp_id) out.emp_id = out.empresa_id;
-    delete out.empresa_id;
+    const errEmp = new Error('empresa_id inválido (não é UUID): ' + String(out.empresa_id));
+    errEmp.codigo = 'EMPRESA_ID_INVALIDO';
+    errEmp.status = 400;
+    throw errEmp;
   }
   if (out.cliente_id && !isUuid(out.cliente_id)) {
     if (!out.cli_id) out.cli_id = out.cliente_id;
@@ -5094,6 +5100,28 @@ async function _enriquecerRespostaOFs(listaInput) {
   });
 }
 
+// P1 · leitura única das colunas de negócio da OF (máximo + tomados).
+async function _lerTodasOfsNumeros() {
+  try {
+    const { data, error } = await supabase
+      .from('ofs')
+      .select(_NUM_CAMPOS.join(','))
+      .order('seq', { ascending: false, nullsFirst: false })
+      .limit(50000);
+    if (!error && Array.isArray(data)) return data;
+  } catch (_) {}
+  return [];
+}
+
+// P1 · próximo número de OF calculado GLOBALMENTE (sem filtro de empresa).
+// O banco tem UNIQUE (numero) global, então o próximo número é sempre o maior
+// número existente (em qualquer uma das colunas de negócio) + 1.
+async function calcularProximoNumeroOFGlobal() {
+  const rows = await _lerTodasOfsNumeros();
+  const maior = _numExtrairMaximo(rows, _NUM_CAMPOS);
+  return maior > 0 ? maior + 1 : null;
+}
+
 async function ofsInsertWithRetry(row) {
   function sanitizarPayloadOF(payload) {
     const inteiros = [
@@ -5228,34 +5256,17 @@ async function ofsInsertWithRetry(row) {
       if (seq > 0) next.seq = seq + 1;
     } catch (_) {}
     if (!refreshNumero) return next;
-    const empresaId = String(next?.empresa_id || '').trim();
-    if (!empresaId) return next;
+    // P1 · numeração GLOBAL: o UNIQUE(ofs.numero) é global, então o retry por
+    // conflito NÃO pode filtrar por empresa_id (isso escolheria um número já
+    // usado por outra empresa). Recalcula sobre TODAS as OFs.
     try {
-      const { data, error } = await supabase
-        .from('ofs')
-        .select('numero')
-        .eq('empresa_id', empresaId)
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (error) return next;
-      let maior = 0;
-      (Array.isArray(data) ? data : []).forEach((item) => {
-        const n = parseInt(String(item?.numero || '').replace(/\D/g, ''), 10) || 0;
-        if (n > maior) maior = n;
-      });
-      for (let i = 1; i <= 500; i += 1) {
-        const cand = String(maior + i);
-        const { data: exists, error: existsErr } = await supabase
-          .from('ofs')
-          .select('id')
-          .eq('empresa_id', empresaId)
-          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},of_seq.eq.${cand}`)
-          .limit(1);
-        if (existsErr) break;
-        if (Array.isArray(exists) && exists.length) continue;
+      const rows = await _lerTodasOfsNumeros();
+      const base = _numExtrairMaximo(rows, _NUM_CAMPOS);
+      const tomados = _numColetarTomados(rows, _NUM_CAMPOS);
+      const cand = _numProximoLivre(base > 0 ? base + 1 : 0, tomados);
+      if (cand) {
         next.numero = cand;
         next.of = cand;
-        break;
       }
     } catch (_) {}
     return next;
@@ -5263,6 +5274,7 @@ async function ofsInsertWithRetry(row) {
 
   let p = sanitizarPayloadOF({ ...(row || {}) });
   const ignoredColumns = [];
+  let ultimoConflitoNumero = false;
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
@@ -5277,7 +5289,8 @@ async function ofsInsertWithRetry(row) {
       continue;
     }
     if (erroDuplicado(r.error)) {
-      p = await recalcularIdentificadores(p, erroDuplicadoNumero(r.error));
+      ultimoConflitoNumero = erroDuplicadoNumero(r.error);
+      p = await recalcularIdentificadores(p, ultimoConflitoNumero);
       try { console.warn('[OFS INSERT] retry por conflito:', msg); } catch (_) {}
       continue;
     }
@@ -5292,6 +5305,13 @@ async function ofsInsertWithRetry(row) {
     if (r.error && typeof r.error === 'object' && !r.error.message) r.error.message = msg;
     r.ignoredColumns = ignoredColumns;
     return r;
+  }
+  if (ultimoConflitoNumero) {
+    return {
+      data: null,
+      error: { message: 'Não foi possível reservar número, tente de novo', codigo: 'NUMERO_INDISPONIVEL', status: 409 },
+      ignoredColumns,
+    };
   }
   return { data: null, error: { message: 'Falha ao inserir OF após tentativas' }, ignoredColumns };
 }
@@ -6269,42 +6289,26 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     let maior = 0;
-    const campos = ['numero', 'of_num', 'of_seq', 'of'];
-    for (const campo of campos) {
-      try {
-        const { data, error } = await supabase
-          .from('ofs')
-          .select(campo + ',id')
-          .not(campo, 'is', null)
-          .order(campo, { ascending: false, nullsFirst: false })
-          .limit(50000);
-        if (!error && Array.isArray(data)) {
-          for (let i = 0; i < data.length; i++) {
-            const v = data[i]?.[campo];
-            if (v == null || v === '') continue;
-            const n = parseInt(String(v).replace(/\D/g, ''), 10);
-            if (!isNaN(n) && n > maior) maior = n;
-          }
-        }
-      } catch (_) {}
-    }
-    try {
-      const { data: recent } = await supabase
-        .from('ofs')
-        .select('numero,of_num,of_seq,of,id')
-        .order('created_at', { ascending: false })
-        .limit(20000);
-      if (Array.isArray(recent)) {
-        for (let j = 0; j < recent.length; j++) {
-          for (const campo of campos) {
-            const v = recent[j]?.[campo];
-            if (v == null || v === '') continue;
-            const n = parseInt(String(v).replace(/\D/g, ''), 10);
-            if (!isNaN(n) && n > maior) maior = n;
-          }
+    const campos = ['numero', 'of_num', 'of_seq', 'of', 'seq'];
+    // P1 · prévia rápida: apenas as 500 OFs mais recentes. O número REAL é sempre
+    // definido/revalidado pelo servidor no momento do save (POST /api/ofs), então
+    // esta rota é só exibição. Antes varria até 50.000 linhas × 4 campos (lento).
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('numero,of_num,of_seq,of,seq,id')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    if (Array.isArray(data)) {
+      for (let j = 0; j < data.length; j++) {
+        for (const campo of campos) {
+          const v = data[j]?.[campo];
+          if (v == null || v === '') continue;
+          const n = parseInt(String(v).replace(/\D/g, ''), 10);
+          if (!isNaN(n) && n > maior) maior = n;
         }
       }
-    } catch (_) {}
+    }
     const digits = String(maior || '').length >= 3 ? String(maior || '').length : 3;
     const proximo = String(maior + 1).padStart(digits, '0');
     const resp = { ok: true, proximo, maior: maior > 0 ? String(maior) : '0', gerado_em: new Date().toISOString(), no_cache: true, observacao: 'Numeros canceladas/deletadas NAO sao reutilizados. Consulta SEM cache.' };
@@ -6788,10 +6792,20 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     const body = req.body || {};
-    const empresaCtx = await _resolveEmpresaMutationContext(req, body);
-    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
-    const empLegacy = String(empresaCtx?.emp_id || '').trim();
-    if (!empresaUuid) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
+    const empresaNorm = await _normalizarEmpresaMutacao(req, body);
+    if (!empresaNorm || empresaNorm.erro) {
+      try { console.warn('[POST OFS BLOQUEADO] empresa inválida/ausente:', (empresaNorm && empresaNorm.erro) || 'empresa_invalida', 'motivo:', empresaNorm && empresaNorm.motivo, 'rid:', req._rid); } catch (_) {}
+      return res.status(400).json({
+        ok: false,
+        error: 'Empresa inválida ou não informada',
+        campo: 'empresa',
+        motivo: (empresaNorm && (empresaNorm.motivo || empresaNorm.erro)) || 'empresa_invalida',
+        rid: req._rid || null,
+      });
+    }
+    const empresaUuid = String(empresaNorm.empresa_id || '').trim();
+    const empLegacy = String(empresaNorm.emp_id || '').trim();
+    if (!_isUuid(empresaUuid)) return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', rid: req._rid || null });
     let filtered = ofPayloadFiltrado(body);
     filtered.empresa_id = empresaUuid;
     if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
@@ -6801,51 +6815,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
     delete filtered.id;
     {
-      const calcularProximoNumeroOF = async () => {
-        const camposNegocio = ['numero', 'of_num', 'of_seq', 'of'];
-        const extrairMaxDeUmCampo = (rows, campo) => {
-          let maior = 0;
-          (Array.isArray(rows) ? rows : []).forEach((o) => {
-            const v = o?.[campo];
-            if (v === null || v === undefined || v === '') return;
-            const n = parseInt(String(v).replace(/\D/g, ''), 10);
-            if (!isNaN(n) && n > maior) maior = n;
-          });
-          return maior;
-        };
-        let maxGlobal = 0;
-        for (const campo of camposNegocio) {
-          try {
-            const { data, error } = await supabase
-              .from('ofs')
-              .select(campo + ',id,seq')
-              .order(campo, { ascending: false, nullsFirst: false })
-              .limit(50000);
-            if (!error && Array.isArray(data)) {
-              const m = extrairMaxDeUmCampo(data, campo);
-              if (m > maxGlobal) maxGlobal = m;
-            }
-          } catch (_) {}
-        }
-        try {
-          const { data, error } = await supabase
-            .from('ofs')
-            .select('numero,of_num,of_seq,of,seq')
-            .order('seq', { ascending: false })
-            .limit(10000);
-          if (!error && Array.isArray(data)) {
-            data.forEach((o) => {
-              ['numero','of_num','of_seq','of','seq'].forEach((c) => {
-                const v = o?.[c];
-                if (v === null || v === undefined || v === '') return;
-                const n = parseInt(String(v).replace(/\D/g, ''), 10);
-                if (!isNaN(n) && n > maxGlobal) maxGlobal = n;
-              });
-            });
-          }
-        } catch (_) {}
-        return maxGlobal > 0 ? maxGlobal + 1 : null;
-      };
+      const calcularProximoNumeroOF = calcularProximoNumeroOFGlobal;
       try {
         const { data: last } = await supabase
           .from('ofs')
@@ -7109,10 +7079,39 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       });
     } catch (_) {}
     // #endregion
-    const createdRes = await ofsInsertWithRetry(ofIn(filtered));
+    // P1 · assert: empresa_id precisa ser UUID e emp_id coerente antes do insert.
+    if (!_isUuid(String(filtered.empresa_id || ''))) {
+      try { console.warn('[POST OFS BLOQUEADO] assert pre-insert: empresa_id não é UUID:', filtered.empresa_id, 'rid:', req._rid); } catch (_) {}
+      return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', rid: req._rid || null });
+    }
+    if (empLegacy && String(filtered.emp_id || '') && String(filtered.emp_id) !== String(empLegacy)) {
+      try { console.warn('[POST OFS] emp_id ajustado pelo normalizador:', filtered.emp_id, '->', empLegacy); } catch (_) {}
+      filtered.emp_id = empLegacy;
+    }
+    let _payloadInsert;
+    try {
+      _payloadInsert = ofIn(filtered);
+    } catch (eIn) {
+      if (eIn && eIn.codigo === 'EMPRESA_ID_INVALIDO') {
+        try { console.warn('[POST OFS BLOQUEADO] ofIn rejeitou empresa_id:', eIn.message, 'rid:', req._rid); } catch (_) {}
+        return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', rid: req._rid || null });
+      }
+      throw eIn;
+    }
+    const createdRes = await ofsInsertWithRetry(_payloadInsert);
     if (createdRes.error) throw createdRes.error;
     let created = createdRes.data;
     _dbgCreated = created;
+    // P1 · pós-insert: nunca devolver sucesso se a empresa se perdeu.
+    if (!String(created?.empresa_id || '').trim()) {
+      try { console.error('[POST OFS] empresa_id perdido no insert', req._rid, 'id:', created?.id); } catch (_) {}
+      return res.status(500).json({
+        ok: false,
+        error: 'A OF foi criada, mas a empresa não foi gravada. Contate o suporte informando este código.',
+        rid: req._rid || null,
+        of_id: created?.id || null,
+      });
+    }
     // #region debug-point B:ofs-post-after-insert
     _dbgOfStage = 'after-insert';
     try {
@@ -7260,7 +7259,14 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const errorText = (e && typeof e === 'object' && String(e?.message || '').trim())
       ? String(e.message).trim()
       : (_safeJson(e) || String(e));
-    return res.status(500).json({ ok: false, error: errorText === '"[unserializable]"' ? 'Falha interna ao criar OF' : errorText, rid: req._rid || null });
+    // P1 · conflito de numeração esgotado devolve 409 (não 500).
+    const _statusInsert = Number(e?.status) || 500;
+    return res.status(_statusInsert).json({
+      ok: false,
+      error: errorText === '"[unserializable]"' ? 'Falha interna ao criar OF' : errorText,
+      ...(e && e.codigo ? { codigo: e.codigo } : {}),
+      rid: req._rid || null,
+    });
   }
 });
 
@@ -7477,11 +7483,16 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     setNoCache(res);
     let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
     body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body));
-    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key));
+    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some(
+      (key) => Object.prototype.hasOwnProperty.call(req.body || {}, key) && String(req.body[key] == null ? '' : req.body[key]).trim() !== ''
+    );
     if (hasEmpresaOverride) {
-      const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
-      if (empresaCtx?.empresa_id) body.empresa_id = empresaCtx.empresa_id;
-      if (empresaCtx?.emp_id) body.emp_id = empresaCtx.emp_id;
+      const empresaNorm = await _normalizarEmpresaMutacao(req, req.body || {});
+      if (!empresaNorm || empresaNorm.erro || !_isUuid(String(empresaNorm.empresa_id || ''))) {
+        return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', motivo: (empresaNorm && (empresaNorm.motivo || empresaNorm.erro)) || 'empresa_invalida' });
+      }
+      body.empresa_id = empresaNorm.empresa_id;
+      if (empresaNorm.emp_id) body.emp_id = empresaNorm.emp_id;
     }
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
@@ -11072,6 +11083,24 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     const bodyIn = normalizeOfUpdateBody(req.body || {});
+    // P1 · empresa: normaliza/corrige ANTES do ofIn() e nunca cai para a empresa da sessão
+    // quando o corpo trouxer uma empresa que não resolve.
+    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some(
+      (key) => Object.prototype.hasOwnProperty.call(req.body || {}, key) && String(req.body[key] == null ? '' : req.body[key]).trim() !== ''
+    );
+    if (hasEmpresaOverride) {
+      const empresaNorm = await _normalizarEmpresaMutacao(req, req.body || {});
+      if (!empresaNorm || empresaNorm.erro || !_isUuid(String(empresaNorm.empresa_id || ''))) {
+        return res.status(400).json({ ok: false, error: 'Empresa inválida ou não informada', campo: 'empresa', motivo: (empresaNorm && (empresaNorm.motivo || empresaNorm.erro)) || 'empresa_invalida' });
+      }
+      bodyIn.empresa_id = empresaNorm.empresa_id;
+      if (empresaNorm.emp_id) bodyIn.emp_id = empresaNorm.emp_id;
+    } else {
+      delete bodyIn.empresa_id;
+      delete bodyIn.empresaId;
+      delete bodyIn.emp_id;
+      delete bodyIn.empId;
+    }
     const mapped =
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
@@ -11123,12 +11152,6 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
     payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload));
-    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key));
-    if (hasEmpresaOverride) {
-      const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
-      if (empresaCtx?.empresa_id) payload.empresa_id = empresaCtx.empresa_id;
-      if (empresaCtx?.emp_id) payload.emp_id = empresaCtx.emp_id;
-    }
     try { console.log('[PATCH OF] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
@@ -21491,6 +21514,73 @@ async function _resolveEmpresaMutationContext(req, body) {
     empresa_id: empresa_id || null,
     emp_id: emp_id || null,
   };
+}
+
+// ── P1 · Normalização de empresa para mutações de OF ─────────────────────────
+// Cache (5 min) das linhas de `empresas` usadas pelo normalizador puro.
+const _empresaNormCache = { rows: null, exp: 0 };
+async function _getEmpresasRowsCached() {
+  const now = Date.now();
+  if (Array.isArray(_empresaNormCache.rows) && _empresaNormCache.rows.length && now < _empresaNormCache.exp) {
+    return _empresaNormCache.rows;
+  }
+  let rows = null;
+  const selects = ['id,nome,sigla,codigo', 'id,nome,sigla', 'id,nome'];
+  for (const sel of selects) {
+    try {
+      const { data, error } = await supabase.from('empresas').select(sel).order('nome');
+      if (!error && Array.isArray(data) && data.length) { rows = data; break; }
+    } catch (_) {}
+  }
+  if (!Array.isArray(rows) || !rows.length) {
+    try { console.warn('[EMPRESA NORM] tabela empresas indisponível/vazia — usando mapa canônico de fallback'); } catch (_) {}
+    rows = EMPRESAS_FALLBACK;
+  }
+  _empresaNormCache.rows = rows;
+  _empresaNormCache.exp = now + 5 * 60 * 1000;
+  return rows;
+}
+
+/**
+ * Resolve a empresa de uma mutação de OF.
+ *  - corpo com empresa válida → usa a empresa do corpo;
+ *  - corpo com empresa INVÁLIDA → erro (NUNCA cai para a empresa do usuário logado);
+ *  - corpo sem empresa → usa a empresa da sessão (comportamento legado).
+ * Retorna { empresa_id, emp_id, origem } ou { erro }.
+ */
+async function _normalizarEmpresaMutacao(req, body) {
+  const b = body || {};
+  const temEmpresaNoCorpo = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some(
+    (k) => Object.prototype.hasOwnProperty.call(b, k) && String(b[k] == null ? '' : b[k]).trim() !== ''
+  );
+  const rows = await _getEmpresasRowsCached();
+  const norm = normalizarEmpresa(
+    {
+      empresa_id: b.empresa_id != null ? b.empresa_id : b.empresaId,
+      emp_id: b.emp_id != null ? b.emp_id : b.empId,
+    },
+    rows
+  );
+  if (norm && !norm.erro) {
+    return { empresa_id: norm.empresa_id, emp_id: norm.emp_id, origem: 'corpo' };
+  }
+  if (temEmpresaNoCorpo) {
+    return { erro: 'empresa_invalida', motivo: (norm && norm.erro) || 'empresa_invalida' };
+  }
+  // Corpo sem empresa: resolve pela sessão do usuário logado.
+  let uuidSessao = '';
+  try {
+    uuidSessao = String(await _resolveEmpresaUuid({ ...req, body: {}, query: {} }) || '').trim();
+  } catch (_) {}
+  if (!uuidSessao) {
+    try { uuidSessao = String(await getEmpresaId(req) || '').trim(); } catch (_) {}
+  }
+  if (!uuidSessao) return { erro: 'empresa_obrigatoria' };
+  const normSessao = normalizarEmpresa({ empresa_id: uuidSessao }, rows);
+  if (normSessao && !normSessao.erro) {
+    return { empresa_id: normSessao.empresa_id, emp_id: normSessao.emp_id, origem: 'sessao' };
+  }
+  return { empresa_id: corrigirUuid(uuidSessao), emp_id: null, origem: 'sessao_raw' };
 }
 
 function _gramaturaTexto(v) {
@@ -36054,6 +36144,19 @@ async function _pedidoLinguagemNaturalProcess({ texto, empId, usuario_id, req })
       filtered.numero = numStr;
     } catch (_) {}
   }
+  // P1 · empresa obrigatória também nas OFs criadas fora do POST /api/ofs (Jarvis).
+  // Sem empresa resolvida, NÃO insere (antes gravava sem empresa_id).
+  {
+    const empRowsJ = await _getEmpresasRowsCached();
+    const empNormJ = normalizarEmpresa({ emp_id: payload.emp_id }, empRowsJ);
+    if (!empNormJ || empNormJ.erro) {
+      const detalhe = { origem: 'jarvis', emp_id: payload.emp_id, cliente: payload.cliNome, motivo: (empNormJ && empNormJ.erro) || 'empresa_nao_resolvida' };
+      console.error('[P1] OF não criada (Jarvis): empresa não resolvida', JSON.stringify(detalhe));
+      throw Object.assign(new Error('empresa_obrigatoria'), { status: 400, detalhe });
+    }
+    filtered.empresa_id = empNormJ.empresa_id;
+    filtered.emp_id = empNormJ.emp_id || filtered.emp_id;
+  }
   const createdRes = await ofsInsertWithRetry(ofIn(filtered));
   if (createdRes.error) throw createdRes.error;
   let created = createdRes.data;
@@ -36984,6 +37087,19 @@ async function _gerarRecorrenteSePrecisa(rec, forcar){
       filtered.of = numStr;
       filtered.numero = numStr;
     } catch (_) {}
+  }
+  // P1 · empresa obrigatória também nas OFs geradas por Pedidos Recorrentes.
+  // Sem empresa resolvida, NÃO insere; registra erro com o id do recorrente.
+  {
+    const empRowsR = await _getEmpresasRowsCached();
+    const empNormR = normalizarEmpresa({ emp_id: empId }, empRowsR);
+    if (!empNormR || empNormR.erro) {
+      const detalhe = { origem: 'recorrente', recorrente_id: rid, emp_id: empId, motivo: (empNormR && empNormR.erro) || 'empresa_nao_resolvida' };
+      console.error('[P1] OF não criada (recorrente): empresa não resolvida', JSON.stringify(detalhe));
+      return { ok:false, skipped:'empresa_nao_resolvida', recorrente_id: rid, erro:'empresa_nao_resolvida' };
+    }
+    filtered.empresa_id = empNormR.empresa_id;
+    filtered.emp_id = empNormR.emp_id || filtered.emp_id;
   }
   const createdRes = await ofsInsertWithRetry(ofIn(filtered));
   if(createdRes.error) throw createdRes.error;

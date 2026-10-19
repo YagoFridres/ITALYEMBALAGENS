@@ -32252,8 +32252,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return String(max + 1).padStart(3, '0');
       }
     }
-    console.warn('[PATCH] proximoNumeroOf: usando fallback 001');
-    return '001';
+    // P1 · sem fallback '001': se não deu para calcular, devolve vazio e a UI
+    // mostra "Nº definido ao salvar" (o servidor define/revalida o número).
+    console.warn('[PATCH] proximoNumeroOf: indisponível (sem fallback 001)');
+    return '';
   };
 
   function _ensureSalvarOfRapidaHooksInfra() {
@@ -32465,11 +32467,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }, 5);
   _salvarOfRapidaRegisterHook('__patch_of_rapida_numero__', 'before', function() {
     var el = document.getElementById('of-r-numero');
-    var num = window._ofRapidaNumero ||
-              (el ? (el.value || el.textContent || '').replace(/[^0-9]/g,'') : '') ||
-              '001';
+    // P1 · sem fallback '001'. Se não houver número, deixa vazio: o
+    // enrichCreateOfPayload remove o campo e o servidor define o número real.
+    var num = String(window._ofRapidaNumero || (el ? (el.value || el.textContent || '') : '')).replace(/[^0-9]/g, '');
     window._ofRapidaNumero = num;
-    if (el) { if (el.tagName === 'INPUT') el.value = num; else el.textContent = num; }
+    if (el && num) { if (el.tagName === 'INPUT') el.value = num; else el.textContent = num; }
     try { console.log('[PATCH] salvar OF Rapida numero:', num); } catch (_) {}
   }, 10);
 
@@ -32582,7 +32584,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return;
       } else if (!okCriacao) {
         var errMsg = _extrairMsgErro(result);
-        var popupMsg = '❌ Não foi possível salvar esta OF. Dados foram MANTIDOS no formulário. Detalhe: ' + String(errMsg || 'erro interno');
+        // P1 · falha de rede tem mensagem própria e os dados do formulário são mantidos.
+        var _erroRede = /failed to fetch|networkerror|network request failed|load failed|err_network|err_internet|offline|fetch failed|sem conex/i.test(String(errMsg || ''));
+        var popupMsg = _erroRede
+          ? 'Sem conexão. A OF NÃO foi salva.'
+          : '❌ Não foi possível salvar esta OF. Dados foram MANTIDOS no formulário. Detalhe: ' + String(errMsg || 'erro interno');
         try {
           if (typeof window.toast === 'function') {
             window.toast(popupMsg, '#ef4444', 10000);
@@ -32651,10 +32657,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { delete numEl.dataset.originalReadOnly; } catch (_) {}
         if (numEl.tagName === 'INPUT') {
           try { numEl.removeAttribute('readonly'); } catch (_) {}
-          if (!numEl.value) numEl.value = String(window._ofRapidaNumero || '001');
+          if (!numEl.value && window._ofRapidaNumero) numEl.value = String(window._ofRapidaNumero);
           numEl.style.opacity = '1';
         } else if (String(numEl.textContent || '').indexOf('Atualizando') >= 0) {
-          numEl.textContent = String(window._ofRapidaNumero || '001');
+          numEl.textContent = window._ofRapidaNumero ? String(window._ofRapidaNumero) : '';
           numEl.style.color = '';
         }
       }
@@ -39921,7 +39927,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: '', label: 'Todas as empresas' },
     { id: 'df5f7672-0a6b-402d-ae65-296554236c31', label: 'Italy Embalagens' },
     { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', label: 'Cartoeste' },
-    { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', label: 'Oestepack' }
+    { id: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a', label: 'Oestepack' }
   ];
   function _empresaIdAtual() {
     try { return String(window.__comissoesFiltroEmpresaId || '').trim(); } catch (_) { return ''; }
@@ -41476,7 +41482,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { oc = String(btn.getAttribute('onclick') || ''); } catch (_) {}
       try { txt = String(btn.textContent || '').trim(); } catch (_) {}
 
-      var isNovaOF = oc.indexOf('abrirModalOF') !== -1 || oc.indexOf('abrirNovaOf(') !== -1 || oc.indexOf('abrirNovaOF(') !== -1 || txt === 'Nova OF';
+      // P1 · só é "nova OF" quando o onclick chama abrirModalOF() SEM id.
+      // Botões que passam id abrem/EDITAM uma OF existente e NÃO podem ser
+      // sequestrados (senão a edição de OF deixa de funcionar).
+      var _modalOfSemId = /abrirModalOF\s*\(\s*(?:''|"")?\s*\)/.test(oc);
+      var isNovaOF = _modalOfSemId || oc.indexOf('abrirNovaOf(') !== -1 || oc.indexOf('abrirNovaOF(') !== -1 || /^[＋+\s]*nova\s*of$/i.test(txt);
       var isOFRapida = oc.indexOf('abrirNovaOfRapida') !== -1 || oc.indexOf('abrirOFRapida') !== -1 || oc.indexOf('abrirOfRapida') !== -1 || txt === 'OF Rápida' || txt === 'Rápida';
       if (!isNovaOF && !isOFRapida) return;
 
@@ -41631,9 +41641,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (typeof window.abrirModalOF !== 'function') return;
     if (window.abrirModalOF._patchToOfRapidaEdit) return;
     var orig = window.abrirModalOF;
+    // P1 · "OF Rápida" é a única entrada para NOVA OF.
+    //   sem id (undefined/''/null) → abre a OF Rápida (nova);
+    //   com id → abre a OF existente na OF Rápida em modo EDIÇÃO.
     window.abrirModalOF = async function(ofId) {
-      var sid = String(ofId || '').trim();
-      if (!sid) return orig.apply(this, arguments);
+      var sid = String(ofId == null ? '' : ofId).trim();
+
+      // sem id → NOVA OF pela OF Rápida
+      if (!sid) {
+        if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
+        try { window.abrirNovaOfRapida(); return; } catch (_) { return orig.apply(this, arguments); }
+      }
+
+      // com id → ABRIR/EDITAR OF existente na OF Rápida
       if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
 
       try { window.__ofRapidaPendingEditId = sid; } catch (_) {}
@@ -42942,6 +42962,36 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     };
     window.carregarCoresImpressao._patchWithCache = true;
 
+    // P1 · re-tenta buscar o próximo número em background (1s/2s/4s) sem
+    // bloquear o salvar. O número real é sempre definido pelo servidor no save.
+    function retryProximoNumero(numEl, delays) {
+      if (!Array.isArray(delays) || !delays.length) return;
+      var restantes = delays.slice();
+      var tentar = function() {
+        var d = restantes.shift();
+        setTimeout(function() {
+          try {
+            Promise.resolve(typeof window.proximoNumeroOf === 'function' ? window.proximoNumeroOf({ __forceFresh: true }) : null)
+              .then(function(v) {
+                var num = String(v || '').trim();
+                if (num) {
+                  try { window._ofRapidaNumero = num; } catch (_) {}
+                  try { if (typeof window._setOfRapidaNumero === 'function') window._setOfRapidaNumero(num); } catch (_) {}
+                  if (numEl) {
+                    if (numEl.tagName === 'INPUT') { numEl.value = num; numEl.style.opacity = '1'; }
+                    else { numEl.textContent = num; numEl.style.color = ''; }
+                  }
+                  return;
+                }
+                if (restantes.length) tentar();
+              })
+              .catch(function() { if (restantes.length) tentar(); });
+          } catch (_) { if (restantes.length) tentar(); }
+        }, d);
+      };
+      tentar();
+    }
+
     window.abrirNovaOfRapida = function() {
       var pendingEditId = String(window.__ofRapidaPendingEditId || '').trim();
       if (!pendingEditId) {
@@ -42987,16 +43037,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               (typeof window.proximoNumeroOf === 'function' ? window.proximoNumeroOf({ empresa_id: empIdR }) : Promise.resolve(null)).then(function(proxN) {
                 try {
                   var numeroFinal = String(proxN || '').trim();
-                  if (!numeroFinal && numEl) {
-                    var fallback = String(numEl.dataset.oldContent || '001').trim() || '001';
-                    if (/^\d+$/.test(fallback)) numeroFinal = fallback;
-                    else numeroFinal = '001';
-                  }
-                  if (numeroFinal) {
+                  if (!numeroFinal) {
+                    // P1 · sem fallback '001'. Mostra aviso e re-tenta em background
+                    // (1s/2s/4s) sem bloquear o salvar — o servidor define o número.
+                    try { window._ofRapidaNumero = ''; } catch (_) {}
+                    try { if (typeof window._setOfRapidaNumero === 'function') window._setOfRapidaNumero(''); } catch (_) {}
+                    if (numEl) {
+                      if (numEl.tagName === 'INPUT') { numEl.value = ''; numEl.placeholder = 'Nº definido ao salvar'; }
+                      else { numEl.textContent = 'Nº definido ao salvar'; numEl.style.color = '#94a3b8'; }
+                    }
+                    retryProximoNumero(numEl, [1000, 2000, 4000]);
+                  } else {
                     try { window._ofRapidaNumero = numeroFinal; } catch (_) {}
                     try { if (typeof window._setOfRapidaNumero === 'function') window._setOfRapidaNumero(numeroFinal); } catch (_) {}
                   }
-                  if (numEl) {
+                  if (numEl && numeroFinal) {
                     if (numEl.tagName === 'INPUT') {
                       numEl.value = numeroFinal;
                       numEl.style.opacity = numEl.dataset.originalReadOnly === '1' ? '0.85' : '1';
@@ -43005,8 +43060,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       numEl.textContent = numeroFinal;
                       numEl.style.color = '';
                     }
-                    try { delete numEl.dataset.oldContent; delete numEl.dataset.originalReadOnly; } catch (_) {}
                   }
+                  if (numEl && numeroFinal) { try { delete numEl.dataset.oldContent; delete numEl.dataset.originalReadOnly; } catch (_) {} }
                   var saveBtnR = document.querySelector('[data-acao-of-rapida="salvar"]')
                     || document.querySelector('button[data-salvar-of-rapida]')
                     || document.querySelector('#modal-of-rapida button#salvar-of-rapida')
@@ -43028,11 +43083,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                 if (saveBtnR && saveBtnR.dataset.ofRapidaAguardandoEdicao !== '1') { try { saveBtnR.removeAttribute('disabled'); } catch (_) {} saveBtnR && (saveBtnR.style.opacity = '', saveBtnR.style.cursor = ''); }
                 if (numEl) {
                   if (numEl.tagName === 'INPUT') {
-                    numEl.value = String(numEl.dataset.oldContent || '001') || '001';
+                    numEl.value = String(numEl.dataset.oldContent || '');
+                    numEl.placeholder = 'Nº definido ao salvar';
                     if (numEl.dataset.originalReadOnly !== '1') { try { numEl.removeAttribute('readonly'); } catch (_) {} }
                     numEl.style.opacity = '1';
                   } else {
-                    numEl.textContent = String(numEl.dataset.oldContent || '001') || '001';
+                    numEl.textContent = String(numEl.dataset.oldContent || 'Nº definido ao salvar');
                     numEl.style.color = '';
                   }
                   try { delete numEl.dataset.oldContent; delete numEl.dataset.originalReadOnly; } catch (_) {}
@@ -43295,8 +43351,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!(Number(body.valor_total || 0) > 0) && total > 0) body.valor_total = total;
       if (!(Number(body.valor_venda || 0) > 0) && total > 0) body.valor_venda = total;
 
-      if (!body.emp_id && ctx.empId) body.emp_id = ctx.empId;
-      if (!body.empresa_id && ctx.empId) body.empresa_id = ctx.empId;
+      // P1 · CAUSA RAIZ corrigida: empresa_id deve ser o UUID da empresa.
+      // O código E1/E2/E3 é enviado em emp_id; o empresa_id só recebe UUID
+      // resolvido pelo mapa do app. Se não resolver, NÃO envia empresa_id
+      // (o servidor valida/resolve). Nunca copiar o código para empresa_id.
+      var empCodigo = String(ctx.empId || '').trim();
+      if (!body.emp_id && empCodigo) body.emp_id = empCodigo;
+      if (!body.empresa_id) {
+        var _uuidEmp = '';
+        try {
+          if (typeof window._compraPapelaoResolveEmpresaUuid === 'function') {
+            _uuidEmp = String(window._compraPapelaoResolveEmpresaUuid(body.emp_id || empCodigo) || '').trim();
+          }
+        } catch (_) {}
+        if (_uuidEmp) body.empresa_id = _uuidEmp;
+      }
 
       if (Array.isArray(body.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
         body.itens = body.itens.map(function(item, idx) {
@@ -43317,6 +43386,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           return out;
         });
       }
+      // P1 · remove o fallback '001' do front. O servidor responde 400
+      // ("Número da OF inválido (menor que 1000)") se receber número < 1000,
+      // o que BLOQUEIA a criação. Sem número, o servidor calcula globalmente
+      // e devolve o número real em `data.numero`.
+      try {
+        var _numCampos = ['numero', 'of_num', 'of', 'of_seq', 'seq'];
+        var _numRef = '';
+        for (var _ni = 0; _ni < _numCampos.length; _ni += 1) {
+          var _nv = body[_numCampos[_ni]];
+          if (_nv !== undefined && _nv !== null && String(_nv).trim() !== '') { _numRef = String(_nv).trim(); break; }
+        }
+        var _numInt = _numRef ? parseInt(_numRef.replace(/\D/g, ''), 10) : NaN;
+        var _numValido = !isNaN(_numInt) && _numInt >= 1000;
+        if (!_numValido) {
+          for (var _nj = 0; _nj < _numCampos.length; _nj += 1) { delete body[_numCampos[_nj]]; }
+          try { console.log('[PATCH · P1] numero invalido/ausente ("' + String(_numRef || 'vazio') + '") removido do payload; servidor define.'); } catch (_) {}
+        }
+      } catch (_) {}
+
       return body;
     }
     var wrapped = function(url, opts) {
@@ -50612,7 +50700,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var mapa = {
         'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
         'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
-        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack'
+        'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'Oestepack'
       };
       if (mapa[id]) return mapa[id];
       var idUp = id.toUpperCase();
@@ -59000,7 +59088,7 @@ function _ocultarGraficoComissoes() {
             { id: '', label: 'Todas as empresas' },
             { id: 'df5f7672-0a6b-402d-ae65-296554236c31', label: 'Italy Embalagens' },
             { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', label: 'Cartoeste' },
-            { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', label: 'Oestepack' }
+            { id: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a', label: 'Oestepack' }
           ];
           if (_optsEmp[0] && _optsEmp[0].id !== '') {
             _optsEmp.unshift({ id: '', label: 'Todas as empresas' });
@@ -66946,7 +67034,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var EMPRESAS_OFICIAIS = [
       { id:'df5f7672-0a6b-402d-ae65-296554236c31', sigla:'E1', nome:'Italy Embalagens' },
       { id:'e9b734dc-c7d5-4b04-898d-1ec7affa721e', sigla:'E2', nome:'Cartoeste' },
-      { id:'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', sigla:'E3', nome:'Oestepack' }
+      { id:'a6e5f5d8-4743-4ebe-885e-c2f0741a667a', sigla:'E3', nome:'Oestepack' }
     ];
     var CATEGORIAS_MAP = {};
     CATEGORIAS_OFICIAIS.forEach(function(c){ CATEGORIAS_MAP[c.key] = c; });
@@ -68399,5 +68487,555 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }
   } catch(_) {}
 })();
+
+/* -------------------------------------------------------------------------- *
+ * P1 · OF Rápida como única entrada · Commit 3
+ *  - esconde os botões "+ Nova OF" antigos (PCP, OFs por Máquina/FAB, Hub,
+ *    Agenda e tela vazia do PCP) mantendo os atalhos abrindo a OF Rápida;
+ *  - ajuda: "Nova OF" → "OF Rápida" (Ctrl+N);
+ *  - trava ÚNICA anti-duplo-clique no salvar (um único envio em voo).
+ * Não remove tabela, rota, API nem função — apenas deixa de expor o botão antigo.
+ * -------------------------------------------------------------------------- */
+(function patchOfRapidaUnicaEntradaP1() {
+  if (window.__p1OfRapidaUnicaEntrada) return;
+  window.__p1OfRapidaUnicaEntrada = true;
+
+  function normTxt(t) {
+    return String(t == null ? '' : t).replace(/[＋+]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // ── (1) esconder os botões "+ Nova OF" antigos ───────────────────────────
+  function esconderBotoesNovaOF() {
+    try {
+      if (!document.getElementById('p1-hide-nova-of-style')) {
+        var st = document.createElement('style');
+        st.id = 'p1-hide-nova-of-style';
+        st.textContent = '[data-p1-hide-nova-of="1"]{display:none !important;}';
+        (document.head || document.documentElement).appendChild(st);
+      }
+    } catch (_) {}
+    var ids = ['btn-nova-of', 'ofmaq-fab-nova-of'];
+    var nodes = [];
+    try { nodes = Array.prototype.slice.call(document.querySelectorAll('button,a,.btn,[onclick]')); } catch (_) { nodes = []; }
+    nodes.forEach(function(el) {
+      if (!el || (el.dataset && el.dataset.p1HideNovaOf === '1')) return;
+      var oc = '';
+      try { oc = String(el.getAttribute('onclick') || ''); } catch (_) { oc = ''; }
+      var txt = normTxt(el.textContent);
+      var id = String(el.id || '');
+      var porId = ids.indexOf(id) !== -1;
+      var porOnclick = /abrirModalOF\s*\(\s*(?:''|"")?\s*\)/.test(oc);
+      var porTexto = /^nova\s*of$/i.test(txt);
+      if (!porId && !(porOnclick && porTexto)) return;
+      if (!porId && /igual/i.test(txt)) return; // nunca tocar em "Nova OF igual"
+      try { el.setAttribute('data-p1-hide-nova-of', '1'); } catch (_) {}
+      try { el.setAttribute('aria-hidden', 'true'); } catch (_) {}
+      try { el.style.setProperty('display', 'none', 'important'); } catch (_) { try { el.style.display = 'none'; } catch (__) {} }
+      try { el.removeAttribute('onclick'); } catch (_) {}
+      try { el.onclick = null; } catch (_) {}
+    });
+  }
+
+  // ── (2) ajuda: textos "Nova OF" → "OF Rápida" ────────────────────────────
+  function patchAjudaTexto() {
+    try {
+      var modal = document.getElementById('modal-help-shortcuts');
+      if (modal) {
+        var tw = document.createTreeWalker(modal, NodeFilter.SHOW_TEXT, null);
+        var n;
+        while ((n = tw.nextNode())) {
+          if (/^\s*Nova OF\s*$/.test(String(n.nodeValue || ''))) n.nodeValue = 'OF Rápida';
+        }
+      }
+      var boxes = document.querySelectorAll('.sbox-b');
+      Array.prototype.slice.call(boxes).forEach(function(box) {
+        if (!box || String(box.textContent || '').indexOf('Ctrl+N (Nova OF)') === -1) return;
+        var tw2 = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
+        var n2;
+        while ((n2 = tw2.nextNode())) {
+          var v = String(n2.nodeValue || '');
+          if (v.indexOf('Ctrl+N (Nova OF)') !== -1) n2.nodeValue = v.replace('Ctrl+N (Nova OF)', 'Ctrl+N (OF Rápida)');
+        }
+      });
+    } catch (_) {}
+  }
+
+  function varrer() { esconderBotoesNovaOF(); patchAjudaTexto(); }
+
+  function observar() {
+    // P1 · debounce (150 ms) + requestAnimationFrame: sem isso, CADA mutação do
+    // DOM inteiro rodava querySelectorAll('button,a,.btn,[onclick]') + varredura
+    // de texto, pesando no PCP / OFs por Máquina (tabelas grandes) e no celular.
+    var gating = false;
+    function agendarScan() {
+      if (gating) return;
+      gating = true;
+      setTimeout(function() {
+        function rodar() { gating = false; try { varrer(); } catch (_) {} }
+        try {
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(rodar);
+          else rodar();
+        } catch (_) { rodar(); }
+      }, 150);
+    }
+    try {
+      var mo = new MutationObserver(function(mutations) {
+        // reage só quando nós foram ADICIONADOS (ignora atributos/remoções).
+        var adicionou = false;
+        try {
+          for (var i = 0; i < mutations.length; i++) {
+            var m = mutations[i];
+            if (m && m.addedNodes && m.addedNodes.length > 0) { adicionou = true; break; }
+          }
+        } catch (_) { adicionou = true; }
+        if (adicionou) agendarScan();
+      });
+      mo.observe(document.documentElement, { childList: true, subtree: true });
+    } catch (_) {}
+    [0, 200, 600, 1500, 3000, 6000].forEach(function(d) { setTimeout(varrer, d); });
+  }
+
+  // ── (3) trava ÚNICA anti-duplo-clique no salvar ──────────────────────────
+  function instalarTravaSalvar() {
+    try {
+      var fn = window.salvarOfRapida;
+      if (typeof fn !== 'function') return;
+      if (fn.__p1OfTravaUnica) return;
+      var orig = fn;
+      function travado() {
+        if (window.__P1_OF_SALVANDO__) {
+          try { if (typeof window.toast === 'function') window.toast('⏳ Já salvando uma OF... aguarde.', 'rgba(245,158,11,.95)', 2500); } catch (_) {}
+          return { ok: false, error: 'ja_salvando', __busy: true };
+        }
+        window.__P1_OF_SALVANDO__ = true;
+        function liberar() {
+          window.__P1_OF_SALVANDO__ = false;
+          try { window.__OF_SALVANDO_RAPIDA__ = false; } catch (_) {}
+          try {
+            var b = document.getElementById('btn-salvar-of-rapida');
+            if (b && b.textContent === 'Salvando...') { b.textContent = '⚡ Salvar OF'; b.disabled = false; }
+          } catch (_) {}
+        }
+        var ret;
+        try { ret = orig.apply(this, arguments); }
+        catch (e) { liberar(); throw e; }
+        if (ret && typeof ret.then === 'function') return ret.then(function(v) { liberar(); return v; }, function(e) { liberar(); throw e; });
+        liberar();
+        return ret;
+      }
+      try { Object.keys(orig).forEach(function(k) { travado[k] = orig[k]; }); } catch (_) {}
+      try { travado._original = orig; } catch (_) {}
+      try { if (orig.__patchClienteFallback) travado.__patchClienteFallback = true; } catch (_) {}
+      travado.__p1OfTravaUnica = true;
+      window.salvarOfRapida = travado;
+      try { console.log('[P1] trava única de salvar OF Rápida instalada.'); } catch (_) {}
+    } catch (_) {}
+  }
+
+  function bootstrap() {
+    varrer();
+    instalarTravaSalvar();
+    [300, 900, 2000, 5000].forEach(function(d) { setTimeout(instalarTravaSalvar, d); });
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { varrer(); setTimeout(instalarTravaSalvar, 200); });
+    }
+  }
+
+  observar();
+  bootstrap();
+})();
+
+/* -------------------------------------------------------------------------- *
+ * P1 · Nº da OF indisponível NÃO bloqueia o salvar (correção da revisão)
+ *  - sobrescreve window._atualizarEstadoNumeroOfRapida (definida no index.html
+ *    ~4038): com número válido (>= 1000) mantém o comportamento atual;
+ *  - sem número, NÃO desabilita o #btn-salvar-of-rapida, mostra
+ *    "Nº definido ao salvar" no lugar do número, deixa o botão como
+ *    "⚡ Salvar OF" habilitado e mantém o aviso discreto com "Tentar de novo"
+ *    (o servidor define o número real ao salvar);
+ *  - reaplica a sobrescrita logo após abrirNovaOfRapida para as chamadas
+ *    internas do index.html usarem sempre esta versão.
+ * Nenhuma tabela, rota, API ou função é removida.
+ * -------------------------------------------------------------------------- */
+(function patchNumeroOfRapidaNaoBloquearP1() {
+  if (window.__p1NumeroOFNaoBloquear) return;
+  window.__p1NumeroOFNaoBloquear = true;
+
+  function spanNumero() {
+    return document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
+  }
+  function btnSalvar() {
+    return document.getElementById('btn-salvar-of-rapida');
+  }
+  function habilitarBotaoSalvar() {
+    var btn = btnSalvar();
+    if (!btn) return;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    btn.style.filter = 'none';
+    btn.textContent = '⚡ Salvar OF';
+  }
+  function removerAviso() {
+    try { var box = document.getElementById('of-r-aviso-numero'); if (box && box.remove) box.remove(); } catch (_) {}
+  }
+  function mostrarAviso() {
+    try {
+      if (document.getElementById('of-r-aviso-numero')) return;
+      var spanNum = spanNumero();
+      var btn = btnSalvar();
+      var box = document.createElement('div');
+      box.id = 'of-r-aviso-numero';
+      box.style.cssText = 'margin:12px 0 2px;padding:10px 12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px';
+      box.innerHTML = '<div style="display:flex;align-items:center;gap:8px;min-width:0">' +
+        '<span style="font-size:18px">⚠️</span>' +
+        '<div style="min-width:0">' +
+        '<div style="font-size:12px;font-weight:700;color:#f59e0b">Não foi possível obter o número da OF</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">O número será definido pelo servidor ao salvar — clique em "Tentar de novo" para recarregar</div>' +
+        '</div></div>' +
+        '<button type="button" id="of-r-btn-tentar-numero" style="flex-shrink:0;padding:7px 12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:7px;color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🔄 Tentar de novo</button>';
+      var btnTentar = (box.querySelector ? box.querySelector('#of-r-btn-tentar-numero') : null);
+      if (btnTentar && btnTentar.addEventListener) {
+        btnTentar.addEventListener('click', function() {
+          try { btnTentar.disabled = true; btnTentar.textContent = 'Carregando...'; } catch (_) {}
+          Promise.resolve()
+            .then(function() { return (typeof window.proximoNumeroOf === 'function') ? window.proximoNumeroOf() : null; })
+            .then(function(n) { aplicarEstado(n); })
+            .catch(function() { aplicarEstado(''); })
+            .then(function() {
+              try { btnTentar.disabled = false; btnTentar.textContent = '🔄 Tentar de novo'; } catch (_) {}
+            });
+        });
+      }
+      var elHeaderNum = (spanNum && spanNum.parentElement && spanNum.parentElement.parentElement) ? spanNum.parentElement.parentElement : null;
+      var refInsertBefore = null;
+      try {
+        var cliSel = document.getElementById('of-r-cliente');
+        refInsertBefore = (cliSel && cliSel.parentElement && cliSel.parentElement.parentElement)
+          ? cliSel.parentElement.parentElement.firstElementChild : null;
+      } catch (_) { refInsertBefore = null; }
+      var containerInputs = (btn && btn.closest) ? btn.closest('#modal-of-rapida') : null;
+      containerInputs = (containerInputs && containerInputs.querySelector) ? containerInputs.querySelector('div[style*="padding:16px 20px"]') : null;
+      if (containerInputs && containerInputs.insertBefore) {
+        containerInputs.insertBefore(box, containerInputs.firstChild || null);
+      } else if (elHeaderNum && elHeaderNum.parentElement && elHeaderNum.parentElement.insertBefore) {
+        elHeaderNum.parentElement.insertBefore(box, elHeaderNum.nextSibling || null);
+      } else if (refInsertBefore && refInsertBefore.parentElement && refInsertBefore.parentElement.insertBefore) {
+        refInsertBefore.parentElement.insertBefore(box, refInsertBefore);
+      }
+    } catch (_) {}
+  }
+
+  // válido (>= 1000): igual ao index.html (mostra o número, botão "⚡ Salvar OF");
+  // inválido/ausente: NÃO bloqueia o salvar — o servidor define o número real.
+  function aplicarEstado(numStr) {
+    var numClean = String(numStr == null ? '' : numStr).trim().replace(/\D/g, '');
+    var num = numClean ? parseInt(numClean, 10) : NaN;
+    var valido = !isNaN(num) && num >= 1000;
+    var spanNum = spanNumero();
+    if (valido) {
+      if (spanNum) {
+        spanNum.textContent = String(num).padStart(Math.max(String(num).length, 3), '0');
+        try { spanNum.style.color = ''; } catch (_) {}
+      }
+      habilitarBotaoSalvar();
+      removerAviso();
+      try { window._ofRapidaNumeroValido = true; } catch (_) {}
+      return true;
+    }
+    if (spanNum) {
+      spanNum.textContent = 'Nº definido ao salvar';
+      try { spanNum.style.color = '#94a3b8'; } catch (_) {}
+    }
+    habilitarBotaoSalvar();
+    try { window._ofRapidaNumeroValido = false; } catch (_) {}
+    mostrarAviso();
+    return false;
+  }
+
+  function instalar() {
+    try {
+      if (typeof window._atualizarEstadoNumeroOfRapida !== 'function') return false;
+      window._atualizarEstadoNumeroOfRapida = aplicarEstado;
+      window._atualizarEstadoNumeroOfRapida.__p1NaoBloquear = true;
+      return true;
+    } catch (_) { return false; }
+  }
+
+  // reaplica a sobrescrita depois que a OF Rápida é aberta (as chamadas internas
+  // do index.html usam o nome global _atualizarEstadoNumeroOfRapida).
+  function decorarAbrir() {
+    try {
+      var fn = window.abrirNovaOfRapida;
+      if (typeof fn !== 'function' || fn.__p1NumeroNaoBloquear) return false;
+      var orig = fn;
+      var wrapped = function() {
+        var out;
+        try { out = orig.apply(this, arguments); } catch (e) { instalar(); throw e; }
+        try { instalar(); } catch (_) {}
+        return out;
+      };
+      wrapped.__p1NumeroNaoBloquear = true;
+      window.abrirNovaOfRapida = wrapped;
+      return true;
+    } catch (_) { return false; }
+  }
+
+  instalar();
+  decorarAbrir();
+  [0, 250, 1200, 2500, 5000].forEach(function(d) {
+    setTimeout(function() { instalar(); decorarAbrir(); }, d);
+  });
+
+  try { window.__p1NumeroRapida = { aplicarEstado: aplicarEstado, instalar: instalar, decorarAbrir: decorarAbrir }; } catch (_) {}
+})();
+
+/* -------------------------------------------------------------------------- *
+ * P1 · listas limpas · Commit 4
+ *  - máquina no lançamento: exatamente IMP 01..05, Riscador e CORTE VINCO
+ *    ROTATIVA (deduplicadas por nome normalizado, sem "Acabamento"/"Coladeira");
+ *    um valor legado já selecionado é preservado para não perder edição;
+ *  - datalist de clientes: deduplicado por nome normalizado, exibindo
+ *    documento/cidade para diferenciar homônimos (nada é apagado no banco);
+ *  - vendedor: apenas ativos; na edição de OF antiga com vendedor inativo o
+ *    valor é preservado e marcado "(inativo)".
+ * Nenhuma tabela, rota, API ou função é removida.
+ * -------------------------------------------------------------------------- */
+(function patchListasLimpasP1() {
+  if (window.__p1ListasLimpas) return;
+  window.__p1ListasLimpas = true;
+
+  var CANON_MAQUINAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+
+  function norm(v) {
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function escH(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function escAttr(v) {
+    return escH(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function clientesRef() {
+    try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES; } catch (_) {}
+    if (Array.isArray(window.CLIENTES)) return window.CLIENTES;
+    if (Array.isArray(window.clientes)) return window.clientes;
+    return [];
+  }
+
+  function vendedoresRef() {
+    try { if (typeof VENDEDORES !== 'undefined' && Array.isArray(VENDEDORES)) return VENDEDORES; } catch (_) {}
+    if (Array.isArray(window.VENDEDORES)) return window.VENDEDORES;
+    if (Array.isArray(window.vendedores)) return window.vendedores;
+    return [];
+  }
+
+  function vendedorAtivo(v) {
+    if (!v) return false;
+    if (v.ativo === false || v.ativo === 0) return false;
+    if (String(v.ativo || '').trim().toLowerCase() === 'false') return false;
+    if (String(v.status || v.situacao || '').trim().toLowerCase() === 'inativo') return false;
+    return true;
+  }
+
+  // ── construtores puros (sem DOM) — usados na UI e cobertos por testes ────
+  function buildMaquinasOptions(placeholderTxt, atual) {
+    var canonNorm = {};
+    CANON_MAQUINAS.forEach(function(m) { canonNorm[norm(m)] = m; });
+    var extras = [];
+    if (atual && !canonNorm[norm(atual)]) extras.push(atual);
+    var sig = String(placeholderTxt || '') + '||' + CANON_MAQUINAS.join('|') + '||' + extras.join('|');
+    var html = '<option value="">' + escH(placeholderTxt) + '</option>';
+    CANON_MAQUINAS.forEach(function(m) {
+      html += '<option value="' + escAttr(m) + '">' + escH(m) + '</option>';
+    });
+    extras.forEach(function(m) {
+      html += '<option value="' + escAttr(m) + '">' + escH(m) + '</option>';
+    });
+    return { html: html, sig: sig, selected: atual || '', extras: extras };
+  }
+
+  function buildVendedoresOptions(lista, atual) {
+    var porId = {};
+    var ativos = [];
+    (Array.isArray(lista) ? lista : []).forEach(function(v) {
+      if (!v) return;
+      var id = String(v.id || v.vendedor_id || v.vend_id || '').trim();
+      if (!id || porId[id]) return;
+      porId[id] = v;
+      if (vendedorAtivo(v)) ativos.push(v);
+    });
+    var inativoSel = null;
+    if (atual && porId[atual] && !ativos.some(function(v) { return String(v.id || '').trim() === atual; })) {
+      inativoSel = porId[atual];
+    }
+    var sig = ativos.map(function(v) { return String(v.id || '').trim(); }).join(',')
+      + '||' + (inativoSel ? atual : '');
+    var html = '<option value="">Sem vendedor</option>';
+    ativos.forEach(function(v) {
+      var id = String(v.id || '').trim();
+      html += '<option value="' + escAttr(id) + '">' + escH(String(v.nome || v.name || '')) + '</option>';
+    });
+    if (inativoSel) {
+      html += '<option value="' + escAttr(atual) + '">'
+        + escH(String(inativoSel.nome || inativoSel.name || atual)) + ' (inativo)</option>';
+    }
+    return { html: html, sig: sig, selected: atual || '', inativo: !!inativoSel };
+  }
+
+  function buildClientesOptions(lista) {
+    var vistos = {};
+    var opts = [];
+    (Array.isArray(lista) ? lista : []).forEach(function(c) {
+      if (!c) return;
+      var nome = String(c.nome || c.razao_social || c.razao || c.cliente_nome || '').trim();
+      if (!nome) return;
+      var nrm = norm(nome);
+      if (!nrm || vistos[nrm]) return;
+      vistos[nrm] = true;
+      var doc = String(c.documento || c.cnpj || c.cpf || c.cnpj_cpf || c.doc || '').trim();
+      var cid = String(c.cidade || c.municipio || '').trim();
+      var uf = String(c.uf || c.estado || '').trim();
+      var extra = [];
+      if (doc) extra.push(doc);
+      if (cid) extra.push(uf ? (cid + '/' + uf) : cid);
+      opts.push({ nome: nome, label: extra.join(' · ') });
+    });
+    opts.sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    var sig = opts.map(function(o) { return o.nome + '@' + o.label; }).join('|');
+    var html = opts.map(function(o) {
+      return '<option value="' + escAttr(o.nome) + '"'
+        + (o.label ? (' label="' + escAttr(o.label) + '"') : '') + '></option>';
+    }).join('');
+    return { html: html, sig: sig, nomes: opts.map(function(o) { return o.nome; }), items: opts };
+  }
+
+  // ── (1) Máquina principal da OF Rápida: exatamente as 7 canônicas ────────
+  function canonicalizarMaquinas() {
+    var sel = document.getElementById('of-r-maquina');
+    if (!sel) return;
+    var atual = String(sel.value || '').trim();
+    var placeholderTxt = '';
+    try {
+      var ph = sel.querySelector('option[value=""]');
+      if (ph) placeholderTxt = String(ph.textContent || '').trim();
+    } catch (_) {}
+    if (!placeholderTxt) placeholderTxt = '-- Selecionar máquina --';
+
+    var built = buildMaquinasOptions(placeholderTxt, atual);
+    try {
+      if (sel.dataset && sel.dataset.p1CanonSig === built.sig) {
+        if (built.selected && sel.value !== built.selected) { try { sel.value = built.selected; } catch (_) {} }
+        return;
+      }
+    } catch (_) {}
+    sel.innerHTML = built.html;
+    try { sel.dataset.p1CanonSig = built.sig; } catch (_) {}
+    if (built.selected) { try { sel.value = built.selected; } catch (_) {} }
+  }
+
+  // ── (2) Vendedor: apenas ativos; inativo selecionado vira "(inativo)" ────
+  function canonicalizarVendedores() {
+    var sel = document.getElementById('of-r-vendedor');
+    if (!sel) return;
+    var lista = vendedoresRef();
+    if (!Array.isArray(lista) || !lista.length) return; // mantém o HTML original
+    var atual = String(sel.value || '').trim();
+
+    var built = buildVendedoresOptions(lista, atual);
+    try {
+      if (sel.dataset && sel.dataset.p1VendSig === built.sig) {
+        if (built.selected && sel.value !== built.selected) { try { sel.value = built.selected; } catch (_) {} }
+        return;
+      }
+    } catch (_) {}
+    sel.innerHTML = built.html;
+    try { sel.dataset.p1VendSig = built.sig; } catch (_) {}
+    if (built.selected) { try { sel.value = built.selected; } catch (_) {} }
+  }
+
+  // ── (3) Datalist de clientes: dedupe + documento/cidade ──────────────────
+  function dedupClientesDatalist() {
+    var dl = document.getElementById('of-r-clientes-list');
+    if (!dl) return;
+    var lista = clientesRef();
+    if (!Array.isArray(lista) || !lista.length) return;
+
+    var built = buildClientesOptions(lista);
+    try {
+      if (dl.dataset && dl.dataset.p1CliSig === built.sig) return;
+    } catch (_) {}
+    dl.innerHTML = built.html;
+    try { dl.dataset.p1CliSig = built.sig; } catch (_) {}
+  }
+
+  function aplicar() {
+    try { canonicalizarMaquinas(); } catch (_) {}
+    try { canonicalizarVendedores(); } catch (_) {}
+    try { dedupClientesDatalist(); } catch (_) {}
+  }
+
+  var _timer = null;
+  function agendar(ms) {
+    try { clearTimeout(_timer); } catch (_) {}
+    _timer = setTimeout(aplicar, Number(ms) || 60);
+  }
+
+  function wrapCarregarMaquinas() {
+    var fn = window.carregarMaquinasOfRapida;
+    if (typeof fn !== 'function' || fn.__p1ListasWrap) return;
+    var orig = fn;
+    window.carregarMaquinasOfRapida = function() {
+      var ret = orig.apply(this, arguments);
+      if (ret && typeof ret.then === 'function') {
+        return ret.then(function(v) { agendar(0); return v; }, function(e) { agendar(0); throw e; });
+      }
+      agendar(0);
+      return ret;
+    };
+    window.carregarMaquinasOfRapida.__p1ListasWrap = true;
+  }
+
+  function observar() {
+    try {
+      var mo = new MutationObserver(function() { agendar(60); });
+      mo.observe(document.documentElement, { childList: true, subtree: true });
+    } catch (_) {}
+    [0, 150, 400, 900, 1800, 3500].forEach(function(d) { setTimeout(aplicar, d); });
+  }
+
+  function bootstrap() {
+    wrapCarregarMaquinas();
+    [300, 900, 2000, 5000].forEach(function(d) { setTimeout(wrapCarregarMaquinas, d); });
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { wrapCarregarMaquinas(); aplicar(); });
+    } else {
+      applyNow();
+    }
+  }
+
+  function applyNow() { wrapCarregarMaquinas(); aplicar(); }
+
+  // API pura exposta para testes unitários (node --test); sem efeito na UI.
+  try {
+    window.__p1Listas = {
+      canonMaquinas: CANON_MAQUINAS.slice(),
+      norm: norm,
+      vendedorAtivo: vendedorAtivo,
+      buildMaquinasOptions: buildMaquinasOptions,
+      buildVendedoresOptions: buildVendedoresOptions,
+      buildClientesOptions: buildClientesOptions
+    };
+  } catch (_) {}
+
+  observar();
+  bootstrap();
+})();
+
 
 
