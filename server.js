@@ -36144,6 +36144,19 @@ async function _pedidoLinguagemNaturalProcess({ texto, empId, usuario_id, req })
       filtered.numero = numStr;
     } catch (_) {}
   }
+  // P1 · empresa obrigatória também nas OFs criadas fora do POST /api/ofs (Jarvis).
+  // Sem empresa resolvida, NÃO insere (antes gravava sem empresa_id).
+  {
+    const empRowsJ = await _getEmpresasRowsCached();
+    const empNormJ = normalizarEmpresa({ emp_id: payload.emp_id }, empRowsJ);
+    if (!empNormJ || empNormJ.erro) {
+      const detalhe = { origem: 'jarvis', emp_id: payload.emp_id, cliente: payload.cliNome, motivo: (empNormJ && empNormJ.erro) || 'empresa_nao_resolvida' };
+      console.error('[P1] OF não criada (Jarvis): empresa não resolvida', JSON.stringify(detalhe));
+      throw Object.assign(new Error('empresa_obrigatoria'), { status: 400, detalhe });
+    }
+    filtered.empresa_id = empNormJ.empresa_id;
+    filtered.emp_id = empNormJ.emp_id || filtered.emp_id;
+  }
   const createdRes = await ofsInsertWithRetry(ofIn(filtered));
   if (createdRes.error) throw createdRes.error;
   let created = createdRes.data;
@@ -37074,6 +37087,19 @@ async function _gerarRecorrenteSePrecisa(rec, forcar){
       filtered.of = numStr;
       filtered.numero = numStr;
     } catch (_) {}
+  }
+  // P1 · empresa obrigatória também nas OFs geradas por Pedidos Recorrentes.
+  // Sem empresa resolvida, NÃO insere; registra erro com o id do recorrente.
+  {
+    const empRowsR = await _getEmpresasRowsCached();
+    const empNormR = normalizarEmpresa({ emp_id: empId }, empRowsR);
+    if (!empNormR || empNormR.erro) {
+      const detalhe = { origem: 'recorrente', recorrente_id: rid, emp_id: empId, motivo: (empNormR && empNormR.erro) || 'empresa_nao_resolvida' };
+      console.error('[P1] OF não criada (recorrente): empresa não resolvida', JSON.stringify(detalhe));
+      return { ok:false, skipped:'empresa_nao_resolvida', recorrente_id: rid, erro:'empresa_nao_resolvida' };
+    }
+    filtered.empresa_id = empNormR.empresa_id;
+    filtered.emp_id = empNormR.emp_id || filtered.emp_id;
   }
   const createdRes = await ofsInsertWithRetry(ofIn(filtered));
   if(createdRes.error) throw createdRes.error;
