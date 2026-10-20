@@ -1322,8 +1322,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261020200000';
-const SW_RUNTIME_VERSION = '20261020200000';
+const PATCH_RUNTIME_VERSION = '20261020213000';
+const SW_RUNTIME_VERSION = '20261020213000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -23395,6 +23395,8 @@ app.delete('/api/inconformidades/:id', authMiddleware, async (req, res) => {
 // NOTAS FISCAIS
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/notas_fiscais', async (req, res) => {
+  // [SEM-NOTAS-FISCAIS] recurso removido por decisão do Yago (20/10/2026); nada é lido nem gravado.
+  return res.status(410).json({ ok: false, error: 'recurso_removido', mensagem_usuario: 'O sistema não trabalha com notas fiscais.' });
   try {
     const { data, error } = await supabase.from('notas_fiscais')
       .select('*').order('created_at', { ascending: false });
@@ -23404,6 +23406,8 @@ app.get('/api/notas_fiscais', async (req, res) => {
 });
 
 app.post('/api/notas_fiscais', async (req, res) => {
+  // [SEM-NOTAS-FISCAIS] recurso removido por decisão do Yago (20/10/2026); nada é lido nem gravado.
+  return res.status(410).json({ ok: false, error: 'recurso_removido', mensagem_usuario: 'O sistema não trabalha com notas fiscais.' });
   try {
     const payload = { ...req.body };
     if(Array.isArray(payload.itens)) payload.itens = JSON.stringify(payload.itens);
@@ -23414,6 +23418,8 @@ app.post('/api/notas_fiscais', async (req, res) => {
 });
 
 app.put('/api/notas_fiscais/:id', async (req, res) => {
+  // [SEM-NOTAS-FISCAIS] recurso removido por decisão do Yago (20/10/2026); nada é lido nem gravado.
+  return res.status(410).json({ ok: false, error: 'recurso_removido', mensagem_usuario: 'O sistema não trabalha com notas fiscais.' });
   try {
     const payload = { ...req.body }; delete payload.id;
     if(Array.isArray(payload.itens)) payload.itens = JSON.stringify(payload.itens);
@@ -23425,6 +23431,8 @@ app.put('/api/notas_fiscais/:id', async (req, res) => {
 });
 
 app.delete('/api/notas_fiscais/:id', async (req, res) => {
+  // [SEM-NOTAS-FISCAIS] recurso removido por decisão do Yago (20/10/2026); nada é lido nem gravado.
+  return res.status(410).json({ ok: false, error: 'recurso_removido', mensagem_usuario: 'O sistema não trabalha com notas fiscais.' });
   try {
     const { error } = await supabase.from('notas_fiscais').delete().eq('id', req.params.id);
     if (error) throw error;
@@ -23518,6 +23526,8 @@ function _parseNfeXml(xml) {
 }
 
 app.post('/api/notas_fiscais/import_xml', authMiddleware, nfeXmlUpload.single('file'), async (req, res) => {
+  // [SEM-NOTAS-FISCAIS] recurso removido por decisão do Yago (20/10/2026); nada é lido nem gravado.
+  return res.status(410).json({ ok: false, error: 'recurso_removido', mensagem_usuario: 'O sistema não trabalha com notas fiscais.' });
   try {
     if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo XML obrigatório' });
     const tipo = String(req.body?.tipo || 'entrada').trim().toLowerCase() === 'saida' ? 'saida' : 'entrada';

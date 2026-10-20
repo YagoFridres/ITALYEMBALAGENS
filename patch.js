@@ -37882,7 +37882,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     {label:'Operadores',      page:'operadores'},
     {label:'Contas Pagar',    page:'contaspagar'},
     {label:'Contas Receber',  page:'contasreceber'},
-    {label:'NFe',             page:'nfe'},
     {label:'Logística',       page:'logistica'},
     {label:'Motoristas',      page:'motoristas'},
     {label:'Roteiro Ent.',    page:'roteiro-entrega'},
@@ -69264,5 +69263,33 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // folhas de estilo injetadas depois pelo próprio sistema: reposiciona o novo visual por cima
   if (typeof setTimeout === 'function') {
     [800, 2500, 6000, 12000].forEach(function(ms) { setTimeout(function() { if (preferencia() !== 'classico') aplicar('novo'); }, ms); });
+  }
+})();
+
+
+// ============================================================================
+// [SEM-NOTAS-FISCAIS] Decisão do Yago (20/10/2026): o sistema não tem e não deve ter nada de
+// notas fiscais. Some a opção "Importar XML NF-e" (e o relatório de NF) das listas; a tela NF-e já
+// não tem entrada em nenhum menu. Nada é apagado do banco.
+// ============================================================================
+(function patchSemNotasFiscais() {
+  if (window.__semNotasFiscais) return;
+  window.__semNotasFiscais = true;
+  if (typeof document === 'undefined' || !document.querySelectorAll) return;
+  function limpar() {
+    try {
+      document.querySelectorAll('option[value="nfe-importar"], option[value="nfe"]').forEach(function(o) {
+        var sel = o.parentElement;
+        var eraSelecionada = sel && sel.value === o.value;
+        o.remove();
+        if (eraSelecionada && sel) { try { sel.selectedIndex = 0; sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} }
+      });
+      var pg = document.getElementById('page-nfe');
+      if (pg) pg.style.setProperty('display', 'none', 'important');
+    } catch (_) {}
+  }
+  limpar();
+  if (typeof setTimeout === 'function') {
+    [500, 2000, 6000, 12000].forEach(function(ms) { setTimeout(limpar, ms); });
   }
 })();
