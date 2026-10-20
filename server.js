@@ -452,13 +452,10 @@ if (OPENAI_API_KEY) {
   console.log('[IA] OpenAI não configurada (opcional)');
 }
 console.log('[IA] Claude:', !!String(process.env.ANTHROPIC_API_KEY || '').trim(), '| OpenAI:', !!OPENAI_API_KEY);
-console.log('[IA DIAGNÃ“STICO]', {
-  anthropic: process.env.ANTHROPIC_API_KEY ?
-    'OK (primeiros 10 chars: ' + String(process.env.ANTHROPIC_API_KEY).slice(0, 10) + ')' :
-    'AUSENTE',
-  openai: process.env.OPENAI_API_KEY ?
-    'OK (primeiros 10 chars: ' + String(process.env.OPENAI_API_KEY).slice(0, 10) + ')' :
-    'AUSENTE',
+// AUD-5: nunca registrar trechos de chaves de API no log (só se estão configuradas).
+console.log('[IA DIAGNOSTICO]', {
+  anthropic: process.env.ANTHROPIC_API_KEY ? 'configurada' : 'AUSENTE',
+  openai: process.env.OPENAI_API_KEY ? 'configurada' : 'AUSENTE',
 });
 
 let transporter = null;
@@ -1936,10 +1933,11 @@ app.post('/api/auth/login', async (req, res) => {
       }
     }
 
-    console.log('[LOGIN]', String(usuario?.email || emailNorm || '').trim().toLowerCase(), '| senhaValida:', senhaValida, '| hashInicio:', (hash ? hash.substring(0, 10) : ''));
+    // AUD-5: sem e-mail e sem trecho de hash no log de login.
+    console.log('[LOGIN]', '| usuario_id:', String(usuario?.id || '-'), '| senhaValida:', senhaValida);
 
     if (!senhaValida) {
-      try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'senha_incorreta' }); } catch (_) {}
+      try { console.warn('[LOGIN FALHA]', { usuario_id: String(usuario?.id || '-'), motivo: 'senha_incorreta' }); } catch (_) {}
       return res.status(401).json({ ok: false, error: 'Senha incorreta' });
     }
 
