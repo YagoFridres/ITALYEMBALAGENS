@@ -319,6 +319,25 @@ function _isTransientSupabaseError(err) {
   return false;
 }
 
+// AUD-4: helper de log de erros do Supabase.
+// CAUSA RAIZ do 502 (~300s) em /api/ofs: `_logSupabaseErr` era CHAMADO no catch-final
+// de /api/ofs mas NUNCA estava DEFINIDO. O ReferenceError lançado dentro do próprio
+// catch fazia o handler async nunca responder, pendurando a requisição até o gateway
+// devolver 502. Aqui ele passa a existir e é à prova de falha (nunca lança).
+function _logSupabaseErr(tag, err, ctx) {
+  try {
+    console.error(tag, '=>', {
+      message: String(err?.message || err || '').slice(0, 1500),
+      code: String(err?.code || err?.pg_code || ''),
+      details: String(err?.details || err?.detail || '').slice(0, 1500),
+      hint: String(err?.hint || '').slice(0, 1500),
+      status: Number(err?.status || err?.statusCode || 0) || undefined,
+      stack: String(err?.stack || '').slice(0, 2000),
+      ctx: ctx || undefined,
+    });
+  } catch (_) {}
+}
+
 (async () => {
   try {
     if (!supabase) return;
@@ -5856,15 +5875,44 @@ async function comprasUpdateCompat(id, payload) {
   return { data: null, error: lastErr };
 }
 
-async function buscarTodasOFsPaginadas(montarQuery) {
+// AUD-4: paginação SEGURA — orçamento de tempo + teto de páginas.
+// Mantém o conjunto COMPLETO de OFs enquanto couber no orçamento; se estourar,
+// lança erro EXPLÍCITO (nunca devolve lista truncada como se fosse sucesso).
+const OFS_FULL_LOAD_DEADLINE_MS = Math.max(5000, Number(process.env.OFS_FULL_LOAD_DEADLINE_MS) || 120000);
+const OFS_FULL_LOAD_MAX_PAGES = Math.max(10, Number(process.env.OFS_FULL_LOAD_MAX_PAGES) || 200);
+
+async function buscarTodasOFsPaginadas(montarQuery, opts = {}) {
   // UU3: pageSize de 1000 → 500 (reduz tempo por statement, evita statement timeout)
   // Obs: Railway Postgres max-rows=1000 ainda no PostgREST, mas 500 é mais seguro
   // para queries complexas (OR + ilike + or_empresa) rodarem em <30s (statement_timeout Railway).
+  const pageSize = Math.max(1, Number(opts.pageSize) || 500);
+  const maxPages = Math.max(1, Number(opts.maxPages) || OFS_FULL_LOAD_MAX_PAGES);
+  const deadlineMs = Math.max(1000, Number(opts.deadlineMs) || OFS_FULL_LOAD_DEADLINE_MS);
+  const iniciadoEm = Date.now();
   let todas = [];
   let from = 0;
-  const pageSize = 500;
   let countExact = 0;
+  let paginas = 0;
   while (true) {
+    // Teto de páginas: guarda contra laço infinito (bem acima do volume atual de OFs).
+    if (paginas >= maxPages) {
+      const err = new Error('buscarTodasOFsPaginadas: teto de páginas atingido (' + maxPages + ' páginas / ' + todas.length + ' OFs) — limite de segurança de paginação.');
+      err.name = 'OFSFullLoadPageCapError';
+      err.code = 'OFS_PAGINACAO_TETO_PAGINAS';
+      err.details = 'paginas=' + paginas + ' maxPages=' + maxPages + ' from=' + from + ' pageSize=' + pageSize;
+      err.hint = 'Aumente OFS_FULL_LOAD_MAX_PAGES se a carga completa for legítima.';
+      throw err;
+    }
+    // Orçamento de tempo: evita pendurar até o gateway devolver 502 (~300s).
+    const decorrido = Date.now() - iniciadoEm;
+    if (decorrido > deadlineMs) {
+      const err = new Error('buscarTodasOFsPaginadas: timeout de orçamento de tempo excedido (' + deadlineMs + 'ms) após ' + todas.length + ' OFs.');
+      err.name = 'OFSFullLoadTimeoutError';
+      err.code = 'OFS_PAGINACAO_TIMEOUT';
+      err.details = 'decorridoMs=' + decorrido + ' deadlineMs=' + deadlineMs + ' paginas=' + paginas + ' from=' + from + ' pageSize=' + pageSize;
+      err.hint = 'Aumente OFS_FULL_LOAD_DEADLINE_MS se a carga completa for legítima.';
+      throw err;
+    }
     let query = montarQuery();
     const { data, error, count } = await query.range(from, from + pageSize - 1);
     if (error) throw error;
@@ -5872,13 +5920,48 @@ async function buscarTodasOFsPaginadas(montarQuery) {
     if (from === 0 && Number.isFinite(Number(count))) countExact = Number(count);
     if (!lote.length) break;
     todas = todas.concat(lote);
+    paginas++;
     if (lote.length < pageSize) break;
     from += pageSize;
   }
-  return { data: todas, count: countExact || todas.length };
+  const decorridoMs = Date.now() - iniciadoEm;
+  return { data: todas, count: countExact || todas.length, paginas, decorridoMs };
+}
+
+// AUD-4: single-flight para a carga COMPLETA de OFs.
+// Requisições idênticas e concorrentes (mesmo filtro/empresa) compartilham UMA única
+// paginação ao banco em vez de multiplicar a carga — era o gatilho da rajada que
+// pendurava o endpoint até o gateway devolver 502 (~300s).
+const _ofsFullLoadInflight = new Map();
+async function buscarTodasOFsPaginadasSingleFlight(flightKey, montarQuery, opts) {
+  if (!flightKey) return await buscarTodasOFsPaginadas(montarQuery, opts);
+  const existente = _ofsFullLoadInflight.get(flightKey);
+  if (existente) {
+    try { console.log('[GET /api/ofs] single-flight: carga completa idêntica já em andamento; compartilhando resultado.'); } catch (_) {}
+    return await existente;
+  }
+  const promessa = (async () => {
+    try {
+      return await buscarTodasOFsPaginadas(montarQuery, opts);
+    } finally {
+      _ofsFullLoadInflight.delete(flightKey);
+    }
+  })();
+  _ofsFullLoadInflight.set(flightKey, promessa);
+  return await promessa;
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
+  // AUD-4 (CAUSA RAIZ do 502 ~300s): estas variáveis eram `const`/`let` declaradas DENTRO do
+  // `try` (block scoping ES6). O `catch`-final as referenciava (offset/limit/shouldFetchAll/
+  // count/fetched) → ReferenceError lançado dentro do PRÓPRIO catch → o handler async nunca
+  // respondia → requisição pendurada até o gateway devolver 502. Promovidas para o escopo da
+  // função (declaração antes do try, atribuição dentro do try) para o catch SEMPRE responder.
+  let offset = 0;
+  let limit = 0;
+  let shouldFetchAll = false;
+  let fetched = null;
+  let count = 0;
   try {
     if (!supabase) {
       return res.status(503).json({ ok: false, data: [], total: 0, offset: 0, limit: 0, hasMore: false, error: 'Supabase não configurado.' });
@@ -5896,8 +5979,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const forcedBigLimit = (clienteIdFiltroRaw || clienteTextoFiltro) ? true : false;
     const defaultLimitGeral = forcedBigLimit ? 10000 : 5000;
     const tetoLimitGeral = forcedBigLimit ? 20000 : 10000;
-    const limit = Math.min(parseInt(limitRaw, 10) || defaultLimitGeral, tetoLimitGeral);
-    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
+    limit = Math.min(parseInt(limitRaw, 10) || defaultLimitGeral, tetoLimitGeral);
+    offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltroLegado = String(clienteIdFiltroRaw || '').trim();
@@ -5993,8 +6076,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return query;
     };
 
-    const shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
-    let fetched = null;
+    shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
+    // AUD-4: identidade do conjunto de dados da carga completa — usada pelo single-flight
+    // para fundir requisições idênticas e concorrentes numa única paginação ao banco.
+    const fullLoadFlightKey = shouldFetchAll
+      ? ('ofs_full|' + [empId, empresaFiltroRaw || '', todasEmpresasFlag ? '1' : '0', status || '', busca || '',
+          clienteFiltroLegado || '', clienteTextoFiltro || '', incluirExcluidas ? '1' : '0',
+          String(req.query.count_exact || '').trim()].join('|'))
+      : '';
+    fetched = null;
     function _isRangeOutOfBounds(e) {
       if (!e) return false;
       var m = String(e?.message || e?.details || e?.hint || e || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -6003,7 +6093,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
     try {
       fetched = shouldFetchAll
-        ? await buscarTodasOFsPaginadas(buildQuery)
+        ? await buscarTodasOFsPaginadasSingleFlight(fullLoadFlightKey, buildQuery)
         : await (async () => {
             const { data, error, count } = await buildQuery().range(offset, offset + limit - 1);
             if (error) {
@@ -6051,7 +6141,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       };
       try {
         fetched = shouldFetchAll
-          ? await buscarTodasOFsPaginadas(fallbackQueryBase)
+          ? await buscarTodasOFsPaginadasSingleFlight(fullLoadFlightKey + '|fb', fallbackQueryBase)
           : await (async () => {
               const { data, error, count } = await fallbackQueryBase().range(offset, offset + limit - 1);
               if (error) {
@@ -6075,7 +6165,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const data = fetched.data || [];
-    const count = fetched.count || 0;
+    count = fetched.count || 0;
 
     const ofsRaw = data || [];
     const clienteIds = [...new Set(ofsRaw.map((o) => String(o?.cli_id || o?.cliId || o?.cliente_id || '').trim()).filter(Boolean))];
@@ -6244,39 +6334,54 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (useCache) cacheSet(cacheKey, resultado, 60000);
     return res.json(resultado);
   } catch (e) {
-    try { console.error('[GET /api/ofs] ERRO CATCH FINAL. Message=', e?.message || ''); } catch (_) {}
-    try { console.error('[GET /api/ofs] stack final:', (e?.stack || '').slice(0, 4000)); } catch (_) {}
-    try { console.error('[GET /api/ofs] req.query:', JSON.stringify(req.query || {})); } catch (_) {}
-    _logSupabaseErr('[GET /api/ofs] catch-final FULL', e, { offset, limit, shouldFetchAll });
-    var _errRange = _isRangeOutOfBounds(e);
-    if (_errRange && !shouldFetchAll) {
-      try { console.warn('[GET /api/ofs] catch-final PGRST103/HTTP416 → 200 lista vazia (normal: offset maior que count).'); } catch (_) {}
-      var _safeRes = { ok: true, data: [], total: Number(count || fetched?.count || 0), offset: Number(offset) || 0, limit: Number(limit) || 0, hasMore: false, aviso: 'range_offset_excedeu_total' };
-      return res.json(_safeRes);
+    try {
+      try { console.error('[GET /api/ofs] ERRO CATCH FINAL. Message=', e?.message || ''); } catch (_) {}
+      try { console.error('[GET /api/ofs] stack final:', (e?.stack || '').slice(0, 4000)); } catch (_) {}
+      try { console.error('[GET /api/ofs] req.query:', JSON.stringify(req.query || {})); } catch (_) {}
+      try { _logSupabaseErr('[GET /api/ofs] catch-final FULL', e, { offset, limit, shouldFetchAll }); } catch (_) {}
+      var _errRange = false;
+      try { _errRange = _isRangeOutOfBounds(e); } catch (_) { _errRange = false; }
+      if (_errRange && !shouldFetchAll) {
+        try { console.warn('[GET /api/ofs] catch-final PGRST103/HTTP416 → 200 lista vazia (normal: offset maior que count).'); } catch (_) {}
+        var _safeRes = { ok: true, data: [], total: Number(count || fetched?.count || 0), offset: Number(offset) || 0, limit: Number(limit) || 0, hasMore: false, aviso: 'range_offset_excedeu_total' };
+        return res.json(_safeRes);
+      }
+      var _status = 500;
+      var _aviso = 'falha_ao_carregar_pagina';
+      if (_isTransientSupabaseError(e)
+        || e?.code === 'OFS_PAGINACAO_TIMEOUT'
+        || e?.code === 'OFS_PAGINACAO_TETO_PAGINAS') { _status = 503; _aviso = 'falha_temporaria_banco'; }
+      try { console.warn('[GET /api/ofs] NÃO É RANGE. Respondendo HTTP ' + _status + '. NÃO transformado em 200 vazio. Body inclui diagnostico para front avisar "lista incompleta" e tentar de novo esta página.'); } catch (_) {}
+      return res.status(_status).json({
+        ok: false,
+        error: (e && e.message) || 'Falha ao carregar página. Tente novamente.',
+        aviso: _aviso,
+        pagina_para_tentar_de_novo: { offset: Number(offset) || 0, limit: Number(limit) || 0 },
+        diagnostico: {
+          err_message: String(e?.message || '').slice(0, 800),
+          err_code: String(e?.code || e?.pg_code || ''),
+          err_status: Number(e?.status || e?.statusCode || e?.http_status || _status) || _status,
+          err_details: String(e?.details || e?.detail || '').slice(0, 1500),
+          err_hint: String(e?.hint || '').slice(0, 1500),
+          front_aviso_usuario: 'lista_possivelmente_incompleta_recente'
+        },
+        data: [], ofs: [],
+        total: Number(count || fetched?.count || 0) || 0,
+        offset: Number(offset) || 0,
+        limit: Number(limit) || 0,
+        hasMore: !!(fetched?.count > 0 && offset < (fetched?.count || 0))
+      });
+    } catch (_fatal) {
+      // AUD-4 rede de segurança: garante resposta explícita mesmo se o próprio catch falhar.
+      try { console.error('[GET /api/ofs] FALHA DENTRO DO CATCH-FINAL:', _fatal?.message || _fatal, String(_fatal?.stack || '').slice(0, 2000)); } catch (_) {}
+      try {
+        return res.status(500).json({
+          ok: false, error: 'Falha ao carregar OFs.', aviso: 'falha_ao_carregar_pagina',
+          data: [], ofs: [], total: 0, offset: Number(offset) || 0, limit: Number(limit) || 0, hasMore: false,
+          diagnostico: { err_message: String(_fatal?.message || '').slice(0, 800), err_code: String(_fatal?.code || '') }
+        });
+      } catch (_) {}
     }
-    var _status = 500;
-    var _aviso = 'falha_ao_carregar_pagina';
-    if (_isTransientSupabaseError(e)) { _status = 503; _aviso = 'falha_temporaria_banco'; }
-    try { console.warn('[GET /api/ofs] NÃO É RANGE. Respondendo HTTP ' + _status + '. NÃO transformado em 200 vazio. Body inclui diagnostico para front avisar "lista incompleta" e tentar de novo esta página.'); } catch (_) {}
-    return res.status(_status).json({
-      ok: false,
-      error: (e && e.message) || 'Falha ao carregar página. Tente novamente.',
-      aviso: _aviso,
-      pagina_para_tentar_de_novo: { offset: Number(offset) || 0, limit: Number(limit) || 0 },
-      diagnostico: {
-        err_message: String(e?.message || '').slice(0, 800),
-        err_code: String(e?.code || e?.pg_code || ''),
-        err_status: Number(e?.status || e?.statusCode || e?.http_status || _status) || _status,
-        err_details: String(e?.details || e?.detail || '').slice(0, 1500),
-        err_hint: String(e?.hint || '').slice(0, 1500),
-        front_aviso_usuario: 'lista_possivelmente_incompleta_recente'
-      },
-      data: [], ofs: [],
-      total: Number(count || fetched?.count || 0) || 0,
-      offset: Number(offset) || 0,
-      limit: Number(limit) || 0,
-      hasMore: !!(fetched?.count > 0 && offset < (fetched?.count || 0))
-    });
   }
 });
 
