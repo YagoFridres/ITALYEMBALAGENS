@@ -7433,18 +7433,19 @@ window._compraPapelaoDeriveItem = function(item) {
   };
 };
 window._compraPapelaoResolveItemMetrics = function(item) {
+  // [FIX-COMPRA-CALC] Fórmula única (igual à do servidor):
+  //   área do pedido (m²) = L × C ÷ 1.000.000 × quantidade
+  //   valor total = área do pedido × valor do m²
+  //   valor p/ mil = valor total ÷ quantidade × 1000  (= L × C ÷ 1.000.000 × valor m² × 1000)
+  // Antes a quantidade entrava duas vezes no valor total e no valor p/ mil.
   var base = window._compraPapelaoDeriveItem(item);
-  var areaManual = item && Object.prototype.hasOwnProperty.call(item, 'area_manual')
-    ? !!item.area_manual
-    : false;
-  var totalManual = item && Object.prototype.hasOwnProperty.call(item, 'total_manual')
-    ? !!item.total_manual
-    : false;
-  var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
+  var areaManual = !!(item && Object.prototype.hasOwnProperty.call(item, 'area_manual') && item.area_manual);
+  var totalManual = !!(item && Object.prototype.hasOwnProperty.call(item, 'total_manual') && item.total_manual);
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
-  var totalUnit = area * window._compraPapelaoNum(item && item.valor_m2);
-  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (totalUnit * Math.max(quantidade, 0));
-  var mil = quantidade > 0 ? (total / quantidade) * 1000 : (totalUnit * 1000);
+  var valorM2 = window._compraPapelaoNum(item && item.valor_m2);
+  var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
+  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (area * valorM2);
+  var mil = quantidade > 0 ? (total / quantidade) * 1000 : base.vl_p_mil;
   return {
     area_pedido_mm2: base.area_pedido_mm2,
     area_m2: area,
@@ -7824,30 +7825,19 @@ window._compraPapelaoItemFieldsOrder = function() {
   return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'area_m2', 'valor_m2', 'valor_total', 'observacao', 'ped_fornecedor'];
 };
 window._compraVincosArrayFull = function(item) {
+  // [FIX-COMPRA-VINCOS] vincos são POSICIONAIS: valores repetidos (ex.: 90/180/90) são mantidos.
+  // Usa a primeira fonte preenchida, para não juntar a mesma lista vinda de campos diferentes.
+  var split = function(s) { return String(s == null ? '' : s).split(/[,;\/]+/).map(function(t) { return t.trim(); }).filter(Boolean); };
+  var arr = function(a) { return a.map(function(t) { return String(t == null ? '' : t).trim(); }).filter(Boolean); };
+  if (item && Array.isArray(item.vincos) && item.vincos.length) return arr(item.vincos);
+  var txt = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
+  if (txt) return split(txt);
+  if (item && Array.isArray(item.vincos_lista) && item.vincos_lista.length) return arr(item.vincos_lista);
+  if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') return split(item.vincos_lista);
   var out = [];
-  var seen = new Set();
-  var pushC = function(v) {
-    var t = String(v == null ? '' : v).trim();
-    if (!t) return;
-    if (seen.has(t)) return;
-    seen.add(t);
-    out.push(t);
-  };
-  var splitStr = function(s) {
-    var ss = String(s == null ? '' : s).trim();
-    if (!ss) return;
-    ss.split(/[,;\/]+/).forEach(pushC);
-  };
-  var _legacyText = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-  if (_legacyText) splitStr(_legacyText);
-  if (Array.isArray(item && item.vincos) && item.vincos.length) item.vincos.forEach(pushC);
-  if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) item.vincos_extra.forEach(pushC);
-  else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') splitStr(item.vincos_extra);
-  if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) item.vincos_lista.forEach(pushC);
-  else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') splitStr(item.vincos_lista);
-  if (!out.length) {
-    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) pushC(vv); });
-  }
+  ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) out.push(vv); });
+  if (item && Array.isArray(item.vincos_extra)) out = out.concat(arr(item.vincos_extra));
+  else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') out = out.concat(split(item.vincos_extra));
   return out;
 };
 window._compraVincosPosicional = function(item) {
@@ -8907,9 +8897,9 @@ window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
   var numero = window._compraPapelaoNumeroLabel(header.numero_compra || window._compraPapelaoNextNumeroPreview());
   return ''
-    + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="Nova Compra de Papelão">'
+    + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="' + (compraId ? 'Editar Compra de Papelão' : 'Nova Compra de Papelão') + '">'
     + '  <div class="ccpx-fs-header">'
-      + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">Nova Compra de Papelão</div><div class="ccpx-fs-subtitle">Shell full-screen real com cabeçalho fixo, corpo ocupando toda a viewport e itens organizados como planilha compacta.</div></div>'
+      + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">' + (compraId ? 'Editar Compra de Papelão' : 'Nova Compra de Papelão') + '</div><div class="ccpx-fs-subtitle">Preencha os dados do pedido e os itens. Área, valor por mil e total são calculados automaticamente.</div></div>'
     + '    <div class="ccpx-fs-header-side"><div class="ccpx-fs-badge"><div class="lbl">Número da Compra</div><div class="val" id="ccpx-numero-card">' + window._compraPapelaoEsc(numero) + '</div></div><button type="button" class="ccpx-fs-close" id="ccpx-close-compra" aria-label="Fechar">×</button></div>'
     + '  </div>'
     + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
@@ -62771,47 +62761,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
 
   function compraAllVincos(item) {
-    var out = [];
-    var pushClean = function(v) {
-      var t = String(v == null ? '' : v).trim();
-      if (t) out.push(t);
-    };
-    var splitCsv = function(s) {
-      var ss = String(s == null ? '' : s).trim();
-      if (!ss) return;
-      ss.split(/[,;\/]+/).forEach(pushClean);
-    };
-    var legacyText = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-    if (legacyText) {
-      splitCsv(legacyText);
-    }
-    if (Array.isArray(item && item.vincos) && item.vincos.length) {
-      item.vincos.forEach(pushClean);
-    }
-    if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
-      item.vincos_extra.forEach(pushClean);
-    } else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') {
-      splitCsv(item.vincos_extra);
-    }
-    if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) {
-      item.vincos_lista.forEach(pushClean);
-    } else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') {
-      splitCsv(item.vincos_lista);
-    }
-    if (!out.length) {
-      ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
-        var val = item && item[k] != null ? String(item[k]) : '';
-        val = val.trim();
-        if (val) out.push(val);
-      });
-    }
-    var seen = {};
-    var uniq = [];
-    for (var i = 0; i < out.length; i++) {
-      var k = String(out[i]);
-      if (!seen[k]) { seen[k] = 1; uniq.push(out[i]); }
-    }
-    return uniq;
+    // [FIX-COMPRA-VINCOS] mesma regra do helper global: posicional, sem deduplicar.
+    try { if (typeof window._compraVincosArrayFull === 'function') return window._compraVincosArrayFull(item) || []; } catch (_) {}
+    return [];
   }
   function compraRenderVincosInputs(item) {
     var values = compraAllVincos(item);
@@ -64738,7 +64690,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   if (typeof window.calcRecalc === 'function' && !window.calcRecalc.__patchWavePanels) {
     var origCalcRecalc = window.calcRecalc;
     window.calcRecalc = function() {
-      var out = origCalcRecalc.apply(this, arguments);
+      // [FIX-ORC-CALC] usa o cálculo que respeita o valor digitado (inclusive 0); cai no original se algo faltar
+      var out;
+      try { out = (typeof window.__calcRecalcSeguro === 'function' && window.__calcRecalcSeguro() !== false) ? undefined : origCalcRecalc.apply(this, arguments); }
+      catch (_eSeg) { out = origCalcRecalc.apply(this, arguments); }
       try { ensureCalcWaveTableRows(); } catch (_) {}
       try { renderCalcWavePanels(); } catch (_) {}
       try { patchCorrigirCmW3Displays(); } catch (_) {}
@@ -69025,3 +68980,195 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
 
 
+
+// ============================================================================
+// [FIX-ORC-CALC] Calculadora de Orçamentos (Fórmulas Garcia) — 20/10/2026
+// Problemas corrigidos (a fórmula NÃO muda; só passa a usar o que foi digitado):
+//  1) Campo com 0 era trocado por um valor padrão (ex.: Comissão 0 → 1%, Custo Fixo 0 → 15%,
+//     Margem 0 → 25%, Impostos 0 → 10%, Quantidade 0 → 1000, valor da onda 0 → 2,47).
+//  2) "Custo Merc. (%)" não entrava em nenhum cálculo. Pela fórmula Garcia ele é o W3
+//     (100 − custo fixo − margem − comissão − impostos); agora é calculado automaticamente.
+//  3) "Vl. Onda B" de cima e o de baixo só sincronizavam num sentido.
+// ============================================================================
+(function patchFixOrcCalc() {
+  if (window.__fixOrcCalcInstalado) return;
+  window.__fixOrcCalcInstalado = true;
+
+  function num(id, padraoSeAusente) {
+    var el = document.getElementById(id);
+    if (!el) return padraoSeAusente;
+    var raw = String(el.value == null ? '' : el.value).trim().replace(',', '.');
+    if (raw === '') return 0;
+    var v = parseFloat(raw);
+    return isFinite(v) ? v : 0;
+  }
+  function fmt(v) {
+    try { if (typeof fmtR === 'function') return fmtR(v); } catch (_) {}
+    return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Mesma fórmula do sistema (W3 = 100 − CF − MG − CV − IMP; líquida = 100/W3 × bruto), sem trocar 0 por padrão.
+  function calcPrecoSeguro(area, onda, vb, vc, vbc, qtd, cm, cf, mg, cvend, imp, vkm, km) {
+    var n = function (x) { var v = parseFloat(x); return isFinite(v) ? v : 0; };
+    var val = onda === 'B' ? n(vb) : onda === 'C' ? n(vc) : n(vbc);
+    var w3 = 100 - n(cf) - n(mg) - n(cvend) - n(imp);
+    var w3Usado = w3 > 0 ? w3 : 1;
+    var frete = n(vkm) * n(km);
+    var bruto = n(area) * val * n(qtd);
+    var liquida = (100 / w3Usado) * bruto;
+    return { bruto: bruto, liquida: liquida, comFrete: liquida + frete, frete: frete, val: val, area: n(area), w3: w3 };
+  }
+  window.__calcPrecoSeguro = calcPrecoSeguro;
+  try { window.calcPreco = calcPrecoSeguro; } catch (_) {}
+  try { calcPreco = calcPrecoSeguro; } catch (_) {} // eslint-disable-line no-global-assign
+
+  function aplicarCustoMercCalculado(w3) {
+    var el = document.getElementById('calc-cm');
+    if (!el) return;
+    if (!el.readOnly) {
+      el.readOnly = true;
+      el.title = 'Calculado automaticamente: 100 − Custo Fixo − Margem − Comissão − Impostos';
+      el.style.opacity = '0.85';
+      el.style.cursor = 'not-allowed';
+    }
+    var txt = (Math.round(w3 * 100) / 100).toString();
+    if (el.value !== txt) el.value = txt;
+  }
+
+  window.__calcRecalcSeguro = function () {
+    var tipoEl = document.getElementById('calc-tipo');
+    var tbody = document.getElementById('calc-tbody');
+    if (!tipoEl || !tbody || typeof calcCompensacao !== 'function') return false;
+    var tipo = parseInt(tipoEl.value, 10);
+    var C = num('calc-comp', 0), L = num('calc-larg', 0), A = num('calc-alt', 0);
+    var onda = (document.getElementById('calc-onda') || {}).value || 'B';
+    var vb = num('calc-vb', 2.47), vc = num('calc-vc', 3.29), vbc = num('calc-vbc', 4.46);
+    var qtd = num('calc-qtd', 0);
+    var cf = num('calc-cf', 15), mg = num('calc-mg', 25), cvend = num('calc-cv', 1), imp = num('calc-imp', 10);
+    var vkm = num('calc-vkm', 0), km = num('calc-km', 0);
+    var sob = num('calc-sob', 0), enc = num('calc-enc', 0);
+    var w3 = 100 - cf - mg - cvend - imp;
+    var cm = w3;
+    aplicarCustoMercCalculado(w3);
+
+    var w3el = document.getElementById('calc-w3-display');
+    if (w3el) w3el.textContent = 'Custo Mercadoria = ' + w3.toFixed(1) + '%' + (w3 <= 0 ? ' (percentuais somam 100% ou mais: revise)' : '');
+    var frete = vkm * km;
+    var fretel = document.getElementById('calc-frete-display');
+    if (fretel) fretel.textContent = fmt(frete);
+    var tipoNome = tipoEl.options && tipoEl.selectedIndex >= 0 ? tipoEl.options[tipoEl.selectedIndex].text : String(tipo);
+    var lbl = document.getElementById('calc-tipo-label');
+    if (lbl) lbl.textContent = tipoNome;
+
+    var compensacoes = calcCompensacao(tipo, C, L, A, { sob: sob, enc: enc });
+    if (!compensacoes || !compensacoes.length) {
+      tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Tipo sem fórmulas disponíveis</td></tr>';
+      return true;
+    }
+    var rowLabels = ['1', '2', '3'], rowTitles = ['Onda B', 'Onda C', 'Onda BC'], ondasNomes = ['B', 'C', 'BC'];
+    var rowColors = ['var(--s2)', 'var(--surface)', 'var(--s3)'];
+    var rows = '', allResults = [];
+    compensacoes.forEach(function (opt, i) {
+      var isBest = i === 1, bold = isBest ? 'font-weight:800;' : '';
+      var td = 'padding:10px 10px;white-space:nowrap;';
+      var od = ondasNomes[i] || 'B';
+      var preco = calcPrecoSeguro(opt.area, od, vb, vc, vbc, qtd, cm, cf, mg, cvend, imp, vkm, km);
+      var vUnit = qtd > 0 ? preco.liquida / qtd : 0;
+      var compTitle = rowTitles[i] || ('Comp. ' + rowLabels[i]);
+      rows += '<tr style="background:' + rowColors[i] + (isBest ? ';outline:2px solid var(--green)' : '') + ';border-top:1px solid var(--border)">';
+      rows += '<td style="' + td + bold + 'color:var(--accent);font-family:var(--mono)">' + compTitle + '</td>';
+      rows += '<td colspan="2" style="' + td + 'font-size:.65rem;color:var(--text2)">' + C + ' x ' + L + ' x ' + A + ' mm</td>';
+      rows += '<td style="' + td + bold + 'text-align:center;font-family:var(--mono);color:var(--teal)">' + opt.largura + '</td>';
+      rows += '<td style="' + td + bold + 'text-align:center;font-family:var(--mono);color:var(--teal)">' + opt.comprimento + '</td>';
+      rows += '<td style="' + td + 'text-align:center;font-family:var(--mono)">--</td>';
+      rows += '<td style="' + td + bold + 'text-align:right;font-family:var(--mono);color:var(--teal)">' + Number(opt.area || 0).toFixed(6) + '</td>';
+      rows += '<td style="' + td + 'text-align:right;font-family:var(--mono);color:var(--yellow)">' + fmt(preco.bruto) + '</td>';
+      rows += '<td style="' + td + 'text-align:right;font-family:var(--mono);color:var(--green)">' + fmt(preco.liquida) + '</td>';
+      rows += '<td class="calc-comfrete" style="' + td + 'text-align:right;font-family:var(--mono)">' + fmt(preco.comFrete) + '</td>';
+      rows += '<td class="calc-vunit" style="' + td + 'text-align:right;font-family:var(--mono)">' + fmt(vUnit) + '</td>';
+      rows += '</tr>';
+      allResults.push({ compLabel: rowLabels[i], compTitle: compTitle, compIdx: i, onda: od, largura: opt.largura, comprimento: opt.comprimento, area: opt.area, bruto: preco.bruto, liquida: preco.liquida, comFrete: preco.comFrete, vunit: vUnit });
+    });
+    tbody.innerHTML = rows;
+    var resultado = {
+      tipo: tipoNome, comp: C, larg: L, alt: A, onda: onda, qtd: qtd,
+      allResults: allResults,
+      compensacoes: allResults.map(function (r, i) {
+        return { label: rowLabels[i], compTitle: r.compTitle, largura: r.largura, comprimento: r.comprimento, area: r.area, bruto: r.bruto, liquida: r.liquida, comFrete: r.comFrete, vunit: r.vunit };
+      })
+    };
+    try { calcLastResult = resultado; } catch (_) {} // eslint-disable-line no-global-assign
+    try { window.calcLastResult = resultado; } catch (_) {}
+    return true;
+  };
+
+  // Vl. Onda B: o campo de cima e o de baixo ficam sempre iguais, nos dois sentidos.
+  window.syncVb = function () {
+    try {
+      var vb = document.getElementById('calc-vb');
+      var vb2 = document.getElementById('calc-vb2');
+      if (vb && vb2) {
+        var ativo = document.activeElement;
+        if (ativo === vb2) vb.value = vb2.value;
+        else if (ativo === vb) vb2.value = vb.value;
+        else if (vb.value !== vb2.value) vb2.value = vb.value;
+      }
+    } catch (_) {}
+    try { if (typeof window.calcRecalc === 'function') window.calcRecalc(); } catch (_) {}
+  };
+  try { syncVb = window.syncVb; } catch (_) {} // eslint-disable-line no-global-assign
+
+  // Recalcula ao digitar em qualquer campo numérico da calculadora (inclusive campos criados depois).
+  document.addEventListener('input', function (e) {
+    try {
+      var t = e.target;
+      if (!t || !t.id || !/^calc-(sob|enc|cf|mg|cv|imp|vkm|km|qtd|comp|larg|alt|vb|vb2|vc|vbc)$/.test(t.id)) return;
+      if (!t.closest || !t.closest('#modal-calc')) return;
+      clearTimeout(window.__fixOrcCalcT);
+      window.__fixOrcCalcT = setTimeout(function () { try { window.calcRecalc(); } catch (_) {} }, 30);
+    } catch (_) {}
+  }, true);
+})();
+
+// ============================================================================
+// [FIX-COMPRA-LOAD] Compra de Papelão — 20/10/2026
+// Ao abrir a tela, ~20 chamadores diferentes pediam para redesenhar a página ao mesmo tempo,
+// gerando ~180 requisições (9 × 20) e deixando a tela lenta. Agora os pedidos simultâneos são
+// juntados: uma carga por vez e, se alguém pedir durante a carga, só mais UMA no final.
+// ============================================================================
+(function patchFixCompraLoad() {
+  if (window.__fixCompraLoadInstalado) return;
+  window.__fixCompraLoadInstalado = true;
+  function envolver() {
+    var orig = window._compraPapelaoRenderPage;
+    if (typeof orig !== 'function' || orig.__fixSingleFlight) return !!(orig && orig.__fixSingleFlight);
+    var emCurso = null, pendente = false, agendada = null;
+    var executar = function(self, args) {
+      emCurso = Promise.resolve().then(function() { return orig.apply(self, args); })
+        .catch(function(e) { try { console.error('[COMPRA-PAPELAO] falha ao carregar', e); } catch (_) {} })
+        .then(function(r) {
+          emCurso = null;
+          if (pendente) { pendente = false; return novo.apply(self, args); }
+          return r;
+        });
+      return emCurso;
+    };
+    var novo = function() {
+      var self = this, args = arguments;
+      if (emCurso) { pendente = true; return emCurso; }
+      // junta os pedidos que chegam quase juntos (até 80 ms) numa carga só
+      if (agendada) return agendada;
+      agendada = new Promise(function(resolve) {
+        setTimeout(function() { agendada = null; resolve(executar(self, args)); }, 80);
+      });
+      return agendada;
+    };
+    novo.__fixSingleFlight = true;
+    novo.__orig = orig;
+    window._compraPapelaoRenderPage = novo;
+    return true;
+  }
+  if (!envolver() && typeof setInterval === 'function') {
+    var t = 0, id = setInterval(function() { t++; if (envolver() || t > 40) clearInterval(id); }, 250);
+  }
+})();

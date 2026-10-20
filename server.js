@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261019163000';
-const SW_RUNTIME_VERSION = '20261019163000';
+const PATCH_RUNTIME_VERSION = '20261020170000';
+const SW_RUNTIME_VERSION = '20261020170000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -29322,6 +29322,17 @@ function _comprasChapasNormalizarVincos(raw, targetOut) {
     }
   });
   const vincosStr = _comprasChapasStr(src.vincos ?? src.vinco ?? src.vincos_concat);
+  // [FIX-COMPRA-VINCOS] a lista completa (texto "a/b/c/...") tem prioridade: guarda TODOS os vincos,
+  // inclusive mais de 4 e valores repetidos (são posicionais). Antes, com vinco1..4 preenchidos,
+  // os vincos a partir do 5º eram descartados.
+  const listaCompleta = String(vincosStr || '').split(/[\/,;]+/).map(function(t){ return t.trim(); }).filter(Boolean);
+  if (listaCompleta.length > parts.length) {
+    parts.length = 0;
+    listaCompleta.forEach(function(v){ parts.push(v); });
+  } else if (parts.length) {
+    const extra = Array.isArray(src.vincos_extra) ? src.vincos_extra : String(src.vincos_extra || '').split(/[\/,;]+/);
+    extra.map(function(t){ return String(t == null ? '' : t).trim(); }).filter(Boolean).forEach(function(v){ parts.push(v); });
+  }
   if (!parts.length && vincosStr) {
     const fromConcat = String(vincosStr).split(/[\/,;\s]+/).map(function(s){return s.trim();}).filter(Boolean);
     fromConcat.forEach(function(v, i) {
@@ -29360,6 +29371,11 @@ function _comprasChapasValidarItem(raw, idx1) {
 
 function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   const item = raw && typeof raw === 'object' ? { ...raw } : {};
+  // [FIX-COMPRA-CALC] área/total digitados à mão só valem quando o front marca o campo como manual;
+  // caso contrário o servidor recalcula (área = L×C/1e6×qtd; total = área×valor m²; p/mil = total/qtd×1000).
+  const _temFlags = Object.prototype.hasOwnProperty.call(item, 'area_manual') || Object.prototype.hasOwnProperty.call(item, 'total_manual');
+  const _areaManualFlag = _temFlags ? item.area_manual === true || item.area_manual === 'true' || item.area_manual === 1 : true;
+  const _totalManualFlag = _temFlags ? item.total_manual === true || item.total_manual === 'true' || item.total_manual === 1 : true;
   delete item.id;
   delete item.compra_id;
   delete item.created_at;
@@ -29378,9 +29394,10 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   const areaM2Calc = ((largura * comprimento) / 1000000) * quantidade;
   const valorTotalCalc = areaM2Calc * valorM2;
   const vlPMilCalc = quantidade > 0 ? (valorTotalCalc / quantidade) * 1000 : 0;
-  const areaM2Manual = item.area_m2 != null && String(item.area_m2).trim() !== '' ? _comprasChapasNum(item.area_m2) : null;
-  const valorTotalManual = item.valor_total != null && String(item.valor_total).trim() !== '' ? _comprasChapasNum(item.valor_total) : null;
-  const vlPMilManual = item.vl_p_mil != null && String(item.vl_p_mil).trim() !== '' ? _comprasChapasNum(item.vl_p_mil) : null;
+  const areaM2Manual = _areaManualFlag && item.area_m2 != null && String(item.area_m2).trim() !== '' ? _comprasChapasNum(item.area_m2) : null;
+  const valorTotalManual = _totalManualFlag && item.valor_total != null && String(item.valor_total).trim() !== '' ? _comprasChapasNum(item.valor_total) : null;
+  const _valorTotalFinal = valorTotalManual != null ? valorTotalManual : ((areaM2Manual != null ? areaM2Manual : areaM2Calc) * valorM2);
+  const vlPMilManual = quantidade > 0 ? (_valorTotalFinal / quantidade) * 1000 : null;
   item.compra_id = compraId;
   item.seq = Math.max(1, Math.trunc(_comprasChapasNum(seq)));
   item.ped_cliente = _comprasChapasStr(item.ped_cliente);
@@ -29402,7 +29419,7 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   item.valor_m2 = valorM2;
   item.area_m2 = Number((areaM2Manual != null ? areaM2Manual : areaM2Calc).toFixed(6));
   item.vl_p_mil = Number((vlPMilManual != null ? vlPMilManual : vlPMilCalc).toFixed(2));
-  item.valor_total = Number((valorTotalManual != null ? valorTotalManual : valorTotalCalc).toFixed(2));
+  item.valor_total = Number((_valorTotalFinal != null ? _valorTotalFinal : valorTotalCalc).toFixed(2));
   item.observacao = _comprasChapasStr(item.observacao ?? item.obs);
   return item;
 }
