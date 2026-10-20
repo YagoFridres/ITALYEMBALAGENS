@@ -158,16 +158,18 @@ test('"Tentar de novo" reaplica o estado do número', async () => {
   assert.equal(spanNum.textContent, '4321');
 });
 
-test('sobrescrita é reaplicada após abrirNovaOfRapida', () => {
+test('sobrescrita é reaplicada por instalar() SEM envolver abrirNovaOfRapida (hotfix reentrada)', () => {
   const { sandbox } = criarAmbiente();
   const api = sandbox.__p1NumeroRapida;
   assert.equal(sandbox._atualizarEstadoNumeroOfRapida, api.aplicarEstado, 'não instalou a sobrescrita');
-
+  const abrirAntes = sandbox.abrirNovaOfRapida;
   // simula outro ponto redefinindo a função global...
   sandbox._atualizarEstadoNumeroOfRapida = function () { return 'HACK'; };
-  const out = sandbox.abrirNovaOfRapida();
-  assert.equal(out, 'ABRIU');
-  assert.equal(sandbox._atualizarEstadoNumeroOfRapida, api.aplicarEstado, 'deveria reaplicar após abrir');
+  api.instalar();
+  assert.equal(sandbox._atualizarEstadoNumeroOfRapida, api.aplicarEstado, 'instalar() deve reaplicar');
+  // e o bloco NÃO pode ter trocado abrirNovaOfRapida (causava REENTRY-BLOCKED)
+  assert.equal(sandbox.abrirNovaOfRapida, abrirAntes);
+  assert.equal(sandbox.abrirNovaOfRapida(), 'ABRIU');
 });
 
 test('patch.js: nenhum bloqueio por falta de número e "numero" inválido sai do payload', () => {
