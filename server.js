@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1469,7 +1469,18 @@ app.get('/api/ofs_test', async (req, res) => {
   }
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'italy_secret_2026';
+// AUD-SEC: sem fallback público. Se JWT_SECRET não estiver definido no ambiente,
+// usa um segredo efêmero aleatório por processo (impede forja de token com o valor
+// que era fixo no código). Efeito: sessões existentes caem até JWT_SECRET ser definido.
+const _ENV_JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+const _JWT_SECRET_FALLBACK_PUBLICO = 'italy_secret_2026';
+if (!_ENV_JWT_SECRET) {
+  console.error('[AUD-SEC][FATAL] JWT_SECRET ausente no ambiente (Railway Variables). Usando segredo EFÊMERO aleatório: sessões serão invalidadas a cada reinício. DEFINA JWT_SECRET.');
+}
+const JWT_SECRET = _ENV_JWT_SECRET || crypto.randomBytes(48).toString('hex');
+if (_ENV_JWT_SECRET === _JWT_SECRET_FALLBACK_PUBLICO) {
+  console.error('[AUD-SEC][FATAL] JWT_SECRET está usando o valor público antigo (italy_secret_2026). TROQUE por um valor aleatório forte.');
+}
 
 function _normalizeTokenCandidate(value) {
   const tok = String(value || '').trim();
@@ -1601,6 +1612,52 @@ async function requireAdmin(req, res, next) {
     } catch (_) {}
     return res.status(403).json({ ok: false, error: 'Sem permissão' });
   }
+}
+
+// AUD-SEC: resolve perfil/permissões do usuário (banco primeiro, JWT como fallback),
+// igual ao requireAdmin, para uso por requirePerm.
+async function _loadUserPerms(u) {
+  const uid = String(u?.id || '').trim();
+  if (uid) {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('perfil,permissoes')
+        .eq('id', uid)
+        .maybeSingle();
+      if (!error && data) {
+        let perms = data.permissoes;
+        if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+        return { perfil: String(data.perfil || u?.perfil || '').trim().toLowerCase(), perms: Array.isArray(perms) ? perms : [] };
+      }
+    } catch (e) {
+      console.warn('[AUD-SEC] _loadUserPerms falhou, usando JWT:', e?.message);
+    }
+  }
+  let perms = u?.permissoes;
+  if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+  return { perfil: String(u?.perfil || '').trim().toLowerCase(), perms: Array.isArray(perms) ? perms : [] };
+}
+
+// AUD-SEC: exige que o usuário seja admin ('tudo') OU tenha ao menos uma das
+// permissões informadas. Sem isso, retorna 403 e NÃO devolve dados financeiros.
+function requirePerm(...required) {
+  return async function _requirePermMw(req, res, next) {
+    try {
+      if (!req.usuario) {
+        return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+      }
+      const { perfil, perms } = await _loadUserPerms(req.usuario);
+      const isAdmin = perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo');
+      if (isAdmin) return next();
+      const allowed = required.some((p) => perms.includes(p));
+      if (allowed) return next();
+      return res.status(403).json({ ok: false, error: 'sem_permissao', detalhe: `requer permissão: ${required.join(' ou ')}` });
+    } catch (e) {
+      console.error('[AUD-SEC][REQUIRE PERM] erro:', e?.message);
+      return res.status(403).json({ ok: false, error: 'sem_permissao' });
+    }
+  };
 }
 
 app.use((req, res, next) => {
@@ -3107,7 +3164,7 @@ async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
   };
 }
 
-app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
+app.get('/api/comissoes/relatorio', autenticar, requirePerm('comissoes','relatorios'), async (req, res) => { 
   try { 
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     if (!range?.inicio || !range?.fim_exclusivo) return res.json({ ok: false, error: 'periodo inválido' }); 
@@ -3174,7 +3231,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
   } 
 }); 
 
-app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
+app.get('/api/comissoes/debug-total-vendido', autenticar, requirePerm('comissoes','relatorios'), async (req, res) => {
   try {
     setNoCache(res);
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
@@ -3211,7 +3268,7 @@ app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
   }
 });
 
-app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
+app.get('/api/comissoes/busca-of', autenticar, requirePerm('comissoes','relatorios'), async (req, res) => {
   try {
     setNoCache(res);
     const q = String(req.query?.q || '').trim();
@@ -15133,7 +15190,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
   } 
 }); 
 
-app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
+app.get('/api/maquinas/relatorio-mensal', authMiddleware, requirePerm('relatorio_mensal','relatorios'), async (req, res) => {
   try {
     const hoje = new Date();
     const mes = String(req.query.mes || (hoje.getMonth() + 1)).trim();
@@ -19069,7 +19126,7 @@ app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, 
   }
 });
 
-app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
+app.get('/api/relatorios/custos', authMiddleware, requirePerm('relatorios'), async (req, res) => {
   const t0 = Date.now();
   const tracer = { etapa_ms: {} };
   let etapaAtual = 'inicio';
@@ -22619,7 +22676,7 @@ app.post('/api/avaliacoes_fornecedor', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
-app.get('/api/fornecedores/:id/precos', authMiddleware, async (req, res) => {
+app.get('/api/fornecedores/:id/precos', authMiddleware, requirePerm('compras','fornecedores'), async (req, res) => {
   try {
     const fornId = String(req.params.id || '').trim();
     if (!fornId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
@@ -28398,7 +28455,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
+app.get('/api/analises/toneladas', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     setNoCache(res);
     const mes = parseInt(req.query.mes, 10) || (new Date().getMonth() + 1);
@@ -28472,7 +28529,7 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => {
+app.get('/api/analises/toneladas-vendidas', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     setNoCache(res);
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: false });
@@ -37618,7 +37675,7 @@ if(cron && cron.validate('0 18 * * *')){
   }, { scheduled:true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
 }
 
-app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) => {
+app.get('/api/dashboard/faturamento-mensal', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
   try {
     const cacheKey = [
       'dashboard_faturamento_mensal',
@@ -37707,7 +37764,7 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
   }
 });
 
-app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
+app.get('/api/dashboard/total-geral', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
   try {
     setNoCache(res);
     const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
@@ -37967,7 +38024,7 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/dashboard/faturamento-manual', authMiddleware, async (req, res) => {
+app.post('/api/dashboard/faturamento-manual', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
   try {
     const { ano, mes, valor, observacao } = req.body || {};
     if (!ano || !mes || valor === undefined) return res.status(400).json({ ok:false, error:'ano, mes e valor obrigatorios' });
@@ -37980,7 +38037,7 @@ app.post('/api/dashboard/faturamento-manual', authMiddleware, async (req, res) =
   } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, async (req, res) => {
+app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
   try {
     const { error } = await supabase.from('faturamento_manual')
       .delete().eq('ano', parseInt(req.params.ano)).eq('mes', parseInt(req.params.mes));
@@ -38913,7 +38970,7 @@ function _ccustosVariacaoPct(atual, anterior) {
   return Math.round(((a - b) / Math.abs(b)) * 10000) / 100;
 }
 
-app.post('/api/central-custos/admin/apply-migration', authMiddleware, async (req, res) => {
+app.post('/api/central-custos/admin/apply-migration', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (schemaOk) return res.json({ ok: true, applied: false, message: 'Schema já existe' });
@@ -39003,7 +39060,7 @@ app.delete('/api/centros-custo/:id', authMiddleware, async (req, res) => {
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
-app.get('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
+app.get('/api/central-custos/lancamentos', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39035,7 +39092,7 @@ app.get('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
+app.post('/api/central-custos/lancamentos', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39083,7 +39140,7 @@ app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => 
     });
   }
 });
-app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
+app.put('/api/central-custos/lancamentos/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39125,7 +39182,7 @@ app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) 
     });
   }
 });
-app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
+app.delete('/api/central-custos/lancamentos/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39156,7 +39213,7 @@ app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, re
   }
 });
 
-app.get('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
+app.get('/api/central-custos/recorrentes', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39178,7 +39235,7 @@ app.get('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
     return res.json({ ok: true, rows: Array.isArray(data) ? data : [] });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
-app.post('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
+app.post('/api/central-custos/recorrentes', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39200,7 +39257,7 @@ app.post('/api/central-custos/recorrentes', authMiddleware, async (req, res) => 
     return res.json({ ok: true, data: data || {} });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
-app.put('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) => {
+app.put('/api/central-custos/recorrentes/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39225,7 +39282,7 @@ app.put('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) 
     return res.json({ ok: true, data: data || {} });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
-app.delete('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) => {
+app.delete('/api/central-custos/recorrentes/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39267,7 +39324,7 @@ function _ccustosPeriodicidadeMatch(rec, competencia) {
     default: return false;
   }
 }
-app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req, res) => {
+app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39329,7 +39386,7 @@ app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
-app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
+app.get('/api/central-custos/visao-geral', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   const t0 = Date.now();
   try {
     const schemaOk = await _ensureCentralCustosSchema();
@@ -39462,7 +39519,7 @@ app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
+app.get('/api/central-custos/historico', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
   const t0 = Date.now();
   try {
     const schemaOk = await _ensureCentralCustosSchema();
