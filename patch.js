@@ -66201,10 +66201,37 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
 (function __mapaClientesFechaModaisAoNavegar(){
   try { if (window.__mapaClientesModalLeakGuardInstalled) return; window.__mapaClientesModalLeakGuardInstalled = true; } catch (_) {}
+  // AUD-6: os 46 modais FIXOS do index.html (.modal-overlay[id] > .modal) NÃO podem ser
+  // removidos do DOM. A versão anterior removia o .modal interno de todos eles na 1ª
+  // navegação, deixando o fundo escuro vazio (ex.: + Novo Fornecedor, Clientes, Amostras,
+  // Usuários, Máquinas, Orçamentos). Agora: modal fixo → só FECHA; modal dinâmico → remove.
+  var __modaisFixos = [];
+  try {
+    __modaisFixos = Array.prototype.slice.call(document.querySelectorAll('.modal-overlay[id]'));
+    __modaisFixos.forEach(function(o){ try { o.setAttribute('data-modal-fixo', '1'); } catch (_a) {} });
+  } catch (_mf) { __modaisFixos = []; }
+  function _ehModalFixo(m){
+    try {
+      if (!m || !m.closest) return false;
+      if (m.closest('[data-modal-fixo="1"]')) return true;
+      for (var i = 0; i < __modaisFixos.length; i++) { if (__modaisFixos[i] === m || __modaisFixos[i].contains(m)) return true; }
+    } catch (_e) {}
+    return false;
+  }
+  function _fecharModalFixo(m){
+    try {
+      var ov = (m.closest && m.closest('.modal-overlay[id]')) || m;
+      if (ov && ov.classList) ov.classList.remove('open', 'show', 'active');
+      if (ov && ov.style && ov.style.display && ov.style.display !== 'none') ov.style.display = '';
+    } catch (_c) {}
+  }
   function fecharTodosModaisAbertos(){
     try {
       document.querySelectorAll('[role="dialog"],.modal,.modal-backdrop,.overlay,[data-modal],[id*="modal-"][id*="estado"],[id*="modal-"][id*="cidade"],[id*="modal-"][id*="ramo"],[id*="novo-estado"],[id*="novo-estado"]').forEach(function(m){
-        try { if (m && typeof m.remove === 'function') m.remove(); else if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_rm) {}
+        try {
+          if (_ehModalFixo(m)) { _fecharModalFixo(m); return; }
+          if (m && typeof m.remove === 'function') m.remove(); else if (m && m.parentNode) m.parentNode.removeChild(m);
+        } catch (_rm) {}
       });
       document.querySelectorAll('.modal-open,.overflow-hidden').forEach(function(b){
         try { b.classList && b.classList.remove('modal-open','overflow-hidden'); } catch (_cl) {}
