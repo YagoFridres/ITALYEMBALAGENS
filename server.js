@@ -1322,8 +1322,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261020183000';
-const SW_RUNTIME_VERSION = '20261020183000';
+const PATCH_RUNTIME_VERSION = '20261020200000';
+const SW_RUNTIME_VERSION = '20261020200000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2054,7 +2054,7 @@ app.post('/api/debug/check_usuario', authMiddleware, async (req, res) => {
 
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id,email,ativo,emp_id,perfil,created_at')
+      .select('id,email,ativo,empresa_id,perfil,criado_em')
       .ilike('email', email)
       .maybeSingle();
 
@@ -2062,7 +2062,7 @@ app.post('/api/debug/check_usuario', authMiddleware, async (req, res) => {
       ok: true,
       encontrado: !!usuario,
       ativo: usuario?.ativo ?? null,
-      emp_id: usuario?.emp_id ?? null,
+      emp_id: usuario?.empresa_id ?? null,
       perfil: usuario?.perfil ?? null,
       erro_supabase: error?.message || null,
     });
@@ -2120,7 +2120,7 @@ app.get('/api/usuarios/me', authMiddleware, async (req, res) => {
     if (!uid) return res.status(401).json({ ok: false, error: 'usuario nao identificado' });
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,avatar_url,avatar,foto')
+      .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,avatar_url')
       .eq('id', uid)
       .maybeSingle();
     if (error || !data) {
@@ -3684,7 +3684,7 @@ app.post('/api/usuarios/corrigir_login', requireAdmin, async (req, res) => {
     try {
       const r = await supabase
         .from('usuarios')
-        .select('id,email,perfil,ativo,permissoes,senha_hash,senha')
+        .select('id,email,perfil,ativo,permissoes,senha_hash')
         .limit(5000);
       rows = r.data;
       error = r.error;
@@ -3974,7 +3974,7 @@ app.get('/api/admin/maquinas_validas_ofs', requireAdmin, async (req, res) => {
       return { data: data || [], error: null };
     };
 
-    const { data: maquinasRaw, error: maqErr } = await selectCompat('maquinas', 'id,nome,col,ativa');
+    const { data: maquinasRaw, error: maqErr } = await selectCompat('maquinas', 'id,nome,ativa');
     if (maqErr) return res.status(500).json({ ok: false, error: String(maqErr.message || maqErr) });
     const validSet = new Set();
     (maquinasRaw || []).forEach((m) => {
@@ -4989,7 +4989,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id,codigo,nome,rs,razao_social,vendedor_id')
+        .select('id,codigo,nome,rs,vendedor_id')
         .in('id', chunk);
       if (error) continue;
       (Array.isArray(data) ? data : []).forEach((cli) => {
@@ -5006,7 +5006,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id,codigo,nome,rs,razao_social,vendedor_id')
+        .select('id,codigo,nome,rs,vendedor_id')
         .in('codigo', chunk);
       if (error) continue;
       (Array.isArray(data) ? data : []).forEach((cli) => {
@@ -5441,8 +5441,8 @@ function clientesPayload(p) {
   const out = {};
   const map = {
     nome: 'nome',
-    razao_social: 'razao_social',
-    rs: 'razao_social',
+    razao_social: 'rs',
+    rs: 'rs',
     cnpj_cpf: 'cnpj',
     cnpj: 'cnpj',
     cpf: 'cpf',
@@ -6588,7 +6588,7 @@ async function _autoPickSugestaoMaquinaNome(body){
 
     const { data: maquinas, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativa,ordem')
+      .select('id,nome,puxada_min,puxada_max,boca_max,ativa,ordem')
       .eq('ativa', true)
       .order('ordem', { ascending: true })
       .limit(50);
@@ -6680,7 +6680,7 @@ async function _autoPickSugestaoMaquinaNome(body){
     const dt30 = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
     const { data: perdasRaw } = await supabase
       .from('caixas_perdidas')
-      .select('id,of_id,qtd_perdida,maquina_perda,maquina,maquina_nome,data,created_at,quantidade,caixas_perdidas')
+      .select('id,of_id,qtd_perdida,maquina_perda,maquina,data,created_at,quantidade,caixas_perdidas')
       .gte('data', dt30)
       .limit(5000);
     const perdas = Array.isArray(perdasRaw) ? perdasRaw : [];
@@ -6776,7 +6776,7 @@ async function _autoSugerirMaquinaParaOF(body, created){
 
     const { data: maquinas, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativa,ordem')
+      .select('id,nome,puxada_min,puxada_max,boca_max,ativa,ordem')
       .eq('ativa', true)
       .order('ordem', { ascending: true })
       .limit(50);
@@ -7275,16 +7275,25 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       const idOfNovo = String(created?.id || '').trim();
       if (maqAlvo && empresaUuidForOrd && idOfNovo) {
         try {
-          let maxQuery = supabase
-            .from('ofs')
-            .select('ordem_maquina,seq,id')
-            .eq('empresa_id', empresaUuidForOrd)
-            .or('maq.eq.' + maqAlvo + ',maquina_agendada.eq.' + maqAlvo);
-          if (diaAlvo && diaAlvo.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(diaAlvo)) {
-            try { maxQuery = maxQuery.eq('dia', diaAlvo); } catch (_noDiaCol) {}
-          }
-          maxQuery = maxQuery.order('ordem_maquina', { ascending: false }).limit(50);
-          const rMax = await maxQuery;
+          // ofs.maq e jsonb (array ["IMP 03"] ou string JSON "IMP 03"): o filtro antigo 'maq.eq.IMP 03'
+          // gerava "invalid input syntax for type json" e a OF nova nunca recebia ordem_maquina.
+          // Agora: maq @> "<nome>" (casa array e string JSON) + consulta separada por maquina_agendada (texto).
+          const _ordQuery = (aplicarFiltroMaq) => {
+            let qx = supabase
+              .from('ofs')
+              .select('ordem_maquina,seq,id')
+              .eq('empresa_id', empresaUuidForOrd);
+            qx = aplicarFiltroMaq(qx);
+            if (diaAlvo && diaAlvo.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(diaAlvo)) {
+              try { qx = qx.eq('dia', diaAlvo); } catch (_noDiaCol) {}
+            }
+            return qx.order('ordem_maquina', { ascending: false, nullsFirst: false }).limit(50);
+          };
+          const rMaqJson = await _ordQuery((qx) => qx.filter('maq', 'cs', JSON.stringify(maqAlvo)));
+          const rMaqAg = await _ordQuery((qx) => qx.eq('maquina_agendada', maqAlvo));
+          const rMax = (rMaqJson?.error && rMaqAg?.error)
+            ? rMaqJson
+            : { error: null, data: [].concat(Array.isArray(rMaqJson?.data) ? rMaqJson.data : [], Array.isArray(rMaqAg?.data) ? rMaqAg.data : []) };
           if (!rMax?.error && Array.isArray(rMax?.data)) {
             let max = 0;
             rMax.data.forEach(function(o) {
@@ -7822,7 +7831,7 @@ app.get('/api/chat/usuarios', authMiddleware, async (req, res) => {
     const uid = String(req.usuario?.id || req.usuario?.sub || '').trim();
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,ativo,avatar_url,avatar_iniciais,avatar_cor,avatar,foto')
+      .select('id,nome,email,perfil,ativo,avatar_url,avatar_iniciais,avatar_cor')
       .order('nome', { ascending: true })
       .limit(300);
     if (error) throw error;
@@ -7856,7 +7865,7 @@ app.get('/api/chat/mensagens', authMiddleware, async (req, res) => {
       if (userIds.length) {
         const { data: users, error: uerr } = await supabase
           .from('usuarios')
-          .select('id,avatar_url,avatar,foto')
+          .select('id,avatar_url')
           .in('id', userIds);
         if (!uerr && Array.isArray(users) && users.length) {
           const avatarMap = {};
@@ -8118,7 +8127,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     const cliVendMap = new Map();
     if (cliIds.length) {
       try {
-        const cliSelect = await _selectCompatRows('clientes', 'id,nome,vendedor_id,vendId', (query) => {
+        const cliSelect = await _selectCompatRows('clientes', 'id,nome,vendedor_id', (query) => {
           return query.in('id', cliIds).limit(2000);
         });
         if (!cliSelect?.error) {
@@ -9127,6 +9136,14 @@ async function _ensureSchemaColumnsForTable(table) {
   if (_SCHEMA_COLUMNS_CACHE[t] && typeof _SCHEMA_COLUMNS_CACHE[t].then === 'function') return _SCHEMA_COLUMNS_CACHE[t];
   const p = (async () => {
     try {
+      // Probe desativado: knownProbes era 1 unica string CSV, entao curCols.includes(bad) era sempre falso,
+      // o loop parava na 1a tentativa e o cache SEMPRE terminava como Set vazio (1 erro '<tabela>.of does not exist'
+      // por tabela a cada boot). Mantem exatamente o mesmo resultado (Set vazio) sem consultar o banco.
+      // NAO "consertar" separando a string: o cache passaria a conter so as colunas do probe e
+      // _filterColsForTable descartaria colunas reais (ex.: tipo_caixa) de todos os selects.
+      await null;
+      _SCHEMA_COLUMNS_CACHE[t] = new Set();
+      if (_SCHEMA_COLUMNS_CACHE[t]) return _SCHEMA_COLUMNS_CACHE[t];
       if (!supabase) return new Set();
       const knownProbes = [
         'id,of,numero,of_num,of_seq,seq,status,created_at,updated_at,criado_em,ultimo_acesso,deletado_em,excluido_em,deleted_at,empresa_id,emp_id,empId,empNome,empresa_nome,empresa,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendedor_id,vendid,vendId,vendNome,vendedor_nome,representante,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,onda,medidas,pasta_id,subtotal,frete,codigo,cnpj,tel,telefone,email,cidade,uf,rs,ie,ramo,pagto,rep,endereco,observacoes,ativo,perfil,permissoes,canais_chat,senha_hash,avatar_iniciais,avatar_cor,avatar_url,pin_qtd_sugerida,pin_tamanho_de,pin_tamanho_ate,valor,val,custo,passagens_maquina'
@@ -9464,10 +9481,9 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
 async function _listarCaixasPerdidasEnriquecidas(req) {
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
-    'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
-    'maquina', 'maquina_nome', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
-    'operadores', 'operadores_conclusao', 'operador', 'operador_nome', 'operador_principal', 'operador_conclusao', 'turno',
-    'tipo_caixa', 'tipo_caixa_id'
+    'data', 'mes_referencia', 'emp_id', 'usuario', 'obs', 'created_at',
+    'maquina', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
+    'operador'
   ].join(',');
   const ofId = String(req.query.of_id || req.query.ofId || '').trim();
   const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
@@ -9507,7 +9523,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id,tipo_caixa,tipo_caixa_id')
+        .select('id,numero,of,cli_id,cliente_nome,clinome,cliNome,descricao,data_conclusao,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina_agendada,maquina_perda,maquina_perda_id,tipo_caixa,tipo_caixa_id')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -9530,11 +9546,11 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
         ));
         const { data } = await supabase
         .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id,tipo_caixa,tipo_caixa_id')
+          .select('id,numero,of,cli_id,cliente_nome,clinome,cliNome,descricao,data_conclusao,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina_agendada,maquina_perda,maquina_perda_id,tipo_caixa,tipo_caixa_id')
           .in('numero', numeroVariants);
         const { data: dataByOf } = await supabase
           .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id,tipo_caixa,tipo_caixa_id')
+          .select('id,numero,of,cli_id,cliente_nome,clinome,cliNome,descricao,data_conclusao,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina_agendada,maquina_perda,maquina_perda_id,tipo_caixa,tipo_caixa_id')
           .in('of', numeroVariants);
         (Array.isArray(data) ? data : []).concat(Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -9613,7 +9629,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     const clienteNome =
       String(row?.cliente_nome || '').trim() ||
       clientesMap.get(String(ofData?.cli_id || '').trim()) ||
-      String(row?.cliente || ofData?.cliente || '').trim() ||
+      String(row?.cliente || ofData?.cliente_nome || ofData?.clinome || ofData?.cliNome || ofData?.cliente || '').trim() ||
       '—';
     const maquinaNome = _resolverNomeMaquinaPassagem({
       maquina_id: row?.maquina_id || ofData?.maquina_id || '',
@@ -10369,7 +10385,7 @@ app.get('/api/_jj3/localizar_ofs_uuid_invalido', requireAdmin, async (req, res) 
     if (!query) return res.json({ ok: true, results: [] });
     const { data: ofs, error } = await supabase
       .from('ofs')
-      .select('id,of,numero,clinome,cliente_nome,cliente,empresa_id,emp_id,status,valor_total,created_at')
+      .select('id,of,numero,clinome,cliente_nome,empresa_id,emp_id,status,valor_total,created_at')
       .eq('empresa_id', query)
       .limit(100);
     if (error) return res.status(500).json({ ok: false, error: error.message });
@@ -13117,8 +13133,7 @@ async function _buscarPassagensHistoricoCompat(req, opts) {
     }
 
     if (withEmpresaFilter) {
-      if (empId) query = query.eq('emp_id', empId);
-      else if (empresaUuid) query = query.eq('empresa_id', empresaUuid);
+      if (empId || empresaUuid) query = _aplicarFiltroEmpresaPassagensMaquina(query, empId || empresaUuid);
     }
 
     query = query.order('hora_passagem', { ascending: false });
@@ -13403,10 +13418,10 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
         .from('amostras')
         .select('*')
         .in('status', ['Feita','Feito','Concluída','Concluido','Pronta','Pronto','Concluída','Concluido'])
-        .not('data_feita', 'is', null)
-        .gte('data_feita', inicioAmostras + 'T00:00:00')
-        .lte('data_feita', fimAmostras + 'T23:59:59.999')
-        .order('data_feita', { ascending: false })
+        .not('data_aprovacao', 'is', null)
+        .gte('data_aprovacao', inicioAmostras)
+        .lte('data_aprovacao', fimAmostras)
+        .order('data_aprovacao', { ascending: false })
         .limit(800);
       if (!errAmostras && Array.isArray(amostrasFeitas) && amostrasFeitas.length) {
         amostrasFeitas.forEach((am) => {
@@ -13422,7 +13437,7 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
           }
           const clienteLow = String(am?.cliente_nome || am?.cliente || '').trim().toLowerCase();
           if (clienteNeedle && !clienteLow.includes(clienteNeedle)) return;
-          const refData = String(am?.data_feita || am?.updated_at || am?.created_at || '').slice(0, 10);
+          const refData = String(am?.data_feita || am?.data_aprovacao || am?.updated_at || am?.created_at || '').slice(0, 10);
           if (!refData || refData < inicioAmostras || refData > fimAmostras) return;
           const ts = _passagensIsoTsFromAny(am?.data_feita || am?.updated_at || am?.created_at || '') || refData + 'T12:00:00';
           const maqAmostraCanon = (maquinaNeedle && /^imp|corte|riscad/i.test(maquinaNeedle)) ? maquinaNeedle : 'Amostras';
@@ -13463,7 +13478,7 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
             hora_passagem: ts,
             status: 'Amostra Pronta',
             data_conclusao: ts,
-            data_feita_amostra: String(am?.data_feita || '').trim(),
+            data_feita_amostra: String(am?.data_feita || am?.data_aprovacao || '').trim(),
             usuario_feita: String(am?.usuario_feita || 'sistema').trim(),
             amostra_observacoes: String(am?.observacoes || am?.obs || '').trim(),
             pedido_cliente_amostra: String(am?.pedido || am?.pedido_cliente || '').trim()
@@ -15316,7 +15331,7 @@ app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
 
     const baseWeek = () => supabase
       .from('passagens_maquina')
-      .select('data_passagem,maquina,hora_passagem,emp_id,empresa_id')
+      .select('data_passagem,maquina,hora_passagem,empresa')
       .gte('data_passagem', seteISO)
       .lte('data_passagem', hojeISO)
       .order('data_passagem', { ascending: true });
@@ -15324,8 +15339,7 @@ app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
     let weekRows = [];
     {
       let q = baseWeek();
-      if (empId) q = q.eq('emp_id', empId);
-      else if (empresaUuid) q = q.eq('empresa_id', empresaUuid);
+      if (empId || empresaUuid) q = _aplicarFiltroEmpresaPassagensMaquina(q, empId || empresaUuid);
       let r = await q;
       if (r?.error) {
         const msg = String(r.error.message || r.error || '');
@@ -15358,15 +15372,14 @@ app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
 
     const baseMonth = () => supabase
       .from('passagens_maquina')
-      .select('maquina,emp_id,empresa_id,data_passagem')
+      .select('maquina,empresa,data_passagem')
       .gte('data_passagem', inicioMesISO)
       .lte('data_passagem', hojeISO);
 
     let mesRows = [];
     {
       let q = baseMonth();
-      if (empId) q = q.eq('emp_id', empId);
-      else if (empresaUuid) q = q.eq('empresa_id', empresaUuid);
+      if (empId || empresaUuid) q = _aplicarFiltroEmpresaPassagensMaquina(q, empId || empresaUuid);
       let r = await q;
       if (r?.error) {
         const msg = String(r.error.message || r.error || '');
@@ -15727,7 +15740,7 @@ async function _clientesFindByCnpjDigits({ digits, empId, ignoreId }) {
   if (!_cnpjIs14(digits)) return [];
   let q = supabase
     .from('clientes')
-    .select('id,nome,cnpj,emp_id,empId,empresa_id')
+    .select('id,nome,cnpj,emp_id,empresa_id')
     .ilike('cnpj', `%${digits}%`)
     .limit(10);
   if (empId) q = q.eq('emp_id', empId);
@@ -15837,7 +15850,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     }
     let cols = !empId ? [null] : (cliEmpCol ? [cliEmpCol] : empColCandidatesCli);
     let lastErr = null;
-    let selectSlimRaw = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
+    let selectSlimRaw = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,endereco,ramo,pagto,rep,observacoes,empresa_id,created_at';
     let selectSlim = _filterColsForTable('clientes', selectSlimRaw) || selectSlimRaw;
     const logClientes = (rows) => {
       try {
@@ -16363,7 +16376,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
 
     let cliente = null;
     try {
-      let qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
+      let qc = supabase.from('clientes').select('id,nome,rs').eq('id', clienteId).maybeSingle();
       if (empresa_id) {
         try { qc = qc.eq('empresa_id', empresa_id); } catch (_) {}
       }
@@ -16746,7 +16759,7 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
     for (let p = 0; p < maxPages; p++) {
       const { data: ofs, error: ofsErr } = await supabase
         .from('ofs')
-        .select('cli_id,valor_total,valor_venda,total,vl_total')
+        .select('cli_id,valor_total,valor_venda,total')
         .eq('empresa_id', empresa_id)
         .not('cli_id', 'is', null)
         .order('created_at', { ascending: false })
@@ -17096,6 +17109,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       'descricao', 'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida',
       'valor_total', 'valor_venda', 'total',
       'custo_m2_venda',
+      'tipo_caixa', 'tipo_caixa_id', 'cores_impressao',
       'passagens_maquina', 'perdas_por_maquina',
       'data_faturamento', 'data_conclusao', 'dia',
       'gramatura_id', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura',
@@ -19272,7 +19286,7 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const cliSelect = await _selectCompatRows('clientes', 'id,nome,vendedor_id,vendId', (query) => {
+    const cliSelect = await _selectCompatRows('clientes', 'id,nome,vendedor_id', (query) => {
       return query.eq('id', id).limit(1);
     });
     if (cliSelect?.error) throw cliSelect.error;
@@ -21083,7 +21097,7 @@ async function _resolveEmpresaUuid(req) {
     if (usuarioId) {
       const { data: usr, error: usrErr } = await supabase
         .from('usuarios')
-        .select('empresa_id,emp_id,empresa,empresa_sigla,sigla')
+        .select('empresa_id')
         .eq('id', usuarioId)
         .maybeSingle();
       if (!usrErr && usr) {
@@ -21131,7 +21145,7 @@ async function _empresaUuidByUserId(userId) {
   try {
     const { data: usr, error } = await supabase
       .from('usuarios')
-      .select('empresa_id,emp_id,empresa,empresa_sigla,sigla')
+      .select('empresa_id')
       .eq('id', uid)
       .maybeSingle();
     if (error || !usr) return '';
@@ -22051,7 +22065,7 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
 
     const { data: maquinasRaw, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativa,ordem')
+      .select('id,nome,puxada_min,puxada_max,boca_max,ativa,ordem')
       .eq('ativa', true)
       .order('ordem', { ascending: true })
       .limit(50);
@@ -23309,18 +23323,20 @@ app.get('/api/perdas/por-operador', authMiddleware, async (req, res) => {
 
     let q = supabase
       .from('inconformidades')
-      .select('operador,qtd_perdida,caixas_perdidas,quantidade,created_at,empresa_id,emp_id')
+      .select('operador,qtd_perdida,created_at,emp_id')
       .order('created_at', { ascending: false })
       .limit(5000);
-    if (empresa_id) q = q.eq('empresa_id', empresa_id);
-    else if (empId) q = q.eq('emp_id', empId);
+    {
+      const _empIdsInc = [empresa_id, empId].map((v) => String(v || '').trim()).filter(Boolean);
+      if (_empIdsInc.length) q = q.in('emp_id', _empIdsInc);
+    }
 
     let { data, error } = await q;
     const msg = String(error?.message || '').toLowerCase();
     if (error && (msg.includes('column') || msg.includes('schema cache'))) {
       const r2 = await supabase
         .from('inconformidades')
-        .select('operador,qtd_perdida,caixas_perdidas,quantidade,created_at')
+        .select('operador,qtd_perdida,created_at')
         .order('created_at', { ascending: false })
         .limit(5000);
       data = r2.data;
@@ -24124,8 +24140,8 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
       return s + (q * c);
     }, 0);
 
-    const { data: tintasRaw } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
-    const { data: materiaisRaw } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
+    const { data: tintasRaw } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresa_id);
+    const { data: materiaisRaw } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id);
 
     let chapas = [];
     try {
@@ -24453,13 +24469,13 @@ app.get('/api/dashboard/estoques-resumo', authMiddleware, async (req, res) => {
 
     let tintas = [];
     try {
-      const r = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
+      const r = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresa_id);
       tintas = r?.data || [];
     } catch (_) { tintas = []; }
 
     let materiais = [];
     try {
-      const r = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
+      const r = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id);
       materiais = r?.data || [];
     } catch (_) { materiais = []; }
 
@@ -26577,7 +26593,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
 
       for (let tentativa = 0; tentativa < 8; tentativa++) {
         let q = supabase.from(table).select(sel);
-        if (orderCreatedAt) q = q.order('created_at', { ascending: false });
+        if (orderCreatedAt) q = q.order(table === 'chapas_estoque_v2' ? 'criado_em' : 'created_at', { ascending: false });
         q = q.range(offsetDb, offsetDb + limitDb - 1);
         const r = await q;
         data = r.data;
@@ -26591,7 +26607,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
         if (!error) break;
 
         const msg = String(error.message || error);
-        if (orderCreatedAt && msg.toLowerCase().includes('created_at') && (msg.includes('does not exist') || msg.includes('Could not find'))) {
+        if (orderCreatedAt && (msg.toLowerCase().includes('created_at') || msg.toLowerCase().includes('criado_em')) && (msg.includes('does not exist') || msg.includes('Could not find'))) {
           orderCreatedAt = false;
           continue;
         }
@@ -34692,7 +34708,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const { de: wDe, ate: wAte } = _assistWeekRange(hoje);
       const { data: ofsAll } = await supabase
         .from('ofs')
-        .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,valor_total,valor_venda,total,urg,urgente,qtd_perdida,valor_perdido')
+        .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,valor_total,valor_venda,total,urg,urgente,qtd_perdida')
         .order('created_at', { ascending: false })
         .limit(5000);
       const ofs = Array.isArray(ofsAll) ? ofsAll : [];
@@ -34793,7 +34809,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const { de, ate } = _assistMonthRange(year, m);
       const { data: ofsAll } = await supabase
         .from('ofs')
-        .select('id,status,deleted_at,data_conclusao,ent,data_entrega,chp,chapa_id,qchp,qtd_chapas,emp_id,empId')
+        .select('id,status,deleted_at,data_conclusao,ent,data_entrega,chp,chapa_id,qtd_chapas,emp_id,empId')
         .gte('data_conclusao', de)
         .lte('data_conclusao', ate)
         .limit(5000);
@@ -35099,13 +35115,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const range = perHoje ? { de: hoje, ate: hoje } : _assistMonthRange(year, m);
       const { data } = await supabase
         .from('ofs')
-        .select('id,status,data_conclusao,qtd_perdida,valor_perdido,deleted_at,maquina_perda')
+        .select('id,status,data_conclusao,qtd_perdida,valor_unitario,deleted_at,maquina_perda')
         .gte('data_conclusao', range.de)
         .lte('data_conclusao', range.ate)
         .limit(5000);
       const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
       const totalPerd = rows.reduce((s, o) => s + (Number(o.qtd_perdida || 0) || 0), 0);
-      const totalValPerd = rows.reduce((s, o) => s + (Number(o.valor_perdido || 0) || 0), 0);
+      const totalValPerd = rows.reduce((s, o) => s + (Number(o.valor_perdido || 0) || ((Number(o.valor_unitario || 0) || 0) * (Number(o.qtd_perdida || 0) || 0)) || 0), 0);
       return respond(`${nome}, perdas no período ${_assistFmtDateBr(range.de)} a ${_assistFmtDateBr(range.ate)}:\n🧯 Caixas perdidas: ${Number(totalPerd).toLocaleString('pt-BR')}\n💸 Valor perdido: ${_assistFmtBRL(totalValPerd)}`);
     }
 
@@ -35137,7 +35153,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     }
 
     if (hasAny('compras pendentes', 'compras pendente', 'compra pendente')) {
-      const { data } = await supabase.from('compras').select('id,fornecedor,status,valor_total,valor,data_pedido,deleted_at').order('created_at', { ascending: false }).limit(200);
+      const { data } = await supabase.from('compras').select('id,forn,nome,status,valor_total,vtot,data_compra,created_at').order('created_at', { ascending: false }).limit(200);
       const rows = Array.isArray(data) ? data : [];
       const pend = rows.filter((c) => {
         const st = _assistNorm(c.status || '');
@@ -35145,7 +35161,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         return !(st.includes('recebid') || st.includes('entreg'));
       });
       const top = pend.slice(0, 10);
-      const linhas = top.map((c) => `🧾 ${String(c.fornecedor || '—').trim() || '—'} — ${String(c.status || 'Pendente')} — ${_assistFmtBRL(c.valor_total ?? c.valor ?? 0)}`);
+      const linhas = top.map((c) => `🧾 ${String(c.fornecedor || c.forn || c.nome || '—').trim() || '—'} — ${String(c.status || 'Pendente')} — ${_assistFmtBRL(c.valor_total ?? c.vtot ?? c.valor ?? 0)}`);
       const extra = pend.length > top.length ? `\n...e mais ${pend.length - top.length} itens` : '';
       return respond(`${nome}, compras pendentes: ${pend.length}\n${linhas.join('\n') || '—'}${extra}`);
     }
@@ -35896,7 +35912,7 @@ async function _analyticsPadroesPerdaCompute({ empId, meses }){
   const iniIso = dtIni.toISOString().slice(0,10);
   let q = supabase
     .from('caixas_perdidas')
-    .select('id,of_id,qtd_perdida,maquina_perda,maquina,maquina_nome,data,created_at,emp_id')
+    .select('id,of_id,qtd_perdida,maquina_perda,maquina,data,created_at,emp_id')
     .gte('data', iniIso)
     .limit(5000);
   if(empId) q = q.eq('emp_id', empId);
@@ -36303,7 +36319,7 @@ async function _sequenciamentoListar({ maquina, empId }){
   const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
   let q = supabase
     .from('ofs')
-    .select('id,of,numero,status,cliNome,cliente_nome,cli_id,cliente_id,data_entrega,ent,prioridade,prioridade_producao,urg,urgente,fluxo_maquinas,maq,maquina_atual_index,created_at,emp_id,deleted_at,tipo_caixa,tipo_caixa_id,onda')
+    .select('id,of,numero,status,cliNome,cliente_nome,cli_id,cliente_id,data_entrega,ent,prioridade,urg,urgente,fluxo_maquinas,maq,maquina_atual_index,created_at,emp_id,deleted_at,tipo_caixa,tipo_caixa_id')
     .is('deleted_at', null)
     .not('status', 'in', statusNotIn)
     .limit(5000);
@@ -36487,7 +36503,6 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
         .from('estoque_tintas')
         .select('nome,quantidade_atual,quantidade_minima,unidade')
         .eq('empresa_id', empId)
-        .eq('ativo', true)
         .limit(50);
 
       (Array.isArray(data) ? data : []).forEach((t) => {
@@ -37809,6 +37824,12 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
       return false;
     }
 
+    // [FIX-PASSAGENS-CARD] o botão "Passou pela Máquina" grava na tabela passagens_maquina desde set/2026;
+    // o cartão lia só o JSON antigo ofs.passagens_maquina e mostrava 0. Agora junta as duas fontes
+    // (mesma regra do Histórico de Passagens), contando cada OF uma vez.
+    const _resumoIdsOfs = new Set();
+    const _resumoPassTotalIds = new Set();
+    const _resumoPassMesIds = new Set();
     rows.forEach(function(of) {
       try {
         const ofId = String(of?.id || of?.numero || of?.of || '?').slice(0, 40);
@@ -37831,10 +37852,14 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
         }
 
         const pass = parsePassagens(of?.passagens_maquina || of?.passagens_por_maquina || of?.passagens || null);
+        const _idPass = String(of?.id || '').trim();
+        if (_idPass) _resumoIdsOfs.add(_idPass);
         if (pass.length) {
           ofsPassaramMaquinaCount++;
+          if (_idPass) _resumoPassTotalIds.add(_idPass);
           if (passagensTemDataNoMes(pass, 'data_passagem', inicioMes, fimMesExclusivo)) {
             ofsPassaramMaquinaMes++;
+            if (_idPass) _resumoPassMesIds.add(_idPass);
           }
         }
       } catch (e) {
@@ -37850,7 +37875,7 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
         const cliIds = Array.from(new Set(arr.map(o => String(o?.cli_id || '').trim()).filter(Boolean)));
         if (!cliIds.length) return arr.map(o => ({ ...(o||{}), cliente_nome: o?.cliente_nome || o?.cliente || '' }));
         const pageClis = await supabase.from('clientes')
-          .select('id,nome,cliNome,clinome,cliente_nome')
+          .select('id,nome')
           .in('id', cliIds);
         const mp = new Map();
         (pageClis?.data || []).forEach(c => {
@@ -37890,6 +37915,26 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     if (temUrgenteFlag && urgentes === 0) urgentes = 1;
     if (ofsErros > 0) {
       try { console.warn('[dashboard/resumo-ofs] TOTAL ofs com erro:', ofsErros, 'ids:', errosOfsIds); } catch (_) {}
+    }
+    try {
+      const _passPorPagina = 1000;
+      for (let _pg = 0; _pg < 50; _pg++) {
+        const _r = await supabase.from('passagens_maquina').select('of_id,data_passagem').range(_pg * _passPorPagina, _pg * _passPorPagina + _passPorPagina - 1);
+        if (_r.error) throw _r.error;
+        const _lista = Array.isArray(_r.data) ? _r.data : [];
+        _lista.forEach(function(p) {
+          const oid = String(p && p.of_id || '').trim();
+          if (!oid || !_resumoIdsOfs.has(oid)) return;
+          _resumoPassTotalIds.add(oid);
+          const ds = String(p && p.data_passagem || '').slice(0, 10);
+          if (ds && ds >= inicioMes && ds < fimMesExclusivo) _resumoPassMesIds.add(oid);
+        });
+        if (_lista.length < _passPorPagina) break;
+      }
+      ofsPassaramMaquinaCount = _resumoPassTotalIds.size;
+      ofsPassaramMaquinaMes = _resumoPassMesIds.size;
+    } catch (_errPassTab) {
+      try { console.warn('[dashboard/resumo-ofs] tabela passagens_maquina indisponível; usando só o JSON:', String(_errPassTab && _errPassTab.message || _errPassTab)); } catch (_) {}
     }
 
     return res.json({
@@ -38685,7 +38730,7 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResul
         for (var li = 0; li < idsFaltantes.length; li += 200) {
           var chunk = idsFaltantes.slice(li, li + 200);
           var sel2 = await supabase.from('ofs')
-            .select('id,numero,of,quantidade,qtd,valor_total,valor_venda,total,custo_total')
+            .select('id,numero,of,quantidade,qtd,valor_total,valor_venda,total')
             .in('id', chunk).limit(200);
           (Array.isArray(sel2?.data) ? sel2.data : []).forEach(function(ofr) {
             ofsMap.set(String(ofr?.id || '').trim(), { of_id: ofr.id, of_raw: ofr });

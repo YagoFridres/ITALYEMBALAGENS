@@ -50826,7 +50826,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return;
       }
       var headersCSV = [
-        'Nº OF','Imagem','Dt. Pedido','Dt. Criação','Dt. Entrega','Cliente','Vendedor','Produto',
+        'Nº OF','Imagem','Dia programado','Dt. Criação','Dt. Entrega','Cliente','Vendedor','Produto',
         'Qtd.','Tamanhos','Cores','Faca','Urgente','Sem Papelão','Papel / Previsão',
         'Tempo','Gramatura','Caixas Perdidas','Toneladas','Status','Vl. Unitário','Valor',
         'Máquina','Empresa'
@@ -50845,8 +50845,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var o = acum[i];
         var ofNum = String(o?.numero || o?.of || '—');
         var imgUrl = String(o?.imagem_url || o?.imagem || o?.image_url || '') || (window._normalizeImgs ? window._normalizeImgs(o?.imgs ?? o?.imagens)[0] || '' : '');
-        var dtPedido = __dashFmtDtEnt(o?.data_pedido || o?.pedido || o?.dia_pedido || '');
-        var dtCriacao = __dashFmtDtEnt(o?.dia || o?.data_criacao || o?.created_at || '');
+        var dtPedido = __dashFmtDtEnt(o?.dia || o?.data_producao || '');
+        var dtCriacao = '—';
+        try { var _cax = new Date(String(o?.created_at || '')); if (!isNaN(_cax.getTime())) dtCriacao = _cax.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); } catch (_eCax) {}
         var dtEnt = __dashFmtDtEnt(o?.data_entrega || o?.ent || o?.dia || '');
         var cliente = String(o?.cliente || o?.clinome || o?.cliente_nome || '—');
         var vendedor = String(o?.vendedor || o?.vendnome || o?.vendedor_nome || '—');
@@ -51778,7 +51779,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           return window.alterarDataOf(ofId, ofNum, dataAtual);
         }
         if ((acao === 'movermaq' || acao === 'movermaqdata') && typeof window.abrirModalAlterarMaquinaOfmaq === 'function') {
-          return window.abrirModalAlterarMaquinaOfmaq(ofId, ofNum);
+          var _retMov = window.abrirModalAlterarMaquinaOfmaq(ofId, ofNum);
+          if (acao === 'movermaqdata') {
+            // [FIX-MOVER-MAQ-DATA] "Mover Máquina + Data" abre o mesmo modal já com a troca de data ligada (os dois campos)
+            [120, 400, 900].forEach(function(ms) {
+              setTimeout(function() {
+                try {
+                  var selAlt = document.getElementById('patch-ofmaq-maq-alterar-data');
+                  if (selAlt && selAlt.value !== '1') { selAlt.value = '1'; selAlt.dispatchEvent(new Event('change', { bubbles: true })); }
+                } catch (_) {}
+              }, ms);
+            });
+          }
+          return _retMov;
         }
         if ((acao === 'movermaq' || acao === 'movermaqdata') && typeof openAlterarMaquinaPatched === 'function') {
           return openAlterarMaquinaPatched(ofId, ofNum);
@@ -51907,8 +51920,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '<tr>' +
           '<th style="width:80px" class="center">Nº OF</th>' +
           '<th style="width:100px" class="center">Imagem</th>' +
-          '<th style="width:110px" class="center">Dt. Pedido</th>' +
-          '<th style="width:110px" class="center">Dt. Criação</th>' +
+          '<th style="width:120px" class="center" title="Dia em que a OF está programada para produzir (o PCP adia automaticamente as não concluídas)">Dia programado</th>' +
+          '<th style="width:110px" class="center" title="Data em que a OF foi lançada no sistema">Dt. Criação</th>' +
           '<th style="width:110px" class="center">Dt. Entrega</th>' +
           '<th style="min-width:180px">Cliente</th>' +
           '<th style="width:130px">Vendedor</th>' +
@@ -51947,7 +51960,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var cliente = esc(clienteFull.slice(0, 60));
         var produtoFull = String(of?.produto || of?.descricao || '—');
         var produto = esc(produtoFull.slice(0, 90));
-        var dtPedido = esc(__dashFmtDataPedido(of));
+        // [FIX-DASH-DATAS] coluna 3 = dia programado (campo dia); coluna 4 = data real de criação (created_at, horário de Brasília)
+        var dtPedido = esc(__dashFmtDtEnt(String(of?.dia || of?.data_producao || '')));
         var dtEnt = esc(__dashFmtDtEnt(of?.data_entrega || of?.ent || of?.dia || ''));
         var vendedor = esc(__dashGetVendedor(of));
         var qtdRaw = __dashGetQtd(of);
@@ -51972,7 +51986,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var stI = __dashStatusCls(statusTxt);
         var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + ';border-color:' + stI.cor + '44">' + esc(statusTxt) + '</span>';
         var valor = Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
-        var valorFmt = esc('R$ ' + __fmtBrlDashboard(valor).replace('R$', '').trim());
+        // [FIX-DASH-VALORES] com os valores bloqueados, a tabela também esconde Vl. Unitário e Valor
+        var valorFmt = esc(window.__dashValoresDesbloqueados === true ? ('R$ ' + __fmtBrlDashboard(valor).replace('R$', '').trim()) : 'R$ ••••••');
         var maq = esc(String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '—').slice(0, 30));
         var empRaw = of?.emp_id || of?.empresa_id || '';
         var emp = esc(__dashEmpresaNome(empRaw));
@@ -52005,9 +52020,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var _imgTd = '<td class="center" style="padding:6px 12px">' + (_imgUrl
           ? '<img src="' + esc(_imgUrl) + '" alt="" style="display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid #334155;cursor:zoom-in" data-dash-img-of="' + esc(ofId) + '">'
           : '<span class="kb-img-ph kb-of-img-ph" style="display:inline-flex;width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:18px">?</span>') + '</td>';
-        var _dtCriacao = '<td class="center" style="color:#cbd5e1">' + esc(__dashFmtDtEnt(String(of?.dia || ''))) + '</td>';
+        var _dtCriacaoTxt = '—';
+        try {
+          var _ca = String(of?.created_at || '').trim();
+          if (_ca) { var _dca = new Date(_ca); if (!isNaN(_dca.getTime())) _dtCriacaoTxt = _dca.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); }
+        } catch (_eCa) { _dtCriacaoTxt = '—'; }
+        var _dtCriacao = '<td class="center" style="color:#cbd5e1">' + esc(_dtCriacaoTxt) + '</td>';
         var _vlu = Number(of?.valor_unitario || 0) || 0;
-        var _vlUnitTd = '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums">' + esc('R$ ' + __fmtBrlDashboard(_vlu).replace('R$', '').trim()) + '</td>';
+        var _vlUnitTd = '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums">' + esc(window.__dashValoresDesbloqueados === true ? ('R$ ' + __fmtBrlDashboard(_vlu).replace('R$', '').trim()) : 'R$ ••••••') + '</td>';
         return (
           '<tr' + trAttrs + '>' +
             '<td class="center" style="font-weight:900;color:#f1f5f9;font-variant-numeric:tabular-nums;font-size:13px">' + ofNum + '</td>' +
