@@ -1,6 +1,25 @@
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
+
+// ── F-1 · Data sem hora no navegador (auditoria 20/10/2026) ─────────────────
+// '2026-10-09'                 -> '09/10/2026'  (montado por split, SEM new Date)
+// '2026-10-09T23:30:00-03:00'  -> '09/10/2026'  (com hora: converte p/ São Paulo)
+// vazio/inválido               -> '—'
+window._fmtDataBR = function (v) {
+  var raw = v == null ? '' : String(v).trim();
+  if (!raw) return '—';
+  var temHora = raw.indexOf('T') !== -1 || /\d{1,2}:\d{2}/.test(raw);
+  if (!temHora && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    var p = raw.slice(0, 10).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  var d = new Date(raw);
+  if (isNaN(d.getTime())) return '—';
+  try { return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); }
+  catch (_) { return '—'; }
+};
+
 if (!window.__S2FetchWrapMonitorInstalled) {
   window.__S2FetchWrapMonitorInstalled = true;
   window.__fetchWrapDepth = 0;
