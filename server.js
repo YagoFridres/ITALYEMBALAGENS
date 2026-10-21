@@ -3099,6 +3099,22 @@ async function _fetchTodasPaginas(buildQuery, opts = {}) {
   return out;
 }
 
+// ── F-5 · Classificação de atraso/urgência (server) ─────────────────────────
+// Mesmas regras já existentes; devolve os sinalizadores SEPARADOS.
+function _ofClassificaUrgencia(of, hojeIso) {
+  const o = of || {};
+  const urgente = !!(o.urg || o.urgente);
+  const hoje = String(hojeIso || '').slice(0, 10);
+  const ent = String(o.data_entrega || o.ent || '').slice(0, 10);
+  let atrasada = false;
+  let vence3 = false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(hoje) && /^\d{4}-\d{2}-\d{2}$/.test(ent)) {
+    atrasada = ent < hoje;
+    if (!atrasada) vence3 = ent <= _spAddDiaIso(hoje, 3);
+  }
+  return { urgente, atrasada, vence3 };
+}
+
 function _relatoriosResolveDateRange(query, opts = {}) {
   const q = query || {};
   const dataInicio = _relatoriosIsoDateOnly(q.data_inicio || q.dataInicio || opts.data_inicio);

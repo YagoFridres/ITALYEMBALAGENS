@@ -20,6 +20,30 @@ window._fmtDataBR = function (v) {
   catch (_) { return '—'; }
 };
 
+// ── F-5 · Classificação de atraso/urgência (front) ──────────────────────────
+// Devolve os sinalizadores SEPARADOS — cada tela continua mostrando o que já
+// mostra. A prioridade entre as regras e o nome do card "urgentes" do Dashboard
+// são decisão pendente do Yago (PARTE 6 · U); nada do Dashboard muda aqui.
+window._ofClassificaUrgencia = function (of, hojeIso) {
+  var o = of || {};
+  var urgente = !!(o.urg || o.urgente);
+  var hoje = String(hojeIso || '').slice(0, 10);
+  var ent = String(o.data_entrega || o.ent || '').slice(0, 10);
+  var atrasada = false;
+  var vence3 = false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(hoje) && /^\d{4}-\d{2}-\d{2}$/.test(ent)) {
+    atrasada = ent < hoje;
+    if (!atrasada) {
+      var y = Number(hoje.slice(0, 4));
+      var m = Number(hoje.slice(5, 7));
+      var d = Number(hoje.slice(8, 10));
+      var limite = new Date(Date.UTC(y, m - 1, d + 3)).toISOString().slice(0, 10);
+      vence3 = ent <= limite;
+    }
+  }
+  return { urgente: urgente, atrasada: atrasada, vence3: vence3 };
+};
+
 if (!window.__S2FetchWrapMonitorInstalled) {
   window.__S2FetchWrapMonitorInstalled = true;
   window.__fetchWrapDepth = 0;
