@@ -50112,13 +50112,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window.__dashDesbloquearValores = __dashDesbloquearValores;
 
   async function __dashCalcularTotalTodasOfs() {
+    // [HOTFIX-EGRESS] este total relia TODAS as OFs a cada 5 min (e a cada recarga da página).
+    // Agora: cache de 30 min, guardado também na aba (sessionStorage) para sobreviver ao F5,
+    // e uma única leitura por vez.
+    var __TTL = 30 * 60 * 1000;
     try {
       var agora = Date.now();
-      if (window.__dashTotalTodasOfsCache != null && (agora - (window.__dashTotalTodasOfsCacheTs || 0)) < 5 * 60 * 1000) {
+      if (window.__dashTotalTodasOfsCache == null) {
+        try {
+          var __ss = JSON.parse(sessionStorage.getItem('dash_total_todas_ofs') || 'null');
+          if (__ss && typeof __ss.v === 'number' && typeof __ss.ts === 'number') {
+            window.__dashTotalTodasOfsCache = __ss.v;
+            window.__dashTotalTodasOfsCacheTs = __ss.ts;
+          }
+        } catch (_) {}
+      }
+      if (window.__dashTotalTodasOfsCache != null && (agora - (window.__dashTotalTodasOfsCacheTs || 0)) < __TTL) {
         return Number(window.__dashTotalTodasOfsCache || 0);
       }
+      if (window.__dashTotalTodasOfsEmCurso) return await window.__dashTotalTodasOfsEmCurso;
     } catch (_) {}
+    var __promessa = (async function () {
     var soma = 0;
+    var __completo = false;
     var offset = 0;
     var limit = 1000;
     var maxIter = 10;
@@ -50138,16 +50154,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           soma += v;
         }
         offset += limit;
-        if (!j.hasMore || rows.length < limit) break;
+        if (!j.hasMore || rows.length < limit) { __completo = true; break; }
       }
-      try {
-        window.__dashTotalTodasOfsCache = soma;
-        window.__dashTotalTodasOfsCacheTs = Date.now();
-      } catch (_) {}
+      // só guarda no cache quando leu tudo (resposta de erro não vira total errado por 30 min)
+      if (__completo) {
+        try {
+          window.__dashTotalTodasOfsCache = soma;
+          window.__dashTotalTodasOfsCacheTs = Date.now();
+          try { sessionStorage.setItem('dash_total_todas_ofs', JSON.stringify({ v: soma, ts: window.__dashTotalTodasOfsCacheTs })); } catch (_) {}
+        } catch (_) {}
+      }
     } catch (e) {
       try { console.error('[II2] erro calcular total todas ofs', e); } catch (_) {}
     }
     return Number(soma || 0);
+    })();
+    try { window.__dashTotalTodasOfsEmCurso = __promessa; } catch (_) {}
+    try { return await __promessa; } finally { try { window.__dashTotalTodasOfsEmCurso = null; } catch (_) {} }
   }
 
   function __dashReaplicarHideNativo(page) {
