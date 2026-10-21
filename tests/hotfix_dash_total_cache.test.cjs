@@ -3,7 +3,9 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', 'patch.js'), 'utf8');
+// normaliza CRLF -> LF: o checkout Windows (core.autocrlf=true) grava CRLF e quebraria o
+// indexOf de '\n  }\n' usado para extrair a funcao (falso negativo, nao erro de produto).
+const src = fs.readFileSync(path.join(__dirname, '..', 'patch.js'), 'utf8').replace(/\r\n/g, '\n');
 const ini = src.indexOf('async function __dashCalcularTotalTodasOfs()');
 const fim = src.indexOf('\n  }\n', ini) + 4;
 const fnSrc = src.slice(ini, fim);
