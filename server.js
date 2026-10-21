@@ -2922,6 +2922,76 @@ function _relatoriosAddDaysIso(dateStr, days) {
   return dt.toISOString().slice(0, 10);
 }
 
+// ── F-2 · Período no fuso de São Paulo -> ISO UTC (SEM deslocamento fixo) ───
+// O Brasil teve horário de verão (UTC-2) até fev/2019 e o fuso pode mudar de
+// novo; por isso o offset é obtido via Intl e nunca fixado em -03:00/+3h.
+const _SP_TZ = 'America/Sao_Paulo';
+
+function offsetMin(ms) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: _SP_TZ,
+    hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const parts = {};
+  dtf.formatToParts(new Date(ms)).forEach((p) => { parts[p.type] = p.value; });
+  let hh = Number(parts.hour);
+  if (hh === 24) hh = 0;
+  const asUtc = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    hh, Number(parts.minute), Number(parts.second)
+  );
+  return (asUtc - ms) / 60000;
+}
+
+// Data 'AAAA-MM-DD' de `ts` no fuso de São Paulo (para filtro em memória).
+function dataLocalSP(ts) {
+  const ms = (ts instanceof Date) ? ts.getTime() : new Date(ts).getTime();
+  if (!Number.isFinite(ms)) return '';
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: _SP_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+  const parts = {};
+  dtf.formatToParts(new Date(ms)).forEach((p) => { parts[p.type] = p.value; });
+  if (!parts.year || !parts.month || !parts.day) return '';
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+// Soma dias a uma data 'AAAA-MM-DD' pelo calendário, sem somar 24h a um instante.
+function _spAddDiaIso(iso, n) {
+  const base = String(iso || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(base)) return '';
+  const dia = Number(base.slice(8, 10)) + Number(n || 0);
+  return new Date(Date.UTC(Number(base.slice(0, 4)), Number(base.slice(5, 7)) - 1, dia))
+    .toISOString().slice(0, 10);
+}
+
+// Primeiro instante (ISO UTC) do dia `iso` no fuso de São Paulo.
+function inicioDoDiaSP(iso) {
+  const base = String(iso || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(base)) return '';
+  const alvo = Date.UTC(Number(base.slice(0, 4)), Number(base.slice(5, 7)) - 1, Number(base.slice(8, 10)));
+  let t = alvo - offsetMin(alvo) * 60000;
+  t = alvo - offsetMin(t) * 60000;
+  // Dia sem meia-noite (início do horário de verão): avança de hora em hora
+  // até cair de fato no dia pedido — devolve o primeiro instante que existe.
+  let guard = 0;
+  while (dataLocalSP(t) < base && guard < 26) { t += 3600000; guard += 1; }
+  if (guard >= 26) return '';
+  return new Date(t).toISOString();
+}
+
+// { gte, lt } em ISO UTC para o período [inicio, fim] INCLUSIVO (datas AAAA-MM-DD).
+function _spRangeUtc(inicio, fim) {
+  const i = String(inicio || '').slice(0, 10);
+  const f = String(fim || '').slice(0, 10);
+  const gte = inicioDoDiaSP(i);
+  const lt = inicioDoDiaSP(_spAddDiaIso(f, 1));
+  if (!gte || !lt) return null;
+  return { gte, lt };
+}
+
 function _relatoriosIsAllCompaniesSentinel(v) {
   const s = String(v == null ? '' : v).trim().toLowerCase();
   if (!s) return false;
