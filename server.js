@@ -3083,6 +3083,22 @@ function _empresaDaOf(of) {
   );
 }
 
+// ── F-4 · Busca de todas as páginas (range 0-999 até página parcial) ────────
+async function _fetchTodasPaginas(buildQuery, opts = {}) {
+  const pageSize = Number(opts.pageSize || 1000);
+  const maxPaginas = Number(opts.maxPaginas || 200);
+  const out = [];
+  for (let pagina = 0; pagina < maxPaginas; pagina += 1) {
+    const offset = pagina * pageSize;
+    const rows = await buildQuery(offset, offset + pageSize - 1);
+    const lote = Array.isArray(rows) ? rows : [];
+    out.push(...lote);
+    if (lote.length < pageSize) return out;
+  }
+  console.log('[AUD][F-4] AVISO: limite de ' + maxPaginas + ' páginas atingido; resultado pode estar incompleto.');
+  return out;
+}
+
 function _relatoriosResolveDateRange(query, opts = {}) {
   const q = query || {};
   const dataInicio = _relatoriosIsoDateOnly(q.data_inicio || q.dataInicio || opts.data_inicio);
