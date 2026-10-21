@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1649,51 +1649,135 @@ async function requireAdmin(req, res, next) {
   }
 }
 
-// AUD-SEC: resolve perfil/permissões do usuário (banco primeiro, JWT como fallback),
-// igual ao requireAdmin, para uso por requirePerm.
-async function _loadUserPerms(u) {
-  const uid = String(u?.id || '').trim();
-  if (uid) {
+// ── SEG-2 · core · início ───────────────────────────────────────────────────
+// Autorização por usuário: lê `perfil` e `permissoes` de `usuarios` pelo id do
+// token, NUNCA das claims do JWT (token antigo não pode manter permissão que já
+// foi revogada no banco). Cache de 60 s por usuário, com single-flight (uma
+// consulta por usuário por janela, mesmo sob concorrência).
+const _PERM_CACHE_TTL_MS = 60 * 1000;
+const _permCache = new Map(); // uid -> { exp, perfil, perms, existe } | { promise }
+
+function _toPermArray(v) {
+  const norm = (x) => String(x == null ? '' : x).trim();
+  if (Array.isArray(v)) return v.map(norm).filter(Boolean);
+  if (typeof v === 'string') {
     try {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('perfil,permissoes')
-        .eq('id', uid)
-        .maybeSingle();
-      if (!error && data) {
-        let perms = data.permissoes;
-        if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
-        return { perfil: String(data.perfil || u?.perfil || '').trim().toLowerCase(), perms: Array.isArray(perms) ? perms : [] };
-      }
-    } catch (e) {
-      console.warn('[AUD-SEC] _loadUserPerms falhou, usando JWT:', e?.message);
-    }
+      const a = JSON.parse(v);
+      return Array.isArray(a) ? a.map(norm).filter(Boolean) : [];
+    } catch (_) { return []; }
   }
-  let perms = u?.permissoes;
-  if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
-  return { perfil: String(u?.perfil || '').trim().toLowerCase(), perms: Array.isArray(perms) ? perms : [] };
+  return [];
 }
 
-// AUD-SEC: exige que o usuário seja admin ('tudo') OU tenha ao menos uma das
-// permissões informadas. Sem isso, retorna 403 e NÃO devolve dados financeiros.
+async function _getUserPerms(u) {
+  const uid = String((u && u.id) || '').trim();
+  if (!uid) return { perfil: '', perms: [], existe: false };
+
+  const now = Date.now();
+  const hit = _permCache.get(uid);
+  if (hit) {
+    if (hit.promise) return await hit.promise;
+    if (hit.exp > now) return { perfil: hit.perfil, perms: hit.perms, existe: hit.existe };
+  }
+
+  const p = (async () => {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('perfil,permissoes')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) throw error;
+    const val = data
+      ? { perfil: String(data.perfil || '').trim().toLowerCase(), perms: _toPermArray(data.permissoes), existe: true }
+      : { perfil: '', perms: [], existe: false };
+    _permCache.set(uid, { exp: Date.now() + _PERM_CACHE_TTL_MS, perfil: val.perfil, perms: val.perms, existe: val.existe });
+    return val;
+  })();
+
+  _permCache.set(uid, { promise: p });
+  try {
+    return await p;
+  } catch (e) {
+    _permCache.delete(uid);
+    throw e;
+  }
+}
+
+// Exige que o usuário seja admin ('tudo') OU tenha ao menos uma das permissões
+// informadas. Sem isso retorna 403 e NÃO devolve dado financeiro.
 function requirePerm(...required) {
+  const alvo = required.map((p) => String(p == null ? '' : p).trim()).filter(Boolean);
   return async function _requirePermMw(req, res, next) {
     try {
       if (!req.usuario) {
         return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
       }
-      const { perfil, perms } = await _loadUserPerms(req.usuario);
-      const isAdmin = perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo');
+      let info;
+      try {
+        info = await _getUserPerms(req.usuario);
+      } catch (e) {
+        console.error('[SEG-2][REQUIRE PERM] falha ao ler permissões no banco:', e && e.message);
+        return res.status(503).json({ ok: false, error: 'erro_permissoes' });
+      }
+      if (!info.existe) {
+        return res.status(401).json({ ok: false, error: 'usuario_inexistente', redirect: '/login' });
+      }
+      const isAdmin = info.perfil === 'admin' || info.perfil.includes('admin') || info.perms.includes('tudo');
       if (isAdmin) return next();
-      const allowed = required.some((p) => perms.includes(p));
-      if (allowed) return next();
-      return res.status(403).json({ ok: false, error: 'sem_permissao', detalhe: `requer permissão: ${required.join(' ou ')}` });
+      if (alvo.some((p) => info.perms.includes(p))) return next();
+      return res.status(403).json({ ok: false, error: 'sem_permissao', detalhe: 'requer permissão: ' + alvo.join(' ou ') });
     } catch (e) {
-      console.error('[AUD-SEC][REQUIRE PERM] erro:', e?.message);
+      console.error('[SEG-2][REQUIRE PERM] erro:', e && e.message);
       return res.status(403).json({ ok: false, error: 'sem_permissao' });
     }
   };
 }
+
+// Guarda de grupo por prefixo: ignora OPTIONS (preflight) e delega ao requirePerm.
+function _permGuard(...perms) {
+  return (req, res, next) => {
+    if (req.method === 'OPTIONS') return next();
+    return requirePerm(...perms)(req, res, next);
+  };
+}
+
+// SEG-2 (grupo 7): mascara campos de valor da OF para quem não tem 'dashboard'
+// nem 'financeiro'. Remove `vl_unit`, `vl_total` e `valor_total` de qualquer nível.
+const _CAMPOS_VALOR_OF = ['vl_unit', 'vl_total', 'valor_total'];
+
+async function _podeVerValoresOf(req) {
+  try {
+    const info = await _getUserPerms(req.usuario);
+    if (!info.existe) return false;
+    if (info.perfil === 'admin' || info.perfil.includes('admin') || info.perms.includes('tudo')) return true;
+    return info.perms.includes('dashboard') || info.perms.includes('financeiro');
+  } catch (e) {
+    console.error('[SEG-2][MASK OFS] falha ao ler permissões:', e && e.message);
+    return false;
+  }
+}
+
+function _mascararValoresOf(payload) {
+  const limpar = (node) => {
+    if (Array.isArray(node)) return node.map(limpar);
+    if (!node || typeof node !== 'object') return node;
+    const out = {};
+    for (const k of Object.keys(node)) {
+      if (_CAMPOS_VALOR_OF.includes(k)) continue;
+      out[k] = limpar(node[k]);
+    }
+    return out;
+  };
+  return limpar(payload);
+}
+// SEG-2 (grupo 7): responde /api/ofs mascarando valores quando o usuário não
+// tem 'dashboard' nem 'financeiro'. Falha de leitura → mascara (nega por padrão).
+async function _responderOfs(res, payload, req) {
+  let pode = false;
+  try { pode = await _podeVerValoresOf(req); } catch (_) { pode = false; }
+  return res.json(pode ? payload : _mascararValoresOf(payload));
+}
+// ── SEG-2 · core · fim ──────────────────────────────────────────────────────
 
 app.use((req, res, next) => {
   const fullUrl = String(req.originalUrl || req.url || '');
@@ -1712,6 +1796,44 @@ app.use((req, res, next) => {
   if (isPublic) return next();
   return authMiddleware(req, res, next);
 });
+
+// ── SEG-2 · guardas de rota · início ───────────────────────────────────────
+// Autorização por grupo (tabela do SEG-2). Registrado APÓS o middleware global
+// de autenticação e ANTES das rotas, então `req.usuario` já existe e a checagem
+// cobre todos os métodos. Admin (ou permissão "tudo") passa sempre.
+app.use('/api/comissoes', _permGuard('comissoes'));
+
+app.use('/api/central-custos', _permGuard('financeiro'));
+app.use('/api/centros-custo', _permGuard('financeiro'));
+app.use('/api/relatorios/custos', _permGuard('financeiro'));
+app.use('/api/relatorios/lucratividade-por-maquina', _permGuard('financeiro'));
+
+[
+  '/api/relatorios/vendas-por-empresa',
+  '/api/relatorios/comparativo-mensal',
+  '/api/relatorios/evolucao-vendas',
+  '/api/relatorios/vendas-por-ramo',
+  '/api/relatorios/vendas-por-cidade-estado',
+  '/api/relatorios/controle-vendas-vendedor',
+  '/api/relatorios/clientes-mais-compraram',
+  '/api/relatorios/projecao-vendas',
+  '/api/relatorios/resumo-anual',
+  '/api/relatorios/ofs-entradas-mes',
+  '/api/relatorios/cliente-ficha',
+].forEach((p) => app.use(p, _permGuard('relatorios')));
+app.use('/api/relatorio', _permGuard('relatorios'));
+
+// produção/aparras: todos os métodos → SOMENTE relatorios (não aceitar pcp)
+app.use('/api/relatorios/producao', _permGuard('relatorios'));
+app.use('/api/relatorios/aparras', _permGuard('relatorios'));
+
+app.use('/api/dashboard/total-geral', _permGuard('dashboard'));
+app.use('/api/dashboard/faturamento-mensal', _permGuard('dashboard'));
+app.use('/api/dashboard/faturamento-manual', _permGuard('dashboard'));
+
+app.use('/api/orcamentos', _permGuard('orcamentos'));
+app.use('/api/orcamentos_pastas', _permGuard('orcamentos'));
+// ── SEG-2 · guardas de rota · fim ──────────────────────────────────────────
 
 function ok(res, data) {
   res.json({ ok: true, data: _sanitizeOfPayloadDeep(data) });
@@ -3358,7 +3480,7 @@ async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
   };
 }
 
-app.get('/api/comissoes/relatorio', autenticar, requirePerm('comissoes','relatorios'), async (req, res) => { 
+app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
   try { 
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     if (!range?.inicio || !range?.fim_exclusivo) return res.json({ ok: false, error: 'periodo inválido' }); 
@@ -3425,7 +3547,7 @@ app.get('/api/comissoes/relatorio', autenticar, requirePerm('comissoes','relator
   } 
 }); 
 
-app.get('/api/comissoes/debug-total-vendido', autenticar, requirePerm('comissoes','relatorios'), async (req, res) => {
+app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
   try {
     setNoCache(res);
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
@@ -3462,7 +3584,7 @@ app.get('/api/comissoes/debug-total-vendido', autenticar, requirePerm('comissoes
   }
 });
 
-app.get('/api/comissoes/busca-of', autenticar, requirePerm('comissoes','relatorios'), async (req, res) => {
+app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
   try {
     setNoCache(res);
     const q = String(req.query?.q || '').trim();
@@ -6251,7 +6373,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const cacheKey = useCache ? ('ofs_v14_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltroLegado || '') + '_' + (clienteTextoFiltro || '') + '_' + (incluirExcluidas ? 'x' : '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
-      if (cached) return res.json(cached);
+      if (cached) return await _responderOfs(res, cached, req);
     } else {
       setNoCache(res);
     }
@@ -6582,8 +6704,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const hasMore = (offset + rows.length) < totalCount;
     const resultado = { ok: true, data: rows, total: totalCount, offset, limit, hasMore };
     // UU3: cache de 30s → 60s (menos hits ao DB entre carregamentos consecutivos do usuário).
+    // O cache guarda os valores; o mascaramento (SEG-2) é aplicado por requisição.
     if (useCache) cacheSet(cacheKey, resultado, 60000);
-    return res.json(resultado);
+    return await _responderOfs(res, resultado, req);
   } catch (e) {
     try {
       try { console.error('[GET /api/ofs] ERRO CATCH FINAL. Message=', e?.message || ''); } catch (_) {}
@@ -19320,7 +19443,7 @@ app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, 
   }
 });
 
-app.get('/api/relatorios/custos', authMiddleware, requirePerm('relatorios'), async (req, res) => {
+app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
   const t0 = Date.now();
   const tracer = { etapa_ms: {} };
   let etapaAtual = 'inicio';
@@ -37869,7 +37992,7 @@ if(cron && cron.validate('0 18 * * *')){
   }, { scheduled:true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
 }
 
-app.get('/api/dashboard/faturamento-mensal', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
+app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) => {
   try {
     const cacheKey = [
       'dashboard_faturamento_mensal',
@@ -37958,7 +38081,7 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, requirePerm('dashbo
   }
 });
 
-app.get('/api/dashboard/total-geral', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
+app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
@@ -38218,7 +38341,7 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/dashboard/faturamento-manual', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
+app.post('/api/dashboard/faturamento-manual', authMiddleware, async (req, res) => {
   try {
     const { ano, mes, valor, observacao } = req.body || {};
     if (!ano || !mes || valor === undefined) return res.status(400).json({ ok:false, error:'ano, mes e valor obrigatorios' });
@@ -38231,7 +38354,7 @@ app.post('/api/dashboard/faturamento-manual', authMiddleware, requirePerm('dashb
   } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, requirePerm('dashboard','relatorios'), async (req, res) => {
+app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('faturamento_manual')
       .delete().eq('ano', parseInt(req.params.ano)).eq('mes', parseInt(req.params.mes));
@@ -39254,7 +39377,7 @@ app.delete('/api/centros-custo/:id', authMiddleware, async (req, res) => {
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
-app.get('/api/central-custos/lancamentos', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.get('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39286,7 +39409,7 @@ app.get('/api/central-custos/lancamentos', authMiddleware, requirePerm('relatori
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-app.post('/api/central-custos/lancamentos', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.post('/api/central-custos/lancamentos', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39334,7 +39457,7 @@ app.post('/api/central-custos/lancamentos', authMiddleware, requirePerm('relator
     });
   }
 });
-app.put('/api/central-custos/lancamentos/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.put('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39376,7 +39499,7 @@ app.put('/api/central-custos/lancamentos/:id', authMiddleware, requirePerm('rela
     });
   }
 });
-app.delete('/api/central-custos/lancamentos/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.delete('/api/central-custos/lancamentos/:id', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39407,7 +39530,7 @@ app.delete('/api/central-custos/lancamentos/:id', authMiddleware, requirePerm('r
   }
 });
 
-app.get('/api/central-custos/recorrentes', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.get('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39429,7 +39552,7 @@ app.get('/api/central-custos/recorrentes', authMiddleware, requirePerm('relatori
     return res.json({ ok: true, rows: Array.isArray(data) ? data : [] });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
-app.post('/api/central-custos/recorrentes', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.post('/api/central-custos/recorrentes', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39451,7 +39574,7 @@ app.post('/api/central-custos/recorrentes', authMiddleware, requirePerm('relator
     return res.json({ ok: true, data: data || {} });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
-app.put('/api/central-custos/recorrentes/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.put('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39476,7 +39599,7 @@ app.put('/api/central-custos/recorrentes/:id', authMiddleware, requirePerm('rela
     return res.json({ ok: true, data: data || {} });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
-app.delete('/api/central-custos/recorrentes/:id', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.delete('/api/central-custos/recorrentes/:id', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39518,7 +39641,7 @@ function _ccustosPeriodicidadeMatch(rec, competencia) {
     default: return false;
   }
 }
-app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureCentralCustosSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_central_custos_missing' });
@@ -39580,7 +39703,7 @@ app.post('/api/central-custos/recorrentes/gerar-mes', authMiddleware, requirePer
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
-app.get('/api/central-custos/visao-geral', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.get('/api/central-custos/visao-geral', authMiddleware, async (req, res) => {
   const t0 = Date.now();
   try {
     const schemaOk = await _ensureCentralCustosSchema();
@@ -39713,7 +39836,7 @@ app.get('/api/central-custos/visao-geral', authMiddleware, requirePerm('relatori
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-app.get('/api/central-custos/historico', authMiddleware, requirePerm('relatorios','dashboard'), async (req, res) => {
+app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
   const t0 = Date.now();
   try {
     const schemaOk = await _ensureCentralCustosSchema();
