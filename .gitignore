@@ -11,3 +11,7 @@ _poll_*.js
 _smoke_*.js
 _debug_patch/
 *_BACKUP.*
+# SEG-1: geradores/tokens locais de admin nunca entram no repositório
+_*tok*
+_gera*
+_gentoken*
