@@ -5407,8 +5407,11 @@ try {
         });
         var payload = { maquina: novaMaq, maq: [novaMaq], maquina_agendada: novaMaq, fluxo_maquinas: fluxoNovo, maquina_atual_index: idx, sem_papel: !!(ofRef && ofRef.sem_papel) };
         if (alterarData && novaData) {
-          payload.data_entrega = novaData;
-          payload.ent = novaData;
+          // OFMAQ-02: reagendar é mudar o dia de PRODUÇÃO — nunca o prazo
+          // prometido ao cliente (data_entrega/ent permanecem intactos).
+          payload.dia = novaData;
+          payload.data_producao = novaData;
+          payload.dia_programacao = novaData;
         }
         var row = await persistPatch(id, payload);
         mergeOfLocal(id, Object.assign({}, payload, row || {}));
@@ -5462,8 +5465,11 @@ try {
         }
         saveBtn.disabled = true;
         var payload = {
-          data_entrega: novaData,
-          ent: novaData,
+          // OFMAQ-02: reagendar grava o dia de PRODUÇÃO; a data de entrega do
+          // cliente (data_entrega/ent) não é tocada por esta ação.
+          dia: novaData,
+          data_producao: novaData,
+          dia_programacao: novaData,
           sem_papel: motivo === 'Falta de Papelão',
           obs2: obs || ('Motivo alteração entrega: ' + motivo)
         };
@@ -26187,7 +26193,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               var confZM2 = window.confirm('Tem certeza que quer agendar a OF #' + String(item.numero || id) + ' para ' + fmtDateBR(value) + '?\n\nPrevisão de chegada do papel: ' + fmtDateBR(prevZM2) + ' (ainda não chegou na data programada).\n\nClique OK para confirmar o agendamento assim mesmo.\nClique Cancelar para ajustar a data.');
               if (!confZM2) { save.disabled = false; return; }
             }
-            var bodySent = { data_entrega: value, ent: value, sem_papel: !!(item && item.sem_papel) };
+            var bodySent = { dia: value, data_producao: value, dia_programacao: value, sem_papel: !!(item && item.sem_papel) };
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
             logActionApiResult('zero', 'date', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
@@ -26204,7 +26210,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     async function moveRowAndDateZero(id, machine, value) {
       var ref = rowDataById(id) || null;
-      var bodySent = { maq: [machine], maquina: machine, maquina_agendada: machine, data_entrega: value, ent: value, sem_papel: !!(ref && ref.sem_papel) };
+      var bodySent = { maq: [machine], maquina: machine, maquina_agendada: machine, dia: value, data_producao: value, dia_programacao: value, sem_papel: !!(ref && ref.sem_papel) };
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
         method: 'PATCH',
         body: bodySent
@@ -28703,7 +28709,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
-      var bodySent = { data_entrega: value, ent: value, sem_papel: !!(row && row.ofRaw && row.ofRaw.sem_papel) };
+      // OFMAQ-02: reagendar altera o dia de PRODUÇÃO, preservando data_entrega/ent.
+      var bodySent = { dia: value, data_producao: value, dia_programacao: value, sem_papel: !!(row && row.ofRaw && row.ofRaw.sem_papel) };
       var result;
       try {
         result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
@@ -28731,12 +28738,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
+      // OFMAQ-02: mover máquina + data reagenda o dia de PRODUÇÃO; a data de
+      // entrega ao cliente (data_entrega/ent) não é alterada por esta ação.
       var bodySent = {
         maq: [machine],
         maquina: machine,
         maquina_agendada: machine,
-        data_entrega: value,
-        ent: value,
+        dia: value,
+        data_producao: value,
+        dia_programacao: value,
         sem_papel: !!(row && row.ofRaw && row.ofRaw.sem_papel)
       };
       var result;

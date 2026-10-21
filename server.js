@@ -4829,15 +4829,13 @@ function normalizeOfUpdateBody(input) {
     out.urgente = out.urg;
   }
   if (_tocarDatas) {
-    if (out.dia !== undefined && out.ent === undefined) out.ent = out.dia;
-    if (out.ent !== undefined && out.dia === undefined) out.dia = out.ent;
-    if (out.data_entrega === undefined) {
-      if (out.ent !== undefined) out.data_entrega = out.ent;
-      else if (out.dia !== undefined) out.data_entrega = out.dia;
-    } else {
-      if (out.ent === undefined) out.ent = out.data_entrega;
-      if (out.dia === undefined) out.dia = out.data_entrega;
-    }
+    // OFMAQ-02: `dia` é o dia de PRODUÇÃO e é independente da data de entrega ao
+    // cliente (data_entrega/ent). Quando o corpo traz `dia` explicitamente, ele
+    // NÃO é derivado da entrega nem propaga para ela — reagendar produção não
+    // pode mudar o prazo prometido ao cliente.
+    if (out.ent !== undefined && out.data_entrega === undefined) out.data_entrega = out.ent;
+    if (out.data_entrega !== undefined && out.ent === undefined) out.ent = out.data_entrega;
+    if (!_hasDia && out.data_entrega !== undefined) out.dia = out.data_entrega;
   }
   if (out.papel_comprado !== undefined) {
     out.papel_comprado = _chapasBool(out.papel_comprado);
