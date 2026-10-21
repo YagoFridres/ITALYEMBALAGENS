@@ -1634,6 +1634,22 @@ function err(res, e) {
   res.json({ ok: false, error: errorText, meta });
 }
 
+// [HOTFIX-EGRESS] O histórico de auditoria guardava a OF inteira, com a imagem em base64 (média 172 kB
+// por linha; 1,46 GB). Imagens grandes passam a ser registradas só como marcador. Nada é removido da OF.
+function _auditSemImagens(obj) {
+  try {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const out = { ...obj };
+    ['imgs', 'imagens', 'imagem_url', 'imagem', 'img'].forEach((k) => {
+      if (!(k in out)) return;
+      const v = out[k];
+      const txt = typeof v === 'string' ? v : (v == null ? '' : JSON.stringify(v));
+      if (txt.length > 2000 || /data:image/i.test(txt)) out[k] = '[imagem omitida no histórico: ' + txt.length + ' caracteres]';
+    });
+    return out;
+  } catch (_) { return obj; }
+}
+
 async function logAuditoria(tabela, operacao, registroId, dadosAntes, dadosDepois, req) {
   try {
     const ip = req?.headers?.['x-forwarded-for'] || req?.ip || null;
@@ -1641,8 +1657,8 @@ async function logAuditoria(tabela, operacao, registroId, dadosAntes, dadosDepoi
       tabela: String(tabela || '').trim(),
       operacao: String(operacao || '').trim(),
       registro_id: registroId != null ? String(registroId) : null,
-      dados_antes: dadosAntes ? dadosAntes : null,
-      dados_depois: dadosDepois ? dadosDepois : null,
+      dados_antes: dadosAntes ? _auditSemImagens(dadosAntes) : null,
+      dados_depois: dadosDepois ? _auditSemImagens(dadosDepois) : null,
       usuario_id: req?.usuario?.id != null ? String(req.usuario.id) : null,
       usuario_nome: req?.usuario?.nome || req?.usuario?.email || null,
       ip: ip != null ? String(ip) : null,
@@ -5880,6 +5896,30 @@ async function buscarTodasOFsPaginadas(montarQuery) {
   return { data: todas, count: countExact || todas.length };
 }
 
+// [HOTFIX-EGRESS] Listas de OFs NÃO baixam mais a coluna `imgs` do Supabase.
+// Motivo (21/10/2026): 881 OFs guardam a imagem em base64 dentro de `ofs.imgs` (108 MB de 122 MB da
+// tabela). As listas baixavam tudo a cada carga e depois DESCARTAVAM o base64 (_urlValidaImagem só aceita
+// URL/caminho), gerando tráfego (egress) e custo altos no Supabase sem nenhum ganho para a tela.
+// Todas as OFs com imagem por URL também têm `imagem_url` preenchida, então a lista devolve
+// imgs = [imagem_url] e a tela continua igual. O registro completo segue em GET /api/ofs/:id.
+const _OFS_COLUNAS_SEM_IMGS_FALLBACK = 'agendamento_auto,area_total_m2,caixa_altura,caixa_comprimento,caixa_largura,caixas_boas,caixas_excedentes,caixas_perdidas,chapa_id,chp,cidade_entrega,cliId,cliNome,cli_id,cliente_id,cliente_nome,cliid,clinome,cond_pagamento,consumo_chapas_estimado,cores_impressao,created_at,custo_m2_venda,data_agendamento,data_conclusao,data_entrega,data_faturamento,data_producao,deleted_at,descricao,dia,dia_programacao,dim_altura,dim_comprimento,dim_largura,empId,empNome,emp_id,empresa_id,ent,fluxo,fluxo_maquinas,gramatura,gramatura_id,gramatura_nome,id,imagem_url,itens,maq,maquina_agendada,maquina_atual_index,maquina_perda,maquina_perda_id,modo_programacao,motivo_perda,numero,obs,obs2,of,of_num,of_seq,operador_conclusao,operadores_conclusao,ordem_maquina,pagto,papel_comprado,papel_observacao,passagens_maquina,passou_em,passou_maquina,passou_maquina_nome,perdas_por_maquina,peso_utilizado_kg,preco,previsao_entrega_papel,prioridade,prioridade_ordem,qtd,qtd_chapas,qtd_pedida,qtd_perdida,qtd_produzida,quantidade,ramo,sem_papel,seq,setor_finalizacao,smp_id,status,tempo_producao_real,tempo_setup_real,tipo_caixa,tipo_caixa_id,tonelada_vendida,toneladas_perdidas,toneladas_utilizadas,total,updated_at,urg,urgente,usuario_conclusao,valor_total,valor_unitario,valor_venda,vendId,vendNome,vendedor,vendedor_id,vendid';
+let _ofsColunasSemImgsCache = { valor: null, ts: 0 };
+async function _ofsColunasSemImgs() {
+  const agora = Date.now();
+  if (_ofsColunasSemImgsCache.valor && (agora - _ofsColunasSemImgsCache.ts) < 60 * 60 * 1000) return _ofsColunasSemImgsCache.valor;
+  let valor = _OFS_COLUNAS_SEM_IMGS_FALLBACK;
+  try {
+    // Descobre as colunas reais lendo 1 linha SEM imagem (imgs nulo): resposta pequena.
+    const { data, error } = await supabase.from('ofs').select('*').is('imgs', null).limit(1);
+    if (!error && Array.isArray(data) && data[0]) {
+      const ks = Object.keys(data[0]).filter((k) => k !== 'imgs');
+      if (ks.length > 10) valor = ks.join(',');
+    }
+  } catch (_) {}
+  _ofsColunasSemImgsCache = { valor, ts: agora };
+  return valor;
+}
+
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
     if (!supabase) {
@@ -5940,18 +5980,20 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'data_faturamento','data_conclusao','dia','data_entrega','ent','data_producao','data_agendamento','dia_programacao','previsao_entrega_papel',
       'gramatura','gramatura_id','gramatura_nome','area_total_m2','consumo_chapas_estimado','chapa_id','chp','smp_id','tipo_caixa','tipo_caixa_id',
       'dim_comprimento','dim_largura','dim_altura','caixa_comprimento','caixa_largura','caixa_altura',
-      'itens','imgs','imagem_url','cores_impressao',
+      'itens','imagem_url','cores_impressao', // [HOTFIX-EGRESS] sem a coluna de imagens base64
       'urgente','urg','prioridade','prioridade_ordem','sem_papel','papel_comprado','papel_observacao',
       'operador_conclusao','operadores_conclusao','usuario_conclusao'
     ].join(',');
     const useSlimSelect = !clienteFiltroLegado && !clienteTextoFiltro && !busca;
+    // [HOTFIX-EGRESS] quando não é slim, usa todas as colunas MENOS imgs (em vez de '*').
+    const OFS_SELECT_FULL_SEM_IMGS = useSlimSelect ? '' : await _ofsColunasSemImgs();
 
     const buildQuery = () => {
       let query = supabase
         .from('ofs')
         // UU3: count:exact → count:planned nas cargas cheias (OFMAQ não precisa de count exato).
         // count:exact roda COUNT(*) full table scan OFFSET alto = principal causa do timeout!
-        .select(useSlimSelect ? OFS_SELECT_SLIM : '*', { count: (String(req.query.count_exact || '').trim() === '1') ? 'exact' : 'planned' })
+        .select(useSlimSelect ? OFS_SELECT_SLIM : OFS_SELECT_FULL_SEM_IMGS, { count: (String(req.query.count_exact || '').trim() === '1') ? 'exact' : 'planned' })
         .order('created_at', { ascending: false });
 
       const filtroEmpOr = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag, false, (todasEmpresasFlag || !empresaFiltro));
@@ -6029,7 +6071,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         let query = supabase
           .from('ofs')
           // UU3: fallback também recebe slim select + count:planned quando possível.
-          .select(useSlimSelect ? OFS_SELECT_SLIM : '*', { count: (String(req.query.count_exact || '').trim() === '1') ? 'exact' : 'planned' })
+          .select(useSlimSelect ? OFS_SELECT_SLIM : OFS_SELECT_FULL_SEM_IMGS, { count: (String(req.query.count_exact || '').trim() === '1') ? 'exact' : 'planned' })
           .order('created_at', { ascending: false });
         const filtroEmpOrFb = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag, false, (todasEmpresasFlag || !empresaFiltro));
         if (filtroEmpOrFb) query = query.or(filtroEmpOrFb);
@@ -6216,7 +6258,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         maquina_atual: maquinaNome,
         produto: produtoNome,
         imagem_url: imagemUrl,
-        imgs: imgsArr,
+        imgs: (imgsArr.length ? imgsArr : (imagemUrl ? [imagemUrl] : [])), // [HOTFIX-EGRESS]
         total: totalCanonico,
         valor_total: totalCanonico,
         valor_venda: Number(of?.valor_venda ?? totalCanonico) || totalCanonico,
@@ -12297,7 +12339,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     let amostraOfs = null;
     let erroAmostraOfs = null;
     try {
-      const sampleRes = await supabase.from('ofs').select('*').limit(1).single();
+      // [HOTFIX-EGRESS] amostra de colunas: linha sem imagem base64 (resposta pequena)
+      const sampleRes = await supabase.from('ofs').select('*').is('imgs', null).limit(1).single();
       if (!sampleRes?.error && sampleRes?.data && typeof sampleRes.data === 'object') amostraOfs = sampleRes.data;
       else erroAmostraOfs = sampleRes?.error || null;
     } catch (eSample) {

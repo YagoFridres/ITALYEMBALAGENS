@@ -50126,7 +50126,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       for (var i = 0; i < maxIter; i++) {
         var url = '/api/ofs?offset=' + String(offset) + '&limit=' + String(limit);
         var r = await window._apiAuthFetch(url);
-        var j = await r.json();
+        // [HOTFIX-EGRESS] resposta de erro (502/503) não é JSON: para sem quebrar a tela
+        if (!r || !r.ok) break;
+        var j = null;
+        try { j = await r.json(); } catch (_) { j = null; }
         if (!j || j.ok === false) break;
         var rows = Array.isArray(j.data) ? j.data : [];
         for (var k = 0; k < rows.length; k++) {
@@ -54116,7 +54119,8 @@ window._mbnActive = function(id) {
     }
   }
 
-  setInterval(_verificarOFsNovas, 90000);
+  // [HOTFIX-EGRESS] não consulta o servidor com a aba escondida/minimizada
+  setInterval(function(){ try { if (document.visibilityState === 'hidden') return; } catch(_){} _verificarOFsNovas(); }, 90000);
 })();
 
 (function patchBackupNotifEChapas() {
