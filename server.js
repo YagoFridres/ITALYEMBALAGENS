@@ -16,6 +16,33 @@ try { cron = require('node-cron'); } catch (_) { cron = null; }
 const { normalizarEmpresa, corrigirUuid, EMPRESAS_FALLBACK } = require('./lib/empresa');
 const { extrairMaximo: _numExtrairMaximo, coletarTomados: _numColetarTomados, proximoNumeroLivre: _numProximoLivre, CAMPOS_NEGOCIO: _NUM_CAMPOS } = require('./lib/numeracao');
 
+// ── F-6 · Só colunas que existem (evita o erro real de coluna inexistente) ──
+// server/colunas.js é GERADO de audit/schema.json (colunas reais de produção).
+const _COLUNAS_REAIS = require('./server/colunas');
+const _COLUNAS_SETS = {};
+Object.keys(_COLUNAS_REAIS).forEach((t) => {
+  const set = new Set((_COLUNAS_REAIS[t] || []).map((c) => String(c).toLowerCase()));
+  _COLUNAS_SETS[t] = set;
+});
+const _soColunasAvisadas = new Set();
+function _soColunas(tabela, obj) {
+  const permitidas = _COLUNAS_SETS[tabela];
+  if (!permitidas || !obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const out = {};
+  Object.keys(obj).forEach((k) => {
+    if (permitidas.has(String(k).toLowerCase())) {
+      out[k] = obj[k];
+      return;
+    }
+    const aviso = tabela + '.' + k;
+    if (!_soColunasAvisadas.has(aviso)) {
+      _soColunasAvisadas.add(aviso);
+      console.log('[AUD][F-6] coluna inexistente removida: ' + aviso);
+    }
+  });
+  return out;
+}
+
 process.on('uncaughtException', (e) => {
   try { console.error('[CRASH] uncaughtException:', e?.message || e); } catch (_) {}
   try { console.error('[CRASH STACK]', String(e?.stack || '').split('\n').slice(0, 15).join(' | ')); } catch (_) {}
