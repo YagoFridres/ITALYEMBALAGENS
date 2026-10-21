@@ -3026,6 +3026,63 @@ async function _relatoriosResolveEmpresaFilter(req) {
   return { todas: true, uuid: null };
 }
 
+// ── F-3 · Filtro de empresa único ───────────────────────────────────────────
+// Aceita todas_empresas=1 e emp_id/empresa_id = all|todas|E1|E2|E3|<uuid>.
+// Devolve { todas:true } ou { todas:false, uuid, sigla }.
+function _empresaSiglaPorUuid(uuid) {
+  const u = corrigirUuid(String(uuid || '')).toLowerCase();
+  if (!u) return '';
+  const hit = EMPRESAS_FALLBACK.find((e) => corrigirUuid(e.id).toLowerCase() === u);
+  return hit ? hit.sigla : '';
+}
+
+function _empresaFiltro(req) {
+  const q = (req && req.query) || {};
+  const b = (req && req.body) || {};
+  const todasRaw = String(
+    q.todas_empresas ?? q.todasEmpresas ?? b.todas_empresas ?? b.todasEmpresas ?? ''
+  ).trim().toLowerCase();
+  if (todasRaw === '1' || todasRaw === 'true' || todasRaw === 'sim') return { todas: true };
+
+  const tok = String(
+    q.emp_id ?? q.empId ?? q.empresa_id ?? q.empresaId ??
+    b.emp_id ?? b.empId ?? b.empresa_id ?? b.empresaId ??
+    ''
+  ).trim();
+  if (!tok || _relatoriosIsAllCompaniesSentinel(tok)) return { todas: true };
+
+  const uuid = corrigirUuid(tok);
+  if (_isUuid(uuid)) {
+    const sigla = _empresaSiglaPorUuid(uuid);
+    return { todas: false, uuid, sigla };
+  }
+
+  const up = tok.toUpperCase();
+  const sigla = _relatoriosLegacyEmpresaUuid(up) ? (
+    up === 'E1' || up === 'ITALY' || up === 'ITALY EMBALAGENS' ? 'ITALY' :
+    up === 'E2' || up === 'CARTO' || up === 'CARTOESTE' ? 'CARTO' :
+    up === 'E3' || up === 'OESTE' || up === 'OESTEPACK' ? 'OESTE' : ''
+  ) : '';
+  if (!sigla) return { todas: true };
+  return { todas: false, uuid: _relatoriosLegacyEmpresaUuid(sigla), sigla };
+}
+
+// Filtro de empresa para consultas em `ofs`: o UUID novo ou o legado emp_id.
+function _aplicarFiltroEmpresaOfs(q, f) {
+  if (!f || f.todas) return q;
+  if (!f.sigla) return q.eq('empresa_id', f.uuid);
+  return q.or(`empresa_id.eq.${f.uuid},and(empresa_id.is.null,emp_id.eq.${f.sigla})`);
+}
+
+// Empresa de uma OF (para filtros em memória); trata o UUID errado da Oestepack.
+function _empresaDaOf(of) {
+  const uuid = corrigirUuid(String((of && of.empresa_id) || '').trim());
+  if (_isUuid(uuid)) return uuid;
+  return _relatoriosLegacyEmpresaUuid(
+    (of && (of.emp_id || of.empId || of.empresa || of.empresa_nome)) || ''
+  );
+}
+
 function _relatoriosResolveDateRange(query, opts = {}) {
   const q = query || {};
   const dataInicio = _relatoriosIsoDateOnly(q.data_inicio || q.dataInicio || opts.data_inicio);
