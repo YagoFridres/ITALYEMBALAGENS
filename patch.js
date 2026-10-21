@@ -26950,6 +26950,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return isoFromDate(d);
     }
 
+    // OFMAQ-01: a OF pertence ao dia PROGRAMADO de produção
+    // (dia_programacao || dia || data_producao). A data de entrega do cliente
+    // (data_entrega/ent) NUNCA define em que dia a OF aparece na fila — ela só
+    // alimenta o selo de atraso (F-5, em urgenciaTipo) e a coluna "Entrega".
     function resolveDisplayDate(of) {
       var base = String(
         of && (
@@ -26958,8 +26962,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           of.diaProgramacao ||
           of.data_programada ||
           of.dataProgramada ||
-          of.data_entrega ||
-          of.ent ||
           of.data_producao ||
           of.dia ||
           of.created_at ||
@@ -27126,10 +27128,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return Math.max(5, Math.round(qtd / 12) || 30);
     }
 
-    function urgenciaTipo(of, prazoIso) {
-      if (of && (of.urg || of.urgente)) return 'urgente';
+    // OFMAQ-01: o atraso é medido pela DATA DE ENTREGA ao cliente
+    // (data_entrega/ent) via F-5 — nunca pelo dia programado de produção
+    // (prazoIso), que já é ajustado para "hoje" quando vencido.
+    function urgenciaTipo(of) {
       var hoje = isoFromDate(currentBusinessDate());
-      if (prazoIso && prazoIso < hoje && !isClosedStatus(of && of.status)) return 'atrasada';
+      var c = (typeof window._ofClassificaUrgencia === 'function')
+        ? (window._ofClassificaUrgencia(of, hoje) || {})
+        : null;
+      if (c) {
+        if (c.urgente) return 'urgente';
+        if (c.atrasada && !isClosedStatus(of && of.status)) return 'atrasada';
+        return 'normal';
+      }
+      if (of && (of.urg || of.urgente)) return 'urgente';
+      var ent = String(of && (of.data_entrega || of.ent) || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ent) && ent < hoje && !isClosedStatus(of && of.status)) return 'atrasada';
       return 'normal';
     }
 
@@ -27165,7 +27179,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         prazoIso: prazoIso,
         imagemUrl: pickImage(of),
         tempoMin: calcTempo(of, machine),
-        urgencia: urgenciaTipo(of, prazoIso),
+        urgencia: urgenciaTipo(of),
         searchText: normText([numero, cliente, produto, size, cores.join(' '), (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(of) : ''), machine, quantidade].join(' '))
       };
     }
@@ -28167,7 +28181,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
       var sp = !!(item && (item.sem_papel === true || item.sem_papelao === true || String(item.sem_papel || '').trim() === '1' || item.sem_papel === 1 || item.sem_papelao === 1 || String(item.sem_papelao || '').trim() === '1'));
-      var urg = item.urgencia || (typeof urgenciaTipo === 'function' ? urgenciaTipo(raw, item.prazoIso || '') : '') || 'normal';
+      var urg = item.urgencia || (typeof urgenciaTipo === 'function' ? urgenciaTipo(raw) : '') || 'normal';
       var statusTone = sp ? 'warn' : (urg === 'urgente' ? 'danger' : (urg === 'atrasada' ? 'warn' : 'ok'));
       var statusBase = urg === 'urgente' ? 'Urgente' : (urg === 'atrasada' ? 'Atrasada' : 'Normal');
       var statusText = sp ? 'Sem Papelão' : statusBase;
@@ -28749,7 +28763,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             row.ofRaw.urg = !!urgent;
             row.ofRaw.urgente = !!urgent;
           }
-          row.urgencia = urgenciaTipo(row.ofRaw || row, row.prazoIso);
+          row.urgencia = urgenciaTipo(row.ofRaw || row);
         }
         return;
       }
@@ -28767,7 +28781,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           row.ofRaw.prioridade_ordem = !!urgent ? 1 : 999;
           try { if (typeof window._normUrgenteCanonico === 'function') window._normUrgenteCanonico(row.ofRaw); } catch (_) {}
         }
-        row.urgencia = urgenciaTipo(row.ofRaw || row, row.prazoIso);
+        row.urgencia = urgenciaTipo(row.ofRaw || row);
       }
       try {
         (function syncGlobalUrg(idRef, valRef) {
