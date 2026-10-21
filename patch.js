@@ -26931,8 +26931,35 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return single ? [single] : [];
     }
 
+    // OFMAQ-04: nome da ETAPA ATUAL do fluxo (fluxo_maquinas[maquina_atual_index]).
+    // É a fonte preferencial da máquina exibida: sem isso uma OF que já passou por
+    // IMP 01 continuava aparecendo em IMP 01 (of.maquina) em vez de CORTE VINCO.
+    function fluxoEtapaAtual(of) {
+      var fluxo = of && (of.fluxo_maquinas || of.fluxo || of.maq);
+      if (typeof fluxo === 'string') {
+        try { fluxo = JSON.parse(fluxo); }
+        catch (_) { fluxo = String(fluxo || '').split(',').map(function(s) { return String(s || '').trim(); }).filter(Boolean); }
+      }
+      if (!Array.isArray(fluxo) || !fluxo.length) return '';
+      var idx = Number(of && (of.maquina_atual_index != null ? of.maquina_atual_index : 0));
+      if (!Number.isFinite(idx) || idx < 0) idx = 0;
+      if (idx > fluxo.length - 1) idx = fluxo.length - 1;
+      var el = fluxo[idx];
+      if (el == null) return '';
+      if (typeof el === 'string') return String(el).trim();
+      if (typeof el !== 'object') return '';
+      return String(el.nome || el.col || el.name || el.maquina || '').trim();
+    }
+
     function resolveMachine(of) {
+      // OFMAQ-04: a etapa ATUAL do fluxo vem antes de of.maquina/of.maquina_agendada.
+      // Só entra na disputa quando é uma das máquinas válidas do OFMAQ: se a etapa
+      // do fluxo for desconhecida, cai no fallback de sempre.
+      var etapaAtual = fluxoEtapaAtual(of);
+      var etapaNorm = etapaAtual ? normalizeMachine(etapaAtual) : '';
+      if (etapaNorm === (_YY2_LABEL_SEM_MAQUINA || 'Sem Máquina Definida')) etapaNorm = '';
       var candidates = []
+        .concat(etapaNorm ? [etapaNorm] : [])
         .concat(parseMaqArray(of && (of.maquina_atual || of.maquina || of.maquina_agendada || of.maq)))
         .concat(parseMaqArray(of && (of.maquina_nome || of.maquinaAtual || of.maquinaAgendada)))
         .filter(Boolean);
@@ -28910,8 +28937,57 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
         });
       }
-      state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
-      try {
+      // OFMAQ-04: o servidor decide se a OF AVANÇOU de etapa ou CONCLUIU o fluxo.
+      // `passou_maquina=true` só vem na última etapa (ou em OF sem fluxo); numa
+      // etapa INTERMEDIÁRIA a resposta traz `maquina_atual_index` da próxima
+      // máquina e a OF continua na fila (não sai, não vira "passou").
+      var _updOf = (resultPass && resultPass.data && resultPass.data.data && typeof resultPass.data.data === 'object')
+        ? resultPass.data.data
+        : ((resultPass && resultPass.data && typeof resultPass.data === 'object') ? resultPass.data : {});
+      var _finalizou = !!(_updOf && (_updOf.passou_maquina === true || _updOf.passou_maquina === 1 || _updOf.passou_maquina === '1'));
+      if (!_finalizou) {
+        var _proxIdx = Number(_updOf && _updOf.maquina_atual_index);
+        if (!Number.isFinite(_proxIdx)) _proxIdx = null;
+        var _proxMaq = String((_updOf && _updOf.maquina_agendada) || '').trim();
+        try {
+          (function syncGlobalAvancou(idRef, idxRef, maqRef) {
+            var apply = function(o) {
+              if (!o || typeof o !== 'object') return false;
+              var sid = String(o.id || o.of || o.numero || '').trim();
+              var rid = String(idRef || '').trim();
+              if (!rid || sid !== rid) return false;
+              if (idxRef != null) o.maquina_atual_index = idxRef;
+              if (maqRef) o.maquina_agendada = maqRef;
+              return true;
+            };
+            try { if (Array.isArray(window.OFS)) window.OFS.forEach(apply); } catch (_) {}
+            try { if (typeof OFs !== 'undefined' && Array.isArray(OFs)) OFs.forEach(apply); } catch (_) {}
+            try { if (Array.isArray(window._ofmaqListaCompleta)) window._ofmaqListaCompleta.forEach(apply); } catch (_) {}
+            try { if (Array.isArray(window._ofmaqBaseList)) window._ofmaqBaseList.forEach(apply); } catch (_) {}
+            try { if (Array.isArray(window.kbOfs)) window.kbOfs.forEach(apply); } catch (_) {}
+          })(id, _proxIdx, _proxMaq);
+        } catch (_) {}
+        try {
+          var _ofRawLive = (row && row.ofRaw) ? row.ofRaw : row;
+          if (_ofRawLive && typeof _ofRawLive === 'object') {
+            if (_proxIdx != null) _ofRawLive.maquina_atual_index = _proxIdx;
+            if (_proxMaq) _ofRawLive.maquina_agendada = _proxMaq;
+          }
+        } catch (_) {}
+        try {
+          var _iRow = -1;
+          for (var _kRow = 0; _kRow < state.rowsData.length; _kRow += 1) {
+            if (state.rowsData[_kRow] && state.rowsData[_kRow].id === id) { _iRow = _kRow; break; }
+          }
+          var _novoRow = activeOfRow((row && row.ofRaw) ? row.ofRaw : row, _iRow >= 0 ? _iRow : 0);
+          if (_novoRow) { if (_iRow >= 0) state.rowsData[_iRow] = _novoRow; else state.rowsData.push(_novoRow); }
+          else if (_iRow >= 0) state.rowsData.splice(_iRow, 1);
+        } catch (_) {}
+        try { if (typeof window.toast === 'function') window.toast('OF #' + String(row.numero || id) + ' passou por ' + machine + ' e foi para a próxima etapa do fluxo.', 'rgba(85,164,173,.92)'); } catch (_) {}
+      }
+      if (_finalizou) {
+        state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
+        try {
         (function syncGlobalPassou(idRef, maqRef, rowRef) {
           var now = new Date();
           var isoNow = now.toISOString();
@@ -28952,7 +29028,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           try { if (Array.isArray(window._ofmaqBaseList)) window._ofmaqBaseList.forEach(apply); } catch (_) {}
           try { if (Array.isArray(window.kbOfs)) window.kbOfs.forEach(apply); } catch (_) {}
         })(id, machine, row && row.ofRaw ? row.ofRaw : row);
-      } catch (_) {}
+        } catch (_) {}
+      }
       try { if (typeof window._refreshOfmaqCachesFromRuntime === 'function') window._refreshOfmaqCachesFromRuntime(); } catch (_) {}
       try { if (typeof window._refreshBadgesTopo === 'function') window._refreshBadgesTopo(); } catch (_) {}
       try {

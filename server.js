@@ -11596,10 +11596,12 @@ function _ofActionClearFlags(of, upd, motivoAcao, nowIso) {
       if (semPapelChave === 'sem_papelao') upd.sem_papel = false;
       else upd.sem_papelao = false;
       const msg = `\n\n---\n\n[${dataBR}] Esteve marcada como Sem Papelão até ${motivoAcao || 'a ação atual'}.`;
-      const obsAtual = String(upd.obs ?? upd.observacoes ?? of?.obs ?? of?.observacoes ?? upd.observacao ?? of?.observacao ?? '').trim();
+      // OFMAQ-04: gravar SOMENTE na coluna existente `obs`. Antes o código escrevia
+      // também em `observacoes` — coluna que NÃO existe em `ofs` — forçando o
+      // ofsUpdateWithRetry a falhar, ignorar a coluna e repetir a atualização.
+      const obsAtual = String(upd.obs ?? of?.obs ?? upd.observacao ?? of?.observacao ?? '').trim();
       const obsNova = obsAtual ? (obsAtual + msg) : msg.substring(4);
       upd.obs = obsNova;
-      upd.observacoes = obsNova;
     }
   } catch (_) {}
 }
@@ -11726,14 +11728,26 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     } catch (_) { fluxoArr = []; }
 
     const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
+    const nomeEtapa = (i) => {
+      if (!fluxoArr.length) return '';
+      const el = fluxoArr[Math.min(Math.max(i, 0), fluxoArr.length - 1)];
+      if (typeof el === 'string') return String(el || '').trim();
+      if (el && typeof el === 'object') return String(el.nome || el.col || el.name || el.maquina || '').trim();
+      return '';
+    };
+    // OFMAQ-04: localiza a etapa ATUAL do fluxo. Antes, `marca()` tinha
+    // `if (matchNome || true)`, ou seja, marcava TODAS as etapas do fluxo.
+    let idxAtual = novoIdx;
     if (fluxoArr.length && isFluxoObj) {
-      const idxAtual = Math.min(novoIdx, Math.max(0, fluxoArr.length - 1));
+      idxAtual = Math.min(idxAtual, Math.max(0, fluxoArr.length - 1));
       const marca = (item) => {
         if (!item || typeof item !== 'object') return item;
         const copia = { ...item };
         const nomeItem = String(copia.nome || copia.col || copia.name || copia.maquina || '').trim();
         const matchNome = !nomeItem || nomeItem === maquinaNome || String(maquinaNome || '').toLowerCase().indexOf(nomeItem.toLowerCase()) >= 0 || (nomeItem && String(maquinaNome || '').toLowerCase() === nomeItem.toLowerCase());
-        if (matchNome || true) {
+        // OFMAQ-04: marca SOMENTE a etapa que realmente passou (antes `|| true`
+        // marcava passou/baixa em todas as etapas do fluxo).
+        if (matchNome) {
           if (!copia.data_passou) copia.data_passou = nowIso;
           if (!copia.data_baixou) copia.data_baixou = nowIso;
           copia.passou = true;
@@ -11742,24 +11756,34 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         return copia;
       };
       for (let tentativas = 0; tentativas < 3; tentativas += 1) {
-        const tgt = Math.min(novoIdx + tentativas, Math.max(0, fluxoArr.length - 1));
+        const tgt = Math.min(idxAtual + tentativas, Math.max(0, fluxoArr.length - 1));
         const nomeTgt = String((fluxoArr[tgt] && (fluxoArr[tgt].nome || fluxoArr[tgt].col || fluxoArr[tgt].maquina)) || '').trim();
         const casa = !nomeTgt || nomeTgt === maquinaNome || String(maquinaNome || '').toLowerCase().indexOf(nomeTgt.toLowerCase()) >= 0;
         fluxoArr[tgt] = marca(fluxoArr[tgt]);
-        if (casa) { novoIdx = tgt; break; }
+        if (casa) { idxAtual = tgt; break; }
       }
-      if (novoIdx < fluxoArr.length - 1) novoIdx += 1;
-    } else if (fluxoArr.length) {
-      if (novoIdx < fluxoArr.length - 1) novoIdx += 1;
     }
+    if (fluxoArr.length) idxAtual = Math.min(Math.max(idxAtual, 0), fluxoArr.length - 1);
 
+    // OFMAQ-04: ÚLTIMA etapa (ou OF sem fluxo) conclui o fluxo de máquinas —
+    // `passou_maquina=true` e o comportamento de sempre. ETAPA INTERMEDIÁRIA
+    // apenas AVANÇA para a próxima máquina do fluxo (`maquina_atual_index+1`,
+    // `maquina_agendada = fluxo[idx]`): a OF continua na fila e NÃO é marcada
+    // como `passou_maquina` (antes ela sumia de todas as filas e ficava presa).
+    const isLastStep = (fluxoArr.length === 0) || (idxAtual >= fluxoArr.length - 1);
+    const proxIdx = isLastStep ? idxAtual : (idxAtual + 1);
     const updatePayload = {
       passou_maquina_nome: maquinaNome,
-      passou_maquina: true,
-      passou_em: nowIso,
-      maquina_atual_index: novoIdx,
+      maquina_atual_index: isLastStep ? idxAtual : proxIdx,
       updated_at: nowIso,
     };
+    if (isLastStep) {
+      updatePayload.passou_maquina = true;
+      updatePayload.passou_em = nowIso;
+    } else {
+      const maquinaProxima = nomeEtapa(proxIdx);
+      if (maquinaProxima) updatePayload.maquina_agendada = maquinaProxima;
+    }
     _ofActionClearFlags(of, updatePayload, 'o registro Passou pela Máquina', nowIso);
     if (isFluxoObj && fluxoArr.length) {
       try { updatePayload.fluxo_maquinas = fluxoArr; } catch (_) {}
