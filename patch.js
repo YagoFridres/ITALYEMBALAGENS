@@ -2,6 +2,65 @@ window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 
+// ── SEG-3 · permissões de Financeiro e de valores (navegador) · início ──────
+// Substitui a senha fixa '1234' e o sessionStorage.fin_ok por permissão real
+// vinda de /api/auth/me. Admin/'tudo' sempre passa. Sem usuário -> nega.
+window._permFinTem = function (area) {
+  var u = null;
+  try { u = (typeof CURRENT_USER !== 'undefined' && CURRENT_USER) || window.CURRENT_USER || window._currentUser || null; } catch (_) { u = null; }
+  if (!u) return false;
+  var perfil = String(u.perfil == null ? '' : u.perfil).trim().toLowerCase();
+  if (perfil === 'admin' || perfil.indexOf('admin') >= 0) return true;
+  var raw = Array.isArray(u.permissoes) ? u.permissoes : [];
+  var alvo = Array.isArray(area) ? area : [area];
+  for (var i = 0; i < raw.length; i++) {
+    var p = String(raw[i] == null ? '' : raw[i]).trim().toLowerCase();
+    if (p === 'tudo') return true;
+    for (var j = 0; j < alvo.length; j++) {
+      if (p && p === String(alvo[j] == null ? '' : alvo[j]).trim().toLowerCase()) return true;
+    }
+  }
+  return false;
+};
+// Valores monetários (Dashboard e Histórico): mesma política dos valores das OFs (SEG-2)
+window.podeVerValoresFinanceiros = function () { return window._permFinTem(['dashboard', 'financeiro']); };
+// Página do Financeiro -> permissão exigida (Orçamentos, Comissões, Central de Custos)
+window.podeAcessarFinanceiro = function (pagina) {
+  var pid = String(pagina == null ? '' : pagina).trim().toLowerCase();
+  if (pid === 'orcamentos') return window._permFinTem('orcamentos');
+  if (pid === 'comissoes') return window._permFinTem('comissoes');
+  if (pid === 'central-custos' || pid === 'centralcustos') return window._permFinTem('financeiro');
+  return true;
+};
+window.temAlgumAcessoFinanceiro = function () { return window._permFinTem(['orcamentos', 'comissoes', 'financeiro']); };
+// Página de menu (barra/hotbar): mesmas regras do page gate
+window._seg3PaginaPermitida = function (id) { return window.podeAcessarFinanceiro(id); };
+// Esconde os itens do menu Financeiro que o usuário não pode acessar.
+window._seg3AplicarMenuFinanceiro = function () {
+  try {
+    var pares = [['menu-fin-orcamentos', 'orcamentos'], ['menu-fin-comissoes', 'comissoes'], ['menu-fin-central-custos', 'central-custos']];
+    for (var i = 0; i < pares.length; i++) {
+      var el = document.getElementById(pares[i][0]);
+      if (el && !window.podeAcessarFinanceiro(pares[i][1])) el.style.display = 'none';
+    }
+    if (!window.temAlgumAcessoFinanceiro()) {
+      var grupo = document.getElementById('nav-group-financeiro');
+      var wrap = document.getElementById('ng-financeiro');
+      if (grupo) grupo.style.display = 'none';
+      if (wrap) wrap.style.display = 'none';
+    }
+  } catch (_) {}
+};
+// Cards da Central de Relatórios que dependem de permissão
+window._rrCardPermitido = function (def) {
+  var id = String(def && def.id || '').trim();
+  if (id === 'comissoes') return window.podeAcessarFinanceiro('comissoes');
+  if (id === 'custo-por-of' || id === 'custos-por-of') return window._permFinTem('financeiro');
+  if (id === 'lucratividade-por-maquina') return window._permFinTem('financeiro');
+  return true;
+};
+// ── SEG-3 · permissões de Financeiro e de valores (navegador) · fim ─────────
+
 // ── F-1 · Data sem hora no navegador (auditoria 20/10/2026) ─────────────────
 // '2026-10-09'                 -> '09/10/2026'  (montado por split, SEM new Date)
 // '2026-10-09T23:30:00-03:00'  -> '09/10/2026'  (com hora: converte p/ São Paulo)
@@ -4518,7 +4577,10 @@ try {
       + '    <div class="rr-search-row"><input id="rr-search-relatorios" class="rr-search-input" type="text" placeholder="Buscar relatório..." value="' + rrEsc(String(window.__rrBuscaRelatorios || '')) + '"></div>'
       + '  </div>'
       + '  <div class="rr-grid">'
-      + rrDefs.map(function(def) {
+      + rrDefs.filter(function(def) {
+          // SEG-3: esconde cards de Financeiro/valores para quem não tem permissão.
+          return (typeof window._rrCardPermitido !== 'function') || window._rrCardPermitido(def);
+        }).map(function(def) {
           return ''
             + '<div class="rr-card" data-rr-search="' + rrEsc(((def.label || '') + ' ' + (def.desc || '')).toLowerCase()) + '">'
             + '  <div class="rr-card-top"><div class="rr-icon">' + rrEsc(def.icon || '🖨') + '</div></div>'
@@ -14305,13 +14367,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               var hostPatch = document.getElementById('patch-page-host');
               if (r === 'central-custos' || r === 'centralcustos' || r.indexOf('custo') >= 0) {
                 if (typeof window.renderPageCentralCustos === 'function') {
-                  try {
-                    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fin_ok') !== '1') {
-                      alert('Senha Financeiro obrigatória.');
-                      try { abrirMenuFinanceiro(); } catch (_) {}
-                      return;
-                    }
-                  } catch (_) {}
+                  // SEG-3: sem senha fixa; a Central de Custos exige a permissão 'financeiro'.
+                  if (typeof window.podeAcessarFinanceiro === 'function' && !window.podeAcessarFinanceiro('central-custos')) {
+                    try { alert('Sem permissão para a Central de Custos.'); } catch (_) {}
+                    return;
+                  }
                   var host = null;
                   try { host = getMainPatchHost('central-custos', '💸 Central de Custos'); } catch (_) {}
                   if (host) window.renderPageCentralCustos(host);
@@ -16229,13 +16289,13 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       var topTamanhos = Array.isArray(data && data.top_tamanhos) ? data.top_tamanhos : [];
       var corTop = topCores[0] || null;
       var tamanhoTop = topTamanhos[0] || null;
-      var printDesbloq = !!(window.__histValorProducaoDesbloqueado === true);
+      var printDesbloq = (typeof window.podeVerValoresFinanceiros === 'function') ? !!window.podeVerValoresFinanceiros() : false;
       return window._buildStyledPrintHtml({
         title: 'Relatório de Histórico de Passagens',
         periodo: periodo,
         cards: [
           { label: 'Total de OFs', value: _histFmtNum(resumo.total_ofs || 0), sub: 'OFs no período' },
-          { label: 'Valor de Produção', value: printDesbloq ? _histFmtMoney(resumo.valor_total_producao) : '🔒 Bloqueado', sub: printDesbloq ? 'Soma de produção' : 'Senha 1234 necessária' },
+          { label: 'Valor de Produção', value: printDesbloq ? _histFmtMoney(resumo.valor_total_producao) : '🔒 Bloqueado', sub: printDesbloq ? 'Soma de produção' : 'Sem permissão' },
           { label: 'Caixas Produzidas', value: _histFmtNum(resumo.caixas_produzidas || 0), sub: 'Volume consolidado' },
           { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' },
           { label: 'Cores Mais Usadas', value: corTop && corTop.cor || 'Sem dados', sub: _histRankingResumoHtml(topCores, 'cor') },
@@ -16293,13 +16353,13 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var topTamanhosLista = Object.keys(sizeMap).map(function(key) { return { tamanho: key, total_ofs: sizeMap[key] }; }).sort(function(a, b) {
       return (b.total_ofs - a.total_ofs) || String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR');
     }).slice(0, 5);
-    var printDesbloqLista = !!(window.__histValorProducaoDesbloqueado === true);
+    var printDesbloqLista = (typeof window.podeVerValoresFinanceiros === 'function') ? !!window.podeVerValoresFinanceiros() : false;
     return window._buildStyledPrintHtml({
       title: 'Relatório de Histórico de Passagens',
       periodo: periodo,
       cards: [
         { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas por máquina/dia' },
-        { label: 'Valor de Produção', value: printDesbloqLista ? _histFmtMoney(totalOficial) : '🔒 Bloqueado', sub: printDesbloqLista ? ('Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)') : 'Senha 1234 necessária' },
+        { label: 'Valor de Produção', value: printDesbloqLista ? _histFmtMoney(totalOficial) : '🔒 Bloqueado', sub: printDesbloqLista ? ('Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)') : 'Sem permissão' },
         { label: 'Caixas Produzidas', value: _histFmtNum(listRows.reduce(function(acc, row) { return acc + _histPassagemQuantidade(row); }, 0)), sub: 'Volume visível' },
         { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' },
         { label: 'Cores Mais Usadas', value: topCoresLista[0] && topCoresLista[0].cor || 'Sem dados', sub: _histRankingResumoHtml(topCoresLista, 'cor') },
@@ -17434,16 +17494,18 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var tamanhoTop = topTamanhos[0] || null;
     var refLabel = String(ref && ref.titulo || '').trim() || _histRangeLabel(ref, ref);
     var refTitle = ref && (ref.inicio || ref.fim) ? 'Período de Referência' : 'Mês de Referência';
-    var valorDesbloqueado = !!(window.__histValorProducaoDesbloqueado === true) || temBackendDistinct;
+    // SEG-3: a visibilidade do Valor de Produção segue a permissão do usuário
+    // (mesma política dos valores das OFs). Sem senha fixa.
+    var valorDesbloqueado = (typeof window.podeVerValoresFinanceiros === 'function') ? !!window.podeVerValoresFinanceiros() : false;
     var cardValorProducaoHtml;
     if (valorDesbloqueado) {
       cardValorProducaoHtml = '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>';
     } else {
       cardValorProducaoHtml = ''
-        + '<div class="hist-month-card" id="hist-card-valor-bloqueado" style="cursor:pointer">'
+        + '<div class="hist-month-card" id="hist-card-valor-bloqueado">'
         + '  <div class="lab">Valor de Produção</div>'
         + '  <div class="val" style="font-size:16px;color:#94a3b8">🔒 Bloqueado</div>'
-        + '  <div class="sub"><button type="button" class="hist-patch-btn" id="hist-desbloquear-valor-btn" style="padding:4px 10px;font-size:11px;margin-top:4px">Digite a senha para desbloquear</button></div>'
+        + '  <div class="sub" style="font-size:11px;color:#94a3b8">Sem permissão</div>'
         + '</div>';
     }
 
@@ -17455,27 +17517,6 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       + '<div class="hist-month-card"><div class="lab">Cores Mais Usadas</div><div class="val" style="font-size:18px">' + _histEsc(corTop && corTop.cor || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topCores, 'cor') + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Tamanhos Mais Usados</div><div class="val" style="font-size:18px">' + _histEsc(tamanhoTop && tamanhoTop.tamanho || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topTamanhos, 'tamanho') + '</div></div>';
     cards.dataset.rendered = '1';
-    setTimeout(function() {
-      try {
-        var btn = document.getElementById('hist-desbloquear-valor-btn');
-        var card = document.getElementById('hist-card-valor-bloqueado');
-        var handler = function(e) {
-          try { e && e.stopPropagation && e.stopPropagation(); } catch (_) {}
-          try {
-            var senha = window.prompt('Digite a senha para desbloquear o Valor de Produção:', '');
-            if (senha == null) return;
-            if (String(senha || '').trim() === '1234') {
-              window.__histValorProducaoDesbloqueado = true;
-              _histRenderRelatorioMensal(window.__histMonthlyData || data || {});
-            } else {
-              try { alert('Senha incorreta.'); } catch (_) {}
-            }
-          } catch (_) {}
-        };
-        if (btn) btn.onclick = handler;
-        if (card && !btn) card.onclick = handler;
-      } catch (_) {}
-    }, 0);
 
     if (!sorted.length) {
       tableHost.innerHTML = '<div style="padding:18px;border:1px dashed rgba(148,163,184,.16);border-radius:12px;color:#94a3b8;text-align:center">Nenhuma passagem encontrada para o período selecionado.</div>';
@@ -32769,8 +32810,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'vendedores',          label: 'Vendedores',          icone: '🤝', grupo: 'Cadastros' },
     { id: 'usuarios',            label: 'Usuários',            icone: '👤', grupo: 'Cadastros' },
 
-    { id: 'orcamentos',          label: 'Orçamentos',          icone: '💰', grupo: 'Financeiro', senha: true },
-    { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro', senha: true },
+    { id: 'orcamentos',          label: 'Orçamentos',          icone: '💰', grupo: 'Financeiro' },
+    { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro' },
 
     { id: 'estoque',             label: 'Estoque de Chapas',   icone: '🟦', grupo: 'Estoques' },
     { id: 'entradas-estoque',    label: 'Entradas',            icone: '📥', grupo: 'Estoques' },
@@ -36057,13 +36098,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if(!pid) return;
     var paginasFinanceiro = ['orcamentos', 'comissoes'];
     if (paginasFinanceiro.indexOf(pid) !== -1) {
-      try{
-        if (sessionStorage.getItem('fin_ok') !== '1') {
-          var senha = prompt('Senha do Financeiro:');
-          if (senha !== '1234') { if(senha!==null) alert('Senha incorreta.'); return; }
-          sessionStorage.setItem('fin_ok', '1');
-        }
-      }catch(e){}
+      // SEG-3: sem senha fixa; a página do Financeiro depende da permissão do usuário.
+      var _okFin = (typeof window.podeAcessarFinanceiro === 'function') ? !!window.podeAcessarFinanceiro(pid) : true;
+      if (!_okFin) { try { alert('Sem permissão para esta página do Financeiro.'); } catch (e) {} return; }
     }
     try{ if (typeof (window.go) === 'function') window.go(pid); }catch(e){}
   };
@@ -36071,28 +36108,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function goFinanceiro(pageId){
     var pid = String(pageId || '').trim();
     if(!pid) return;
-    try{
-      if (sessionStorage.getItem('fin_ok') === '1') { try{ go(pid); }catch(e){} return; }
-    }catch(e){}
-    var senha = prompt('Senha do financeiro:');
-    if (senha === null) return;
-    if (senha === '1234') {
-      try { sessionStorage.setItem('fin_ok', '1'); } catch (e) {}
-      try{
-        var grupo = document.getElementById('nav-group-financeiro');
-        if(grupo) grupo.style.display = 'block';
-      }catch(e){}
-      try{ go(pid); }catch(e){}
-    } else {
-      alert('Senha incorreta.');
+    // SEG-3: sem senha fixa; a página do Financeiro depende da permissão do usuário.
+    if (typeof window.podeAcessarFinanceiro === 'function' && !window.podeAcessarFinanceiro(pid)) {
+      try { alert('Sem permissão para esta página do Financeiro.'); } catch (e) {}
+      return;
     }
+    try{ go(pid); }catch(e){}
   }
   window.goFinanceiro = goFinanceiro;
 
   (function patchPermissoesLiberadasExcetoFinanceiro() {
     function isFinanceiroPage(pid) {
       var page = String(pid || '').trim().toLowerCase();
-      return page === 'orcamentos' || page === 'comissoes';
+      return page === 'orcamentos' || page === 'comissoes' || page === 'central-custos' || page === 'centralcustos';
     }
 
     function liberarElementosNaoFinanceiro() {
@@ -36101,7 +36129,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (!el) return;
           var dentroFinanceiro = false;
           try {
-            dentroFinanceiro = !!el.closest('#nav-group-financeiro, #ng-financeiro, #menu-fin-orcamentos, #menu-fin-comissoes');
+            dentroFinanceiro = !!el.closest('#nav-group-financeiro, #ng-financeiro, #menu-fin-orcamentos, #menu-fin-comissoes, #menu-fin-central-custos');
           } catch (_) {}
           if (dentroFinanceiro) return;
           try { el.disabled = false; } catch (_) {}
@@ -36145,25 +36173,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       window.temPermPagina = function(paginaId) {
         var pid = String(paginaId || '').trim();
         if (!isFinanceiroPage(pid)) return true;
+        // SEG-3: sem senha fixa; a página do Financeiro segue a permissão do usuário.
+        if (typeof window.podeAcessarFinanceiro === 'function') return !!window.podeAcessarFinanceiro(pid);
         if (origTemPermPagina) {
           try { return !!origTemPermPagina.apply(this, arguments); } catch (_) {}
         }
-        try {
-          if (sessionStorage.getItem('fin_ok') === '1') return true;
-          var s = prompt('Senha do Financeiro:');
-          if (s === null) return false;
-          if (String(s).trim() === '1234') {
-            sessionStorage.setItem('fin_ok', '1');
-            return true;
-          }
-          if (String(s).trim() !== '') alert('Senha incorreta.');
-        } catch (_) {}
         return false;
       };
 
       window.aplicarPermissoes = function() {
         try { if (origAplicarPermissoes) origAplicarPermissoes.apply(this, arguments); } catch (_) {}
         liberarElementosNaoFinanceiro();
+        try { if (typeof window._seg3AplicarMenuFinanceiro === 'function') window._seg3AplicarMenuFinanceiro(); } catch (_) {}
       };
 
       window.mostrarSemPermissao = function(paginaId) {
@@ -36190,16 +36211,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
 
       liberarElementosNaoFinanceiro();
+      try { if (typeof window._seg3AplicarMenuFinanceiro === 'function') window._seg3AplicarMenuFinanceiro(); } catch (_) {}
     }
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
         hook();
         setInterval(liberarElementosNaoFinanceiro, 1500);
+        try { if (typeof window._seg3AplicarMenuFinanceiro === 'function') window._seg3AplicarMenuFinanceiro(); } catch (_) {}
       });
     } else {
       hook();
       setInterval(liberarElementosNaoFinanceiro, 1500);
+      try { if (typeof window._seg3AplicarMenuFinanceiro === 'function') window._seg3AplicarMenuFinanceiro(); } catch (_) {}
     }
   })();
 
@@ -49912,13 +49936,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           return rr;
       }
       if (page === 'central-custos') {
-        try {
-          if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fin_ok') !== '1') {
-            alert('Senha Financeiro obrigatória.');
-            try { abrirMenuFinanceiro(); } catch (_) {}
-            return;
-          }
-        } catch (_) {}
+        // SEG-3: sem senha fixa; a Central de Custos exige a permissão 'financeiro'.
+        if (typeof window.podeAcessarFinanceiro === 'function' && !window.podeAcessarFinanceiro('central-custos')) {
+          try { alert('Sem permissão para a Central de Custos.'); } catch (_) {}
+          return;
+        }
         var hostCC = getMainPatchHost('central-custos', '💸 Central de Custos');
         try { var hostPatch = document.getElementById('patch-page-host'); if(hostPatch) { hostPatch.style.display = 'block'; hostPatch.removeAttribute('hidden'); } } catch(_){}
         if (typeof window.renderPageCentralCustos === 'function') {
@@ -50089,9 +50111,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window.__dashTotalTodasOfsCacheTs = 0;
   window.__dashResumoTimer = null;
 
+  // SEG-3: os valores do Dashboard seguem a permissão do usuário (dashboard/financeiro).
+  // Sem senha fixa: quem tem permissão já vê; quem não tem, nunca vê.
+  window.__dashPodeVerValores = function () {
+    if (window.__dashValoresDesbloqueados === true) return true;
+    try { return (typeof window.podeVerValoresFinanceiros === 'function') ? !!window.podeVerValoresFinanceiros() : false; } catch (_) { return false; }
+  };
+
   function __dashValorFormatado(valorBruto) {
     try {
-      if (window.__dashValoresDesbloqueados === true) {
+      if (window.__dashPodeVerValores()) {
         return __fmtBrlDashboard(valorBruto);
       }
     } catch (_) {}
@@ -50099,47 +50128,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function __dashDesbloquearValores() {
+    // SEG-3: sem senha fixa. Sem permissão não há desbloqueio.
+    if (!window.__dashPodeVerValores()) {
+      try { if (typeof window.toast === 'function') window.toast('Sem permissão para ver valores.', 'var(--red)'); } catch (_) {}
+      return false;
+    }
     try {
-      if (window.__dashValoresDesbloqueados === true) {
-        try { window.__dashValoresDesbloqueados = false; } catch (_) {}
-        try {
-          var resumoDiv = document.getElementById('patch-dashboard-resumo-ofs');
-          var tb = document.getElementById('dash-tabela-ofs');
-          if (tb && tb._dashRows && tb._dashMeta) {
-            __dashRenderTabela(tb, tb._dashRows, tb._dashMeta);
-          }
-          if (resumoDiv && typeof window.__dashRefreshResumoCards === 'function') {
-            window.__dashRefreshResumoCards(false, true);
-          }
-          var b = document.getElementById('dash-btn-desbloq-valores');
-          if (b) { b.innerHTML = '🔒 Desbloquear valores'; }
-          if (typeof window.toast === 'function') window.toast('🔒 Valores bloqueados.', 'var(--amber)');
-        } catch (_) {}
-        return true;
+      window.__dashValoresDesbloqueados = !(window.__dashValoresDesbloqueados === true);
+      var resumoDiv = document.getElementById('patch-dashboard-resumo-ofs');
+      var tb = document.getElementById('dash-tabela-ofs');
+      if (tb && tb._dashRows && tb._dashMeta) {
+        __dashRenderTabela(tb, tb._dashRows, tb._dashMeta);
+      }
+      if (resumoDiv && typeof window.__dashRefreshResumoCards === 'function') {
+        window.__dashRefreshResumoCards(false, true);
       }
     } catch (_) {}
-    var senha = '';
-    try { senha = String(prompt('Digite a senha para desbloquear os valores:') || '').trim(); } catch (_) { senha = ''; }
-    if (senha === '1234') {
-      try { window.__dashValoresDesbloqueados = true; } catch (_) {}
-      try {
-        var resumoDiv2 = document.getElementById('patch-dashboard-resumo-ofs');
-        var tb2 = document.getElementById('dash-tabela-ofs');
-        if (tb2 && tb2._dashRows && tb2._dashMeta) {
-          __dashRenderTabela(tb2, tb2._dashRows, tb2._dashMeta);
-        }
-        if (resumoDiv2 && typeof window.__dashRefreshResumoCards === 'function') {
-          window.__dashRefreshResumoCards(false, true);
-        }
-        var b2 = document.getElementById('dash-btn-desbloq-valores');
-        if (b2) { b2.innerHTML = '🔓 Bloquear valores'; }
-        if (typeof window.toast === 'function') window.toast('🔓 Valores desbloqueados.', 'var(--green)');
-      } catch (_) {}
-      return true;
-    } else if (senha !== '') {
-      try { if (typeof window.toast === 'function') window.toast('❌ Senha incorreta.', 'var(--red)'); } catch (_) {}
-    }
-    return false;
+    return true;
   }
   window.__dashDesbloquearValores = __dashDesbloquearValores;
 
@@ -52029,7 +52034,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + ';border-color:' + stI.cor + '44">' + esc(statusTxt) + '</span>';
         var valor = Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
         // [FIX-DASH-VALORES] com os valores bloqueados, a tabela também esconde Vl. Unitário e Valor
-        var valorFmt = esc(window.__dashValoresDesbloqueados === true ? ('R$ ' + __fmtBrlDashboard(valor).replace('R$', '').trim()) : 'R$ ••••••');
+        var valorFmt = esc(window.__dashPodeVerValores() ? ('R$ ' + __fmtBrlDashboard(valor).replace('R$', '').trim()) : 'R$ ••••••');
         var maq = esc(String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '—').slice(0, 30));
         var empRaw = of?.emp_id || of?.empresa_id || '';
         var emp = esc(__dashEmpresaNome(empRaw));
@@ -52069,7 +52074,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         } catch (_eCa) { _dtCriacaoTxt = '—'; }
         var _dtCriacao = '<td class="center" style="color:#cbd5e1">' + esc(_dtCriacaoTxt) + '</td>';
         var _vlu = Number(of?.valor_unitario || 0) || 0;
-        var _vlUnitTd = '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums">' + esc(window.__dashValoresDesbloqueados === true ? ('R$ ' + __fmtBrlDashboard(_vlu).replace('R$', '').trim()) : 'R$ ••••••') + '</td>';
+        var _vlUnitTd = '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums">' + esc(window.__dashPodeVerValores() ? ('R$ ' + __fmtBrlDashboard(_vlu).replace('R$', '').trim()) : 'R$ ••••••') + '</td>';
         return (
           '<tr' + trAttrs + '>' +
             '<td class="center" style="font-weight:900;color:#f1f5f9;font-variant-numeric:tabular-nums;font-size:13px">' + ofNum + '</td>' +
@@ -52473,7 +52478,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return (
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
         '<div style="font-weight:800;color:#e2e8f0;font-size:14px">📌 Resumo</div>' +
-        '<button type="button" id="dash-btn-desbloq-valores" onclick="window.__dashDesbloquearValores()" style="padding:6px 12px;border-radius:9px;border:1px solid #f59e0b;background:rgba(250,204,21,.1);color:#fde68a;font-weight:800;font-size:11px;cursor:pointer">' + (window.__dashValoresDesbloqueados === true ? '🔓 Bloquear valores' : '🔒 Desbloquear valores') + '</button>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
         card('📋', 'Total de OFs', __fmtIntDash(total), '#64748b', 'var(--text)', '') +
