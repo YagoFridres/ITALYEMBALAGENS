@@ -14,6 +14,8 @@ function montar(respostas) {
   const store = {};
   const ctx = { chamadas: 0 };
   const window = {
+    // [HOTFIX-5] o calculo passou a ler o JSON com seguranca (_apiJsonSeguro)
+    _apiJsonSeguro: async (r) => { try { return await r.json(); } catch (_) { return null; } },
     _apiAuthFetch: async () => {
       ctx.chamadas++;
       const r = respostas.shift();
@@ -41,9 +43,9 @@ test('chamadas simultâneas fazem uma leitura só', async () => {
   assert.strictEqual(m.ctx.chamadas, 1);
 });
 
-test('resposta 502 não quebra e não vira cache', async () => {
+test('resposta 502 não quebra e não vira cache (devolve null para avisar na tela)', async () => {
   const m = montar([502, { ok: true, data: [{ valor_total: 3 }], hasMore: false }]);
-  assert.strictEqual(await m.fn(), 0);
+  assert.strictEqual(await m.fn(), null);
   assert.strictEqual(m.store.dash_total_todas_ofs, undefined);
   assert.strictEqual(await m.fn(), 3);
 });

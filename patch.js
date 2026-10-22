@@ -312,6 +312,22 @@ if (typeof window._apiAuthFetch !== 'function') {
     return fetch(url, options);
   };
 }
+// [HOTFIX-EGRESS / HOTFIX-5] Le a resposta como JSON sem estourar quando a API cai (502/503).
+// Nesses casos o corpo e HTML/texto e `resp.json()` mostrava "... is not valid JSON" na tela.
+// Aqui devolvemos null e quem chama exibe a mensagem amigavel ("Servidor indisponível, tente novamente.").
+if (typeof window._apiJsonSeguro !== 'function') {
+  window._apiJsonSeguro = function(resp) {
+    if (!resp || typeof resp.text !== 'function') {
+      if (resp && typeof resp.json === 'function') return Promise.resolve(resp.json()).catch(function() { return null; });
+      return Promise.resolve(null);
+    }
+    return resp.text().then(function(txt) {
+      var t = String(txt == null ? '' : txt).trim();
+      if (!t) return null;
+      try { return JSON.parse(t); } catch (_) { return null; }
+    }).catch(function() { return null; });
+  };
+}
 function _abrirModalPadrao(opts) {
   opts = opts || {};
   try {
@@ -50240,6 +50256,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var __promessa = (async function () {
     var soma = 0;
     var __completo = false;
+    var __falhou = false; // [HOTFIX-5] leitura falhou (502/503 ou corpo nao-JSON)
     var offset = 0;
     var limit = 1000;
     var maxIter = 10;
@@ -50247,11 +50264,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       for (var i = 0; i < maxIter; i++) {
         var url = '/api/ofs?offset=' + String(offset) + '&limit=' + String(limit);
         var r = await window._apiAuthFetch(url);
-        // [HOTFIX-EGRESS] resposta de erro (502/503) não é JSON: para sem quebrar a tela
-        if (!r || !r.ok) break;
-        var j = null;
-        try { j = await r.json(); } catch (_) { j = null; }
-        if (!j || j.ok === false) break;
+        // [HOTFIX-EGRESS / HOTFIX-5] resposta de erro (502/503) não é JSON: para sem quebrar a tela
+        if (!r || !r.ok) { __falhou = true; break; }
+        var j = await window._apiJsonSeguro(r);
+        if (!j) { __falhou = true; break; }
+        if (j.ok === false) break;
         var rows = Array.isArray(j.data) ? j.data : [];
         for (var k = 0; k < rows.length; k++) {
           var of = rows[k] || {};
@@ -50270,12 +50287,32 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         } catch (_) {}
       }
     } catch (e) {
+      __falhou = true;
       try { console.error('[II2] erro calcular total todas ofs', e); } catch (_) {}
     }
+    // [HOTFIX-5] sem leitura completa nao devolve numero (evita "R$ 0,00" mentiroso):
+    // quem chama mostra "Servidor indisponível, tente novamente."
+    if (__falhou && !__completo) return null;
     return Number(soma || 0);
     })();
     try { window.__dashTotalTodasOfsEmCurso = __promessa; } catch (_) {}
     try { return await __promessa; } finally { try { window.__dashTotalTodasOfsEmCurso = null; } catch (_) {} }
+  }
+
+  // [HOTFIX-5] Escreve o card "Valor Total Todas OFs". `null` = leitura falhou (mostra aviso
+  // visivel em vez de fingir R$ 0,00), numero = total real.
+  function __dashAplicarTotalCard(total) {
+    var el = document.getElementById('dash-card-total-geral');
+    if (!el) return;
+    if (total == null) {
+      el.textContent = 'Servidor indisponível, tente novamente.';
+      el.style.fontSize = '13px';
+      el.style.color = '#fca5a5';
+      return;
+    }
+    el.style.fontSize = '22px';
+    el.style.color = 'var(--text)';
+    el.textContent = __dashValorFormatado(total);
   }
 
   function __dashReaplicarHideNativo(page) {
@@ -52333,9 +52370,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (tb) tb.innerHTML = '<tbody><tr><td colspan="22" style="padding:30px 24px;color:#94a3b8;text-align:center;font-weight:700;font-size:13px">⏳ Carregando OFs...</td></tr></tbody>';
     var url = '/api/ofs?offset=' + encodeURIComponent(String(offset)) + '&limit=25' + (termoRaw ? ('&busca=' + encodeURIComponent(termoRaw)) : '');
     window._apiAuthFetch(url)
-      .then(function(r) { return r.json(); })
+      .then(function(r) { return window._apiJsonSeguro(r); })
       .then(function(res) {
-        if (!(res && (res.ok === true || res.ok === undefined))) throw new Error((res && res.error) || 'Falha');
+        // [HOTFIX-EGRESS / HOTFIX-5] 502/503 devolve HTML: mensagem amigavel em vez de
+        // "… is not valid JSON" no erro da listagem.
+        if (!res) throw new Error('Servidor indisponível, tente novamente.');
+        if (!(res.ok === true || res.ok === undefined)) throw new Error((res && res.error) || 'Falha');
         var data = Array.isArray(res.data) ? res.data : (Array.isArray(res.ofs) ? res.ofs : []);
         if (tNorm.length >= 3) {
           data = data.filter(function(of) {
@@ -52618,8 +52658,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           setTimeout(async function(){
             try {
               var t = await __dashCalcularTotalTodasOfs();
-              var el = document.getElementById('dash-card-total-geral');
-              if (el) el.textContent = __dashValorFormatado(t);
+              __dashAplicarTotalCard(t);
             } catch(_) {}
           }, 30);
         }
@@ -52627,16 +52666,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
 
       var r = await window._apiAuthFetch('/api/dashboard/resumo-ofs');
-      var res = await r.json();
-      if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
+      // [HOTFIX-EGRESS / HOTFIX-5] resposta de erro (502/503) nao e JSON: mensagem amigavel
+      var res = await window._apiJsonSeguro(r);
+      if (!res) throw new Error('Servidor indisponível, tente novamente.');
+      if (res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
       window.__dashUltimoResumo = res;
 
       resumoDiv.innerHTML = __dashMontarGridCards(res);
       setTimeout(async function(){
         try {
           var t = await __dashCalcularTotalTodasOfs();
-          var el = document.getElementById('dash-card-total-geral');
-          if (el) el.textContent = __dashValorFormatado(t);
+          __dashAplicarTotalCard(t);
         } catch(_) {}
       }, 30);
     } catch(err) {
@@ -52668,9 +52708,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var buscaTabDiv = host.querySelector('#patch-dashboard-busca-tabela');
 
     window._apiAuthFetch('/api/dashboard/resumo-ofs')
-      .then(function(r) { return r.json(); })
+      .then(function(r) { return window._apiJsonSeguro(r); })
       .then(function(res) {
-        if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
+        // [HOTFIX-EGRESS / HOTFIX-5] resposta de erro (502/503) nao e JSON: mensagem amigavel
+        if (!res) throw new Error('Servidor indisponível, tente novamente.');
+        if (res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
         window.__dashUltimoResumo = res;
 
         if (resumoDiv) {
@@ -52678,8 +52720,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           setTimeout(async function(){
             try {
               var t = await __dashCalcularTotalTodasOfs();
-              var el = document.getElementById('dash-card-total-geral');
-              if (el) el.textContent = __dashValorFormatado(t);
+              __dashAplicarTotalCard(t);
             } catch(_) {}
           }, 30);
         }
