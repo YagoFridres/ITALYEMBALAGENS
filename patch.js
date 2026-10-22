@@ -28388,14 +28388,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       purgeLegacyViews();
       var rootEl = shell.root || getContainer();
       if (!rootEl) return;
-      var oldWrap = rootEl.querySelector('.ofmaq-final-table-wrap');
+      // [OFMAQ-08] a "tabela única" só existe fora dos blocos. No modo "Ver Todas"
+      // cada bloco de máquina tem o PRÓPRIO .ofmaq-final-table-wrap; o seletor
+      // antigo pegava um deles, a checagem de colunas o reprovava e o bloco era
+      // removido (ficava sem <table>), um bloco por render.
+      var oldWrap = null;
+      var _allWraps = rootEl.querySelectorAll('.ofmaq-final-table-wrap');
+      for (var _wi = 0; _wi < _allWraps.length; _wi++) {
+        var _w = _allWraps[_wi];
+        var _insideBlocks = false;
+        for (var _p = _w.parentNode; _p && _p !== rootEl; _p = _p.parentNode) {
+          if (_p.classList && _p.classList.contains('ofmaq-final-machine-blocks')) { _insideBlocks = true; break; }
+        }
+        if (!_insideBlocks) { oldWrap = _w; break; }
+      }
       if (oldWrap) {
         var curThs = oldWrap.querySelectorAll('table thead th');
         var temPapelCol = false;
         for (var _i = 0; _i < curThs.length; _i++) {
           if (String(curThs[_i].textContent || '').trim().indexOf('Papel / Previsão') >= 0) { temPapelCol = true; break; }
         }
-        if (!temPapelCol || curThs.length !== 15) { try { oldWrap.remove(); } catch (_e) {} oldWrap = null; }
+        if (!temPapelCol || curThs.length !== 16) { try { oldWrap.remove(); } catch (_e) {} oldWrap = null; }
       }
       var rows = sortedVisibleRows(currentVisibleRows());
       var curStableKey = typeof _stableKeyOfState === 'function' ? _stableKeyOfState(state) : null;
@@ -28448,10 +28461,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         var existingBlocks = Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks'));
         var blocks = existingBlocks.length ? existingBlocks[0] : null;
+        // [OFMAQ-08] no modo "Ver Todas" não deve sobrar a tabela única: cada
+        // bloco cria/ mantém a própria <table>.
+        if (oldWrap) { try { oldWrap.remove(); } catch (_) {} oldWrap = null; }
         if (!blocks) {
           blocks = document.createElement('div');
           blocks.className = 'ofmaq-final-machine-blocks';
-          if (oldWrap) try { oldWrap.remove(); } catch (_) {}
           var chipsEl2 = rootEl.querySelector('#ofmaq-final-redistribuicao, .ofmaq-final-redistribuicao');
           if (chipsEl2 && chipsEl2.parentNode) chipsEl2.parentNode.insertBefore(blocks, chipsEl2.nextSibling);
           else rootEl.appendChild(blocks);
