@@ -64974,6 +64974,31 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     };
     calcRecalcFromScope.__patchCmW3 = true;
   }
+  // [ORC-03] calcRecalcFromScope(0) recria o extra-fields-wrap do bloco 0 SEM
+  // os ids #calc-sob/#calc-enc (index.html ~39749 usa só data-calc-field).
+  // Sem os ids, `__calcRecalcSeguro`/`calcRecalc` liam 0 e a TELA calculava sem
+  // sobreposição/encurtamento, enquanto o valor gravado mantinha a sobreposição.
+  // Devolvemos os ids logo após o recálculo para manter tela = gravado.
+  if (typeof calcRecalcFromScope === 'function' && !calcRecalcFromScope.__patchSobEncIds) {
+    var origCalcFromScopeSobIds = calcRecalcFromScope;
+    window.calcRecalcFromScope = calcRecalcFromScope = function(blockIdx) {
+      var out = origCalcFromScopeSobIds.apply(this, arguments);
+      try {
+        if ((Number(blockIdx) || 0) === 0) {
+          var wrapSob = document.getElementById('calc-extra-fields');
+          if (wrapSob) {
+            var pares = [['sob', 'calc-sob'], ['enc', 'calc-enc']];
+            for (var i = 0; i < pares.length; i++) {
+              var inp = wrapSob.querySelector('[data-calc-field="' + pares[i][0] + '"]');
+              if (inp && inp.id !== pares[i][1]) inp.id = pares[i][1];
+            }
+          }
+        }
+      } catch (_) {}
+      return out;
+    };
+    calcRecalcFromScope.__patchSobEncIds = true;
+  }
   if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchWavePanels) {
     var origAbrirCalculadoraWave = window.abrirCalculadora;
     window.abrirCalculadora = function() {
@@ -69343,7 +69368,24 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var qtd = num('calc-qtd', 0);
     var cf = num('calc-cf', 15), mg = num('calc-mg', 25), cvend = num('calc-cv', 1), imp = num('calc-imp', 10);
     var vkm = num('calc-vkm', 0), km = num('calc-km', 0);
-    var sob = num('calc-sob', 0), enc = num('calc-enc', 0);
+    // [ORC-03] sob/enc lidos via calcFieldEl(0, …) — o wrap do bloco 0 é
+    // recriado por calcRecalcFromScope sem id em alguns caminhos; ler só por
+    // `getElementById('calc-sob')` devolvia 0 e a tela calculava sem
+    // sobreposição/encurtamento (enquanto o gravado mantinha o valor).
+    function _numEl(el) {
+      try {
+        if (!el) return 0;
+        var raw = String(el.value == null ? '' : el.value).trim().replace(',', '.');
+        if (raw === '') return 0;
+        var v = parseFloat(raw);
+        return isFinite(v) ? v : 0;
+      } catch (_) { return 0; }
+    }
+    var sobEl = null, encEl = null;
+    try { if (typeof calcFieldEl === 'function') { sobEl = calcFieldEl(0, 'sob'); encEl = calcFieldEl(0, 'enc'); } } catch (_) {}
+    if (!sobEl) sobEl = document.getElementById('calc-sob');
+    if (!encEl) encEl = document.getElementById('calc-enc');
+    var sob = _numEl(sobEl), enc = _numEl(encEl);
     var w3 = 100 - cf - mg - cvend - imp;
     var cm = w3;
     aplicarCustoMercCalculado(w3);
