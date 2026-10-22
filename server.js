@@ -30622,7 +30622,6 @@ app.delete('/api/chapas/pins/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
-    const limit = Math.max(1, Math.min(150, Math.trunc(_chapasToNum(req.query.limit, 120))));
     const chapaId = String(req.query.chapa_id || '').trim();
     const tipo = String(req.query.tipo || '').trim().toLowerCase();
     const empId = String(req.query.empId || '').trim();
@@ -30632,53 +30631,34 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     const deIso = isIsoDate(de) ? `${de}T00:00:00.000Z` : '';
     const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999Z` : '';
 
-    let movs = null;
-    let movErr = null;
-    try {
-      let q = supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(limit);
-      if (chapaId) q = q.eq('chapa_id', chapaId);
-      if (tipo) q = q.eq('tipo', tipo);
-      if (empId) q = q.eq('emp_id', empId);
-      if (deIso) q = q.gte('created_at', deIso);
-      if (ateIso) q = q.lte('created_at', ateIso);
-      const r = await q;
-      movs = r?.data || [];
-      movErr = r?.error || null;
-      if (!movErr && Array.isArray(movs) && movs.length > 0) return ok(res, movs);
-    } catch (e) {
-      movErr = e;
-    }
-
-    if (movErr || !Array.isArray(movs) || movs.length === 0) {
-      const tipos = ['estoque_entrada', 'estoque_saida', 'estoque_ajuste', 'estoque_manual', 'estoque_chapas_patch', 'baixa_of'];
-      let qh = supabase
-        .from('historico_acoes')
-        .select('*')
-        .in('tipo_acao', tipos)
-        .order('data_hora', { ascending: false })
-        .limit(limit);
-      if (deIso) qh = qh.gte('data_hora', deIso);
-      if (ateIso) qh = qh.lte('data_hora', ateIso);
-      const { data: hist, error: histErr } = await qh;
-
-      if (histErr) {
-        const msg = String(histErr.message || histErr);
-        if (msg.includes('does not exist') || msg.includes('relation')) return ok(res, []);
-        return res.status(500).json({ ok: false, error: histErr.message });
+    // [REL-08] as tabelas de movimentos são a fonte real. Antes, com a v2 vazia,
+    // a rota caía em `historico_acoes` (que ignora `tipo`, inclui `baixa_of` e
+    // cortava em 150), devolvendo 150 lançamentos falsos. Agora só movimentos
+    // reais, filtrando por `tipo` no banco, e sem corte (F-4).
+    const movTabelas = ['chapas_estoque_movimentos_v2', 'chapas_estoque_movimentos'];
+    let movs = [];
+    for (const tabela of movTabelas) {
+      try {
+        const linhas = await _fetchTodasPaginas(async (from, to) => {
+          let q = supabase.from(tabela).select('*').order('created_at', { ascending: false }).range(from, to);
+          if (chapaId) q = q.eq('chapa_id', chapaId);
+          if (tipo) q = q.eq('tipo', tipo);
+          if (empId) q = q.eq('emp_id', empId);
+          if (deIso) q = q.gte('created_at', deIso);
+          if (ateIso) q = q.lte('created_at', ateIso);
+          const r = await q;
+          if (r?.error) throw r.error;
+          return Array.isArray(r?.data) ? r.data : [];
+        }, { pageSize: 1000 });
+        if (linhas.length > 0) { movs = linhas; break; }
+      } catch (e) {
+        const msg = String(e?.message || e);
+        const ausente = msg.includes('does not exist') || msg.includes('relation') || msg.includes('could not find');
+        if (!ausente) throw e;
       }
-      return ok(res, (hist || []).map(h => ({
-        id: h.id,
-        tipo: h.tipo_acao,
-        descricao: h.descricao,
-        usuario: h.usuario,
-        created_at: h.data_hora,
-        delta: null,
-        qtd_anterior: null,
-        qtd_nova: null
-      })));
     }
 
-    return ok(res, movs || []);
+    return ok(res, movs);
   } catch (e) { err(res, e); }
 });
 
