@@ -844,13 +844,17 @@ const _JJ3_U1 = 'df5f7672-0a6b-402d-ae65-296554236c31';
 const _JJ3_U2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
 const _JJ3_U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a';
 function _jj3ClassificaEmpresa(of) {
-  const eid = String(of?.empresa_id || '').trim().toLowerCase();
+  const eid = corrigirUuid(String(of?.empresa_id || '').trim()).toLowerCase();
   const sid = String(of?.emp_id || '').trim().toUpperCase();
   if (eid === _JJ3_U1) return 'U1';
   if (eid === _JJ3_U2) return 'U2';
   if (eid === _JJ3_U3) return 'U3';
+  // [REL-01] UUID desconhecido (inclusive o UUID errado da Oestepack):
+  // classifica pela sigla emp_id em vez de jogar em OUTRA.
+  if (sid === 'E1') return 'U1';
+  if (sid === 'E2') return 'U2';
+  if (sid === 'E3') return 'U3';
   if (!eid) return 'SEM';
-  if (sid === 'E3' && eid !== _JJ3_U1 && eid !== _JJ3_U2) return 'U3';
   return 'OUTRA';
 }
 function _jj3BucketFromFiltro(filtro) {
@@ -17117,15 +17121,9 @@ function _relatoriosLegacyEmpresaUuid(raw) {
 }
 
 function _relatoriosPickEmpresaId(of) {
-  const uuid = String(of?.empresa_id || '').trim();
-  if (_isUuid(uuid)) return uuid;
-  return _relatoriosLegacyEmpresaUuid(
-    of?.emp_id ??
-    of?.empId ??
-    of?.empresa ??
-    of?.empresa_nome ??
-    ''
-  );
+  // [REL-01] F-3: usa _empresaDaOf para corrigir o UUID errado da Oestepack
+  // (senão ~39 OFs ficam de fora ao filtrar por empresa).
+  return _empresaDaOf(of);
 }
 
 function _relatoriosPickValorOf(of) {
