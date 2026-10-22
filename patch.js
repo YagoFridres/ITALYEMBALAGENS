@@ -50233,9 +50233,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window.__dashDesbloquearValores = __dashDesbloquearValores;
 
   async function __dashCalcularTotalTodasOfs() {
-    // [HOTFIX-EGRESS] este total relia TODAS as OFs a cada 5 min (e a cada recarga da página).
-    // Agora: cache de 30 min, guardado também na aba (sessionStorage) para sobreviver ao F5,
-    // e uma única leitura por vez.
+    // [HOTFIX-EGRESS / HOTFIX-3] este total relia TODAS as OFs (GET /api/ofs?offset&limit=1000)
+    // só para somar. Agora a soma vem pronta do servidor em /api/dashboard/resumo-ofs
+    // (campo total_valor_todas_ofs), sem trafegar a lista para o navegador.
+    // Mantém cache de 30 min (memória + sessionStorage) e uma leitura por vez.
     var __TTL = 30 * 60 * 1000;
     try {
       var agora = Date.now();
@@ -50254,46 +50255,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (window.__dashTotalTodasOfsEmCurso) return await window.__dashTotalTodasOfsEmCurso;
     } catch (_) {}
     var __promessa = (async function () {
-    var soma = 0;
-    var __completo = false;
-    var __falhou = false; // [HOTFIX-5] leitura falhou (502/503 ou corpo nao-JSON)
-    var offset = 0;
-    var limit = 1000;
-    var maxIter = 10;
+    var total = null;
     try {
-      for (var i = 0; i < maxIter; i++) {
-        var url = '/api/ofs?offset=' + String(offset) + '&limit=' + String(limit);
-        var r = await window._apiAuthFetch(url);
-        // [HOTFIX-EGRESS / HOTFIX-5] resposta de erro (502/503) não é JSON: para sem quebrar a tela
-        if (!r || !r.ok) { __falhou = true; break; }
-        var j = await window._apiJsonSeguro(r);
-        if (!j) { __falhou = true; break; }
-        if (j.ok === false) break;
-        var rows = Array.isArray(j.data) ? j.data : [];
-        for (var k = 0; k < rows.length; k++) {
-          var of = rows[k] || {};
-          var v = Number(of.valor_total || of.valor_venda || of.total || 0) || 0;
-          soma += v;
-        }
-        offset += limit;
-        if (!j.hasMore || rows.length < limit) { __completo = true; break; }
+      // reaproveita o resumo de OFs já carregado pelo Dashboard; se não tiver o campo, busca no servidor
+      var resumo = window.__dashUltimoResumo;
+      if (!resumo || typeof resumo.total_valor_todas_ofs !== 'number') {
+        var r = await window._apiAuthFetch('/api/dashboard/resumo-ofs');
+        // [HOTFIX-5] resposta de erro (502/503) não é JSON: devolve null e a tela mostra o aviso
+        if (!r || !r.ok) return null;
+        resumo = await window._apiJsonSeguro(r);
+        if (!resumo || typeof resumo.total_valor_todas_ofs !== 'number') return null;
       }
-      // só guarda no cache quando leu tudo (resposta de erro não vira total errado por 30 min)
-      if (__completo) {
-        try {
-          window.__dashTotalTodasOfsCache = soma;
-          window.__dashTotalTodasOfsCacheTs = Date.now();
-          try { sessionStorage.setItem('dash_total_todas_ofs', JSON.stringify({ v: soma, ts: window.__dashTotalTodasOfsCacheTs })); } catch (_) {}
-        } catch (_) {}
-      }
+      total = Number(resumo.total_valor_todas_ofs) || 0;
     } catch (e) {
-      __falhou = true;
       try { console.error('[II2] erro calcular total todas ofs', e); } catch (_) {}
+      return null;
     }
-    // [HOTFIX-5] sem leitura completa nao devolve numero (evita "R$ 0,00" mentiroso):
-    // quem chama mostra "Servidor indisponível, tente novamente."
-    if (__falhou && !__completo) return null;
-    return Number(soma || 0);
+    // só guarda no cache quando leu o número (resposta de erro não vira total errado por 30 min)
+    try {
+      window.__dashTotalTodasOfsCache = total;
+      window.__dashTotalTodasOfsCacheTs = Date.now();
+      try { sessionStorage.setItem('dash_total_todas_ofs', JSON.stringify({ v: total, ts: window.__dashTotalTodasOfsCacheTs })); } catch (_) {}
+    } catch (_) {}
+    return total;
     })();
     try { window.__dashTotalTodasOfsEmCurso = __promessa; } catch (_) {}
     try { return await __promessa; } finally { try { window.__dashTotalTodasOfsEmCurso = null; } catch (_) {} }

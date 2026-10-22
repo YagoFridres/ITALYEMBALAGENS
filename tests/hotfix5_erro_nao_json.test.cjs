@@ -79,7 +79,8 @@ test('502 no meio da leitura devolve null (nao finge R$ 0,00) e nao grava cache'
 });
 
 test('leitura completa soma e devolve o numero (e grava cache)', async () => {
-  const m = montarTotal([{ ok: true, status: 200, text: async () => JSON.stringify({ ok: true, data: [{ valor_total: 10 }, { valor_total: 5 }], hasMore: false }) }]);
+  // [HOTFIX-3] o total agora vem somado do servidor (total_valor_todas_ofs), nao da lista inteira
+  const m = montarTotal([{ ok: true, status: 200, text: async () => JSON.stringify({ ok: true, total_valor_todas_ofs: 15 }) }]);
   assert.strictEqual(await m.fn(), 15);
   assert.ok(m.store.dash_total_todas_ofs, 'leitura completa deve gravar cache');
 });
@@ -127,8 +128,9 @@ test('busca universal de OF do Dashboard usa _apiJsonSeguro + mensagem amigavel'
 
 test('carregamentos de /api/dashboard/resumo-ofs usam _apiJsonSeguro + mensagem amigavel', () => {
   const ocorrencias = src.split('_apiAuthFetch(\'/api/dashboard/resumo-ofs\')').length - 1;
-  assert.strictEqual(ocorrencias, 2, 'esperados 2 carregamentos de resumo-ofs');
+  // [HOTFIX-3] 2 carregamentos do Dashboard + 1 fallback do total ("todas as OFs") = 3
+  assert.strictEqual(ocorrencias, 3, 'esperados 3 acessos a resumo-ofs (2 cards + 1 total)');
   assert.doesNotMatch(src, /_apiAuthFetch\('\/api\/dashboard\/resumo-ofs'\)[\s\S]{0,120}?\.then\(function\(r\) \{ return r\.json\(\); \}\)/);
   const msgOcorrencias = src.split(MSG).length - 1;
-  assert.ok(msgOcorrencias >= 4, 'mensagem amigavel deve aparecer nos 4 pontos do Dashboard, achei ' + msgOcorrencias);
+  assert.ok(msgOcorrencias >= 4, 'mensagem amigavel deve aparecer nos pontos do Dashboard, achei ' + msgOcorrencias);
 });

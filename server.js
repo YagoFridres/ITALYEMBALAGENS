@@ -37806,7 +37806,7 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     for (let offset = 0; offset < 50000; offset += PAGE) {
       let query = supabase
         .from('ofs')
-        .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_entrega,ent,dia,created_at,valor_total,valor_venda,urgente,urg,data_conclusao,data_faturamento,passagens_maquina')
+        .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_entrega,ent,dia,created_at,valor_total,valor_venda,total,urgente,urg,data_conclusao,data_faturamento,passagens_maquina')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE - 1);
@@ -37821,6 +37821,14 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
       rows.push(...data);
       if (data.length < PAGE) break;
     }
+
+    // [HOTFIX-EGRESS / HOTFIX-3] Soma de "todas as OFs" calculada no SERVIDOR, com a mesma regra
+    // do card do Dashboard (valor_total -> valor_venda -> total). Antes o front relia a lista
+    // inteira (GET /api/ofs?offset&limit=1000) só para somar; agora recebe só o número aqui.
+    let totalValorTodasOfs = 0;
+    rows.forEach(function(of) {
+      totalValorTodasOfs += Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
+    });
 
     const hoje = new Date();
     const hojeStr = _relatoriosIsoDateOnly(hoje);
@@ -37989,7 +37997,8 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
       faturamento_dia: { valor: fatDiaValor, ofs: fatDiaCount },
       ofs_passaram_maquina_mes: ofsPassaramMaquinaMes,
       ofs_passaram_maquina_total: ofsPassaramMaquinaCount,
-      ofs_com_erro: ofsErros
+      ofs_com_erro: ofsErros,
+      total_valor_todas_ofs: Number(totalValorTodasOfs) || 0
     });
   } catch (e) {
     try { console.error('[dashboard/resumo-ofs]', e && (e.stack || e.message) || e); } catch (_) {}
