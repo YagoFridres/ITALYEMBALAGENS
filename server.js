@@ -1005,6 +1005,7 @@ function cacheClearPrefix(prefix) {
 }
 function _clearOfsCaches() {
   try { cacheClearPrefix('ofs_'); } catch (_) {}
+  try { _ofsIdsComImagemCache = { valor: null, ts: 0 }; } catch (_) {}
 }
 const _MAP_UUID_SIGLA_EMP_GLOBAL = {
   'df5f7672-0a6b-402d-ae65-296554236c31': 'E1',
@@ -5993,6 +5994,44 @@ async function _ofsColunasSemImgs() {
   return valor;
 }
 
+// [HOTFIX-EGRESS / tem_imagem] Quais OFs têm imagem gravada dentro de `imgs` (base64)?
+// A lista não baixa mais essa coluna, então o front não teria como saber que existe imagem para
+// buscar sob demanda. Este helper responde isso SEM trazer a imagem: consulta leve que devolve
+// apenas `id`, com o filtro aplicado no banco (a coluna `imgs` não trafega).
+// Limitação conhecida (documentada, sem impacto funcional): o filtro é por "imgs não vazio", então
+// um valor jsonb literal `null`/`""` pode entrar como falso positivo. Nesse caso o front busca o
+// registro no clique e mostra "não tem imagem" — nenhuma tela quebra.
+// Cache de 5 min: o conjunto muda raramente e sem isso a varredura rodaria a cada carga de lista.
+let _ofsIdsComImagemCache = { valor: null, ts: 0 };
+async function _ofsIdsComImagemNoBanco() {
+  const agora = Date.now();
+  if (_ofsIdsComImagemCache.valor && (agora - _ofsIdsComImagemCache.ts) < 5 * 60 * 1000) return _ofsIdsComImagemCache.valor;
+  const ids = new Set();
+  try {
+    const PASSO = 1000;
+    const MAX_PAGINAS = 10; // hoje ~881 OFs com imagem; teto só como guarda
+    for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+      const de = pagina * PASSO;
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id')
+        .not('imgs', 'is', null)
+        .neq('imgs', '[]')
+        .order('created_at', { ascending: false })
+        .range(de, de + PASSO - 1);
+      if (error) throw error;
+      const lote = Array.isArray(data) ? data : [];
+      for (const linha of lote) if (linha && linha.id) ids.add(String(linha.id));
+      if (lote.length < PASSO) break;
+    }
+  } catch (e) {
+    try { console.warn('[HOTFIX-EGRESS] não foi possível listar os ids com imagem (tem_imagem recai para imagem_url):', e?.message || e); } catch (_) {}
+    return null;
+  }
+  _ofsIdsComImagemCache = { valor: ids, ts: agora };
+  return ids;
+}
+
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   // AUD-4 (CAUSA RAIZ do 502 ~300s): estas variáveis eram `const`/`let` declaradas DENTRO do
   // `try` (block scoping ES6). O `catch`-final as referenciava (offset/limit/shouldFetchAll/
@@ -6370,6 +6409,21 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     rows = _filtrarOfsNaoTesteGlobal(rows);
+
+    // [HOTFIX-EGRESS / HOTFIX-1] `tem_imagem` na lista, SEM baixar a imagem:
+    // quando alguma linha não tem `imagem_url`, uma consulta LEVE (só ids) diz quais OFs guardam
+    // a imagem apenas em `imgs` (base64). O front usa esse booleano para mostrar o ícone e buscar
+    // a imagem sob demanda em GET /api/ofs/:id.
+    try {
+      let _idsComImagem = null;
+      if (rows.some((r) => !r || !r.imagem_url)) _idsComImagem = await _ofsIdsComImagemNoBanco();
+      rows = rows.map((r) => Object.assign({}, r, {
+        tem_imagem: !!((r && r.imagem_url) || (_idsComImagem && _idsComImagem.has(String(r && r.id))))
+      }));
+    } catch (e) {
+      try { console.warn('[HOTFIX-EGRESS] falha ao marcar tem_imagem (segue com imagem_url):', e?.message || e); } catch (_) {}
+      rows = rows.map((r) => Object.assign({}, r, { tem_imagem: !!(r && r.imagem_url) }));
+    }
 
     const totalCount = count || rows.length;
     const hasMore = (offset + rows.length) < totalCount;
