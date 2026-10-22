@@ -37979,17 +37979,6 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
       if (s === 'concluído' || s === 'concluido' || s === 'concluída' || s === 'concluida') return 'concluido';
       return 'aberto';
     }
-    function entregaOf(of) {
-      const d = of?.data_entrega || of?.ent || of?.dia || null;
-      if (!d) return null;
-      const ds = String(d).slice(0, 10);
-      const p = ds.split(/[-\/]/);
-      if (p.length < 3) return null;
-      let dt;
-      if (p[0].length === 4) dt = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
-      else dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
-      return isNaN(dt.getTime()) ? null : dt;
-    }
 
     let total = rows.length;
     let concluidos = 0;
@@ -38040,17 +38029,15 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
         else if (st === 'cancelado') cancelados++;
         else abertos++;
 
-        if (st !== 'cancelado') {
-          const dt = entregaOf(of);
-          if (dt && st !== 'concluido') {
-            const hoje0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-            const ent0 = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-            const diff = Math.round((ent0 - hoje0) / 86400000);
-            if (diff < 0) atrasados++;
-            else if (diff <= 3) urgentes++;
-          }
+        if (st !== 'cancelado' && st !== 'concluido') {
+          // [OFMAQ-05] usa a MESMA função do Dashboard/F-5 (atrasada/vence3) no lugar
+          // da diferença de dias com fallback `dia`; assim o card do Dashboard e o
+          // topo "ATRASADOS" contam com a mesma regra (data_entrega/ent < hoje).
+          const _c = _ofClassificaUrgencia(of, hojeStr);
+          if (_c.atrasada) atrasados++;
+          else if (_c.vence3) urgentes++;
           const urgFlag = of?.urgente || of?.urg;
-          if (urgFlag && String(urgFlag).toLowerCase() !== 'false' && String(urgFlag) !== '0' && st !== 'concluido') temUrgenteFlag = true;
+          if (urgFlag && String(urgFlag).toLowerCase() !== 'false' && String(urgFlag) !== '0') temUrgenteFlag = true;
         }
 
         const pass = parsePassagens(of?.passagens_maquina || of?.passagens_por_maquina || of?.passagens || null);

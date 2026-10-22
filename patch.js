@@ -31125,8 +31125,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3.1, 'bloco s
       window.__patchBadgesLastValid = { at: 0, ug: 0, ok: 0 };
       window.__patchBadgesRuleDoc = {
         regraAntesIndexHtml: 'index.html L5623-L5626: base=TODAS OFs carregadas (inclusive concluídas/canceladas); ATRASADOS=status==="Atrasado" | URGENTES=o.urg===true | CONCLUÍDOS=getConcluidasHoje() só hoje. PROBLEMA CONFIRMADO: 31 urg=TRUE em OFs CONCLUÍDAS antigas → topo mostrava 31 URGENTES errado.',
-        regraNovaPatchJs: 'S2/S3/U3: filtro OFs ABERTAS (status != concluído/cancelado/fechado/arquivado). ATRASADOS=abertas E status=Atrasado. URGENTES=abertas E (urg=true OU urgente=true). CONCLUÍDOS=mantém getConcluidasHoje() original (só hoje). Cache último valor S2: se array vazio ou exceção → mostra último valor + toast aviso laranja, NUNCA 0/0/0.',
-        fonteDados: 'window.OFS (carregado chunks /api/ofs).'
+        regraNovaPatchJs: 'S2/S3/U3 + OFMAQ-05: filtro OFs ABERTAS (status != concluído/cancelado/fechado/arquivado). ATRASADOS=abertas E F-5 `atrasada` (data_entrega/ent < hoje BRT) — MESMA regra do Dashboard. URGENTES=abertas E (urg=true OU urgente=true), marcação manual. CONCLUÍDOS=mantém getConcluidasHoje() original (só hoje). Cache último valor S2: se array vazio ou exceção → mostra último valor + toast aviso laranja, NUNCA 0/0/0.',
+        fonteDados: 'window.OFS (carregado chunks /api/ofs).',
+        pendenciaEmProducaoPcp: 'OFMAQ-05: o contador "N em produção" do PCP (index.html, pcp-dia-resumo) conta status==="Em produção". Esse status EXISTE de verdade no sistema (options de status / stTag), então trocá-lo por "todas as OFs abertas" seria mudança de semântica não comprovada — NÃO alterado aqui. Registrado para decisão do Yago.'
       };
       function _statusAberto(rawSt) {
         try {
@@ -31142,7 +31143,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3.1, 'bloco s
           var base = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window._ofmaqBaseList) ? window._ofmaqBaseList : []);
           var temDados = !!(Array.isArray(base) && base.length > 0);
           var abertas = temDados ? base.filter(function(o){ return _statusAberto(o && o.status); }) : [];
-          var at = abertas.filter(function(o){ return String(o && o.status || '').trim() === 'Atrasado'; }).length;
+          // [OFMAQ-05] ATRASADOS passa a usar a MESMA regra do Dashboard (F-5):
+          // antes contava status==='Atrasado', que nenhuma OF tem → sempre 0.
+          // URGENTES continua sendo a marcação manual (urg/urgente), como sempre.
+          var _hojeBrtIso = (function(){
+            try {
+              return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            } catch (_) { try { return new Date().toISOString().slice(0, 10); } catch (__) { return ''; } }
+          })();
+          var at = abertas.filter(function(o){
+            try {
+              if (typeof window._ofClassificaUrgencia !== 'function') return false;
+              return !!(window._ofClassificaUrgencia(o, _hojeBrtIso) || {}).atrasada;
+            } catch (_) { return false; }
+          }).length;
           var ug = abertas.filter(function(o){ return !!(o && (o.urg === true || o.urgente === true)); }).length;
           var elAt = document.getElementById('bdg-at');
           var elUg = document.getElementById('bdg-ug');
