@@ -2870,6 +2870,20 @@ function _relatoriosAddDaysIso(dateStr, days) {
   return dt.toISOString().slice(0, 10);
 }
 
+// Mesmo dia do mês anterior. Se a data for o último dia do mês, devolve o
+// último dia do mês anterior (assim 30/09 vira 31/08); se o dia não existir no
+// mês anterior (ex.: 31/03), devolve o último dia disponível (28/02).
+function _relatoriosMesAnteriorIso(dateStr) {
+  const base = _relatoriosIsoDateOnly(dateStr);
+  if (!base) return '';
+  const [y, m, d] = base.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const ultimoAtual = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const ultimoAnterior = new Date(Date.UTC(y, m - 1, 0)).getUTCDate();
+  const dia = d === ultimoAtual ? ultimoAnterior : Math.min(d, ultimoAnterior);
+  return new Date(Date.UTC(y, m - 2, dia)).toISOString().slice(0, 10);
+}
+
 // ── F-2 · Período no fuso de São Paulo -> ISO UTC (SEM deslocamento fixo) ───
 // O Brasil teve horário de verão (UTC-2) até fev/2019 e o fuso pode mudar de
 // novo; por isso o offset é obtido via Intl e nunca fixado em -03:00/+3h.
@@ -18672,21 +18686,30 @@ app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) =
 app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const now = new Date();
-    const inicioAtualDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0));
-    const inicioProximoDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0));
-    const inicioAnteriorDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0));
-    const atual = {
-      inicio: inicioAtualDate.toISOString().slice(0, 10),
-      fim: _relatoriosAddDaysIso(inicioProximoDate.toISOString().slice(0, 10), -1),
-      fim_exclusivo: inicioProximoDate.toISOString().slice(0, 10)
-    };
+    // [REL-16] o comparativo ignorava o período escolhido e sempre usava o mês
+    // corrente. Agora lê `req.query` (F-3 range resolver) e, sem filtro, mantém
+    // o mês corrente como padrão.
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const atual = { inicio: range.inicio, fim: range.fim, fim_exclusivo: range.fim_exclusivo };
+    // [REL-16] período anterior = mesmo intervalo no mês anterior
+    // (01–20/10 compara com 01–20/09; mês cheio compara com o mês cheio anterior).
+    const anteriorFim = _relatoriosMesAnteriorIso(atual.fim);
     const anterior = {
-      inicio: inicioAnteriorDate.toISOString().slice(0, 10),
-      fim: _relatoriosAddDaysIso(atual.inicio, -1),
-      fim_exclusivo: atual.inicio
+      inicio: _relatoriosMesAnteriorIso(atual.inicio),
+      fim: anteriorFim,
+      fim_exclusivo: _relatoriosAddDaysIso(anteriorFim, 1)
     };
-    const companyIds = _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+    // [REL-16] filtro de empresa único (F-3) em vez de sempre as 3 fixas.
+    const filtroEmp = _empresaFiltro(req);
+    const empresasAlvo = filtroEmp.todas
+      ? _RELATORIOS_EMPRESAS_FIXAS
+      : (_RELATORIOS_EMPRESAS_FIXAS.some((e) => e.id === filtroEmp.uuid)
+        ? _RELATORIOS_EMPRESAS_FIXAS.filter((e) => e.id === filtroEmp.uuid)
+        : [{ id: filtroEmp.uuid, nome: _relatoriosEmpresaNome(filtroEmp.uuid) || filtroEmp.sigla || 'Empresa' }]);
+    const companyIds = empresasAlvo.map((item) => item.id);
     const [ofsAtual, ofsAnterior] = await Promise.all([
       _relatoriosFetchOfsConcluidas(atual, { companyIds }),
       _relatoriosFetchOfsConcluidas(anterior, { companyIds })
@@ -18696,7 +18719,7 @@ app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) =
     const valueOrZero = (v) => Number(v || 0) || 0;
     const variacaoPct = (cur, prev) => (prev > 0 ? Number((((cur - prev) / prev) * 100).toFixed(1)) : null);
     const rows = []
-      .concat(_RELATORIOS_EMPRESAS_FIXAS.map((empresa) => {
+      .concat(empresasAlvo.map((empresa) => {
         const prev = aggAnterior.por_empresa.find((item) => item.empresa_id === empresa.id) || {};
         const cur = aggAtual.por_empresa.find((item) => item.empresa_id === empresa.id) || {};
         const atualValor = valueOrZero(cur.valor_vendido);

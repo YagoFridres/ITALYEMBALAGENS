@@ -277,25 +277,39 @@ test('REL-01 (set/2026): OFs fora do mês não entram no total', async () => {
   assert.strictEqual(raw.por_empresa.reduce((a, r) => a + Number(r.valor_vendido || 0), 0), 1000);
 });
 
-test('REL-01 (set/2026): as 3 rotas usam a lista FIXA das 3 empresas', () => {
-  const rotas = [
-    '/api/relatorios/vendas-por-empresa',
-    '/api/relatorios/comparativo-mensal',
-    '/api/relatorios/evolucao-vendas'
-  ];
-  rotas.forEach((rota) => {
-    const i = SRC.indexOf("app.get('" + rota + "'");
-    assert.ok(i >= 0, 'rota não encontrada: ' + rota);
-    const prox = SRC.indexOf("app.get('/api/relatorios/", i + 10);
-    const bloco = SRC.slice(i, prox > 0 ? prox : i + 3000);
+function blocoDaRota(rota) {
+  const i = SRC.indexOf("app.get('" + rota + "'");
+  assert.ok(i >= 0, 'rota não encontrada: ' + rota);
+  const prox = SRC.indexOf("app.get('/api/relatorios/", i + 10);
+  return SRC.slice(i, prox > 0 ? prox : i + 3000);
+}
+
+test('REL-01 (set/2026): vendas-por-empresa e evolucao-vendas usam a lista FIXA', () => {
+  ['/api/relatorios/vendas-por-empresa', '/api/relatorios/evolucao-vendas'].forEach((rota) => {
+    const bloco = blocoDaRota(rota);
     assert.ok(
       bloco.includes('_RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)') ||
         bloco.includes('_RELATORIOS_EMPRESAS_FIXAS.map((e) => e.id)'),
       'a rota ' + rota + ' deve continuar usando a lista fixa das 3 empresas'
     );
+  });
+});
+
+test('REL-01 (set/2026): as 3 rotas não descartam OFs por UUID cru', () => {
+  [
+    '/api/relatorios/vendas-por-empresa',
+    '/api/relatorios/comparativo-mensal',
+    '/api/relatorios/evolucao-vendas'
+  ].forEach((rota) => {
+    const bloco = blocoDaRota(rota);
     assert.ok(
       !/companyIds[^\n]*=\s*\[[^\]]*\.filter\(/.test(bloco),
       'a rota ' + rota + ' não deve descartar OFs por UUID cru'
     );
   });
+});
+
+test('REL-01 (set/2026): o comparativo-mensal passou a respeitar F-3 (REL-16)', () => {
+  const bloco = blocoDaRota('/api/relatorios/comparativo-mensal');
+  assert.ok(bloco.includes('_empresaFiltro(req)'), 'deve usar o filtro de empresa único (F-3)');
 });
