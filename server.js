@@ -22644,16 +22644,21 @@ app.get('/api/relatorios/tipos-caixa', authMiddleware, async (req, res) => {
     setNoCache(res);
     const dataInicio = String(req.query.data_inicio || '').trim() || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const dataFim = String(req.query.data_fim || '').trim() || new Date().toISOString().slice(0, 10);
+    // [REL-11] `data_conclusao` é timestamptz. Comparar com a data pura ('AAAA-MM-DD')
+    // tornava o dia final exclusivo (o `.lte` virava meia-noite UTC) e perdia o
+    // último dia. Converte o período SP [início, fim] INCLUSIVO para instantes UTC
+    // (F-2) e usa gte/lt.
+    const _tcRange = _spRangeUtc(dataInicio, dataFim);
     // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
     const filtroEmp = _empresaFiltro(req);
     let query = supabase
       .from('ofs')
       .select('id,tipo_caixa_id,tipo_caixa,qtd_produzida,quantidade,qtd,status,data_conclusao,deleted_at,empresa_id,emp_id')
-      .gte('data_conclusao', dataInicio)
-      .lte('data_conclusao', dataFim)
       .is('deleted_at', null)
       .order('data_conclusao', { ascending: false })
       .limit(10000);
+    if (_tcRange) query = query.gte('data_conclusao', _tcRange.gte).lt('data_conclusao', _tcRange.lt);
+    else query = query.gte('data_conclusao', dataInicio).lte('data_conclusao', dataFim);
     query = _aplicarFiltroEmpresaOfs(query, filtroEmp);
     const { data: ofsRows, error: ofsError } = await query;
     if (ofsError) throw ofsError;
