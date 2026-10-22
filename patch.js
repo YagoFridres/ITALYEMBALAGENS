@@ -1029,12 +1029,25 @@ try {
     if (typeof window._buildStyledPrintHtml !== 'function' || typeof window._openStyledPrintWindow !== 'function') {
       throw new Error('Infra de impressão indisponível');
     }
-    return window._openStyledPrintWindow(window._buildStyledPrintHtml(cfg));
+    // [REL-02] a impressão passa a registrar o escopo usado: empresa (Todas/E1/E2/E3)
+    // e o critério de data (período selecionado na Central).
+    var out = Object.assign({}, cfg || {});
+    if (!out.escopo) {
+      var st = rrState();
+      var empTxt = String(st && st.empresa || 'todas').trim();
+      var empLabel = (!empTxt || /^(todas|all|\*)$/i.test(empTxt)) ? 'Todas as empresas' : empTxt.toUpperCase();
+      out.escopo = 'Empresa: ' + empLabel + ' • Critério de data: ' + rrCurrentRange().titulo;
+    }
+    return window._openStyledPrintWindow(window._buildStyledPrintHtml(out));
   }
 
   async function rrReportPassagens() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/passagens/historico?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=1000');
+    var json = await rrFetchJson(rrApiUrl('/api/passagens/historico', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim),
+      'limit=1000'
+    ]));
     var rows = rrList(json, ['passagens', 'data']);
     // [REL-09] o card usava rows.length (limitado à página de exibição). Usa o
     // total real informado pelo servidor e avisa quando há corte de exibição.
@@ -1087,7 +1100,10 @@ try {
 
   async function rrReportComissoes() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/comissoes/relatorio?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/comissoes/relatorio', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var vendedores = rrList(json, ['vendedores']);
     var ofs = rrList(json, ['ofs']);
     return rrOpenPrint({
@@ -1131,7 +1147,10 @@ try {
 
   async function rrReportCaixasPerdidas() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/caixas-perdidas/dashboard?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/caixas-perdidas/dashboard', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var rows = rrList(json, ['detalhamento']);
     var rankingMaq = rrList(json, ['ranking_maquinas']);
     var rankingOps = rrList(json, ['ranking_operadores']);
@@ -1173,7 +1192,10 @@ try {
 
   async function rrReportMaiorPerdaTipoCaixa() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/caixas-perdidas/dashboard?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/caixas-perdidas/dashboard', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var rows = rrList(json, ['detalhamento']);
     var grupos = new Map();
     rows.forEach(function(r) {
@@ -1239,7 +1261,10 @@ try {
 
   async function rrReportMaiorPerdaCliente() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/caixas-perdidas/dashboard?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/caixas-perdidas/dashboard', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var rows = rrList(json, ['detalhamento']);
     var grupos = new Map();
     rows.forEach(function(r) {
@@ -1305,7 +1330,10 @@ try {
 
   async function rrReportPerdasAltas() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/perdas-altas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/perdas-altas', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var rows = Array.isArray(json && json.ofs) ? json.ofs : [];
     var resumo = json && json.resumo ? json.resumo : {};
     function sevLabel(s) {
@@ -1367,7 +1395,10 @@ try {
 
   async function rrReportToneladas() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/analises/toneladas-vendidas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/analises/toneladas-vendidas', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var rows = rrList(json, ['rows', 'detalhamento']);
     var porFornecedor = new Map();
     rows.forEach(function(row) {
@@ -1455,7 +1486,10 @@ try {
     var ref = rrCurrentRange();
     var pair = await Promise.all([
       rrFetchJson('/api/gramaturas'),
-      rrFetchJson('/api/analises/toneladas-vendidas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim))
+      rrFetchJson(rrApiUrl('/api/analises/toneladas-vendidas', [
+        'data_inicio=' + encodeURIComponent(ref.data_inicio),
+        'data_fim=' + encodeURIComponent(ref.data_fim)
+      ]))
     ]);
     var grams = rrList(pair[0], ['data', 'gramaturas']);
     var tonRows = rrList(pair[1], ['rows', 'detalhamento']);
@@ -1550,7 +1584,10 @@ try {
 
   async function rrReportGramaturasRanking() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/analises/toneladas-vendidas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/analises/toneladas-vendidas', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var tonRows = rrList(json, ['rows', 'detalhamento']);
     var usoMap = new Map();
     tonRows.forEach(function(row) {
@@ -1634,7 +1671,11 @@ try {
     var pair = await Promise.all([
       rrFetchJson('/api/chapas_estoque?limit=5000'),
       rrFetchJson('/api/chapas_estoque/toneladas'),
-      rrFetchJson('/api/chapas_estoque_movimentos?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=5000')
+      rrFetchJson(rrApiUrl('/api/chapas_estoque_movimentos', [
+        'data_inicio=' + encodeURIComponent(ref.data_inicio),
+        'data_fim=' + encodeURIComponent(ref.data_fim),
+        'limit=5000'
+      ]))
     ]);
     var chapas = rrList(pair[0], ['data', 'rows', 'chapas']);
     var tons = pair[1] || {};
@@ -1696,7 +1737,12 @@ try {
   async function rrReportMovimentos(kind) {
     var ref = rrCurrentRange();
     var isEntrada = String(kind || '') === 'entrada';
-    var json = await rrFetchJson('/api/chapas_estoque_movimentos?tipo=' + encodeURIComponent(isEntrada ? 'entrada' : 'saida') + '&data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=5000');
+    var json = await rrFetchJson(rrApiUrl('/api/chapas_estoque_movimentos', [
+      'tipo=' + encodeURIComponent(isEntrada ? 'entrada' : 'saida'),
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim),
+      'limit=5000'
+    ]));
     var rows = rrList(json, ['data', 'rows']);
     var resumo = new Map();
     rows.forEach(function(row) {
@@ -2081,7 +2127,10 @@ try {
 
   async function rrReportVendasPorEmpresa() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/vendas-por-empresa?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/vendas-por-empresa', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -2124,7 +2173,10 @@ try {
 
   async function rrReportComparativoMensal() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/comparativo-mensal?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/comparativo-mensal', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var rows = rrList(json, ['rows', 'data']);
     function rrCmpFmt(row, value) {
       var tipo = String(row && row.tipo || '').trim();
@@ -2196,7 +2248,10 @@ try {
 
   async function rrReportEvolucaoVendas() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/evolucao-vendas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/evolucao-vendas', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var resumo = json && json.resumo || {};
     var meses = rrList(json, ['meses', 'rows', 'data']);
     var vendedores = rrList(json, ['vendedores']);
@@ -2241,7 +2296,10 @@ try {
 
   async function rrReportVendasPorRamo() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/vendas-por-ramo?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/vendas-por-ramo', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -2280,7 +2338,10 @@ try {
 
   async function rrReportVendasPorCidadeEstado() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/vendas-por-cidade-estado?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/vendas-por-cidade-estado', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -2434,7 +2495,10 @@ try {
           var mes = Number((body.querySelector('#rr-vendedor-mes') || {}).value || ref.mes);
           var ano = Number((body.querySelector('#rr-vendedor-ano') || {}).value || ref.ano);
           previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px">Carregando prévia...</div>';
-          lastJson = await rrFetchJson('/api/relatorios/controle-vendas-vendedor?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
+          lastJson = await rrFetchJson(rrApiUrl('/api/relatorios/controle-vendas-vendedor', [
+            'mes=' + encodeURIComponent(mes),
+            'ano=' + encodeURIComponent(ano)
+          ]));
           rrRenderControleVendasVendedorPreview(previewHost, lastJson);
           return { mes: mes, ano: ano, json: lastJson };
         }
@@ -2571,7 +2635,10 @@ try {
 
   async function rrReportChapasAbaixo200() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/chapas-abaixo-200?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/chapas-abaixo-200', [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -2614,7 +2681,11 @@ try {
 
   async function rrReportClientesMenosCompraram() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/clientes-mais-compraram?ordem=asc&data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/clientes-mais-compraram', [
+      'ordem=asc',
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data', 'clientes']);
     return rrOpenPrint({
@@ -2654,7 +2725,7 @@ try {
   }
 
   async function rrReportClientesInativos() {
-    var json = await rrFetchJson('/api/relatorios/clientes-inativos?dias=30');
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/clientes-inativos', ['dias=30']));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -2866,6 +2937,16 @@ try {
     return ['emp_id=' + encodeURIComponent(val)];
   }
 
+  // [REL-02] Monta a URL do relatório já com o filtro de empresa da Central
+  // (todas_empresas=1 ou emp_id=E1/E2/E3). Sem isto o servidor caía na empresa
+  // do usuário e ignorava a seleção "Todas/Empresa".
+  function rrApiUrl(path, params) {
+    var parts = rrEmpresaQueryParts().slice();
+    var lista = Array.isArray(params) ? params : (params ? [params] : []);
+    lista.forEach(function(p) { if (p) parts.push(String(p)); });
+    return String(path || '') + (parts.length ? ('?' + parts.join('&')) : '');
+  }
+
   function rrFetchClientesLite(term) {
     var txt = String(term || '').trim();
     if (!txt) return Promise.resolve([]);
@@ -2883,9 +2964,10 @@ try {
 
   async function rrReportOfsEmAberto(params) {
     var filtroEmpresa = String(params && params.empresa || 'atual').trim();
-    var qs = [];
-    if (filtroEmpresa === 'todas') qs.push('emp_id=all');
-    var json = await rrFetchJson('/api/relatorios/ofs-em-aberto' + (qs.length ? ('?' + qs.join('&')) : ''));
+    // [REL-02] "Empresa atual" passa a respeitar o filtro de empresa da Central
+    // (todas_empresas=1 ou emp_id=E1/E2/E3); "Todas" segue mandando emp_id=all.
+    var qs = (filtroEmpresa === 'todas') ? ['emp_id=all'] : rrEmpresaQueryParts();
+    var json = await rrFetchJson('/api/relatorios/ofs-em-aberto?' + qs.join('&'));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -2959,7 +3041,9 @@ try {
   }
 
   async function rrReportFichaCliente(clienteId) {
-    var json = await rrFetchJson('/api/relatorios/cliente-ficha?cliente_id=' + encodeURIComponent(String(clienteId || '').trim()));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/cliente-ficha', [
+      'cliente_id=' + encodeURIComponent(String(clienteId || '').trim())
+    ]));
     var cliente = json && json.cliente || {};
     var resumo = json && json.resumo || {};
     var insights = json && json.insights || {};
@@ -3197,7 +3281,10 @@ try {
     var now = new Date();
     var mes = Math.max(1, Math.min(12, Math.trunc(Number(params && params.mes || (now.getMonth() + 1)) || (now.getMonth() + 1))));
     var ano = Math.max(2000, Math.min(2100, Math.trunc(Number(params && params.ano || now.getFullYear()) || now.getFullYear())));
-    var json = await rrFetchJson('/api/relatorios/ofs-entradas-mes?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/ofs-entradas-mes', [
+      'mes=' + encodeURIComponent(mes),
+      'ano=' + encodeURIComponent(ano)
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
@@ -3275,13 +3362,10 @@ try {
 
   async function rrReportTiposCaixa() {
     var ref = rrCurrentRange();
-    var empId = rrEmpId();
-    var qs = [
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/tipos-caixa', [
       'data_inicio=' + encodeURIComponent(ref.data_inicio),
       'data_fim=' + encodeURIComponent(ref.data_fim)
-    ];
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
-    var json = await rrFetchJson('/api/relatorios/tipos-caixa?' + qs.join('&'));
+    ]));
     var rows = rrList(json, ['rows', 'data']).map(function(row) {
       return {
         tipo: String(row && (row.tipo || row.tipo_caixa || row.nome) || 'Sem tipo').trim() || 'Sem tipo',
@@ -3323,13 +3407,10 @@ try {
 
   async function rrReportCoresTamanhos() {
     var ref = rrCurrentRange();
-    var empId = rrEmpId();
-    var qs = [
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/cores-tamanhos', [
       'data_inicio=' + encodeURIComponent(ref.data_inicio),
       'data_fim=' + encodeURIComponent(ref.data_fim)
-    ];
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
-    var json = await rrFetchJson('/api/relatorios/cores-tamanhos?' + qs.join('&'));
+    ]));
     var totalOfs = rrInt(json && json.total_ofs || 0);
     var cores = rrList(json, ['cores', 'data']).map(function(row) {
       return {
@@ -3432,13 +3513,10 @@ try {
 
   async function rrReportMaioresTamanhosVendidos() {
     var ref = rrCurrentRange();
-    var empId = rrEmpId();
-    var qs = [
+    var json = await rrFetchJson(rrApiUrl('/api/relatorios/maiores-tamanhos-vendidos', [
       'data_inicio=' + encodeURIComponent(ref.data_inicio),
       'data_fim=' + encodeURIComponent(ref.data_fim)
-    ];
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
-    var json = await rrFetchJson('/api/relatorios/maiores-tamanhos-vendidos?' + qs.join('&'));
+    ]));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']).map(function(row) {
       return {
@@ -40896,7 +40974,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _printCssPadraoComissoes() {
-    return '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.brandline{font-size:13px;color:#666;font-weight:700;margin-bottom:4px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}.zebra tbody tr:nth-child(even) td{background:#f8fafc}.dark thead th{background:#1a1a2e;color:#fff;border-bottom:2px solid #111}.footer-print{position:fixed;left:20px;right:20px;bottom:8px;text-align:right;font-size:10px;color:#666}.footer-print .page-num:after{content:counter(page)}@page{margin:16mm 12mm 18mm 12mm}@media print{body{padding:0}.footer-print{position:fixed}}';
+    return '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.brandline{font-size:13px;color:#666;font-weight:700;margin-bottom:4px}.escopo-print{font-size:11px;color:#444;font-weight:600;margin:2px 0 18px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}.zebra tbody tr:nth-child(even) td{background:#f8fafc}.dark thead th{background:#1a1a2e;color:#fff;border-bottom:2px solid #111}.footer-print{position:fixed;left:20px;right:20px;bottom:8px;text-align:right;font-size:10px;color:#666}.footer-print .page-num:after{content:counter(page)}@page{margin:16mm 12mm 18mm 12mm}@media print{body{padding:0}.footer-print{position:fixed}}';
   }
 
   function _buildStyledPrintHtml(opts) {
@@ -40913,6 +40991,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '<div class="brandline">Italy Embalagens</div>'
       + '<h2>Gerado em ' + window._printEscText(_printGeradoEmBr()) + '</h2>'
       + '<h1>' + window._printEscText((cfg.title || 'Relatório') + ' — ' + _printPeriodoTituloBr(cfg.periodo || '')) + '</h1>'
+      + (cfg.escopo ? '<div class="escopo-print">' + window._printEscText(cfg.escopo) + '</div>' : '')
       + '<div class="cards">'
       + cards.map(function(card) {
         return '<div class="card"><div class="lbl">' + window._printEscText(card && card.label || '') + '</div><div class="val' + (card && card.green ? ' green' : '') + '">' + window._printEscText(card && card.value || '0') + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(card && card.sub || '') + '</div></div>';

@@ -8405,17 +8405,23 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
+    const companyIds = filtroEmp.todas
+      ? _RELATORIOS_EMPRESAS_FIXAS.map((e) => e.id)
+      : [filtroEmp.uuid];
     const diasMinimos = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
     const hoje = new Date();
     const msDia = 86400000;
 
-    const { data: clientesRaw, error: clientesError } = await supabase
+    let clientesQuery = supabase
       .from('clientes')
       .select('id,nome,empresa_id,created_at')
-      .eq('empresa_id', empresa_id)
       .limit(5000);
+    clientesQuery = companyIds.length === 1
+      ? clientesQuery.eq('empresa_id', companyIds[0])
+      : clientesQuery.in('empresa_id', companyIds);
+    const { data: clientesRaw, error: clientesError } = await clientesQuery;
     if (clientesError) throw clientesError;
     const clientes = (Array.isArray(clientesRaw) ? clientesRaw : []).filter((cli) => cli && _isUuid(String(cli?.id || '').trim()));
 
@@ -8423,7 +8429,7 @@ app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) =>
       inicio: '2000-01-01',
       fim: '2100-01-01',
       fim_exclusivo: '2100-01-02'
-    }, { companyIds: [empresa_id] });
+    }, { companyIds });
 
     const ultimaCompra = new Map();
     ofsHistorico.forEach((of) => {
@@ -9911,16 +9917,22 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       });
     }
 
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID. A tabela de
+    // perdas usa emp_id (sigla) para separar as empresas.
+    const filtroEmp = _empresaFiltro(req);
+    const _cpEmpSigla = (!filtroEmp.todas && filtroEmp.sigla) ? filtroEmp.sigla : '';
     const todosFull = [];
     {
       const pageSize = 1000;
       let from = 0;
       while (true) {
-        const { data, error } = await supabase
+        let qCp = supabase
           .from(tabelaAtiva)
           .select('*')
           .order('created_at', { ascending: false })
           .range(from, from + pageSize - 1);
+        if (_cpEmpSigla) qCp = qCp.eq('emp_id', _cpEmpSigla);
+        const { data, error } = await qCp;
         if (error) break;
         const page = Array.isArray(data) ? data : [];
         if (!page.length) break;
@@ -10340,12 +10352,17 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
     // [REL-09] sem corte silencioso: o `.limit(5000)` era truncado em 1000 pelo
     // PostgREST, então o relatório só via as 1000 perdas mais recentes. Pagina até
     // o fim (F-4).
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID. A tabela de
+    // perdas usa emp_id (sigla) para separar as empresas.
+    const filtroEmp = _empresaFiltro(req);
+    const _paEmpSigla = (!filtroEmp.todas && filtroEmp.sigla) ? filtroEmp.sigla : '';
     const todos = await _fetchTodasPaginas(async (from, to) => {
-      const { data, error } = await supabase
+      let qPa = supabase
         .from(tabelaAtiva)
         .select('*')
-        .order('created_at', { ascending: false })
-        .range(from, to);
+        .order('created_at', { ascending: false });
+      if (_paEmpSigla) qPa = qPa.eq('emp_id', _paEmpSigla);
+      const { data, error } = await qPa.range(from, to);
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     }, { pageSize: 1000 });
@@ -15061,7 +15078,10 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     __dbg_hist.ofs_coluna_json_passagens_maquina_nao_nulas_count = ofsJsonNaoNulasCount;
     __dbg_hist.ofs_coluna_json_query_erro = ofsJsonErro;
 
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID. A tabela fisica
+    // de passagens filtra pelo nome da empresa (empresa ILIKE %Italy/Cartoeste/Oestepack%).
+    const _pvFiltroEmp = _empresaFiltro(req);
+    const empresaId = _pvFiltroEmp.todas ? '' : String(_pvFiltroEmp.sigla || _pvFiltroEmp.uuid || '').trim();
     __dbg_hist.filtro_empresa_aplicado_uuid_ou_sigla = empresaId || '(nenhum/vazio)';
 
     const pair = await _buscarPassagensHistoricoFromOfs(req, {
@@ -17028,10 +17048,10 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
 
-    let empresaFilter;
-    try { empresaFilter = await _relatoriosResolveEmpresaFilter(req); } catch (_) { empresaFilter = { todas: true, uuid: null }; }
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     const elegiveis = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: empresaFilter && !empresaFilter.todas && empresaFilter.uuid ? [empresaFilter.uuid] : []
+      companyIds: filtroEmp.todas ? [] : [filtroEmp.uuid]
     });
 
     const cliIds = Array.from(new Set(
@@ -17864,10 +17884,10 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
     const refMes = new Date(range.inicio + 'T12:00:00');
     const ano = Number.isFinite(refMes.getTime()) ? refMes.getFullYear() : null;
     const mes = Number.isFinite(refMes.getTime()) ? (refMes.getMonth() + 1) : null;
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     const ofs = await _relatoriosFetchOfsCriadas(range, {
-      companyIds: empresa_id ? [empresa_id] : []
+      companyIds: filtroEmp.todas ? [] : [filtroEmp.uuid]
     });
     const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(_isUuid);
     const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
@@ -18165,8 +18185,9 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
     setNoCache(res);
     const clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.id || '').trim();
     if (!clienteId) return res.status(400).json({ ok: false, error: 'cliente_id_obrigatorio' });
-    let empresaAtual = null;
-    try { empresaAtual = await _resolveEmpresaUuid(req); } catch (_) { empresaAtual = null; }
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
+    const empresaAtual = filtroEmp.todas ? null : filtroEmp.uuid;
     let cliente = null;
     try {
       let q = supabase.from('clientes').select('*').eq('id', clienteId).maybeSingle();
@@ -18408,7 +18429,8 @@ app.get('/api/relatorios/cores-tamanhos', authMiddleware, async (req, res) => {
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     let query = supabase
       .from('ofs')
       .select('id,status,data_conclusao,deleted_at,empresa_id,emp_id,cores_impressao,dim_comprimento,dim_largura,caixa_comprimento,caixa_largura')
@@ -18417,7 +18439,7 @@ app.get('/api/relatorios/cores-tamanhos', authMiddleware, async (req, res) => {
       .is('deleted_at', null)
       .order('data_conclusao', { ascending: false })
       .limit(10000);
-    if (emp) query = query.or('empresa_id.eq.' + emp + ',emp_id.eq.' + emp);
+    query = _aplicarFiltroEmpresaOfs(query, filtroEmp);
     const { data: ofsRows, error: ofsError } = await query;
     if (ofsError) throw ofsError;
 
@@ -18501,8 +18523,8 @@ app.get('/api/relatorios/maiores-tamanhos-vendidos', authMiddleware, async (req,
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     const cols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'empresa_id',
       'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
@@ -18514,7 +18536,7 @@ app.get('/api/relatorios/maiores-tamanhos-vendidos', authMiddleware, async (req,
         .gte('data_conclusao', range.inicio)
         .lt('data_conclusao', range.fim_exclusivo)
         .order('data_conclusao', { ascending: false });
-      if (empresa_id && _isUuid(empresa_id)) query = query.eq('empresa_id', empresa_id);
+      query = _aplicarFiltroEmpresaOfs(query, filtroEmp);
       return query.limit(10000);
     });
     if (sel?.error) throw sel.error;
@@ -18964,10 +18986,10 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     const ofs = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: empresa_id ? [empresa_id] : []
+      companyIds: filtroEmp.todas ? [] : [filtroEmp.uuid]
     });
     const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
     const grupos = new Map();
@@ -19027,8 +19049,10 @@ app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, 
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     const ofs = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
+      companyIds: filtroEmp.todas ? _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id) : [filtroEmp.uuid]
     });
     const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
     const grupos = new Map();
@@ -19105,9 +19129,9 @@ app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, 
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    const companyIds = empresa_id ? [empresa_id] : [];
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
+    const companyIds = filtroEmp.todas ? [] : [filtroEmp.uuid];
     const ofsMes = await _relatoriosFetchOfsConcluidas(range, { companyIds });
     const historyCols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'created_at',
@@ -19312,7 +19336,8 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
       if (timeoutHandler) clearTimeout(timeoutHandler);
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    const empId = String(req.query.emp_id || req.query.empId || '').trim();
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID (antes só aceitava UUID).
+    const filtroEmp = _empresaFiltro(req);
     const cols = [
       'id', 'numero', 'of', 'descricao', 'status', 'data_conclusao',
       'empresa_id', 'cli_id',
@@ -19335,8 +19360,7 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
           .lt('data_conclusao', range.fim_exclusivo)
           .order('data_conclusao', { ascending: false })
           .range(de, de + ofsPageSize - 1);
-        if (empId && _isUuid(empId)) query = query.eq('empresa_id', empId);
-        return query;
+        return _aplicarFiltroEmpresaOfs(query, filtroEmp);
       });
       if (sel?.error) {
         console.error('[RELATORIOS][CUSTOS][OFSEL]', { message: sel.error?.message, details: sel.error?.details, hint: sel.error?.hint, code: sel.error?.code });
@@ -22593,7 +22617,8 @@ app.get('/api/relatorios/tipos-caixa', authMiddleware, async (req, res) => {
     setNoCache(res);
     const dataInicio = String(req.query.data_inicio || '').trim() || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const dataFim = String(req.query.data_fim || '').trim() || new Date().toISOString().slice(0, 10);
-    const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     let query = supabase
       .from('ofs')
       .select('id,tipo_caixa_id,tipo_caixa,qtd_produzida,quantidade,qtd,status,data_conclusao,deleted_at,empresa_id,emp_id')
@@ -22602,7 +22627,7 @@ app.get('/api/relatorios/tipos-caixa', authMiddleware, async (req, res) => {
       .is('deleted_at', null)
       .order('data_conclusao', { ascending: false })
       .limit(10000);
-    if (emp) query = query.or('empresa_id.eq.' + emp + ',emp_id.eq.' + emp);
+    query = _aplicarFiltroEmpresaOfs(query, filtroEmp);
     const { data: ofsRows, error: ofsError } = await query;
     if (ofsError) throw ofsError;
     const rowsBase = (Array.isArray(ofsRows) ? ofsRows : []).filter((row) => String(row?.status || '').toLowerCase().includes('conclu'));
@@ -22610,7 +22635,7 @@ app.get('/api/relatorios/tipos-caixa', authMiddleware, async (req, res) => {
     let tiposMap = new Map();
     if (tipoIds.length) {
       let tq = supabase.from('tipos_caixa').select('id,nome');
-      if (emp) tq = tq.eq('emp_id', emp);
+      if (!filtroEmp.todas && filtroEmp.sigla) tq = tq.eq('emp_id', filtroEmp.sigla);
       const { data: tiposData } = await tq.in('id', tipoIds);
       tiposMap = new Map((Array.isArray(tiposData) ? tiposData : []).map((row) => [String(row?.id || '').trim(), String(row?.nome || '').trim()]));
     }
@@ -28708,6 +28733,8 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, requirePerm('relator
   try {
     setNoCache(res);
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: false });
+    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    const filtroEmp = _empresaFiltro(req);
     const _tonesNormId = (v) => String(v == null ? '' : v).trim().replace(/^['"]+|['"]+$/g, '');
     const pickOfCliId = (of) => _tonesNormId(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? of?.clienteId ?? '');
     const pickOfGramaturaId = (of) => _tonesNormId(of?.gramatura_id ?? of?.gramaturaId ?? '');
@@ -28741,6 +28768,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, requirePerm('relator
       q = q.not('data_conclusao', 'is', null);
       if (range?.inicio) q = q.gte('data_conclusao', range.inicio);
       if (range?.fim_exclusivo) q = q.lt('data_conclusao', range.fim_exclusivo);
+      q = _aplicarFiltroEmpresaOfs(q, filtroEmp);
       q = q.range(from, from + 999);
       const { data, error } = await q;
       if (error) throw error;
