@@ -28661,6 +28661,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
+      // [OFMAQ-06] zera o cache de ordem estável: sem isso renderRows reaplicava
+      // state._rowOrderMap (ordem antiga) e a fila só mudava depois do reload.
+      state._stableOrderLastKey = null;
+      state._rowOrderMap = null;
       renderRows(ensureShell());
       try { showOfmaqCenterConfirm('A sequência da OF foi atualizada na fila da máquina.', { title: 'Sequência alterada' }); } catch (_) {}
     }
@@ -28674,6 +28678,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var target = Math.max(0, Math.min(ordered.length - 1, (Math.trunc(Number(targetPosition || 0) || 0) - 1)));
       if (target === idx) {
         applyDisplaySeqToState();
+        state._stableOrderLastKey = null;
+        state._rowOrderMap = null;
         renderRows(ensureShell());
         return;
       }
@@ -28695,6 +28701,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
+      // [OFMAQ-06] idem reorderWithinDay: invalida o cache de ordem estável.
+      state._stableOrderLastKey = null;
+      state._rowOrderMap = null;
       renderRows(ensureShell());
       try { showOfmaqCenterConfirm('A sequência da OF foi atualizada na fila da máquina.', { title: 'Sequência alterada' }); } catch (_) {}
     }
