@@ -10031,6 +10031,87 @@ setTimeout(function() {
   } catch (_) {}
 }, 200);
 
+// [HOTFIX-EGRESS / HOTFIX-2] Imagem da OF só é baixada quando a pessoa abre.
+// A lista (GET /api/ofs) não traz mais o base64 da coluna `imgs`; o registro completo continua
+// em GET /api/ofs/:id. Aqui: cache em memória por id (5 min) e uma única requisição por id por vez.
+(function patchImagemOfSobDemanda() {
+  if (window._ofImagemSobDemanda) return;
+  var TTL = 5 * 60 * 1000;
+  var cache = {};
+  var emCurso = {};
+
+  // Extrai a imagem de um registro COMPLETO de OF (GET /api/ofs/:id).
+  function extrair(of) {
+    if (!of) return '';
+    var direto = String(of.imagem_url || of.imagem || of.image_url || '').trim();
+    if (direto) return direto;
+    try {
+      if (typeof window._normalizeImgs === 'function') {
+        var arr = window._normalizeImgs(of.imgs != null ? of.imgs : of.imagens);
+        if (arr && arr.length && arr[0]) return String(arr[0] || '').trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  window._ofImagemSobDemanda = function (id) {
+    var chave = String(id == null ? '' : id).trim();
+    if (!chave) return Promise.resolve('');
+    var guardada = cache[chave];
+    if (guardada && (Date.now() - guardada.ts) < TTL) return Promise.resolve(guardada.url);
+    if (emCurso[chave]) return emCurso[chave];
+    var promessa = (async function () {
+      try {
+        var url = '/api/ofs/' + encodeURIComponent(chave);
+        var r = null;
+        if (typeof window._apiAuthFetch === 'function') {
+          r = await window._apiAuthFetch(url);
+        } else {
+          var cabecalhos = {};
+          try {
+            var t = window.__token || window.token || localStorage.getItem('token') || '';
+            if (t) cabecalhos.Authorization = 'Bearer ' + t;
+          } catch (_) {}
+          r = await fetch(url, { headers: cabecalhos });
+        }
+        if (!r || !r.ok) return '';
+        var j = null;
+        try { j = await r.json(); } catch (_) { j = null; }
+        if (!j) return '';
+        var registro = (j.data && typeof j.data === 'object') ? j.data : j;
+        var imagem = extrair(registro);
+        if (imagem) cache[chave] = { url: imagem, ts: Date.now() };
+        return imagem;
+      } catch (e) {
+        try { console.error('[II2] [HOTFIX-EGRESS] falha ao buscar a imagem da OF ' + chave, e); } catch (_) {}
+        return '';
+      }
+    })();
+    emCurso[chave] = promessa;
+    var soltar = function () { try { delete emCurso[chave]; } catch (_) {} };
+    try { promessa.then(soltar, soltar); } catch (_) {}
+    return promessa;
+  };
+
+  // Abre a imagem de uma OF; se a lista não trouxe a imagem, busca sob demanda e então exibe.
+  // A construção da janela fica com quem chama (cada tela tem o seu openModal).
+  window._ofAbrirImagem = function (opcoes) {
+    opcoes = opcoes || {};
+    var id = String(opcoes.id == null ? '' : opcoes.id).trim();
+    var urlDaLista = String(opcoes.url || '').trim();
+    function exibir(url) {
+      if (!url) {
+        try { if (typeof window.toast === 'function') window.toast('Esta OF não tem imagem salva.', 'var(--amber,#f59e0b)'); } catch (_) {}
+        return;
+      }
+      if (typeof opcoes.abrirJanela === 'function') opcoes.abrirJanela(url);
+    }
+    if (urlDaLista) { exibir(urlDaLista); return Promise.resolve(); }
+    if (!id) return Promise.resolve();
+    return Promise.resolve(window._ofImagemSobDemanda(id)).then(exibir);
+  };
+})();
+
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes patchComprasChapasFrontendV1'); } catch (_) {}
 (function patchComprasChapasFrontendV1() {
   if (window.__patchComprasChapasFrontendV1) return;
@@ -25818,9 +25899,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function rowHtml(item) {
+      // [HOTFIX-EGRESS / HOTFIX-2] a lista não traz mais o base64: `tem_imagem` avisa que existe
+      // imagem gravada e o clique busca em GET /api/ofs/:id (cache em memória).
+      var temImgZero = !!item.imagemUrl || !!item.tem_imagem;
       var imgCell = item.imagemUrl
         ? ('<button type="button" class="ofmaq-thumb-btn-zero" data-ofmaq-image-zero="' + escAttrLocal(item.id) + '"><span class="ofmaq-thumb-zero"><img src="' + escAttrLocal(item.imagemUrl) + '" alt="Imagem da OF"></span></button>')
-        : '<span class="ofmaq-thumb-fallback-zero">📦</span>';
+        : (temImgZero
+          ? ('<button type="button" class="ofmaq-thumb-btn-zero" data-ofmaq-image-zero="' + escAttrLocal(item.id) + '" title="Ver imagem"><span class="ofmaq-thumb-fallback-zero">🖼️</span></button>')
+          : '<span class="ofmaq-thumb-fallback-zero">📦</span>');
       var maqCell = String(item.maquina || '').trim();
       if (!maqCell) maqCell = 'Pendente';
       var statusTone = item.sem_papel ? 'warn' : (item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok'));
@@ -26014,8 +26100,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function openImageModal(id) {
       var item = rowDataById(id);
-      if (!item || !item.imagemUrl) return;
-      openModal('ofmaq-image-zero', 'Imagem da OF #' + String(item.numero || item.id), '<img src="' + escAttrLocal(item.imagemUrl) + '" alt="Imagem da OF" style="display:block;max-width:80vw;max-height:80vh;border-radius:8px">');
+      if (!item) return;
+      // [HOTFIX-EGRESS / HOTFIX-2] usa a imagem da lista quando existe; senão busca sob demanda.
+      window._ofAbrirImagem({
+        id: item.id,
+        url: item.imagemUrl,
+        abrirJanela: function (url) {
+          openModal('ofmaq-image-zero', 'Imagem da OF #' + String(item.numero || item.id), '<img src="' + escAttrLocal(url) + '" alt="Imagem da OF" style="display:block;max-width:80vw;max-height:80vh;border-radius:8px">');
+        }
+      });
     }
 
     function updateRowMachine(id, machine) {
@@ -28089,9 +28182,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function rowHtml(item) {
       var raw = item && item.ofRaw ? item.ofRaw : (item || {});
+      // [HOTFIX-EGRESS / HOTFIX-2] a lista não traz mais o base64: `tem_imagem` avisa que existe
+      // imagem gravada e o clique busca em GET /api/ofs/:id (cache em memória).
+      var temImgFinal = !!item.imagemUrl || !!item.tem_imagem;
       var img = item.imagemUrl
         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
-        : '<span class="ofmaq-final-thumb-fallback">📦</span>';
+        : (temImgFinal
+          ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '" title="Ver imagem"><span class="ofmaq-final-thumb-fallback">🖼️</span></button>')
+          : '<span class="ofmaq-final-thumb-fallback">📦</span>');
       var sp = !!(item && (item.sem_papel === true || item.sem_papelao === true || String(item.sem_papel || '').trim() === '1' || item.sem_papel === 1 || item.sem_papelao === 1 || String(item.sem_papelao || '').trim() === '1'));
       var urg = item.urgencia || (typeof urgenciaTipo === 'function' ? urgenciaTipo(raw, item.prazoIso || '') : '') || 'normal';
       var statusTone = sp ? 'warn' : (urg === 'urgente' ? 'danger' : (urg === 'atrasada' ? 'warn' : 'ok'));
@@ -28867,8 +28965,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function openImage(id) {
       var row = rowById(id);
-      if (!row || !row.imagemUrl) return;
-      openModal('ofmaq-final-image', 'Imagem da OF #' + String(row.numero || row.id), '<img src="' + escAttr(row.imagemUrl) + '" alt="Imagem da OF" style="display:block;max-width:80vw;max-height:80vh;border-radius:8px">');
+      if (!row) return;
+      // [HOTFIX-EGRESS / HOTFIX-2] usa a imagem da lista quando existe; senão busca sob demanda.
+      window._ofAbrirImagem({
+        id: row.id,
+        url: row.imagemUrl,
+        abrirJanela: function (url) {
+          openModal('ofmaq-final-image', 'Imagem da OF #' + String(row.numero || row.id), '<img src="' + escAttr(url) + '" alt="Imagem da OF" style="display:block;max-width:80vw;max-height:80vh;border-radius:8px">');
+        }
+      });
     }
 
     function openMoveModal(id) {
@@ -52038,9 +52143,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         acoesHtml += '</div>';
         var _imgUrl = String(of?.imagem_url || of?.imagem || of?.image_url || '').trim()
           || (typeof window._normalizeImgs === 'function' ? (window._normalizeImgs(of?.imgs ?? of?.imagens)[0] || '') : '');
-        var _imgTd = '<td class="center" style="padding:6px 12px">' + (_imgUrl
+        // [HOTFIX-EGRESS / HOTFIX-2] a lista não traz mais o base64: quando a OF só tem imagem
+        // gravada em `imgs`, mostramos um marcador clicável que busca a imagem sob demanda.
+        var _temImg = !!_imgUrl || !!(of && of.tem_imagem);
+        var _phStyle = 'display:inline-flex;width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:18px';
+        var _imgTd = '<td class="center" data-dash-img-cell="' + esc(ofId) + '" style="padding:6px 12px">' + (_imgUrl
           ? '<img src="' + esc(_imgUrl) + '" alt="" style="display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid #334155;cursor:zoom-in" data-dash-img-of="' + esc(ofId) + '">'
-          : '<span class="kb-img-ph kb-of-img-ph" style="display:inline-flex;width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:18px">?</span>') + '</td>';
+          : (_temImg
+            ? '<button type="button" class="kb-img-ph kb-of-img-ph" title="Ver imagem" data-dash-img-of="' + esc(ofId) + '" style="' + _phStyle + ';color:rgba(255,255,255,0.45);cursor:zoom-in">🖼️</button>'
+            : '<span class="kb-img-ph kb-of-img-ph" style="' + _phStyle + '">?</span>')) + '</td>';
         var _dtCriacao = '<td class="center" style="color:#cbd5e1">' + esc(__dashFmtDtEnt(String(of?.dia || ''))) + '</td>';
         var _vlu = Number(of?.valor_unitario || 0) || 0;
         var _vlUnitTd = '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums">' + esc('R$ ' + __fmtBrlDashboard(_vlu).replace('R$', '').trim()) + '</td>';
@@ -52078,6 +52189,28 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     tabelaEl.innerHTML = theadHtml + tbodyRows;
+
+    // [HOTFIX-EGRESS / HOTFIX-2] clique na imagem da OF no Dashboard: quando a lista não trouxe a
+    // imagem (só `imgs` em base64), busca em GET /api/ofs/:id — com cache em memória — e troca o
+    // marcador pela imagem real. A OF sem imagem avisa, não quebra.
+    try {
+      tabelaEl.querySelectorAll('[data-dash-img-of]').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var imgOfId = String(el.getAttribute('data-dash-img-of') || '').trim();
+          if (!imgOfId) return;
+          if (String(el.getAttribute('src') || '').trim()) return; // já é a imagem real
+          var celula = el.closest ? el.closest('[data-dash-img-cell]') : null;
+          Promise.resolve(typeof window._ofImagemSobDemanda === 'function' ? window._ofImagemSobDemanda(imgOfId) : '').then(function(url) {
+            if (!url) {
+              try { if (typeof window.toast === 'function') window.toast('Esta OF não tem imagem salva.', 'var(--amber,#f59e0b)'); } catch (_) {}
+              return;
+            }
+            var html = '<img src="' + esc(url) + '" alt="" style="display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid #334155;cursor:zoom-in" data-dash-img-of="' + esc(imgOfId) + '">';
+            if (celula) celula.innerHTML = html; else el.outerHTML = html;
+          });
+        });
+      });
+    } catch (_) {}
 
     try {
       document.querySelectorAll('.dash-acoes-menu').forEach(function(m) { try { m.removeAttribute('data-open'); } catch (_) {} });
