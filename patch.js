@@ -2003,7 +2003,9 @@ try {
     qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
     qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/fornecedor?' + qs.join('&'));
-    var rows = Array.isArray(json) ? json : [];
+    // [REL-07] a API devolve { ok, data }; ler o objeto raiz deixava o
+    // relatório zerado (as linhas estão em `data`).
+    var rows = Array.isArray(json) ? json : rrList(json, ['data']);
     var resumo = rows.reduce(function(acc, r) {
       acc.total_fornecedores += 1;
       acc.total_compras += Number(r && r.total_compras || 0) || 0;
@@ -2048,7 +2050,9 @@ try {
     qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
     qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/resumo?' + qs.join('&'));
-    var resumo = json && typeof json === 'object' ? json : {};
+    // [REL-07] o resumo vem dentro de `data` ({ ok, data }); ler a raiz zerava
+    // os cards e a tabela do relatório.
+    var resumo = (json && json.data) || json || {};
     return rrOpenPrint({
       title: 'Papelão — Quantidade e Valor Comprado no Período',
       periodo: ref.titulo || (String(ref && ref.data_inicio || '') + ' a ' + String(ref && ref.data_fim || '')),
