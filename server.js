@@ -38882,7 +38882,9 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResul
     const aux = new Date(compAlvo + '-01T12:00:00');
     aux.setMonth(aux.getMonth() + 1);
     const fimExclusivo = aux.toISOString().slice(0, 10);
-    const baseCols = 'id,of_id,of_numero,valor_unitario,qtd_perdida,valor_perdido,data,created_at,emp_id,empresa_id,quantidade,caixas_perdidas';
+    // [REL-04] caixas_perdidas NÃO tem coluna empresa_id — pedir essa coluna
+    // fazia o PostgREST devolver erro e zerar as perdas da Central de Custos.
+    const baseCols = 'id,of_id,of_numero,valor_unitario,qtd_perdida,valor_perdido,data,created_at,emp_id,quantidade,caixas_perdidas';
     const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
     let data = [];
     let tabelaUsada = null;
@@ -38894,9 +38896,10 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResul
         const rPerdas = _ccustosResolveEmpresaId(empIdAll, 'ALL');
         if (rPerdas !== 'ALL') {
           if (rPerdas === 'SEM_EMPRESA') {
-            try { q = q.or('emp_id.is.null,emp_id.eq.,empresa_id.is.null,empresa_id.eq.'); } catch (_) {}
+            try { q = q.or('emp_id.is.null,emp_id.eq.'); } catch (_) {}
           } else {
-            try { q = q.or(`emp_id.eq.${rPerdas},empresa_id.eq.${rPerdas}`); } catch (_) {}
+            // [REL-04] filtro de empresa só por emp_id (não existe empresa_id aqui)
+            try { q = q.eq('emp_id', rPerdas); } catch (_) {}
           }
         }
         const r = await q;
