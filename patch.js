@@ -12198,6 +12198,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     });
   }
   function closeCalcModalAfterSave() {
+    // [ORC-02] zera o orçamento atual (escopo index.html `_orcIdAtual`/
+    // `_orcNumeroAtual` + window) ao fechar após salvar; senão um novo
+    // orçamento salvo na sequência fazia PUT e sobrescrevia o anterior.
+    try { _orcIdAtual = null; } catch (_) {}
+    try { _orcNumeroAtual = null; } catch (_) {}
+    try { window._orcIdAtual = null; } catch (_) {}
+    try { window._orcNumeroAtual = null; } catch (_) {}
     var overlay = null;
     var modal = null;
     try { overlay = document.getElementById('modal-calc'); } catch (_) {}
@@ -65095,7 +65102,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     };
     bind('orx-btn-buscar', applySearch);
     bind('orx-btn-pasta', function() { if (typeof window.orcAbrirModalPasta === 'function') window.orcAbrirModalPasta(''); });
-    bind('orx-btn-novo', function() { if (typeof window.abrirCalculadora === 'function') window.abrirCalculadora(); });
+    // [ORC-02] "Novo Orçamento" deve limpar o orçamento atual (id/número) antes
+    // de abrir a calculadora; senão o Salvar fazia PUT no último orçamento
+    // editado e sobrescrevia o registro anterior.
+    bind('orx-btn-novo', function() {
+      if (typeof window.novoOrcamentoCalc === 'function') window.novoOrcamentoCalc();
+      else if (typeof window.abrirCalculadora === 'function') window.abrirCalculadora();
+    });
     bind('orx-btn-recarregar', function() {
       window.__orcPastasData = null;
       window.__orcDadosCarregados = false;
