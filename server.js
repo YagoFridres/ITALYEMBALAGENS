@@ -28795,11 +28795,19 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, requirePerm('relator
       data: { selectExpr, totalCols: selectedCols.length },
     });
     let from = 0;
+    // [REL-12] só OFs concluídas e não excluídas; período em instantes UTC (F-2),
+    // pois `data_conclusao` é timestamptz e a data pura perdia horas das pontas.
+    const _tonesRange = range ? _spRangeUtc(range.inicio, range.fim) : null;
     while (true) {
       let q = supabase.from('ofs').select(selectExpr);
       q = q.not('data_conclusao', 'is', null);
-      if (range?.inicio) q = q.gte('data_conclusao', range.inicio);
-      if (range?.fim_exclusivo) q = q.lt('data_conclusao', range.fim_exclusivo);
+      if (_tonesRange) {
+        q = q.gte('data_conclusao', _tonesRange.gte).lt('data_conclusao', _tonesRange.lt);
+      } else {
+        if (range?.inicio) q = q.gte('data_conclusao', range.inicio);
+        if (range?.fim_exclusivo) q = q.lt('data_conclusao', range.fim_exclusivo);
+      }
+      q = q.ilike('status', '%conclu%').is('deleted_at', null);
       q = _aplicarFiltroEmpresaOfs(q, filtroEmp);
       q = q.range(from, from + 999);
       const { data, error } = await q;
@@ -28891,12 +28899,11 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, requirePerm('relator
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
       const tonRecalc = areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0;
-      const toneladas = tonUtilizada > 0 ? tonUtilizada : (tonPersistida > 0 ? tonPersistida : tonRecalc);
+      const toneladas = tonPersistida > 0 ? tonPersistida : (tonUtilizada > 0 ? tonUtilizada : tonRecalc);
       const valorTotalBase = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
       const valorTotal = valorTotalBase > 0 ? valorTotalBase : ((qtd > 0 && valorUnitario > 0) ? (qtd * valorUnitario) : 0);
       const clienteNome = clientesMap.get(cliId) || '—';
       const fornecedorNome = fornecedoresMap.get(_tonesNormId(gramaturaInfo?.fornecedor_id || '')) || '—';
-      console.log('[TONELADAS-FIX] of:', of.of, 'cli_id:', cliId, 'clienteNome:', clienteNome, 'fornecedorNome:', fornecedorNome);
       return {
         id: of?.id || null,
         of_numero: of?.numero || of?.of || null,
