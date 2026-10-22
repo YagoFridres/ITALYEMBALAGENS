@@ -29776,8 +29776,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
       var urgentes = base.filter(function(o) {
         if (!o) return false;
-        if (!_sa(o.status)) return false;
-        return !!(o.urg === true || o.urgente === true);
+        // [OFMAQ-03] os itens de state.rowsData não têm `status`/`urg`/`urgente`:
+        // o status e a marcação vivem em ofRaw + urgencia (F-5).
+        var raw = o.ofRaw || {};
+        if (!_sa(raw.status !== undefined ? raw.status : o.status)) return false;
+        return o.urgencia === 'urgente' || raw.urg === true || raw.urgente === true;
       });
       var grupoMap = {};
       var totalUrgOfs = 0;
@@ -29786,7 +29789,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       urgentes.forEach(function(o) {
         var maq = normalizeMachine(String(o.maquina || '—').trim());
         if (!grupoMap[maq]) grupoMap[maq] = { maquina: maq, totalOfs: 0, totalCaixas: 0, items: [] };
-        var semPapelao = !(o.papel_comprado === true);
+        var raw = o.ofRaw || {};
+        var semPapelao = !!raw.sem_papel;
         var qtd = Number(o.quantidade || 0) || 0;
         var item = {
           ofId: o.id,
@@ -29796,9 +29800,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           quantidade: qtd,
           maquina: String(o.maquina || '—').trim() || '—',
           diaAgendado: fmtDateBR(String(o.prazoIso || o.dia_agendado || '').slice(0,10)) || '—',
-          dataEntrega: fmtDateBR(String(o.data_entrega || o.entrega || '').slice(0,10)) || '—',
+          dataEntrega: fmtDateBR(String(raw.data_entrega || raw.ent || '').slice(0,10)) || '—',
           semPapelao: semPapelao,
-          status: String(o.status || '—')
+          status: String(raw.status || '—')
         };
         grupoMap[maq].items.push(item);
         grupoMap[maq].totalOfs++;
