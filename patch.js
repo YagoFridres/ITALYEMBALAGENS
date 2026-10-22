@@ -69678,3 +69678,105 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     [500, 2000, 6000, 12000].forEach(function(ms) { setTimeout(limpar, ms); });
   }
 })();
+
+
+// [MOBILE-RESPONSIVO-INICIO]
+// ============================================================================
+// [MOBILE-RESPONSIVO] Sistema completo no celular igual ao computador: mesmas telas e funções,
+// layout adaptado à largura (até 768px). Só CSS + ajustes de layout; nenhuma regra de negócio.
+// Fonte legível: design/mobile.css (gerado).
+// ============================================================================
+(function patchMobileResponsivo() {
+  if (window.__mobileResponsivo) return;
+  window.__mobileResponsivo = true;
+  if (typeof document === 'undefined' || !document.createElement) return;
+  var CSS = "@media (max-width: 768px) { .topbar { height: auto !important; min-height: 0 !important; flex-wrap: wrap !important; row-gap: 6px !important; column-gap: 6px !important; padding: 8px 10px !important; align-items: center !important; overflow: visible !important; } .topbar > .logo { order: 1; flex: 1 1 auto !important; min-width: 0 !important; } .topbar > #menu-notificacoes { order: 2; } .topbar > #header-avatar-btn { order: 3; } .topbar > #gsearch-wrap { order: 4; flex: 1 1 100% !important; width: 100% !important; max-width: 100% !important; height: auto !important; margin: 0 !important; } .topbar > #gsearch-wrap input { width: 100% !important; min-width: 0 !important; } .topbar > .mob-topbar-strip { order: 5; flex: 1 1 100% !important; display: flex !important; flex-wrap: nowrap !important; align-items: center !important; gap: 6px !important; overflow-x: auto !important; overflow-y: hidden !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; } .topbar > .mob-topbar-strip::-webkit-scrollbar { display: none; } .topbar > .mob-topbar-strip > * { flex: 0 0 auto !important; margin: 0 !important; } .topbar > .mob-topbar-strip .topbar-badges { flex-wrap: nowrap !important; } .topbar > * { order: 6; } .topbar #btn-instalar-app { padding: 4px 10px !important; min-height: 32px !important; font-size: 12px !important; white-space: nowrap !important; } .layout { margin-top: 0 !important; padding-top: 0 !important; } .mob-pad-esq { padding-left: 10px !important; padding-right: 10px !important; } .layout .content > h1, .layout .content > h2, .layout .content > h3, .layout .content > .page-title { padding-left: 10px !important; padding-right: 10px !important; } .page.active { padding-left: 10px !important; padding-right: 10px !important; box-sizing: border-box !important; max-width: 100vw !important; } .page.active img, .page.active video, .page.active canvas, .page.active svg { max-width: 100%; height: auto; } .page.active .pep-wrap { flex-direction: column !important; padding: 10px 0 !important; } .page.active .pep-wrap > * { width: 100% !important; max-width: 100% !important; min-width: 0 !important; } .page.active .pep-cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; width: 100% !important; } .page.active [style*=\"grid-template-columns\"] { min-width: 0 !important; } .layout table.rtbl:not(#mx1):not(#mx2), .layout table.rtbl:not(#mx1):not(#mx2) > tbody { display: block !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: auto !important; } .layout table.rtbl:not(#mx1):not(#mx2) > thead { display: none !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr { margin: 0 0 8px 0 !important; padding: 10px 12px !important; border: 1px solid var(--border, rgba(255,255,255,.12)) !important; border-radius: 10px !important; background: var(--surface, rgba(255,255,255,.03)) !important; display: block !important; width: auto !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td { display: flex !important; width: auto !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; white-space: normal !important; overflow-wrap: anywhere !important; word-break: break-word !important; text-align: right !important; justify-content: space-between !important; align-items: center !important; gap: 10px !important; position: static !important; left: auto !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td::before { content: attr(data-label); text-align: left !important; flex: 0 0 40% !important; max-width: 40% !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td:not([data-label])::before, .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td[data-label=\"\"]::before { display: none !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td:not([data-label]), .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td[data-label=\"\"] { justify-content: flex-end !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td > * { max-width: 100%; min-width: 0; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td[colspan] { justify-content: center !important; text-align: center !important; } .layout table.rtbl:not(#mx1):not(#mx2) > tbody > tr > td[colspan]::before { display: none !important; } .dash-table-scroll-wrap, .ofmaq-final-table-wrap, .cpv2-table-wrap, .table-wrap { overflow-x: hidden !important; max-width: 100% !important; } .mob-table-scroll { display: block !important; width: 100% !important; max-width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; } .mob-table-scroll > table { min-width: 100%; } #agenda-grid, #page-agenda [style*=\"repeat(7\"] { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; gap: 2px !important; } #agenda-grid > * { min-width: 0 !important; overflow: hidden !important; } .modal-overlay { padding: 0 !important; align-items: stretch !important; } .modal-overlay .modal, .modal-overlay > .modal-box, .modal-overlay > div[class*=\"modal\"] { width: 100vw !important; max-width: 100vw !important; min-width: 0 !important; margin: 0 !important; border-radius: 0 !important; max-height: 100dvh !important; height: auto !important; overflow-y: auto !important; box-sizing: border-box !important; } #modal-cli [style*=\"grid-template-columns\"], #modal-of [style*=\"grid-template-columns\"], #modal-usr [style*=\"grid-template-columns\"], #modal-cli .form-grid, #modal-of .form-grid { grid-template-columns: 1fr !important; } .modal .form-row, .modal .grid2, .modal .grid3, .modal .grid4, .modal [class*=\"form-grid\"] { grid-template-columns: 1fr !important; } .modal input, .modal select, .modal textarea { max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; font-size: 16px !important; } .page.active input:not([type=checkbox]):not([type=radio]):not([type=range]), .page.active select, .page.active textarea { font-size: 16px !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; } .page.active button, .page.active .btn { min-height: 40px; } .page.active h1, .page.active h2, .page.active h3 { overflow-wrap: anywhere; } }";
+  function aplicar() {
+    try {
+      var st = document.getElementById('italy-mobile-css');
+      if (!st) { st = document.createElement('style'); st.id = 'italy-mobile-css'; }
+      if (st.textContent !== CSS) st.textContent = CSS;
+      // sempre por último no <head>, para vencer CSS injetado depois por outros patches
+      if (document.head && document.head.lastElementChild !== st) document.head.appendChild(st);
+    } catch (_) {}
+  }
+  aplicar();
+  if (typeof setTimeout === 'function') { [300, 1500, 4000, 9000, 15000].forEach(function(ms) { setTimeout(aplicar, ms); }); }
+  // ---- Comportamentos de layout no celular (≤768px). Não muda dados nem regras. ----
+  var MQ = (window.matchMedia ? window.matchMedia('(max-width: 768px)') : null);
+  function ehCelular() { try { return !!(MQ && MQ.matches); } catch (_) { return false; } }
+
+  // 1) Barra do topo: junta os itens secundários numa faixa que rola de lado.
+  //    No computador os itens voltam exatamente para o lugar original.
+  var FIXOS = { 'hamburger-btn': 1, 'user-action-badge': 1, 'gsearch-wrap': 1, 'menu-notificacoes': 1, 'notif-panel': 1, 'header-avatar-btn': 1, 'clock': 1 };
+  var movidos = [];
+  function montarFaixaTopo() {
+    try {
+      var tb = document.querySelector('.topbar'); if (!tb) return;
+      var faixa = tb.querySelector(':scope > .mob-topbar-strip');
+      if (ehCelular()) {
+        if (!faixa) { faixa = document.createElement('div'); faixa.className = 'mob-topbar-strip'; tb.appendChild(faixa); }
+        Array.prototype.slice.call(tb.children).forEach(function(el) {
+          if (el === faixa || el.classList.contains('logo') || FIXOS[el.id]) return;
+          if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
+          movidos.push({ el: el, prox: el.nextSibling });
+          faixa.appendChild(el);
+        });
+        // badges primeiro
+        var bd = faixa.querySelector('.topbar-badges'); if (bd && faixa.firstChild !== bd) faixa.insertBefore(bd, faixa.firstChild);
+      } else if (faixa) {
+        movidos.slice().reverse().forEach(function(m) { try { if (m.prox && m.prox.parentNode === tb) tb.insertBefore(m.el, m.prox); else tb.insertBefore(m.el, faixa); } catch (_) {} });
+        movidos = [];
+        faixa.remove();
+      }
+    } catch (_) {}
+  }
+
+  // 2) Tabelas-cartão (.rtbl): preenche o rótulo de cada célula a partir do cabeçalho, quando faltar.
+  //    3) Tabelas comuns: envolve num quadro que rola de lado (só no celular).
+  function textoCab(th) { return String((th && (th.getAttribute('data-label') || th.textContent)) || '').replace(/\s+/g, ' ').trim().slice(0, 40); }
+  function ajustarTabelas(raiz) {
+    if (!ehCelular()) return;
+    try {
+      (raiz || document).querySelectorAll('.layout table').forEach(function(t) {
+        if (t.classList.contains('rtbl')) {
+          var ths = t.querySelectorAll('thead tr:last-child th, thead tr:last-child td');
+          if (!ths.length) return;
+          var cab = Array.prototype.map.call(ths, textoCab);
+          t.querySelectorAll('tbody tr').forEach(function(tr) {
+            var col = 0;
+            Array.prototype.forEach.call(tr.children, function(td) {
+              if (!td.hasAttribute('data-label') && cab[col] && !td.hasAttribute('colspan')) td.setAttribute('data-label', cab[col]);
+              col += Math.max(1, parseInt(td.getAttribute('colspan') || '1', 10) || 1);
+            });
+          });
+          return;
+        }
+        var p = t.parentElement; if (!p || p.classList.contains('mob-table-scroll')) return;
+        var cs = getComputedStyle(p);
+        if (/(auto|scroll)/.test(cs.overflowX)) return;
+        if (t.getBoundingClientRect().width <= (p.getBoundingClientRect().width + 2)) return;
+        var w = document.createElement('div'); w.className = 'mob-table-scroll';
+        p.insertBefore(w, t); w.appendChild(t);
+      });
+    } catch (_) {}
+  }
+
+  // 4) Títulos colados na borda esquerda ganham respiro.
+  function ajustarTitulos() {
+    if (!ehCelular()) return;
+    try { document.querySelectorAll('.layout .content h1, .layout .content h2, .layout .content h3').forEach(function(h) { if (h.offsetParent === null || h.classList.contains('mob-pad-esq')) return; if (h.getBoundingClientRect().left < 4) h.classList.add('mob-pad-esq'); }); } catch (_) {}
+  }
+
+  var agendado = null;
+  function agendar() { if (agendado) return; agendado = setTimeout(function() { agendado = null; montarFaixaTopo(); ajustarTabelas(); ajustarTitulos(); }, 250); }
+  montarFaixaTopo(); ajustarTabelas();
+  try { if (MQ && MQ.addEventListener) MQ.addEventListener('change', function() { montarFaixaTopo(); ajustarTabelas(); }); } catch (_) {}
+  try {
+    var lay = document.querySelector('.layout') || document.body;
+    new MutationObserver(function() { if (ehCelular()) agendar(); }).observe(lay, { childList: true, subtree: true });
+  } catch (_) {}
+  [800, 2500, 6000].forEach(function(ms) { setTimeout(function() { montarFaixaTopo(); ajustarTabelas(); ajustarTitulos(); }, ms); });
+
+})();
+// [MOBILE-RESPONSIVO-FIM]

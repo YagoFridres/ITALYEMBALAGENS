@@ -1,0 +1,75 @@
+  // ---- Comportamentos de layout no celular (≤768px). Não muda dados nem regras. ----
+  var MQ = (window.matchMedia ? window.matchMedia('(max-width: 768px)') : null);
+  function ehCelular() { try { return !!(MQ && MQ.matches); } catch (_) { return false; } }
+
+  // 1) Barra do topo: junta os itens secundários numa faixa que rola de lado.
+  //    No computador os itens voltam exatamente para o lugar original.
+  var FIXOS = { 'hamburger-btn': 1, 'user-action-badge': 1, 'gsearch-wrap': 1, 'menu-notificacoes': 1, 'notif-panel': 1, 'header-avatar-btn': 1, 'clock': 1 };
+  var movidos = [];
+  function montarFaixaTopo() {
+    try {
+      var tb = document.querySelector('.topbar'); if (!tb) return;
+      var faixa = tb.querySelector(':scope > .mob-topbar-strip');
+      if (ehCelular()) {
+        if (!faixa) { faixa = document.createElement('div'); faixa.className = 'mob-topbar-strip'; tb.appendChild(faixa); }
+        Array.prototype.slice.call(tb.children).forEach(function(el) {
+          if (el === faixa || el.classList.contains('logo') || FIXOS[el.id]) return;
+          if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
+          movidos.push({ el: el, prox: el.nextSibling });
+          faixa.appendChild(el);
+        });
+        // badges primeiro
+        var bd = faixa.querySelector('.topbar-badges'); if (bd && faixa.firstChild !== bd) faixa.insertBefore(bd, faixa.firstChild);
+      } else if (faixa) {
+        movidos.slice().reverse().forEach(function(m) { try { if (m.prox && m.prox.parentNode === tb) tb.insertBefore(m.el, m.prox); else tb.insertBefore(m.el, faixa); } catch (_) {} });
+        movidos = [];
+        faixa.remove();
+      }
+    } catch (_) {}
+  }
+
+  // 2) Tabelas-cartão (.rtbl): preenche o rótulo de cada célula a partir do cabeçalho, quando faltar.
+  //    3) Tabelas comuns: envolve num quadro que rola de lado (só no celular).
+  function textoCab(th) { return String((th && (th.getAttribute('data-label') || th.textContent)) || '').replace(/\s+/g, ' ').trim().slice(0, 40); }
+  function ajustarTabelas(raiz) {
+    if (!ehCelular()) return;
+    try {
+      (raiz || document).querySelectorAll('.layout table').forEach(function(t) {
+        if (t.classList.contains('rtbl')) {
+          var ths = t.querySelectorAll('thead tr:last-child th, thead tr:last-child td');
+          if (!ths.length) return;
+          var cab = Array.prototype.map.call(ths, textoCab);
+          t.querySelectorAll('tbody tr').forEach(function(tr) {
+            var col = 0;
+            Array.prototype.forEach.call(tr.children, function(td) {
+              if (!td.hasAttribute('data-label') && cab[col] && !td.hasAttribute('colspan')) td.setAttribute('data-label', cab[col]);
+              col += Math.max(1, parseInt(td.getAttribute('colspan') || '1', 10) || 1);
+            });
+          });
+          return;
+        }
+        var p = t.parentElement; if (!p || p.classList.contains('mob-table-scroll')) return;
+        var cs = getComputedStyle(p);
+        if (/(auto|scroll)/.test(cs.overflowX)) return;
+        if (t.getBoundingClientRect().width <= (p.getBoundingClientRect().width + 2)) return;
+        var w = document.createElement('div'); w.className = 'mob-table-scroll';
+        p.insertBefore(w, t); w.appendChild(t);
+      });
+    } catch (_) {}
+  }
+
+  // 4) Títulos colados na borda esquerda ganham respiro.
+  function ajustarTitulos() {
+    if (!ehCelular()) return;
+    try { document.querySelectorAll('.layout .content h1, .layout .content h2, .layout .content h3').forEach(function(h) { if (h.offsetParent === null || h.classList.contains('mob-pad-esq')) return; if (h.getBoundingClientRect().left < 4) h.classList.add('mob-pad-esq'); }); } catch (_) {}
+  }
+
+  var agendado = null;
+  function agendar() { if (agendado) return; agendado = setTimeout(function() { agendado = null; montarFaixaTopo(); ajustarTabelas(); ajustarTitulos(); }, 250); }
+  montarFaixaTopo(); ajustarTabelas();
+  try { if (MQ && MQ.addEventListener) MQ.addEventListener('change', function() { montarFaixaTopo(); ajustarTabelas(); }); } catch (_) {}
+  try {
+    var lay = document.querySelector('.layout') || document.body;
+    new MutationObserver(function() { if (ehCelular()) agendar(); }).observe(lay, { childList: true, subtree: true });
+  } catch (_) {}
+  [800, 2500, 6000].forEach(function(ms) { setTimeout(function() { montarFaixaTopo(); ajustarTabelas(); ajustarTitulos(); }, ms); });
