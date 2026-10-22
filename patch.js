@@ -63976,8 +63976,29 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           try { toast('Orçamento não encontrado para edição.', 'var(--red)'); } catch (_) {}
           return;
         }
+        // [ORC-01] A lista (GET /api/orcamentos) não traz `parametros`; busca a
+        // linha completa por id para restaurar tipo, sobreposição/encurtar,
+        // ondas e percentuais exatamente como foram salvos.
+        try {
+          var _urlFull = '/api/orcamentos/' + encodeURIComponent(sid);
+          var _respFull = (typeof window._apiAuthFetch === 'function')
+            ? await window._apiAuthFetch(_urlFull, { cache: 'no-store' })
+            : (typeof fetch === 'function' ? await fetch(_urlFull, { cache: 'no-store' }) : null);
+          if (_respFull && _respFull.ok) {
+            var _jsonFull = await _respFull.json();
+            var _rowFull = (_jsonFull && _jsonFull.data && typeof _jsonFull.data === 'object' && !Array.isArray(_jsonFull.data))
+              ? _jsonFull.data
+              : ((_jsonFull && (_jsonFull.id || _jsonFull.parametros || _jsonFull.numero_orcamento)) ? _jsonFull : null);
+            if (_rowFull) orc = _rowFull;
+          }
+        } catch (_) {}
+        var _numOrcFull = String(orc.numero_orcamento || orc.numero || '').trim();
+        // ORC-01/ORC-02: gravar de volta o id atual (escopo index.html + window)
+        // para que "Salvar" faça PUT no MESMO orçamento em vez de criar outro.
         window._orcIdAtual = sid;
-        try { window._orcNumeroAtual = String(orc.numero_orcamento || orc.numero || '').trim(); } catch (_) {}
+        try { window._orcNumeroAtual = _numOrcFull; } catch (_) {}
+        try { _orcIdAtual = sid; } catch (_) {}
+        try { _orcNumeroAtual = _numOrcFull; } catch (_) {}
         if (typeof window.abrirCalculadora !== 'function') {
           try { toast('Calculadora indisponível no momento.', 'var(--yellow)'); } catch (_) {}
           return;
@@ -63996,7 +64017,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         function preencherOrc() {
           try {
             var p = Object.assign({}, (orc.parametros && typeof orc.parametros === 'object' && !Array.isArray(orc.parametros)) ? orc.parametros : {});
-            var itens = Array.isArray(window.orcParseItensRow) ? window.orcParseItensRow(orc) : (Array.isArray(orc.itens) ? orc.itens : []);
+            var pItens = Array.isArray(p.itens) ? p.itens : [];
+            var pFirst = (pItens[0] && typeof pItens[0] === 'object') ? pItens[0] : {};
+            var pFirstParams = (pFirst.parametros && typeof pFirst.parametros === 'object' && !Array.isArray(pFirst.parametros)) ? pFirst.parametros : {};
+            // [ORC-01] `window.orcParseItensRow` é FUNÇÃO (não array): o teste
+            // com Array.isArray sempre dava false e caía no orc.itens cru.
+            var itens = (typeof window.orcParseItensRow === 'function') ? window.orcParseItensRow(orc) : (Array.isArray(orc.itens) ? orc.itens : []);
             var cliId = String(orc.cliente_id || orc.cli_id || p.cliente_id || p.cli_id || '').trim();
             var cliNome = String(orc.cliente_nome || orc.clienteNome || orc.descricao || p.cliente_nome || p.clienteNome || '').trim();
             if (typeof window.selecionarClienteOrcamento === 'function') {
@@ -64066,6 +64092,28 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             preencherCampoParam(['calc-vb2'], vb2Val != null ? vb2Val : vbVal);
             preencherCampoParam(['calc-vc'], vcVal);
             preencherCampoParam(['calc-vbc'], vbcVal);
+            // [ORC-01] tipo e sobreposição/encurtamento: reconstrói o wrap
+            // (criando #calc-sob/#calc-enc com os ids) para o tipo salvo ANTES
+            // de preencher sob/enc — senão o valor salvo era perdido (tipo
+            // regredia para 201 e a sobreposição voltava a 0).
+            var _tipoSel = document.getElementById('calc-tipo');
+            var _tipoOrc = String(
+              (_tipoSel && _tipoSel.value) ||
+              orc.tipo || orc.tipo_caixa ||
+              p.tipo || pFirst.tipo || pFirstParams.tipo ||
+              (itens[0] && (itens[0].tipo || (itens[0].parametros && itens[0].parametros.tipo))) ||
+              ''
+            ).trim();
+            if (_tipoSel && _tipoOrc) {
+              var _temTipo = Array.prototype.some.call(_tipoSel.options || [], function(o) { return String(o && o.value) === _tipoOrc; });
+              if (_temTipo) _tipoSel.value = _tipoOrc;
+            }
+            try {
+              if (typeof window.calcTipoChange === 'function') window.calcTipoChange();
+              else if (typeof calcTipoChange === 'function') calcTipoChange();
+            } catch (_) {}
+            preencherCampoParam(['calc-sob'], resolveParam(['sob', 'calc_sob', 'sobreposicao', 'sobreposicao_mm', 'sob_mm']));
+            preencherCampoParam(['calc-enc'], resolveParam(['enc', 'calc_enc', 'encurtamento', 'encurtar_aba', 'enc_mm']));
             var ondasOrcRaw = String(orc.onda || p.onda || 'B C BC').trim().toUpperCase();
             var ondasMarcadas = {};
             if (Array.isArray(orc.resultados) && orc.resultados.length) {
