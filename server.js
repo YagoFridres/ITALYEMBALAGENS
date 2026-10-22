@@ -9954,6 +9954,13 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const dt = new Date(raw);
       return Number.isNaN(dt.getTime()) ? null : dt;
     };
+    // REL-10: data ISO (dia) do registro, sem hora → comparação inclusiva correta
+    const rowDateIso = (row) => {
+      const raw = row?.data || row?.data_perda || row?.data_conclusao || row?.created_at || null;
+      if (!raw) return '';
+      const m = String(raw).trim().match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : '';
+    };
     const monthRefOf = (row) => String(row?.mes_referencia || '').trim().slice(0, 7);
     const monthRefsBetween = (iniIso, fimExclusivoIso) => {
       const refs = new Set();
@@ -9975,8 +9982,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
     const rangeInicio = customInicio || resolvedRange?.inicio || '';
     const rangeFimExclusivo = customFim || resolvedRange?.fim_exclusivo || '';
-    const customIniDate = rangeInicio ? new Date(`${rangeInicio}T00:00:00`) : null;
-    const customFimDate = rangeFimExclusivo ? new Date(`${rangeFimExclusivo}T00:00:00`) : null;
+    // REL-10: o fim do período escolhido é INCLUSIVO; `_relatoriosResolveDateRange`
+    // já entrega `fim` inclusivo. Antes, o filtro comparava com o fim EXCLUSIVO
+    // somado a `byMesRef || byData`, então um filtro de 1 dia caía no mês inteiro.
+    const rangeFimInclusivo = customFim || resolvedRange?.fim || '';
     const hasCustomRange = !!(rangeInicio && rangeFimExclusivo);
     const monthRefsRange = monthRefsBetween(rangeInicio, rangeFimExclusivo);
     const matchMonthYear = (dt, month, year) => !!(dt && (dt.getMonth() + 1 === month) && dt.getFullYear() === year);
@@ -9994,9 +10003,15 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const d = parseRowDate(r);
       const mesRef = monthRefOf(r);
       if (hasCustomRange) {
-        const byMesRef = !!(mesRef && monthRefsRange.has(mesRef));
-        const byData = !!(d && (!customIniDate || d >= customIniDate) && (!customFimDate || d < customFimDate));
-        return byMesRef || byData;
+        // com período: filtra por `data` entre início e fim INCLUSIVOS;
+        // `mes_referencia` só serve para linhas SEM data.
+        const dIso = rowDateIso(r);
+        if (dIso) {
+          const okIni = !rangeInicio || dIso >= rangeInicio;
+          const okFim = !rangeFimInclusivo || dIso <= rangeFimInclusivo;
+          return okIni && okFim;
+        }
+        return !!(mesRef && monthRefsRange.has(mesRef));
       }
       if (!d && !mesRef) return true;
       if (periodo === 'hoje' || periodo === 'dia') return d >= hojeRef;
@@ -10372,6 +10387,13 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       const dt = new Date(raw);
       return Number.isNaN(dt.getTime()) ? null : dt;
     };
+    // REL-10: data ISO (dia) do registro, sem hora → comparação inclusiva correta
+    const rowDateIso = (row) => {
+      const raw = row?.data || row?.data_perda || row?.data_conclusao || row?.created_at || null;
+      if (!raw) return '';
+      const m = String(raw).trim().match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : '';
+    };
     const monthRefOf = (row) => String(row?.mes_referencia || '').trim().slice(0, 7);
     const monthRefsBetween = (iniIso, fimExclusivoIso) => {
       const refs = new Set();
@@ -10388,8 +10410,8 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
     const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
     const rangeInicio = customInicio || resolvedRange?.inicio || '';
     const rangeFimExclusivo = customFim || resolvedRange?.fim_exclusivo || '';
-    const customIniDate = rangeInicio ? new Date(`${rangeInicio}T00:00:00`) : null;
-    const customFimDate = rangeFimExclusivo ? new Date(`${rangeFimExclusivo}T00:00:00`) : null;
+    // REL-10: fim do período INCLUSIVO (ver rota /api/caixas-perdidas/dashboard)
+    const rangeFimInclusivo = customFim || resolvedRange?.fim || '';
     const hasCustomRange = !!(rangeInicio && rangeFimExclusivo);
     const monthRefsRange = monthRefsBetween(rangeInicio, rangeFimExclusivo);
     const matchMonthYear = (dt, month, year) => !!(dt && (dt.getMonth() + 1 === month) && dt.getFullYear() === year);
@@ -10403,9 +10425,14 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
     const filtrarPeriodo = (rows, periodo, month, year) => (rows || []).filter((r) => {
       const d = parseRowDate(r); const mesRef = monthRefOf(r);
       if (hasCustomRange) {
-        const byMesRef = !!(mesRef && monthRefsRange.has(mesRef));
-        const byData = !!(d && (!customIniDate || d >= customIniDate) && (!customFimDate || d < customFimDate));
-        return byMesRef || byData;
+        // com período: `data` entre início e fim INCLUSIVOS; `mes_referencia` só sem data
+        const dIso = rowDateIso(r);
+        if (dIso) {
+          const okIni = !rangeInicio || dIso >= rangeInicio;
+          const okFim = !rangeFimInclusivo || dIso <= rangeFimInclusivo;
+          return okIni && okFim;
+        }
+        return !!(mesRef && monthRefsRange.has(mesRef));
       }
       if (!d && !mesRef) return true;
       if (periodo === 'hoje' || periodo === 'dia') return d >= hojeRef;
