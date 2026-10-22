@@ -8217,20 +8217,28 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       'qtd', 'descricao',
       'emp_id', 'deleted_at',
     ];
+    // [REL-09] sem corte silencioso: antes o `.limit(150)` truncava o relatório em
+    // 150 OFs. Agora pagina até o fim (F-4), mantendo o retry de colunas inexistentes.
     const selectWithRetry = async (table, cols, build) => {
       let useCols = cols.slice();
       for (let tentativa = 0; tentativa < 5; tentativa++) {
-        const q = build(supabase.from(table).select(useCols.join(',')));
-        const r = await q.limit(150);
-        if (!r.error) return { data: r.data || [], usedCols: useCols };
-        const msg = String(r.error.message || r.error);
-        console.error('[RELATORIO VENDEDOR] erro query:', msg);
-        const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
-        if (col && useCols.includes(col)) {
-          useCols = useCols.filter((c) => c !== col);
-          continue;
+        try {
+          const data = await _fetchTodasPaginas(async (from, to) => {
+            const r = await build(supabase.from(table).select(useCols.join(','))).range(from, to);
+            if (r.error) throw r.error;
+            return Array.isArray(r.data) ? r.data : [];
+          }, { pageSize: 1000 });
+          return { data, usedCols: useCols };
+        } catch (err) {
+          const msg = String(err?.message || err);
+          console.error('[RELATORIO VENDEDOR] erro query:', msg);
+          const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+          if (col && useCols.includes(col)) {
+            useCols = useCols.filter((c) => c !== col);
+            continue;
+          }
+          throw err;
         }
-        throw r.error;
       }
       throw new Error('Falha ao buscar OFs após tentativas');
     };
@@ -9203,33 +9211,41 @@ app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) =>
     const dataFim = String(req.query.dataFim || '').trim();
     const empId = String(req.query.empId || '').trim();
 
-    let q = supabase
-      .from('ofs')
-      .select([
-        'id',
-        'empresa_id',
-        'emp_id',
-        'valor_total',
-        'valor_venda',
-        'qtd',
-        'quantidade',
-        'qtd_produzida',
-        'qtd_perdida',
-        'qtd_chapas',
-        'chapa_id',
-        'status',
-        'data_conclusao',
-        'deleted_at',
-      ].join(','))
-      .eq('status', 'Concluído')
-      .is('deleted_at', null);
+    const ofsCols = [
+      'id',
+      'empresa_id',
+      'emp_id',
+      'valor_total',
+      'valor_venda',
+      'qtd',
+      'quantidade',
+      'qtd_produzida',
+      'qtd_perdida',
+      'qtd_chapas',
+      'chapa_id',
+      'status',
+      'data_conclusao',
+      'deleted_at',
+    ].join(',');
+    const buildOfsQuery = () => {
+      let query = supabase
+        .from('ofs')
+        .select(ofsCols)
+        .eq('status', 'Concluído')
+        .is('deleted_at', null);
+      if (dataInicio) query = query.gte('data_conclusao', dataInicio);
+      if (dataFim) query = query.lte('data_conclusao', dataFim + 'T23:59:59');
+      if (empId) query = query.eq('emp_id', empId);
+      return query;
+    };
 
-    if (dataInicio) q = q.gte('data_conclusao', dataInicio);
-    if (dataFim) q = q.lte('data_conclusao', dataFim + 'T23:59:59');
-    if (empId) q = q.eq('emp_id', empId);
-
-    const { data: ofs, error } = await q.limit(5000);
-    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+    // [REL-09] sem corte silencioso: o `.limit(5000)` era truncado em 1000 pelo
+    // PostgREST. Pagina até o fim (F-4).
+    const ofs = await _fetchTodasPaginas(async (from, to) => {
+      const { data, error } = await buildOfsQuery().range(from, to);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }, { pageSize: 1000 });
 
     const chapaIds = Array.from(new Set((ofs || [])
       .map((o) => String(o?.chapa_id || '').trim())
@@ -10321,7 +10337,18 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       }
       return [];
     };
-    const { data: todos } = await supabase.from(tabelaAtiva).select('*').order('created_at', { ascending: false }).limit(5000);
+    // [REL-09] sem corte silencioso: o `.limit(5000)` era truncado em 1000 pelo
+    // PostgREST, então o relatório só via as 1000 perdas mais recentes. Pagina até
+    // o fim (F-4).
+    const todos = await _fetchTodasPaginas(async (from, to) => {
+      const { data, error } = await supabase
+        .from(tabelaAtiva)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }, { pageSize: 1000 });
     const parseRowDate = (row) => {
       const raw = row?.data || row?.data_perda || row?.data_conclusao || row?.created_at || null;
       if (!raw) return null;
@@ -16929,41 +16956,39 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
     const tipo = (tipoRaw === 'valor' || tipoRaw === 'faturamento' || tipoRaw.includes('fat')) ? 'valor' : 'quantidade';
     const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '50'), 10) || 50));
 
-    const { data: clientes, error: cliErr } = await supabase
-      .from('clientes')
-      .select('*')
-      .eq('empresa_id', empresa_id)
-      .limit(20000);
-    if (cliErr) throw cliErr;
-    let cliRows = Array.isArray(clientes) ? clientes : [];
-    cliRows = cliRows.filter((c) => (c?.ativo === undefined ? true : !!c.ativo));
+    // [REL-09] sem corte silencioso: o `pageSize 10000` fazia o PostgREST devolver
+    // só as 1000 OFs/clientes mais recentes (o ranking "fechava" já na 1ª página).
+    // Agora pagina de verdade (F-4) dos dois lados.
+    const cliRows = (await _fetchTodasPaginas(async (from, to) => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('empresa_id', empresa_id)
+        .range(from, to);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }, { pageSize: 1000 })).filter((c) => (c?.ativo === undefined ? true : !!c.ativo));
 
-    const pageSize = 10000;
-    const maxPages = 30;
     const mapaQtd = Object.create(null);
     const mapaVal = Object.create(null);
-    let from = 0;
-    for (let p = 0; p < maxPages; p++) {
-      const { data: ofs, error: ofsErr } = await supabase
+    const ofsRanking = await _fetchTodasPaginas(async (from, to) => {
+      const { data, error } = await supabase
         .from('ofs')
         .select('cli_id,valor_total,valor_venda,total')
         .eq('empresa_id', empresa_id)
         .not('cli_id', 'is', null)
         .order('created_at', { ascending: false })
-        .range(from, from + pageSize - 1);
-      if (ofsErr) throw ofsErr;
-      const rows = Array.isArray(ofs) ? ofs : [];
-      if (!rows.length) break;
-      rows.forEach((of) => {
-        const cid = String(of?.cli_id || '').trim();
-        if (!cid) return;
-        mapaQtd[cid] = (mapaQtd[cid] || 0) + 1;
-        const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? of?.vl_total ?? 0) || 0;
-        if (v) mapaVal[cid] = (mapaVal[cid] || 0) + v;
-      });
-      if (rows.length < pageSize) break;
-      from += pageSize;
-    }
+        .range(from, to);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }, { pageSize: 1000 });
+    ofsRanking.forEach((of) => {
+      const cid = String(of?.cli_id || '').trim();
+      if (!cid) return;
+      mapaQtd[cid] = (mapaQtd[cid] || 0) + 1;
+      const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? of?.vl_total ?? 0) || 0;
+      if (v) mapaVal[cid] = (mapaVal[cid] || 0) + v;
+    });
 
     const out = cliRows.map((c) => {
       const id = String(c?.id || '').trim();
@@ -19297,21 +19322,31 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
       'valor_total', 'valor_venda', 'total'
     ].join(',');
     etapaAtual = 'select_ofs';
-    const sel = await _selectCompatRows('ofs', cols, (q) => {
-      let query = q
-        .ilike('status', '%conclu%')
-        .gte('data_conclusao', range.inicio)
-        .lt('data_conclusao', range.fim_exclusivo)
-        .order('data_conclusao', { ascending: false });
-      if (empId && _isUuid(empId)) query = query.eq('empresa_id', empId);
-      return query.limit(900);
-    });
-    tracer.etapa_ms.ofs = Date.now() - t0;
-    if (sel?.error) {
-      console.error('[RELATORIOS][CUSTOS][OFSEL]', { message: sel.error?.message, details: sel.error?.details, hint: sel.error?.hint, code: sel.error?.code });
-      throw sel.error;
+    // [REL-09] sem corte silencioso: o `.limit(900)` truncava o relatório de custos.
+    // Pagina até o fim (F-4) reaproveitando o retry de colunas do _selectCompatRows.
+    const ofsPageSize = 1000;
+    const ofs = [];
+    for (let pagina = 0; pagina < 200; pagina += 1) {
+      const de = pagina * ofsPageSize;
+      const sel = await _selectCompatRows('ofs', cols, (q) => {
+        let query = q
+          .ilike('status', '%conclu%')
+          .gte('data_conclusao', range.inicio)
+          .lt('data_conclusao', range.fim_exclusivo)
+          .order('data_conclusao', { ascending: false })
+          .range(de, de + ofsPageSize - 1);
+        if (empId && _isUuid(empId)) query = query.eq('empresa_id', empId);
+        return query;
+      });
+      if (sel?.error) {
+        console.error('[RELATORIOS][CUSTOS][OFSEL]', { message: sel.error?.message, details: sel.error?.details, hint: sel.error?.hint, code: sel.error?.code });
+        throw sel.error;
+      }
+      const lote = Array.isArray(sel?.data) ? sel.data : [];
+      ofs.push(...lote);
+      if (lote.length < ofsPageSize) break;
     }
-    const ofs = Array.isArray(sel?.data) ? sel.data : [];
+    tracer.etapa_ms.ofs = Date.now() - t0;
     tracer.ofs_count = ofs.length;
     etapaAtual = 'clientes';
     const cliIds = Array.from(new Set(ofs.map((of) => String(of?.cli_id || '').trim()).filter(_isUuid)));

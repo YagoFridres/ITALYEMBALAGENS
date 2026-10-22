@@ -1036,6 +1036,9 @@ try {
     var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/passagens/historico?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=1000');
     var rows = rrList(json, ['passagens', 'data']);
+    // [REL-09] o card usava rows.length (limitado à página de exibição). Usa o
+    // total real informado pelo servidor e avisa quando há corte de exibição.
+    var totalPassagens = rrInt(json && (json.total != null ? json.total : json.total_passagens)) || rows.length;
     var resumoMap = new Map();
     rows.forEach(function(row) {
       var maq = rrPassagensMaquina(row);
@@ -1052,7 +1055,7 @@ try {
       title: 'Relatório de Histórico de Passagens',
       periodo: ref.titulo,
       cards: [
-        { label: 'Passagens', value: rrFmtNum(rows.length, 0), sub: 'Linhas no período' },
+        { label: 'Passagens', value: rrFmtNum(totalPassagens, 0), sub: totalPassagens > rows.length ? ('Mostrando ' + rrFmtNum(rows.length, 0) + ' de ' + rrFmtNum(totalPassagens, 0) + ' — limite de exibição') : 'Linhas no período' },
         { label: 'Valor Produzido', value: rrFmtMoney(rows.reduce(function(s, r) { return s + rrPassagensValorTotal(r); }, 0)), sub: 'Somatório do período' },
         { label: 'Caixas Produzidas', value: rrFmtNum(rows.reduce(function(s, r) { return s + rrPassagensQtd(r); }, 0), 0), sub: 'Quantidade total' },
         { label: 'Máquinas', value: rrFmtNum(resumoRows.length, 0), sub: 'Máquinas com passagens' }
