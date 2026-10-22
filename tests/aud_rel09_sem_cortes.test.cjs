@@ -91,6 +91,9 @@ function fakeSupabase({ bases = {}, pageCap = 1000, erroDeColuna = null } = {}) 
       select(cols) { st.cols = String(cols || ''); return self; },
       eq(c, v) { st.filtros.push(['eq', c, v]); return self; },
       not(c, op, v) { st.filtros.push(['not', c, op, v]); return self; },
+      ilike(c, v) { st.filtros.push(['ilike', c, v]); return self; },
+      is(c, v) { st.filtros.push(['is', c, v]); return self; },
+      or(expr) { st.filtros.push(['or', expr]); return self; },
       order() { return self; },
       range(from, to) { st.from = from; st.to = to; return self; },
       then(resolve, reject) {
@@ -228,6 +231,10 @@ test('REL-09 (ranking): cliente fora da 1ª página entra no ranking (sem corte)
   vm.runInContext(extrairFunc(SRC, '_fetchTodasPaginas'), ctx);
   ctx.supabase = fakeSupabase({ bases: { clientes, ofs } });
   ctx._resolveEmpresaUuid = async () => ITALY;
+  // F-3 (REL-14): a rota agora monta o filtro de empresa; aqui não é o alvo do
+  // teste (que é a paginação), então bastam stubs neutros.
+  ctx._empresaSiglaPorUuid = () => 'ITALY';
+  ctx._aplicarFiltroEmpresaOfs = (q) => q;
 
   const handler = vm.runInContext('(' + extrairHandler(SRC, '/api/clientes/ranking') + ')', ctx);
   const captura = { status: null, body: null };

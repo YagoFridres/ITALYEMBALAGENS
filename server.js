@@ -17016,16 +17016,21 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
       return Array.isArray(data) ? data : [];
     }, { pageSize: 1000 })).filter((c) => (c?.ativo === undefined ? true : !!c.ativo));
 
+    // [REL-14] ranking só de OFs CONCLUÍDAS e não excluídas; filtro de empresa
+    // único (F-3): uuid canônico ou legado (empresa_id null + emp_id sigla).
+    const _rankEmpFiltro = { todas: false, uuid: empresa_id, sigla: _empresaSiglaPorUuid(empresa_id) };
     const mapaQtd = Object.create(null);
     const mapaVal = Object.create(null);
     const ofsRanking = await _fetchTodasPaginas(async (from, to) => {
-      const { data, error } = await supabase
+      let qOfs = supabase
         .from('ofs')
         .select('cli_id,valor_total,valor_venda,total')
-        .eq('empresa_id', empresa_id)
         .not('cli_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+        .ilike('status', '%conclu%')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      qOfs = _aplicarFiltroEmpresaOfs(qOfs, _rankEmpFiltro);
+      const { data, error } = await qOfs.range(from, to);
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     }, { pageSize: 1000 });
