@@ -18052,7 +18052,7 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
     try { empresaAtual = await _resolveEmpresaUuid(req); } catch (_) { empresaAtual = null; }
     const companyIds = (filtroEmpresa && filtroEmpresa !== 'all' && filtroEmpresa !== 'todas')
       ? [filtroEmpresa]
-      : (empresaAtual ? [empresaAtual] : []);
+      : ((filtroEmpresa || !empresaAtual) ? [] : [empresaAtual]);
     const cols = [
       'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
       'cli_id', 'cliId', 'cliente_id', 'clienteId', 'cliente', 'cliente_nome', 'cliNome', 'clinome',
@@ -18062,14 +18062,25 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
       'vendedor_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
       'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
     ].join(',');
-    const result = await _selectCompatRows('ofs', cols, (q) => {
-      let query = q.is('deleted_at', null).order('data_entrega', { ascending: true }).order('created_at', { ascending: false });
-      if (companyIds.length === 1) query = _relatoriosApplyEmpresaFilter(query, companyIds[0]);
-      else if (companyIds.length > 1) query = query.in('empresa_id', companyIds);
-      return query.limit(10000);
-    });
-    if (result?.error) throw result.error;
-    const ofs = (Array.isArray(result?.data) ? result.data : []).filter((row) => _relatoriosIsEmAberto(row));
+    // [REL-03] antes: .limit(10000) — o PostgREST corta em 1000 e o filtro
+    // "Em aberto" era aplicado em memória sobre as 1000 mais antigas.
+    // Agora: status/deleted_at no banco + F-4 (paginação de verdade).
+    const ofsRaw = await _fetchTodasPaginas(async (from, to) => {
+      const result = await _selectCompatRows('ofs', cols, (q) => {
+        let query = q
+          .eq('status', 'Em aberto')
+          .is('deleted_at', null)
+          .order('data_entrega', { ascending: true })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        if (companyIds.length === 1) query = _aplicarFiltroEmpresaOfs(query, { todas: false, uuid: companyIds[0], sigla: _empresaSiglaPorUuid(companyIds[0]) });
+        else if (companyIds.length > 1) query = query.in('empresa_id', companyIds);
+        return query;
+      });
+      if (result?.error) throw result.error;
+      return Array.isArray(result?.data) ? result.data : [];
+    }, { pageSize: 1000 });
+    const ofs = ofsRaw.filter((row) => _relatoriosIsEmAberto(row));
     const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
     const vendedoresMap = await _relatoriosLoadVendedoresByIds(ofs.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
     const rows = ofs.map((of) => {
