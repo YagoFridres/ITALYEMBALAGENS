@@ -19445,7 +19445,12 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
     const { data, error } = await q;
     if (error) throw error;
     const rows = (Array.isArray(data) ? data : []).map((row) => {
-      const quantidadeAtual = Math.trunc(Number(row?.quantidade ?? 0) || 0);
+      // [REL-06] o saldo real é `quantidade_atual`; `quantidade` vem 0 em todas
+      // as chapas, e por isso a tela listava 178 chapas zeradas. O limite é o
+      // `estoque_minimo` de cada chapa (200 quando não definido).
+      const quantidadeAtual = Math.trunc(Number(row?.quantidade_atual ?? row?.quantidade ?? 0) || 0);
+      const minimoRaw = Math.trunc(Number(row?.estoque_minimo) || 0);
+      const estoqueMinimo = minimoRaw > 0 ? minimoRaw : 200;
       return {
         id: row?.id || null,
         fornecedor: String(row?.fornecedor || '—').trim() || '—',
@@ -19453,9 +19458,9 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
         nomenclatura: String(row?.nomenclatura || row?.nome_uso || row?.nome || '—').trim() || '—',
         tamanho: String(row?.tamanho || '—').trim() || '—',
         quantidade_atual: quantidadeAtual,
-        estoque_minimo: Math.trunc(Number(row?.estoque_minimo ?? 200) || 200)
+        estoque_minimo: estoqueMinimo
       };
-    }).filter((row) => Number(row?.quantidade_atual || 0) < 200).sort((a, b) => {
+    }).filter((row) => Number(row?.quantidade_atual || 0) < Number(row?.estoque_minimo || 200)).sort((a, b) => {
       if (Number(a.quantidade_atual || 0) !== Number(b.quantidade_atual || 0)) return Number(a.quantidade_atual || 0) - Number(b.quantidade_atual || 0);
       return String(a.nomenclatura || '').localeCompare(String(b.nomenclatura || ''), 'pt-BR');
     });
