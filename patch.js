@@ -722,11 +722,17 @@ try {
   }
 
   function rrFmtDate(v) {
+    // [REL-17] `new Date('2026-10-09')` é meia-noite UTC: em São Paulo
+    // (UTC-3) vira 08/10 e a impressão mostrava um dia antes. Usa F-1, que
+    // monta a data sem hora por split('-'), sem passar pelo `new Date`.
+    if (typeof window !== 'undefined' && typeof window._fmtDataBR === 'function') {
+      return window._fmtDataBR(v);
+    }
     if (!v) return '—';
     try {
       var d = new Date(v);
       if (!Number.isFinite(d.getTime())) return '—';
-      return d.toLocaleDateString('pt-BR');
+      return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     } catch (_) {
       return '—';
     }
