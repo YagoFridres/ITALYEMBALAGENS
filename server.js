@@ -23706,7 +23706,12 @@ app.get('/api/perdas/por-operador', authMiddleware, async (req, res) => {
       .limit(5000);
     {
       const _empIdsInc = [empresa_id, empId].map((v) => String(v || '').trim()).filter(Boolean);
-      if (_empIdsInc.length) q = q.in('emp_id', _empIdsInc);
+      if (_empIdsInc.length) {
+        // [REL-15] o filtro por lista de emp_id escondia os registros com
+        // `emp_id` NULO (lançamentos legados/antigos). Passa a usar OR com
+        // `emp_id.is.null`, mantendo o isolamento das outras empresas.
+        q = q.or(`emp_id.in.(${_empIdsInc.join(',')}),emp_id.is.null`);
+      }
     }
 
     let { data, error } = await q;
