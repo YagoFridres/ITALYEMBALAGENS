@@ -14854,6 +14854,7 @@ async function _agruparPassagensRelatorioMensalBackend(req, opts) {
   const dedupeMap = new Map();
   let offset = 0;
   let totalBruto = 0;
+  const fisicaRows = [];
 
   while (true) {
     const pair = await _buscarPassagensHistoricoCompat(req, {
@@ -14870,11 +14871,48 @@ async function _agruparPassagensRelatorioMensalBackend(req, opts) {
     if (!rows.length) break;
     try { rows = await _enriquecerPassagensHistoricoComOfs(rows); } catch (_) {}
     try { rows = await _normalizarMaquinasPassagens(rows); } catch (_) {}
-    _mergePassagensResumoRows(dedupeMap, rows);
+    fisicaRows.push(...rows);
     offset += rows.length;
     if (rows.length < batchSize) break;
     if (totalBruto > 0 && offset >= totalBruto) break;
   }
+
+  // [REL-19] o relatório mensal lia SÓ a tabela física `passagens_maquina`; as
+  // passagens antigas, gravadas na coluna JSON `ofs.passagens_maquina`, ficavam
+  // de fora (agosto/2026 vinha 0 e setembro vinha menor). Usa a MESMA junção do
+  // /api/passagens/historico: a tabela física VENCE e a coluna JSON só entra
+  // para OFs sem nenhuma linha física no período; o dedup por of + máquina
+  // (mesma chave do histórico) evita duplicar.
+  let jsonRows = [];
+  try {
+    const jp = await _buscarPassagensHistoricoFromOfs(req, { cliente, maquina, data_inicio, data_fim });
+    jsonRows = Array.isArray(jp?.rows) ? jp.rows : [];
+  } catch (_) { jsonRows = []; }
+  const ofsComFisica = new Set();
+  fisicaRows.forEach((rowF) => {
+    const ofNorm = _normalizarNumeroOfDigits(rowF?.of_numero ?? rowF?.numero ?? rowF?.of ?? '');
+    const ofRaw = String(rowF?.of_numero ?? rowF?.numero ?? rowF?.of ?? '').trim();
+    const ofIdRaw = String(rowF?.of_id || '').trim();
+    if (ofNorm) ofsComFisica.add(ofNorm);
+    if (ofRaw) ofsComFisica.add(ofRaw);
+    if (ofIdRaw) ofsComFisica.add('id::' + ofIdRaw);
+  });
+  const jsonLegado = jsonRows.filter((rowJson) => {
+    const ofNorm = _normalizarNumeroOfDigits(rowJson?.of_numero ?? rowJson?.numero ?? rowJson?.of ?? '');
+    const ofRaw = String(rowJson?.of_numero ?? rowJson?.numero ?? rowJson?.of ?? '').trim();
+    const ofIdRaw = String(rowJson?.of_id || '').trim();
+    if (ofNorm && ofsComFisica.has(ofNorm)) return false;
+    if (ofRaw && ofsComFisica.has(ofRaw)) return false;
+    if (ofIdRaw && ofsComFisica.has('id::' + ofIdRaw)) return false;
+    return true;
+  });
+  if (jsonLegado.length) {
+    let enrJson = jsonLegado;
+    try { enrJson = await _enriquecerPassagensHistoricoComOfs(enrJson); } catch (_) {}
+    try { enrJson = await _normalizarMaquinasPassagens(enrJson); } catch (_) {}
+    _mergePassagensResumoRows(dedupeMap, enrJson);
+  }
+  _mergePassagensResumoRows(dedupeMap, fisicaRows);
 
   const deduped = Array.from(dedupeMap.values()).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a));
   let aggDistinct = { agg_por_maquina: [], total_geral_caixas_distinct_ofs: 0, total_geral_valor_distinct_ofs: 0, total_geral_ofs_distintas: 0 };
