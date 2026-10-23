@@ -17900,24 +17900,37 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
 
 async function _relatoriosFetchOfsCriadas(range, opts = {}) {
   const columns = [
-    'id', 'numero', 'of', 'status', 'dia', 'empresa_id',
+    'id', 'numero', 'of', 'status', 'dia', 'created_at', 'empresa_id',
     'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'cliNome', 'clinome',
     'descricao',
     'qtd', 'quantidade', 'qtd_pedida',
     'valor_total', 'valor_venda', 'total',
     'valor_unitario', 'preco'
   ].join(',');
-  const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
-  const result = await _selectCompatRows('ofs', columns, (q) => {
-    let query = q
-      .gte('dia', range.inicio)
-      .lt('dia', range.fim_exclusivo)
-      .order('dia', { ascending: true });
-    if (companyIds.length) query = query.in('empresa_id', companyIds);
-    return query.limit(10000);
-  });
-  if (result?.error) throw result.error;
-  return Array.isArray(result?.data) ? result.data : [];
+  // [REL-18] "OFs que entraram no mês" tem de olhar a CRIAÇÃO (`created_at`) e
+  // não o `dia` programado, que o job de produção adia todo dia. F-2: a janela
+  // é montada em São Paulo e enviada como UTC (gte/lt).
+  const janela = _spRangeUtc(range.inicio, range.fim);
+  if (!janela) return [];
+  const filtroEmp = opts.empresaFiltro || null;
+  // [REL-18] F-4: pagina até a última página em vez do corte fixo de 10.000.
+  // [REL-18] sem canceladas (`.not status ilike cancel%`) e sem `deleted_at`.
+  return _fetchTodasPaginas(async (from, to) => {
+    let query = supabase
+      .from('ofs')
+      .select(columns)
+      .gte('created_at', janela.gte)
+      .lt('created_at', janela.lt)
+      .not('status', 'ilike', '%cancel%')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true });
+    // [REL-18] F-3: filtro de empresa único (uuid canônico ou legado emp_id) em
+    // vez do antigo filtro por lista de UUIDs, que descartava as OFs sem UUID.
+    query = _aplicarFiltroEmpresaOfs(query, filtroEmp);
+    const { data, error } = await query.range(from, to);
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  }, { pageSize: 1000 });
 }
 
 app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => {
@@ -17930,11 +17943,9 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
     const refMes = new Date(range.inicio + 'T12:00:00');
     const ano = Number.isFinite(refMes.getTime()) ? refMes.getFullYear() : null;
     const mes = Number.isFinite(refMes.getTime()) ? (refMes.getMonth() + 1) : null;
-    // [REL-02] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
+    // [REL-02/REL-18] filtro de empresa único (F-3): Todas/E1/E2/E3/UUID.
     const filtroEmp = _empresaFiltro(req);
-    const ofs = await _relatoriosFetchOfsCriadas(range, {
-      companyIds: filtroEmp.todas ? [] : [filtroEmp.uuid]
-    });
+    const ofs = await _relatoriosFetchOfsCriadas(range, { empresaFiltro: filtroEmp });
     const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(_isUuid);
     const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
     const rows = ofs.map((of) => {
