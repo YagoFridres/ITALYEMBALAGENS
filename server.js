@@ -17618,11 +17618,20 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     const totalOfsDistintas = new Set();
     const semMaquina = 'Sem Máquina Definida';
 
-    const atribuirOfMaquina = (of, machineNameCanon, passagemIndex) => {
+    // [REL-13] A venda da OF é RATEADA igualmente entre as máquinas do fluxo.
+    // Antes, `atribuirOfMaquina` somava o valor INTEGRO da OF em cada máquina,
+    // então o card "Valor vendido" do resumo ficava MAIOR que o total real de
+    // vendas (uma OF que passa em 3 máquinas entrava 3x). R3 — rateio igual
+    // entre as máquinas do fluxo x atribuição só à última — segue como DECISÃO
+    // PENDENTE; aqui garante-se apenas que a soma das máquinas NÃO passe do
+    // total real: com o rateio igual, cada OF conta exatamente UMA vez.
+    const atribuirOfMaquina = (of, machineNameCanon, maquinasNoFluxo) => {
       const bucket = buckets.get(machineNameCanon);
       if (!bucket) return;
       const qtdOf = _relatoriosPickQtdOf(of);
       const valorOf = _relatoriosPickValorOf(of);
+      const nMaquinas = Math.max(1, Math.trunc(Number(maquinasNoFluxo) || 1));
+      const valorRateado = valorOf / nMaquinas;
       const comp = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
       const larg = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
       const gramIdTon = String(of?.gramatura_id || '').trim();
@@ -17643,7 +17652,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       const dataRef = _vendasOficialDataRef(of) || '';
 
       bucket.total_passagens += 1;
-      bucket.valor_vendido += valorOf;
+      bucket.valor_vendido += valorRateado;
       bucket.caixas_produzidas += qtdOf;
       bucket.toneladas_produzidas += tonOf;
       bucket.caixas_perdidas += perdas.caixas_perdidas;
@@ -17659,7 +17668,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       const clienteBucket = bucket._clientes.get(clienteNome);
       clienteBucket.total_passagens += 1;
       clienteBucket.total_caixas += qtdOf;
-      clienteBucket.valor_vendido += valorOf;
+      clienteBucket.valor_vendido += valorRateado;
       clienteBucket._ofs.add(String(of?.id || '').trim());
 
       if (!bucket._tipos.has(tipoCaixa)) bucket._tipos.set(tipoCaixa, { tipo_caixa: tipoCaixa, total_caixas: 0, total_ofs: 0 });
@@ -17679,7 +17688,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         tipo_caixa: tipoCaixa,
         cores_impressao: cores,
         caixas_produzidas: qtdOf,
-        valor_vendido: valorOf,
+        valor_vendido: valorRateado,
         toneladas_produzidas: tonOf,
         custos_totais: custoOf,
         caixas_perdidas: perdas.caixas_perdidas,
@@ -17691,6 +17700,10 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     ofsFiltradas.forEach((of) => {
       const passagens = _parseMaybeJsonArray(of?.passagens_maquina);
       const atribuida = new Set();
+      // [REL-13] lista as máquinas do fluxo ANTES de ratear: a venda da OF é
+      // dividida igualmente entre elas (R3 pendente) para o total do card não
+      // passar do total real de vendas.
+      const maquinasDoFluxo = [];
       passagens.forEach((p) => {
         const nome = String(p && typeof p === 'object'
           ? (p.maquina_nome ?? p.maquina ?? p.nome ?? p.name ?? p.id ?? '')
@@ -17699,11 +17712,10 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         if (!canon || !machineNames.has(canon)) return;
         if (atribuida.has(canon)) return;
         atribuida.add(canon);
-        atribuirOfMaquina(of, canon, 0);
+        maquinasDoFluxo.push(canon);
       });
-      if (atribuida.size === 0) {
-        atribuirOfMaquina(of, semMaquina, 0);
-      }
+      if (maquinasDoFluxo.length === 0) maquinasDoFluxo.push(semMaquina);
+      maquinasDoFluxo.forEach((canon) => atribuirOfMaquina(of, canon, maquinasDoFluxo.length));
     });
 
     const rows = LUCRATIVIDADE_MAQUINAS.map((machine) => {
