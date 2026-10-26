@@ -15,7 +15,7 @@ PY
 fi
 caddy validate --config $F --adapter caddyfile >/dev/null 2>&1 && systemctl reload caddy
 systemctl stop pcp-form-sync 2>/dev/null || true
-systemd-run --unit=pcp-form-sync --collect /usr/bin/node /opt/pcp-pro/app/deploy/form-sync.js "$P"
+systemd-run --unit=pcp-form-sync --collect --setenv=HOME=/root --setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /usr/bin/node /opt/pcp-pro/app/deploy/form-sync.js "$P"
 sleep 2
 echo "LINK: https://teste.italyembalagens.com.br$P"
 grep -n "3005" $F
