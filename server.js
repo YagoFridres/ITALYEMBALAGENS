@@ -1308,8 +1308,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026143019';
-const SW_RUNTIME_VERSION = '20261026143019';
+const PATCH_RUNTIME_VERSION = '20261026143301';
+const SW_RUNTIME_VERSION = '20261026143301';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -19308,7 +19308,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
       error = ins.error;
       if (!error) break;
       const msg = String(error.message || '').toLowerCase();
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(payload, m[1])) {
         delete payload[m[1]];
         continue;
@@ -20333,7 +20333,7 @@ app.delete('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
 
     const vinculados = await supabase
       .from('orcamentos')
-      .select('id,numero_orcamento,pasta_id,deleted_at')
+      .select('id,numero_orcamento,pasta_id')
       .eq('pasta_id', id);
     if (vinculados.error) return res.status(500).json({ ok: false, error: vinculados.error.message });
 
@@ -23235,7 +23235,7 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
       }
       lastError = error;
       const msg = String(error?.message || '');
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
         delete toInsert[m[1]];
         continue;
@@ -28743,7 +28743,7 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
       const ins = await supabase.from('chapas_pins').insert([toInsert]).select().maybeSingle();
       if (!ins?.error) return res.json({ ok: true, data: ins.data || null });
       const msg = String(ins.error.message || '');
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
         delete toInsert[m[1]];
         continue;
@@ -29011,7 +29011,7 @@ app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => 
           criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
         }), fallback_chapa: true });
       }
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
         delete toInsert[m[1]];
         continue;
@@ -29203,7 +29203,7 @@ app.patch('/api/chapas_estoque_v2/:id/ignorar-sugestao', authMiddleware, async (
         .select();
       if (!upd?.error) return res.json({ ok: true, data: upd.data || [] });
       const msg = String(upd.error.message || upd.error || '');
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
         delete toUpdate[m[1]];
         continue;
@@ -29318,7 +29318,7 @@ async function _comprasChapasInsertCompat(table, rows, selectExpr = '*') {
     const msg = String(out.error.message || out.error || '');
     const m1 = msg.match(/Could not find the '([^']+)' column/i);
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
-    const m3 = msg.match(/column \"([^\"]+)\" of relation/i);
+    const m3 = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
     if (!col) return out;
     const exists = payloadRows.some((row) => Object.prototype.hasOwnProperty.call(row, col));
@@ -29342,7 +29342,7 @@ async function _comprasChapasUpdateCompat(table, id, payload, selectExpr = '*') 
     const msg = String(out.error.message || out.error || '');
     const m1 = msg.match(/Could not find the '([^']+)' column/i);
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
-    const m3 = msg.match(/column \"([^\"]+)\" of relation/i);
+    const m3 = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
     if (!col || !Object.prototype.hasOwnProperty.call(current, col)) return out;
     delete current[col];
@@ -30255,7 +30255,7 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
         upd = { data: atual };
         break;
       }
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
         delete toUpdate[m[1]];
         continue;
@@ -30345,7 +30345,7 @@ app.post('/api/chapas/consumo', authMiddleware, async (req, res) => {
       if (low.includes('does not exist') || low.includes('relation') || low.includes('could not find')) {
         return res.json({ ok: true, data: null, noop: true });
       }
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      const m = msg.match(/(?:column \"|Could not find the ')([^\"']+)(?:\" of relation|' column)/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
         delete toInsert[m[1]];
         continue;
