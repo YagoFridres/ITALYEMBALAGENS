@@ -70479,6 +70479,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (esc.length && ESCONDER.indexOf(k) < 0) l.forEach(function (it) { if (it !== escolhido && !it.hasAttribute('data-ds-dup')) { it.setAttribute('data-ds-dup', '1'); it.classList.add('ds-oculto'); } });
       if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
     });
+    // itens que não existem no menu antigo (Entradas / Saídas de chapas) são criados aqui
+    ['entradas-estoque', 'saidas-estoque'].forEach(function (k) {
+      if (porChave[k]) return;
+      var it = document.createElement('div');
+      it.className = 'nav-item'; it.setAttribute('onclick', "go('" + k + "')"); it.setAttribute('data-ds-criado', '1');
+      it.textContent = ITENS[k][1];
+      sb.appendChild(it); porChave[k] = it;
+    });
     // Início no topo
     var hub = porChave['hub'];
     var ancora = document.getElementById('ds-nav-ancora');
@@ -70539,16 +70547,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       try { var tt = (nome ? nome + ' — ' : '') + 'Italy PCP'; if (document.title !== tt) document.title = tt; } catch (_) {}
     }
     if (CENTRAL.indexOf(pg) >= 0) abasCentral(pg);
-    if (!sb || pg === ultimaPg) return;
+    if (!sb) return;
+    var mudou = pg !== ultimaPg;
     ultimaPg = pg;
     var alvo = sb.querySelector('.nav-item[data-ds-key="' + chave + '"]');
+    sb.querySelectorAll('.nav-item.active').forEach(function (n) { if (n !== alvo) n.classList.remove('active'); });
+    sb.querySelectorAll('.nav-group.ds-tem-ativo').forEach(function (x) { if (!alvo || !x.contains(alvo)) x.classList.remove('ds-tem-ativo'); });
     if (alvo) {
-      sb.querySelectorAll('.nav-item.active').forEach(function (n) { if (n !== alvo) n.classList.remove('active'); });
       alvo.classList.add('active');
       var g = alvo.closest('.nav-group');
-      sb.querySelectorAll('.nav-group.open').forEach(function (x) { if (x !== g) x.classList.remove('open'); });
-      if (g) g.classList.add('open');
+      if (g) { g.classList.add('ds-tem-ativo'); if (mudou) g.classList.add('open'); }
     }
+    if (!mudou) return;
     abasCentral(pg);
   }
   function abasCentral(pg) {
@@ -70583,6 +70593,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return false;
   }
   window.dsAbrirOfRapida = abrirOfRapida;
+  // grupos do menu: vários podem ficar abertos ao mesmo tempo (e continuam abertos ao recarregar)
+  function salvarAbertos() { try { localStorage.setItem('ds_menu_abertos', JSON.stringify(Array.prototype.map.call(document.querySelectorAll('.sidebar .nav-group.open'), function (g) { return g.id; }))); } catch (_) {} }
+  window.toggleNavGroup = function (id) { var g = document.getElementById(id); if (!g) return; g.classList.toggle('open'); salvarAbertos(); };
+  window.closeNavGroupsExcept = function () {};
+  window.openNavGroupForPage = function () {}; // o menu novo abre o grupo da página atual sem fechar os outros
+  setTimeout(function () { try { (JSON.parse(localStorage.getItem('ds_menu_abertos') || '[]') || []).forEach(function (id) { var g = document.getElementById(id); if (g) g.classList.add('open'); }); } catch (_) {} }, 1500);
   // Ctrl+N (ou Cmd+N) = OF Rápida, quando não está digitando
   document.addEventListener('keydown', function (ev) {
     if (!(ev.ctrlKey || ev.metaKey) || ev.shiftKey || ev.altKey || String(ev.key).toLowerCase() !== 'n') return;
@@ -70600,6 +70616,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.sidebar .nav-group.open .nav-group-items{max-height:900px!important}'
     + '.sidebar .ds-grupo .nav-group-items .nav-item{padding-left:14px}'
     + '#ds-nav-ancora{height:6px}'
+    + '.sidebar .nav-group.ds-tem-ativo > .nav-group-header{color:var(--text)!important}'
+    + '.sidebar .nav-group.ds-tem-ativo > .nav-group-header .ng-ico{color:var(--accent);opacity:1}'
+    + '.sidebar .nav-item.active{background:color-mix(in srgb,var(--accent) 14%,transparent)!important;color:var(--text)!important;box-shadow:inset 2px 0 0 var(--accent)!important}'
+    + '.sidebar .nav-item.active .ico{color:var(--accent);opacity:1}'
     + '#ds-recolher{display:flex;align-items:center;gap:10px;margin:10px 8px 12px;padding:9px 10px;border:1px solid var(--border);background:transparent;color:var(--text3);border-radius:8px;cursor:pointer;font:inherit;font-size:12.5px}'
     + '#ds-recolher:hover{color:var(--text);background:var(--s3)}'
     + 'body.ds-colapsado #ds-recolher svg{transform:rotate(180deg)}'
