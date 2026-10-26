@@ -70129,10 +70129,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // completo; topo enxuto; botões maiores para o dedo; PCP esconde Dia Pedido, Imagem e Vl. Unit.
   try { if (window.__modoTablet) return; window.__modoTablet = true; } catch (_) {}
   var SEL = ['body[data-device="tablet"]:not(.is-mobile)', 'body.ds-tablet-auto:not(.is-mobile)', 'body.ds-colapsado:not(.is-mobile)'];
-  function r(sufixo, decl){ return SEL.map(function(s){ return s + ' ' + sufixo; }).join(',') + '{' + decl + '}'; }
+  function pref(lista, sufixo){ var out = []; String(sufixo).split(',').forEach(function(p){ p = p.trim(); if (!p) return; lista.forEach(function(s){ out.push(s + ' ' + p); }); }); return out.join(','); }
+  function r(sufixo, decl){ return pref(SEL, sufixo) + '{' + decl + '}'; }
   function rb(decl){ return SEL.join(',') + '{' + decl + '}'; }
   var ABERTO = SEL.map(function(s){ return s + '.ds-rail-aberto'; });
-  function ra(sufixo, decl){ return ABERTO.map(function(s){ return s + ' ' + sufixo; }).join(',') + '{' + decl + '}'; }
+  function ra(sufixo, decl){ return pref(ABERTO, sufixo) + '{' + decl + '}'; }
   var css = ''
     + r('.sidebar', 'width:64px!important;min-width:64px!important;overflow-x:hidden!important;overflow-y:auto!important;transition:width .18s ease')
     + r('.sidebar .sidebar-brand,.sidebar .sidebar-section', 'display:none!important')
