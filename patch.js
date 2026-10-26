@@ -69261,7 +69261,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var sb = document.querySelector('.sidebar');
     if (!sb) return [];
     var grupos = [];
-    var soltos = { titulo: 'Produção', itens: [] };
+    var soltos = { titulo: '', itens: [] };
     Array.prototype.forEach.call(sb.children, function (ch) {
       if (ch.classList && ch.classList.contains('nav-item')) {
         if (visivel(ch)) soltos.itens.push(itemInfo(ch));
@@ -69311,7 +69311,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       html += '</div>';
     })();
     grupos.forEach(function (g, gi) {
-      html += '<div style="margin-bottom:16px"><div style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">' + esc(g.titulo) + '</div>'
+      html += '<div style="margin-bottom:16px">' + (g.titulo ? '<div style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">' + esc(g.titulo) + '</div>' : '')
         + '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">';
       g.itens.forEach(function (it, ii) {
         html += '<button type="button" data-mmm-item="' + gi + ':' + ii + '" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:12px 6px;min-height:76px;cursor:pointer;color:#e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:manipulation;-webkit-tap-highlight-color:transparent">'
@@ -70231,7 +70231,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     l.href = '/apple-touch-icon.png'; l.setAttribute('sizes', '180x180');
     var ic = document.querySelector('link[rel="icon"]');
     if (!ic) { ic = document.createElement('link'); ic.rel = 'icon'; document.head.appendChild(ic); }
-    ic.type = 'image/png'; ic.href = '/icon-192.png';
+    ic.type = 'image/png'; ic.href = '/favicon-48.png'; // só a árvore da Italy
   } catch (_) {}
   function cor(){
     try {
@@ -70443,7 +70443,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     '@papelao': ['carrinho', 'Compra de Papelão'], 'fornecedores': ['caminhao', 'Fornecedores'], 'estoque': ['camadas', 'Estoque de Chapas'],
     'entradas-estoque': ['entrada', 'Entradas'], 'saidas-estoque': ['saida', 'Saídas'], 'checklist-recebimento': ['check', 'Checklist de Recebimento'],
     'facas1': ['faca', 'Estoque de Facas'], 'cliches': ['carimbo', 'Estoque de Clichês'], 'gramaturas': ['balanca', 'Gramaturas'],
-    'simd': ['reciclar', 'Simulador de Desperdício'], 
+    'simd': ['reciclar', 'Simulador de Desperdício'], 'almoxarifado': ['caixa', 'Almoxarifado'],
     'inconformidades': ['alerta', 'Inconformidades'], 'caixas-perdidas': ['caixax', 'Caixas Perdidas'],
     'maquinas': ['maquina', 'Máquinas'], 'fluxos': ['fluxo', 'Fluxos'], 'tipos-caixa': ['caixa', 'Tipos de Caixa'], 'cores-impressao': ['paleta', 'Cores de Impressão'],
     'relatorios': ['grafico', 'Relatórios'], 'toneladas-vendidas': ['peso', 'Toneladas Vendidas'], 'central-custos': ['carteira', 'Central de Custos'],
@@ -70454,7 +70454,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var GRUPOS = [
     { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens'] },
     { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'operadores', 'vendedores', 'mapa-clientes'] },
-    { id: 'ng-ds-estoque', nome: 'Compras e Estoque', ico: 'camadas', itens: ['@papelao', 'fornecedores', 'estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'toneladas-vendidas', 'simd'] },
+    { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
+    { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'toneladas-vendidas', 'simd'] },
     { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
     { id: 'ng-ds-fabrica', nome: 'Máquinas', ico: 'maquina', itens: ['maquinas', 'fluxos', 'tempos-reais'] },
     { id: 'ng-ds-gestao', nome: 'Financeiro', ico: 'carteira', itens: ['orcamentos', 'comissoes', 'central-custos', 'relatorios'] },
@@ -70464,6 +70465,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var CENTRAL = ['pcp'];
   var ESCONDER = ['dashboard', 'lancamento', '@jarvis'];
 
+  // um emoji por área — o mesmo no computador, tablet e celular
+  var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
+    'operadores': '👷', 'vendedores': '💼', 'mapa-clientes': '🗺️', '@papelao': '🛒', 'compras': '🛒', 'almoxarifado': '🧰', 'fornecedores': '🚚', 'estoque': '🧱',
+    'entradas-estoque': '📥', 'saidas-estoque': '📤', 'checklist-recebimento': '✅', 'facas1': '🔪', 'cliches': '🖋️', 'gramaturas': '⚖️',
+    'toneladas-vendidas': '🏋️', 'simd': '♻️', 'inconformidades': '⚠️', 'caixas-perdidas': '🗑️', 'maquinas': '🖨️', 'fluxos': '🔀', 'tempos-reais': '⏱️',
+    'orcamentos': '🧾', 'comissoes': '💵', 'central-custos': '🏦', 'relatorios': '📊', '@chat': '💬', 'agenda': '📅', 'usuarios': '👤', 'configuracoes': '🔧',
+    'dashboard': '📈', 'lancamento': '🗄️', '@jarvis': '🤖' };
+  var EMO_GRUPO = { 'ng-ds-producao': '🏭', 'ng-ds-comercial': '🗂️', 'ng-ds-compras': '🛒', 'ng-ds-estoque': '📦', 'ng-ds-qualidade': '🛡️', 'ng-ds-fabrica': '⚙️', 'ng-ds-gestao': '💰', 'ng-ds-comunicacao': '📣', 'ng-ds-sistema': '🖥️' };
+  window.dsEmojiArea = EMO;
   function chaveItem(it) {
     var oc = String(it.getAttribute('onclick') || '');
     var m = oc.match(/go\('([^']+)'/);
@@ -70477,7 +70487,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var def = ITENS[k]; if (!def || it.__dsDec === k) return;
     var ico = it.querySelector('.ico');
     if (!ico) { ico = document.createElement('span'); ico.className = 'ico'; it.insertBefore(ico, it.firstChild); }
-    ico.innerHTML = svg(I[def[0]]);
+    ico.textContent = EMO[k] || '•'; ico.classList.add('ds-emo');
     var lbl = it.querySelector('.ds-lbl');
     if (!lbl) {
       Array.prototype.slice.call(it.childNodes).forEach(function (n) { if (n.nodeType === 3 && n.textContent.trim()) n.remove(); });
@@ -70493,7 +70503,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (el) return el;
     el = document.createElement('div');
     el.className = 'nav-group ds-grupo'; el.id = g.id;
-    el.innerHTML = '<div class="nav-group-header" onclick="toggleNavGroup(\'' + g.id + '\')" title="' + g.nome + '"><span class="ng-ico">' + svg(I[g.ico]) + '</span><span class="ds-lbl">' + g.nome + '</span><span class="ng-arr">▶</span></div><div class="nav-group-items"></div>';
+    el.innerHTML = '<div class="nav-group-header" onclick="toggleNavGroup(\'' + g.id + '\')" title="' + g.nome + '"><span class="ng-ico ds-emo">' + (EMO_GRUPO[g.id] || '•') + '</span><span class="ds-lbl">' + g.nome + '</span><span class="ng-arr">▶</span></div><div class="nav-group-items"></div>';
     sb.insertBefore(el, antes || null);
     return el;
   }
@@ -70512,7 +70522,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
     });
     // itens que não existem no menu antigo (Entradas / Saídas de chapas) são criados aqui
-    ['entradas-estoque', 'saidas-estoque'].forEach(function (k) {
+    ['entradas-estoque', 'saidas-estoque', 'almoxarifado'].forEach(function (k) {
       if (porChave[k]) return;
       var it = document.createElement('div');
       it.className = 'nav-item'; it.setAttribute('onclick', "go('" + k + "')"); it.setAttribute('data-ds-criado', '1');
@@ -70648,6 +70658,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.sidebar .nav-group.open .nav-group-items{max-height:900px!important}'
     + '.sidebar .ds-grupo .nav-group-items .nav-item{padding-left:14px}'
     + '#ds-nav-ancora{height:6px}'
+    + '.sidebar .ds-emo{font-size:15px;line-height:1;width:20px!important;min-width:20px!important;text-align:center;opacity:1!important;filter:none!important;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}'
     + '.sidebar .nav-group.ds-tem-ativo > .nav-group-header{color:var(--text)!important}'
     + '.sidebar .nav-group.ds-tem-ativo > .nav-group-header .ng-ico{color:var(--accent);opacity:1}'
     + '.sidebar .nav-item.active{background:color-mix(in srgb,var(--accent) 14%,transparent)!important;color:var(--text)!important;box-shadow:inset 2px 0 0 var(--accent)!important}'
@@ -72152,4 +72163,208 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     window._buildStyledPrintHtml = w; return true;
   }
   if (!envolver()) { var n = 0, t = setInterval(function () { if (envolver() || ++n > 30) clearInterval(t); }, 1000); }
+})();
+
+/* ===== ALMOXARIFADO (26/10/2026) =====
+ * Menu Compras › Almoxarifado. Ordens de compra de itens (martelo, parafuso, materiais de consumo):
+ * itens com quantidade e valor, total editável, status, e total gasto por mês. Salvo no servidor. */
+(function () {
+  if (window.__dsAlmox) return; window.__dsAlmox = true;
+  var MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  var MESES_L = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  var hoje = new Date();
+  var E = { ano: hoje.getFullYear(), mes: hoje.getMonth(), lista: [], carregando: false, busca: '', status: '' };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function moeda(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function num(v) { return Number(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')) || 0; }
+  function numBr(v) { var n = Number(v) || 0; return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function dataBr(iso) { var p = String(iso || '').slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : '—'; }
+  function req(m, url, body) {
+    var h = { 'Content-Type': 'application/json' }; try { var t = localStorage.getItem('token'); if (t) h.Authorization = 'Bearer ' + t; } catch (_) {}
+    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+  }
+  function toast(m, c) { try { window.toast(m, c || 'var(--green)'); } catch (_) {} }
+  function pagina() {
+    var p = document.getElementById('page-almoxarifado');
+    if (!p) {
+      var ref = document.getElementById('page-compras') || document.querySelector('.content > .page');
+      if (!ref || !ref.parentNode) return null;
+      p = document.createElement('div'); p.id = 'page-almoxarifado'; p.className = 'page';
+      p.innerHTML = '<div id="ds-almox"></div>';
+      ref.parentNode.appendChild(p);
+      p.querySelector('#ds-almox').addEventListener('click', clique);
+    }
+    return p;
+  }
+  function carregar() {
+    E.carregando = true; render();
+    return req('GET', '/api/almoxarifado/ordens?ano=' + E.ano).then(function (l) { E.lista = l || []; }).catch(function (e) { toast('Erro ao carregar o almoxarifado: ' + e.message, 'var(--red)'); }).then(function () { E.carregando = false; render(); });
+  }
+  function doMes(o) { var d = String(o.data || ''); return Number(d.slice(5, 7)) - 1; }
+  function valida(o) { return o.status !== 'Cancelada'; }
+  function filtrada() {
+    var q = String(E.busca || '').toLowerCase().trim();
+    return E.lista.filter(function (o) {
+      if (E.mes >= 0 && doMes(o) !== E.mes) return false;
+      if (E.status && o.status !== E.status) return false;
+      if (q) { var t = [o.numero, o.fornecedor, o.solicitante, o.observacoes].concat((o.itens || []).map(function (i) { return i.descricao; })).join(' ').toLowerCase(); if (t.indexOf(q) < 0) return false; }
+      return true;
+    });
+  }
+  function render() {
+    var p = pagina(); if (!p) return; var r = p.querySelector('#ds-almox'); if (!r) return;
+    var tot = MESES.map(function (_, i) { return E.lista.filter(function (o) { return valida(o) && doMes(o) === i; }).reduce(function (s, o) { return s + (Number(o.valor_total) || 0); }, 0); });
+    var mx = Math.max.apply(null, tot.concat([1]));
+    var l = filtrada(), totalSel = l.filter(valida).reduce(function (s, o) { return s + (Number(o.valor_total) || 0); }, 0);
+    var abertas = l.filter(function (o) { return o.status === 'Aberta'; }).length;
+    var periodo = E.mes >= 0 ? MESES_L[E.mes] + ' de ' + E.ano : 'Ano de ' + E.ano;
+    var foco = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('alx-busca-in');
+    if (!r.querySelector('.alx-head')) {
+      r.innerHTML = '<header class="alx-head"><div><h1>Almoxarifado</h1><p>Ordens de compra de itens — ferramentas, parafusos e materiais de consumo</p></div><button type="button" class="alx-btn alx-pri" data-a="nova">+ Nova ordem de compra</button></header>'
+        + '<section class="alx-meses"></section><section class="alx-kpis"></section>'
+        + '<div class="alx-filtros"><label class="alx-busca"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="alx-busca-in" type="search" placeholder="Buscar fornecedor, item ou número…"></label>'
+        + '<select class="alx-sel" data-f="status"><option value="">Todos os status</option><option>Aberta</option><option>Comprada</option><option>Recebida</option><option>Cancelada</option></select></div>'
+        + '<section class="alx-lista"></section>';
+      var inp = r.querySelector('.alx-busca-in'), tb = null;
+      inp.addEventListener('input', function () { clearTimeout(tb); tb = setTimeout(function () { E.busca = inp.value; render(); }, 180); });
+      r.querySelector('[data-f="status"]').addEventListener('change', function (ev) { E.status = ev.target.value; render(); });
+    }
+    r.querySelector('.alx-meses').innerHTML = '<div class="alx-ano"><button type="button" data-a="ano" data-d="-1" aria-label="Ano anterior">‹</button><b>' + E.ano + '</b><button type="button" data-a="ano" data-d="1" aria-label="Próximo ano">›</button>'
+      + '<button type="button" class="alx-anotodo' + (E.mes < 0 ? ' on' : '') + '" data-a="mes" data-m="-1">Ano todo · ' + moeda(tot.reduce(function (a, b) { return a + b; }, 0)) + '</button></div>'
+      + '<div class="alx-barras">' + tot.map(function (v, i) { return '<button type="button" class="alx-bar' + (E.mes === i ? ' on' : '') + '" data-a="mes" data-m="' + i + '" title="' + MESES_L[i] + ': ' + moeda(v) + '"><span class="alx-bar-v">' + (v ? moeda(v).replace(/,\d\d$/, '') : '') + '</span><i style="height:' + Math.max(v ? 6 : 2, Math.round(v / mx * 100)) + '%"></i><span class="alx-bar-m">' + MESES[i] + '</span></button>'; }).join('') + '</div>';
+    r.querySelector('.alx-kpis').innerHTML = '<div><span>Total comprado · ' + esc(periodo) + '</span><b>' + moeda(totalSel) + '</b></div><div><span>Ordens</span><b>' + l.length + '</b></div><div><span>Aguardando compra</span><b>' + abertas + '</b></div>';
+    var lista = r.querySelector('.alx-lista');
+    if (E.carregando && !E.lista.length) { lista.innerHTML = '<div class="alx-vazio">Carregando…</div>'; return; }
+    lista.innerHTML = l.length ? '<table class="alx-tab no-card"><thead><tr><th>Nº</th><th>Data</th><th>Fornecedor</th><th>Itens</th><th>Status</th><th class="alx-n">Total</th><th></th></tr></thead><tbody>'
+      + l.map(function (o) {
+        var it = o.itens || [], resumo = it.slice(0, 3).map(function (i) { return esc(i.descricao); }).join(', ') + (it.length > 3 ? ' +' + (it.length - 3) : '');
+        return '<tr data-id="' + esc(o.id) + '"><td class="alx-num">#' + esc(o.numero || '—') + '</td><td>' + dataBr(o.data) + '</td><td class="alx-forn">' + esc(o.fornecedor || '—') + (o.solicitante ? '<small>Pedido por ' + esc(o.solicitante) + '</small>' : '') + '</td>'
+          + '<td class="alx-itens">' + resumo + '<small>' + it.length + ' ' + (it.length === 1 ? 'item' : 'itens') + '</small></td><td><span class="alx-st st-' + esc(String(o.status).toLowerCase()) + '">' + esc(o.status) + '</span></td>'
+          + '<td class="alx-n"><b>' + moeda(o.valor_total) + '</b></td><td class="alx-ac"><button type="button" data-a="editar">Editar</button><button type="button" data-a="imprimir">Imprimir</button><button type="button" class="alx-del" data-a="excluir" aria-label="Excluir">Excluir</button></td></tr>';
+      }).join('') + '</tbody></table>'
+      : '<div class="alx-vazio">Nenhuma ordem de compra em ' + esc(periodo.toLowerCase()) + '. Use “+ Nova ordem de compra”.</div>';
+    if (foco) { var inp2 = r.querySelector('.alx-busca-in'); if (inp2 && document.activeElement !== inp2) inp2.focus(); }
+  }
+  function clique(ev) {
+    var b = ev.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a');
+    if (a === 'nova') return abrirForm(null);
+    if (a === 'ano') { E.ano += Number(b.getAttribute('data-d')); return carregar(); }
+    if (a === 'mes') { E.mes = Number(b.getAttribute('data-m')); return render(); }
+    var tr = b.closest('tr[data-id]'); if (!tr) return;
+    var o = E.lista.find(function (x) { return x.id === tr.getAttribute('data-id'); }); if (!o) return;
+    if (a === 'editar') return abrirForm(o);
+    if (a === 'imprimir') return imprimir(o);
+    if (a === 'excluir') {
+      if (!window.confirm('Excluir a ordem de compra #' + o.numero + '?')) return;
+      req('DELETE', '/api/almoxarifado/ordens/' + encodeURIComponent(o.id)).then(function () { toast('Ordem excluída'); return carregar(); }).catch(function (e) { toast('Erro ao excluir: ' + e.message, 'var(--red)'); });
+    }
+  }
+  function linhaItem(i) {
+    i = i || { descricao: '', quantidade: 1, unidade: 'un', valor_unitario: 0 };
+    return '<div class="alx-it"><input class="alx-in" data-k="descricao" placeholder="Item (ex.: martelo, parafuso 6 mm)" value="' + esc(i.descricao) + '">'
+      + '<input class="alx-in alx-q" data-k="quantidade" inputmode="decimal" placeholder="Qtd." value="' + esc(String(i.quantidade).replace('.', ',')) + '">'
+      + '<input class="alx-in alx-u" data-k="unidade" placeholder="Un." value="' + esc(i.unidade || 'un') + '">'
+      + '<input class="alx-in alx-v" data-k="valor_unitario" inputmode="decimal" placeholder="Valor unit." value="' + (i.valor_unitario ? numBr(i.valor_unitario) : '') + '">'
+      + '<span class="alx-sub">' + moeda((Number(i.quantidade) || 0) * (Number(i.valor_unitario) || 0)) + '</span>'
+      + '<button type="button" class="alx-rm" data-x="rm" aria-label="Remover item">✕</button></div>';
+  }
+  function abrirForm(o) {
+    var novo = !o; o = o || { data: new Date().toISOString().slice(0, 10), status: 'Aberta', itens: [] };
+    var ov = document.createElement('div'); ov.className = 'alx-ov';
+    var totalManual = !novo && Math.abs((Number(o.valor_total) || 0) - (Number(o.valor_itens) || 0)) > 0.005;
+    ov.innerHTML = '<div class="alx-modal" role="dialog" aria-modal="true" aria-label="Ordem de compra"><header><h2>' + (novo ? 'Nova ordem de compra' : 'Ordem de compra #' + esc(o.numero)) + '</h2><button type="button" class="alx-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<div class="alx-grid"><label>Data<input type="date" class="alx-in" data-f="data" value="' + esc(String(o.data || '').slice(0, 10)) + '"></label>'
+      + '<label>Status<select class="alx-in" data-f="status">' + ['Aberta', 'Comprada', 'Recebida', 'Cancelada'].map(function (s) { return '<option' + (s === o.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></label>'
+      + '<label>Fornecedor<input class="alx-in" data-f="fornecedor" placeholder="Loja ou fornecedor" value="' + esc(o.fornecedor || '') + '"></label>'
+      + '<label>Solicitante<input class="alx-in" data-f="solicitante" placeholder="Quem pediu" value="' + esc(o.solicitante || '') + '"></label></div>'
+      + '<div class="alx-its-head"><b>Itens</b><span>Qtd.</span><span>Un.</span><span>Valor unit.</span><span>Subtotal</span><span></span></div>'
+      + '<div class="alx-its">' + ((o.itens && o.itens.length) ? o.itens.map(linhaItem).join('') : linhaItem()) + '</div>'
+      + '<button type="button" class="alx-btn" data-x="add">+ Adicionar item</button>'
+      + '<label class="alx-obs">Observações<textarea class="alx-in" data-f="observacoes" rows="2" placeholder="Opcional">' + esc(o.observacoes || '') + '</textarea></label>'
+      + '<div class="alx-tot"><span>Soma dos itens: <b class="alx-soma">R$ 0,00</b></span><label>Valor total da compra<input class="alx-in alx-total" data-f="valor_total" inputmode="decimal" value="' + (totalManual ? numBr(o.valor_total) : '') + '" placeholder="igual à soma"></label></div>'
+      + '<footer><button type="button" class="alx-btn" data-x="fechar">Cancelar</button><button type="button" class="alx-btn alx-pri" data-x="salvar">Salvar</button></footer></div>';
+    document.body.appendChild(ov);
+    function itens() { return Array.prototype.map.call(ov.querySelectorAll('.alx-it'), function (row) { var g = function (k) { return row.querySelector('[data-k="' + k + '"]').value; }; return { descricao: g('descricao').trim(), quantidade: num(g('quantidade')), unidade: g('unidade').trim() || 'un', valor_unitario: num(g('valor_unitario')) }; }); }
+    function recalc() {
+      var soma = 0;
+      Array.prototype.forEach.call(ov.querySelectorAll('.alx-it'), function (row, k) { var it = itens()[k]; var sub = it.quantidade * it.valor_unitario; soma += sub; row.querySelector('.alx-sub').textContent = moeda(sub); });
+      ov.querySelector('.alx-soma').textContent = moeda(soma);
+      ov.querySelector('.alx-total').placeholder = 'igual à soma (' + numBr(soma) + ')';
+    }
+    recalc();
+    ov.addEventListener('input', recalc);
+    ov.addEventListener('click', function (ev) {
+      var x = ev.target.closest('[data-x]'); if (!x) { if (ev.target === ov) ov.remove(); return; }
+      var k = x.getAttribute('data-x');
+      if (k === 'fechar') return ov.remove();
+      if (k === 'add') { ov.querySelector('.alx-its').insertAdjacentHTML('beforeend', linhaItem()); var ins = ov.querySelectorAll('.alx-it [data-k="descricao"]'); ins[ins.length - 1].focus(); return recalc(); }
+      if (k === 'rm') { var rows = ov.querySelectorAll('.alx-it'); if (rows.length > 1) x.closest('.alx-it').remove(); else x.closest('.alx-it').querySelectorAll('input').forEach(function (i) { i.value = ''; }); return recalc(); }
+      if (k === 'salvar') {
+        var f = function (n) { return ov.querySelector('[data-f="' + n + '"]').value; };
+        var lista = itens().filter(function (i) { return i.descricao; });
+        if (!lista.length) { toast('Inclua pelo menos um item', 'var(--red)'); return; }
+        var vt = String(f('valor_total')).trim();
+        var corpo = { data: f('data'), status: f('status'), fornecedor: f('fornecedor'), solicitante: f('solicitante'), observacoes: f('observacoes'), itens: lista, valor_total: vt === '' ? '' : num(vt) };
+        x.disabled = true; x.textContent = 'Salvando…';
+        (novo ? req('POST', '/api/almoxarifado/ordens', corpo) : req('PUT', '/api/almoxarifado/ordens/' + encodeURIComponent(o.id), corpo))
+          .then(function (salva) { ov.remove(); toast(novo ? 'Ordem de compra #' + salva.numero + ' criada' : 'Ordem atualizada'); var d = String(salva.data || ''); E.ano = Number(d.slice(0, 4)) || E.ano; if (E.mes >= 0) E.mes = Number(d.slice(5, 7)) - 1; return carregar(); })
+          .catch(function (e) { x.disabled = false; x.textContent = 'Salvar'; toast('Erro ao salvar: ' + e.message, 'var(--red)'); });
+      }
+    });
+    setTimeout(function () { var i0 = ov.querySelector('[data-f="fornecedor"]'); if (i0 && novo) i0.focus(); }, 50);
+  }
+  function imprimir(o) {
+    var w = window.open('', '_blank'); if (!w) return;
+    var it = (o.itens || []).map(function (i) { return '<tr><td>' + esc(i.descricao) + '</td><td style="text-align:right">' + esc(String(i.quantidade).replace('.', ',')) + ' ' + esc(i.unidade || '') + '</td><td style="text-align:right">' + moeda(i.valor_unitario) + '</td><td style="text-align:right">' + moeda(i.quantidade * i.valor_unitario) + '</td></tr>'; }).join('');
+    w.document.write('<!doctype html><meta charset="utf-8"><title>Ordem de compra #' + esc(o.numero) + '</title><style>body{font:14px Inter,Arial,sans-serif;margin:32px;color:#111}h1{font-size:20px;margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f4f5}.t{text-align:right;font-size:16px;margin-top:12px}</style>'
+      + '<h1>Italy Embalagens — Ordem de compra #' + esc(o.numero) + '</h1><div>Data: ' + dataBr(o.data) + ' · Status: ' + esc(o.status) + '</div><div>Fornecedor: ' + esc(o.fornecedor || '—') + (o.solicitante ? ' · Solicitante: ' + esc(o.solicitante) : '') + '</div>'
+      + '<table><thead><tr><th>Item</th><th style="text-align:right">Qtd.</th><th style="text-align:right">Valor unit.</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>' + it + '</tbody></table>'
+      + '<div class="t">Total: <b>' + moeda(o.valor_total) + '</b></div>' + (o.observacoes ? '<p>Obs.: ' + esc(o.observacoes) + '</p>' : '') + '<script>setTimeout(function(){print()},300)<\/script>');
+    w.document.close();
+  }
+  var ativoAntes = false;
+  setInterval(function () {
+    var p = pagina(); if (!p) return;
+    var ativo = p.classList.contains('active');
+    if (ativo && !ativoAntes) carregar();
+    ativoAntes = ativo;
+  }, 700);
+  var css = ''
+    + '#page-almoxarifado.active{overflow-y:auto;height:100%}'
+    + '#ds-almox{padding:18px 20px 40px;color:var(--text);font-size:14px;max-width:1400px}'
+    + '.alx-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}.alx-head h1{margin:0;font-size:20px;font-weight:700}.alx-head p{margin:3px 0 0;color:var(--text2);font-size:13px}'
+    + '.alx-btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-weight:600;font-size:13px;cursor:pointer}.alx-btn:hover{background:var(--s3)}'
+    + '.alx-pri{background:var(--accent);border-color:var(--accent);color:#fff}.alx-pri:hover{background:var(--accent2)}'
+    + '.alx-meses{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:12px 14px;margin-bottom:12px}'
+    + '.alx-ano{display:flex;align-items:center;gap:8px;margin-bottom:8px}.alx-ano b{font-size:15px}.alx-ano button{height:30px;min-width:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font:inherit;cursor:pointer}'
+    + '.alx-anotodo{margin-left:auto;padding:0 10px}.alx-anotodo.on{border-color:var(--accent)!important;color:var(--text)!important}'
+    + '.alx-barras{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;height:140px;align-items:end}'
+    + '.alx-bar{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;border:0;background:transparent;cursor:pointer;padding:0;color:var(--text2);font:inherit;min-width:0}'
+    + '.alx-bar i{display:block;width:70%;max-width:38px;border-radius:5px 5px 2px 2px;background:color-mix(in srgb,var(--accent) 45%,var(--s3))}.alx-bar:hover i{background:color-mix(in srgb,var(--accent) 70%,var(--s3))}.alx-bar.on i{background:var(--accent)}'
+    + '.alx-bar-v{font-size:10.5px;white-space:nowrap;color:var(--text2)}.alx-bar-m{font-size:12px;font-weight:600}.alx-bar.on .alx-bar-m{color:var(--accent)}'
+    + '.alx-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}.alx-kpis div{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:12px 14px}.alx-kpis span{display:block;font-size:12px;color:var(--text2)}.alx-kpis b{display:block;font-size:20px;margin-top:4px}'
+    + '.alx-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}'
+    + '.alx-busca{flex:1 1 280px;display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--b2);border-radius:8px;background:var(--surface);color:var(--text3)}'
+    + '#ds-almox .alx-busca input{flex:1;min-width:0;border:0!important;outline:0;box-shadow:none!important;background:transparent!important;color:var(--text);font:inherit;font-size:13.5px;height:100%!important;padding:0!important;margin:0!important}'
+    + '.alx-sel{height:36px;border-radius:8px;border:1px solid var(--b2);background:var(--surface);color:var(--text);font:inherit;padding:0 10px}'
+    + '.alx-lista{border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:auto}'
+    + '.alx-tab{width:100%;border-collapse:collapse}.alx-tab th{text-align:left;font-size:12px;font-weight:600;color:var(--text2);padding:9px 12px;background:var(--s2);border-bottom:1px solid var(--border);text-transform:none}'
+    + '.alx-tab td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}.alx-tab tr:last-child td{border-bottom:0}'
+    + '.alx-tab small{display:block;color:var(--text3);font-size:11.5px;margin-top:2px}.alx-num{font-weight:700;white-space:nowrap}.alx-forn{font-weight:600}.alx-itens{max-width:360px}.alx-n{text-align:right!important;white-space:nowrap}'
+    + '.alx-st{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;background:var(--s3);color:var(--text2)}.alx-st.st-aberta{background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow)}.alx-st.st-comprada{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}.alx-st.st-recebida{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}.alx-st.st-cancelada{text-decoration:line-through}'
+    + '.alx-ac{white-space:nowrap;text-align:right}.alx-ac button{height:30px;padding:0 10px;margin-left:4px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text2);font:inherit;font-size:12.5px;cursor:pointer}.alx-ac button:hover{color:var(--text);background:var(--s2)}.alx-ac .alx-del{color:var(--red)}'
+    + '.alx-vazio{padding:34px;text-align:center;color:var(--text3)}'
+    + '.alx-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.alx-modal{width:min(860px,100%);max-height:calc(100% - 16px);overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.4)}'
+    + '.alx-modal header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.alx-modal h2{margin:0;font-size:18px}.alx-x{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer}'
+    + '.alx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-bottom:14px}.alx-modal label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--text2)}'
+    + '.alx-in{height:38px;border-radius:8px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:14px;padding:0 10px;min-width:0;box-sizing:border-box;width:100%}textarea.alx-in{height:auto;padding:8px 10px;resize:vertical}'
+    + '.alx-its-head,.alx-it{display:grid;grid-template-columns:minmax(0,1fr) 80px 64px 110px 110px 34px;gap:8px;align-items:center}.alx-its-head{font-size:12px;color:var(--text2);margin-bottom:6px}.alx-its-head b{color:var(--text)}'
+    + '.alx-it{margin-bottom:8px}.alx-q,.alx-v{text-align:right}.alx-sub{text-align:right;font-weight:600;font-size:13px;white-space:nowrap}.alx-rm{height:34px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer}.alx-rm:hover{color:var(--red);border-color:var(--red)}'
+    + '.alx-obs{margin-top:12px}.alx-tot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}.alx-tot > span{font-size:14px}.alx-tot label{width:220px}.alx-total{text-align:right;font-weight:700}'
+    + '.alx-modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'
+    + '@media (max-width:768px){#ds-almox{padding:12px 12px 110px}.alx-head .alx-btn{width:100%;height:42px}.alx-kpis{grid-template-columns:1fr 1fr}.alx-kpis div:first-child{grid-column:1 / -1}.alx-barras{height:110px;gap:3px}.alx-bar-v{display:none}'
+    + '.alx-tab thead{display:none}.alx-tab,.alx-tab tbody{display:block}.alx-tab tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px;border-bottom:1px solid var(--border)}.alx-tab td{display:block;padding:0;border:0}.alx-tab td::before{content:none!important}.alx-ac{grid-column:1 / -1;text-align:left}.alx-ac button{margin:4px 6px 0 0}.alx-n{text-align:right}'
+    + '.alx-grid{grid-template-columns:1fr}.alx-its-head{display:none}.alx-it{grid-template-columns:1fr 1fr 34px;grid-template-areas:"d d d" "q u rm" "v s s";padding:10px;border:1px solid var(--border);border-radius:10px}.alx-it [data-k=descricao]{grid-area:d}.alx-q{grid-area:q}.alx-u{grid-area:u}.alx-v{grid-area:v}.alx-sub{grid-area:s}.alx-rm{grid-area:rm}.alx-tot label{width:100%}.alx-modal{padding:14px}.alx-modal footer .alx-btn{flex:1;height:44px}}';
+  try { var st = document.createElement('style'); st.id = 'ds-almox-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
