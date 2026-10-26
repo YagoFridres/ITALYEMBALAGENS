@@ -69268,13 +69268,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var D = A + ':not([data-theme="light"])';
   var Lt = A + '[data-theme="light"]';
   var css = ''
-    + D + '{--bg:#0D0F13;--surface:#14171C;--s1:#14171C;--s2:#1A1E24;--s3:#20252C;--s4:#29303A;--border:#262B33;--b2:#343B46;--border2:#343B46;'
-    + '--text:#E8EAEE;--text1:#E8EAEE;--text2:#A1A8B4;--text3:#6C7482;--text4:#8A92A0;--field:#101318;--sidebar-bg:#101317;'
-    + '--accent:#3B82F6;--accent2:#2563EB;--accent-soft:rgba(59,130,246,.14);--ring:rgba(59,130,246,.35);--card-hover:#1A1E24;'
-    + '--shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 18px 48px rgba(0,0,0,.55);--tint-k1:0%;--tint-k2:0%;--bg2:#1A1E24;--bg1:#14171C;--bg3:#20252C;color-scheme:dark}'
-    + Lt + '{--bg:#F4F5F7;--surface:#FFFFFF;--s1:#FFFFFF;--s2:#F7F8FA;--s3:#EEF0F3;--s4:#E3E6EB;--border:#E3E6EB;--b2:#CED3DB;--border2:#CED3DB;'
+    + D + '{--bg:#111315;--surface:#181B1F;--s1:#181B1F;--s2:#1E2226;--s3:#24292E;--s4:#2C3238;--border:#2A2F35;--b2:#383E45;--border2:#383E45;'
+    + '--text:#E9ECEF;--text1:#E9ECEF;--text2:#A4ABB3;--text3:#6E767F;--text4:#8C939B;--field:#141719;--sidebar-bg:#15181B;'
+    + '--accent:#33909A;--accent2:#2A7C85;--accent-soft:rgba(51,144,154,.16);--ring:rgba(51,144,154,.38);--card-hover:#1E2226;--green:#8CBF3F;--green-soft:rgba(140,191,63,.14);--marca-verde:#8CBF3F;'
+    + '--shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 18px 48px rgba(0,0,0,.55);--tint-k1:0%;--tint-k2:0%;--bg2:#1E2226;--bg1:#181B1F;--bg3:#24292E;color-scheme:dark}'
+    + Lt + '{--bg:#F5F6F7;--surface:#FFFFFF;--s1:#FFFFFF;--s2:#F7F8FA;--s3:#EEF0F3;--s4:#E3E6EB;--border:#E3E6EB;--b2:#CED3DB;--border2:#CED3DB;'
     + '--text:#111827;--text1:#111827;--text2:#4B5563;--text3:#8B93A1;--text4:#6B7280;--field:#FFFFFF;--sidebar-bg:#FFFFFF;'
-    + '--accent:#2563EB;--accent2:#1D4ED8;--accent-soft:rgba(37,99,235,.09);--ring:rgba(37,99,235,.25);--card-hover:#F7F8FA;'
+    + '--accent:#1F6F78;--accent2:#185A62;--accent-soft:rgba(31,111,120,.10);--ring:rgba(31,111,120,.25);--card-hover:#F7F8FA;--green:#5E8F1E;--green-soft:rgba(94,143,30,.12);--marca-verde:#6E9A1E;'
     + '--shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.07);--shadow-lg:0 18px 48px rgba(16,24,40,.16);'
     + '--modal-bg:#FFFFFF;--input-bg:#FFFFFF;--input-border:#CED3DB;--input-text:#111827;--card-bg:#FFFFFF;--card-border:#E3E6EB;'
     + '--table-header-bg:#F7F8FA;--table-row-hover:#F7F8FA;--table-border:#E3E6EB;--topbar-bg:#FFFFFF;--topbar-border:#E3E6EB;'
@@ -70060,7 +70060,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var claro = document.documentElement.getAttribute('data-theme') === 'light';
       var m = document.querySelector('meta[name="theme-color"]');
       if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
-      var c = claro ? '#FFFFFF' : '#14171C';
+      var c = claro ? '#FFFFFF' : '#181B1F';
       if (m.content !== c) m.content = c;
       var sb = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
       if (sb) sb.content = claro ? 'default' : 'black-translucent';
@@ -70128,7 +70128,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // Menu lateral vira faixa de ícones (com o nome ao segurar/passar o dedo) e o botão ☰ abre o menu
   // completo; topo enxuto; botões maiores para o dedo; PCP esconde Dia Pedido, Imagem e Vl. Unit.
   try { if (window.__modoTablet) return; window.__modoTablet = true; } catch (_) {}
-  var SEL = ['body[data-device="tablet"]:not(.is-mobile)', 'body.ds-tablet-auto:not(.is-mobile)'];
+  var SEL = ['body[data-device="tablet"]:not(.is-mobile)', 'body.ds-tablet-auto:not(.is-mobile)', 'body.ds-colapsado:not(.is-mobile)'];
   function r(sufixo, decl){ return SEL.map(function(s){ return s + ' ' + sufixo; }).join(',') + '{' + decl + '}'; }
   function rb(decl){ return SEL.join(',') + '{' + decl + '}'; }
   var ABERTO = SEL.map(function(s){ return s + '.ds-rail-aberto'; });
@@ -70202,5 +70202,271 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function iniciar(){ autoTablet(); montar(); setInterval(montar, 3000); }
   window.addEventListener('resize', autoTablet);
   try { new MutationObserver(autoTablet).observe(document.body || document.documentElement, { attributes: true, attributeFilter: ['data-device', 'class'] }); } catch (_) {}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+
+/* ===== DESIGN 3 — NAVEGAÇÃO (26/10/2026) =====
+ * - Menu lateral reorganizado por áreas, sem itens duplicados (Jarvis tem o botão ✦; Painel,
+ *   Armazenamento e Passagens viram abas da Central de OFs), com ícones de linha padronizados.
+ * - Botão "Recolher menu" (faixa de ícones) — fica salvo.
+ * - Cabeçalho mostra o nome da página atual.
+ * - Central de OFs: abas OFs | Painel | Armazenamento | Passagens.
+ * Os itens são MOVIDOS (não copiados): cliques, permissões e ids continuam os mesmos. */
+(function () {
+  try { if (window.__ds3Nav) return; window.__ds3Nav = true; } catch (_) {}
+  try { if (localStorage.getItem('erp_ui') === '1') return; } catch (_) {}
+  function svg(d) { return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>'; }
+  var I = {
+    home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+    central: 'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 11h7M8.5 15h7M8.5 19h4',
+    fabrica: 'M3 21V10l6 4v-4l6 4V5h6v16zM7 17h2M12 17h2M17 17h2',
+    timer: 'M12 9v4l2.5 2M9 2h6M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z',
+    pessoas: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+    doc: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6',
+    mapa: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14',
+    maleta: 'M3 8h18v12H3zM8 8V5h8v3M3 13h18',
+    pct: 'M19 5 5 19M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4M17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
+    carrinho: 'M3 4h2l2.4 11h11L21 8H6.2M9 20.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2M18 20.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2',
+    caminhao: 'M2 6h11v10H2zM13 10h4l3 3v3h-7M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4M17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
+    camadas: 'M12 3 2 8l10 5 10-5zM2 12.5l10 5 10-5M2 17l10 5 10-5',
+    entrada: 'M12 3v12M7 10l5 5 5-5M4 21h16',
+    saida: 'M12 21V9M7 14l5-5 5 5M4 3h16',
+    check: 'M9 11.5l2 2 4-4M5 4h14v16H5z',
+    balanca: 'M12 3v18M6 21h12M5 7h14M5 7l-2.5 6a2.5 2.5 0 0 0 5 0zM19 7l-2.5 6a2.5 2.5 0 0 0 5 0z',
+    peso: 'M6 20h12l-2-11H8zM10 9a2 2 0 1 1 4 0',
+    faca: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12',
+    carimbo: 'M5 21h14M6 17h12v-3a2 2 0 0 0-2-2h-2l-1-5a2 2 0 1 0-2 0l-1 5H8a2 2 0 0 0-2 2z',
+    reciclar: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
+    alerta: 'M12 3 2 21h20zM12 10v5M12 18h.01',
+    caixax: 'M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8M15.5 15.5l3 3M18.5 15.5l-3 3',
+    maquina: 'M4 20h16M6 20V10h12v10M9 10V6h6v4M10 14h4',
+    fluxo: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 9a9 9 0 0 1-9 9',
+    caixa: 'M21 8 12 3 3 8l9 5zM3 8v8l9 5 9-5V8M12 13v8',
+    paleta: 'M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3.5 3H15a2 2 0 0 0-1.5 3.3A1.5 1.5 0 0 1 12 21zM7.5 11h.01M10.5 7h.01M15.5 8h.01',
+    grafico: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+    carteira: 'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l3-3h11v3M16 13.5h.01',
+    chat: 'M21 12a8 8 0 0 1-11.8 7L3 21l2-6.2A8 8 0 1 1 21 12z',
+    agenda: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
+    usuario: 'M10 15H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M17.5 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
+    ajustes: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+    escudo: 'M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4',
+    painel: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z',
+    arquivo: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4',
+    historico: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2',
+    recolher: 'M15 18l-6-6 6-6M20 18l-6-6 6-6'
+  };
+  // itens: chave -> [ícone, rótulo]  (chave = id da página em go('...') ou palavra especial)
+  var ITENS = {
+    'hub': ['home', 'Início'], 'pcp': ['central', 'Central de OFs'], 'ofmaq': ['fabrica', 'OFs por Máquina'],
+    'tempos-reais': ['timer', 'Tempos Reais'], 'operadores': ['pessoas', 'Operadores'],
+    'orcamentos': ['doc', 'Orçamentos'], 'clientes': ['pessoas', 'Clientes'], 'mapa-clientes': ['mapa', 'Mapa de Clientes'],
+    'vendedores': ['maleta', 'Vendedores'], 'comissoes': ['pct', 'Comissões'],
+    '@papelao': ['carrinho', 'Compra de Papelão'], 'fornecedores': ['caminhao', 'Fornecedores'], 'estoque': ['camadas', 'Estoque de Chapas'],
+    'entradas-estoque': ['entrada', 'Entradas'], 'saidas-estoque': ['saida', 'Saídas'], 'checklist-recebimento': ['check', 'Checklist de Recebimento'],
+    'facas1': ['faca', 'Estoque de Facas'], 'cliches': ['carimbo', 'Estoque de Clichês'], 'gramaturas': ['balanca', 'Gramaturas'],
+    'simd': ['reciclar', 'Simulador de Desperdício'], 'sel-chapas': ['camadas', 'Seleção de Chapas'], 'papelao-ia': ['grafico', 'Inteligência do Papelão'],
+    'inconformidades': ['alerta', 'Inconformidades'], 'caixas-perdidas': ['caixax', 'Caixas Perdidas'],
+    'maquinas': ['maquina', 'Máquinas'], 'fluxos': ['fluxo', 'Fluxos'], 'tipos-caixa': ['caixa', 'Tipos de Caixa'], 'cores-impressao': ['paleta', 'Cores de Impressão'],
+    'relatorios': ['grafico', 'Relatórios'], 'relmensal': ['agenda', 'Relatório Mensal'], 'toneladas-vendidas': ['peso', 'Toneladas Vendidas'], 'central-custos': ['carteira', 'Central de Custos'],
+    '@chat': ['chat', 'Chat'], 'agenda': ['agenda', 'Agenda'],
+    'usuarios': ['usuario', 'Usuários'], 'configuracoes': ['ajustes', 'Configurações'],
+    'dashboard': ['painel', 'Painel'], 'lancamento': ['arquivo', 'Armazenamento de OFs'], 'historico-passagens': ['historico', 'Histórico de Passagens']
+  };
+  var GRUPOS = [
+    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'tempos-reais', 'operadores'] },
+    { id: 'ng-ds-comercial', nome: 'Comercial', ico: 'maleta', itens: ['orcamentos', 'clientes', 'mapa-clientes', 'vendedores', 'comissoes'] },
+    { id: 'ng-ds-estoque', nome: 'Compras e Estoque', ico: 'camadas', itens: ['@papelao', 'fornecedores', 'estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'sel-chapas', 'papelao-ia', 'simd'] },
+    { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
+    { id: 'ng-ds-fabrica', nome: 'Engenharia', ico: 'maquina', itens: ['maquinas', 'fluxos', 'tipos-caixa', 'cores-impressao'] },
+    { id: 'ng-ds-gestao', nome: 'Gestão', ico: 'grafico', itens: ['relatorios', 'relmensal', 'toneladas-vendidas', 'central-custos'] },
+    { id: 'ng-ds-comunicacao', nome: 'Comunicação', ico: 'chat', itens: ['@chat', 'agenda'] },
+    { id: 'ng-ds-sistema', nome: 'Sistema', ico: 'ajustes', itens: ['usuarios', 'configuracoes'] }
+  ];
+  var CENTRAL = ['pcp', 'dashboard', 'lancamento', 'historico-passagens'];
+  var ESCONDER = ['dashboard', 'lancamento', 'historico-passagens', '@jarvis'];
+
+  function chaveItem(it) {
+    var oc = String(it.getAttribute('onclick') || '');
+    var m = oc.match(/go\('([^']+)'/);
+    if (/Jarvis/i.test(it.textContent || '') && (!m || m[1] === 'hub') && !/Hub/i.test(it.textContent)) return '@jarvis';
+    if (m) return m[1];
+    if (/toggleChat/.test(oc)) return '@chat';
+    if (/papelaoAbrirCompras/.test(oc)) return '@papelao';
+    return null;
+  }
+  function decorar(it, k) {
+    var def = ITENS[k]; if (!def || it.__dsDec === k) return;
+    var ico = it.querySelector('.ico');
+    if (!ico) { ico = document.createElement('span'); ico.className = 'ico'; it.insertBefore(ico, it.firstChild); }
+    ico.innerHTML = svg(I[def[0]]);
+    var lbl = it.querySelector('.ds-lbl');
+    if (!lbl) {
+      Array.prototype.slice.call(it.childNodes).forEach(function (n) { if (n.nodeType === 3 && n.textContent.trim()) n.remove(); });
+      lbl = document.createElement('span'); lbl.className = 'ds-lbl'; ico.after(lbl);
+    }
+    lbl.textContent = def[1];
+    it.title = def[1];
+    it.setAttribute('data-ds-key', k);
+    it.__dsDec = k;
+  }
+  function criarGrupo(g, sb, antes) {
+    var el = document.getElementById(g.id);
+    if (el) return el;
+    el = document.createElement('div');
+    el.className = 'nav-group ds-grupo'; el.id = g.id;
+    el.innerHTML = '<div class="nav-group-header" onclick="toggleNavGroup(\'' + g.id + '\')" title="' + g.nome + '"><span class="ng-ico">' + svg(I[g.ico]) + '</span><span class="ds-lbl">' + g.nome + '</span><span class="ng-arr">▶</span></div><div class="nav-group-items"></div>';
+    sb.insertBefore(el, antes || null);
+    return el;
+  }
+  function reorganizar() {
+    var sb = document.querySelector('.sidebar'); if (!sb) return;
+    var todos = Array.prototype.slice.call(sb.querySelectorAll('.nav-item'));
+    var porChave = {}, listas = {};
+    todos.forEach(function (it) { var k = chaveItem(it); if (!k) return; (listas[k] = listas[k] || []).push(it); });
+    Object.keys(listas).forEach(function (k) {
+      var l = listas[k];
+      var esc = l.filter(function (it) { return !it.hasAttribute('data-ds-dup') && it.style.display !== 'none'; });
+      var esc2 = l.filter(function (it) { return it.hasAttribute('data-ds-dup'); });
+      var escolhido = esc[0] || l.filter(function (it) { return !it.hasAttribute('data-ds-dup'); })[0] || l[0];
+      porChave[k] = escolhido;
+      if (esc.length && ESCONDER.indexOf(k) < 0) l.forEach(function (it) { if (it !== escolhido && !it.hasAttribute('data-ds-dup')) { it.setAttribute('data-ds-dup', '1'); it.classList.add('ds-oculto'); } });
+      if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
+    });
+    // Início no topo
+    var hub = porChave['hub'];
+    var ancora = document.getElementById('ds-nav-ancora');
+    if (!ancora) { ancora = document.createElement('div'); ancora.id = 'ds-nav-ancora'; var brand = sb.querySelector('.sidebar-brand'); sb.insertBefore(ancora, brand ? brand.nextSibling : sb.firstChild); }
+    if (hub) { decorar(hub, 'hub'); if (hub.previousElementSibling !== ancora) ancora.after(hub); }
+    var depois = hub || ancora;
+    GRUPOS.forEach(function (g) {
+      var grp = criarGrupo(g, sb, null);
+      if (depois.nextElementSibling !== grp) depois.after(grp);
+      depois = grp;
+      var box = grp.querySelector('.nav-group-items');
+      g.itens.forEach(function (k) { var it = porChave[k]; if (!it) return; decorar(it, k); if (it.parentNode !== box) box.appendChild(it); });
+      // reordena conforme a lista
+      g.itens.forEach(function (k) { var it = porChave[k]; if (it && it.parentNode === box) box.appendChild(it); });
+      var temVisivel = Array.prototype.some.call(box.children, function (c) { return c.style.display !== 'none' && getComputedStyle(c).display !== 'none'; });
+      grp.style.display = temVisivel ? '' : 'none';
+    });
+    ESCONDER.forEach(function (k) { var it = porChave[k]; if (it) { decorar(it, k); it.classList.add('ds-oculto'); } });
+    // grupos antigos que ficaram vazios somem; itens não mapeados continuam onde estavam
+    sb.querySelectorAll('.nav-group:not(.ds-grupo)').forEach(function (g) {
+      var vis = Array.prototype.some.call(g.querySelectorAll('.nav-item'), function (c) { return !c.classList.contains('ds-oculto') && getComputedStyle(c).display !== 'none'; });
+      g.classList.toggle('ds-oculto', !vis);
+    });
+    sb.querySelectorAll('.sidebar-section').forEach(function (s) { s.classList.add('ds-oculto'); });
+    // itens soltos restantes (não mapeados) recebem ícone genérico mantendo o texto
+    if (!document.getElementById('ds-recolher')) {
+      var b = document.createElement('button');
+      b.id = 'ds-recolher'; b.type = 'button';
+      b.innerHTML = svg(I.recolher) + '<span class="ds-lbl">Recolher menu</span>';
+      b.onclick = function () { var on = !document.body.classList.contains('ds-colapsado'); document.body.classList.toggle('ds-colapsado', on); try { localStorage.setItem('ds_menu_recolhido', on ? '1' : '0'); } catch (_) {} b.title = on ? 'Expandir menu' : 'Recolher menu'; };
+      sb.appendChild(b);
+    } else if (sb.lastElementChild !== document.getElementById('ds-recolher')) sb.appendChild(document.getElementById('ds-recolher'));
+  }
+  function paginaAtual() {
+    var a = document.querySelector('.page.active');
+    if (a && a.id) return a.id.replace(/^page-/, '');
+    var vis = Array.prototype.find.call(document.querySelectorAll('[id^="page-"]'), function (p) { return p.offsetParent !== null && p.style.display !== 'none'; });
+    return vis ? vis.id.replace(/^page-/, '') : '';
+  }
+  var ultimaPg = null;
+  function sincronizar() {
+    var pg = paginaAtual();
+    var chave = CENTRAL.indexOf(pg) >= 0 ? 'pcp' : pg;
+    var sb = document.querySelector('.sidebar');
+    // título no cabeçalho
+    var tb = document.querySelector('.topbar');
+    if (tb) {
+      var t = document.getElementById('ds-page-title');
+      if (!t) { t = document.createElement('div'); t.id = 'ds-page-title'; var logo = tb.querySelector('.logo'); if (logo) logo.after(t); else tb.insertBefore(t, tb.firstChild); }
+      var nome = (ITENS[pg] && ITENS[pg][1]) || (pg ? pg.replace(/-/g, ' ') : '');
+      if (CENTRAL.indexOf(pg) >= 0 && pg !== 'pcp') nome = 'Central de OFs · ' + ITENS[pg][1];
+      if (t.textContent !== nome) t.textContent = nome;
+      try { document.title = (nome ? nome + ' — ' : '') + 'Italy PCP'; } catch (_) {}
+    }
+    if (!sb || pg === ultimaPg) return;
+    ultimaPg = pg;
+    var alvo = sb.querySelector('.nav-item[data-ds-key="' + chave + '"]');
+    if (alvo) {
+      sb.querySelectorAll('.nav-item.active').forEach(function (n) { if (n !== alvo) n.classList.remove('active'); });
+      alvo.classList.add('active');
+      var g = alvo.closest('.nav-group');
+      sb.querySelectorAll('.nav-group.open').forEach(function (x) { if (x !== g) x.classList.remove('open'); });
+      if (g) g.classList.add('open');
+    }
+    abasCentral(pg);
+  }
+  function abasCentral(pg) {
+    if (CENTRAL.indexOf(pg) < 0) return;
+    var page = document.getElementById('page-' + pg); if (!page) return;
+    var bar = page.querySelector(':scope > .ds-abas-central');
+    if (!bar) {
+      bar = document.createElement('div'); bar.className = 'ds-abas-central'; bar.setAttribute('role', 'tablist');
+      bar.innerHTML = [['pcp', 'OFs', 'central'], ['dashboard', 'Painel', 'painel'], ['lancamento', 'Armazenamento', 'arquivo'], ['historico-passagens', 'Passagens', 'historico']].map(function (a) {
+        return '<button type="button" role="tab" data-pg="' + a[0] + '">' + svg(I[a[2]]) + '<span>' + a[1] + '</span></button>';
+      }).join('') + '<span class="ds-abas-esp"></span><button type="button" class="ds-btn-ofrapida" title="OF Rápida (Ctrl+N)">+ OF Rápida</button>';
+      bar.addEventListener('click', function (ev) {
+        var b = ev.target.closest('button'); if (!b) return;
+        if (b.classList.contains('ds-btn-ofrapida')) { abrirOfRapida(); return; }
+        var p = b.getAttribute('data-pg'); if (p && typeof window.go === 'function') window.go(p);
+      });
+      page.insertBefore(bar, page.firstChild);
+    }
+    bar.querySelectorAll('button[data-pg]').forEach(function (b) { var on = b.getAttribute('data-pg') === pg; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  }
+  function abrirOfRapida() {
+    var cands = ['abrirOFRapida', 'abrirOfRapida', 'ofRapidaAbrir', 'abrirModalOFRapida', 'novaOFRapida'];
+    for (var i = 0; i < cands.length; i++) if (typeof window[cands[i]] === 'function') { window[cands[i]](); return true; }
+    var b = Array.prototype.find.call(document.querySelectorAll('button'), function (x) { return /OF\s*R[áa]pida/i.test(x.textContent || '') && !x.classList.contains('ds-btn-ofrapida') && x.offsetParent !== null; })
+      || Array.prototype.find.call(document.querySelectorAll('button'), function (x) { return /OF\s*R[áa]pida/i.test(x.textContent || '') && !x.classList.contains('ds-btn-ofrapida'); });
+    if (b) { b.click(); return true; }
+    return false;
+  }
+  window.dsAbrirOfRapida = abrirOfRapida;
+  // Ctrl+N (ou Cmd+N) = OF Rápida, quando não está digitando
+  document.addEventListener('keydown', function (ev) {
+    if (!(ev.ctrlKey || ev.metaKey) || ev.shiftKey || ev.altKey || String(ev.key).toLowerCase() !== 'n') return;
+    var f = document.activeElement; if (f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) return;
+    if (document.querySelector('.modal-overlay.open,[data-modal-padrao]')) return;
+    if (abrirOfRapida()) { ev.preventDefault(); ev.stopPropagation(); }
+  }, true);
+
+  var css = ''
+    + '.sidebar .ds-oculto{display:none!important}'
+    + '.sidebar .nav-item .ico svg,.sidebar .nav-group-header .ng-ico svg{display:block}'
+    + '.sidebar .nav-item,.sidebar .nav-group-header{display:flex;align-items:center;gap:10px}'
+    + '.sidebar .nav-item .ico,.sidebar .nav-group-header .ng-ico{width:18px;min-width:18px;display:inline-flex;align-items:center;justify-content:center;opacity:.9}'
+    + '.sidebar .nav-group-items{max-height:0}'
+    + '.sidebar .nav-group.open .nav-group-items{max-height:900px!important}'
+    + '.sidebar .ds-grupo .nav-group-items .nav-item{padding-left:14px}'
+    + '#ds-nav-ancora{height:6px}'
+    + '#ds-recolher{display:flex;align-items:center;gap:10px;margin:10px 8px 12px;padding:9px 10px;border:1px solid var(--border);background:transparent;color:var(--text3);border-radius:8px;cursor:pointer;font:inherit;font-size:12.5px}'
+    + '#ds-recolher:hover{color:var(--text);background:var(--s3)}'
+    + 'body.ds-colapsado #ds-recolher svg{transform:rotate(180deg)}'
+    + 'body.ds-colapsado:not(.is-mobile) #ds-recolher{justify-content:center;font-size:0}'
+    + '#ds-page-title{font-weight:650;font-size:15px;letter-spacing:-.01em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw;margin-left:12px;padding-left:14px;border-left:1px solid var(--border);text-transform:none}'
+    + 'html[data-ds="3"] .topbar .logo .logo-sub,html[data-ds="3"] .topbar .logo small{display:none!important}'
+    + '.ds-abas-central{display:flex;align-items:center;gap:4px;padding:10px 16px 0;border-bottom:1px solid var(--border);margin-bottom:10px;overflow-x:auto;scrollbar-width:none}'
+    + '.ds-abas-central::-webkit-scrollbar{display:none}'
+    + '.ds-abas-central button[data-pg]{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text2);font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap;margin-bottom:-1px}'
+    + '.ds-abas-central button[data-pg]:hover{color:var(--text)}'
+    + '.ds-abas-central button[data-pg].on{color:var(--accent);border-bottom-color:var(--accent)}'
+    + '.ds-abas-esp{flex:1}'
+    + '.ds-btn-ofrapida{padding:8px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-weight:650;font-size:13px;cursor:pointer;white-space:nowrap;margin-bottom:6px}'
+    + '.ds-btn-ofrapida:hover{background:var(--accent2)}'
+    + 'body.is-mobile .ds-abas-central{padding:6px 10px 0}'
+    + 'body.is-mobile .ds-btn-ofrapida{display:none}'
+    + 'body.is-mobile #ds-page-title{display:none}';
+  var st = document.createElement('style'); st.id = 'ds3-nav-css'; st.setAttribute('data-ds3', 'nav'); st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+
+  function iniciar() {
+    try { if (localStorage.getItem('ds_menu_recolhido') === '1') document.body.classList.add('ds-colapsado'); } catch (_) {}
+    reorganizar(); sincronizar();
+    var n = 0; var t = setInterval(function () { reorganizar(); if (++n > 30) { clearInterval(t); setInterval(reorganizar, 5000); } }, 700);
+    setInterval(sincronizar, 400);
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
