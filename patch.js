@@ -71852,15 +71852,70 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var aviso = podeOrdenar ? '' : '<div class="dom-aviso">Para mudar a ordem, use a fila completa (sem busca, dia ou agrupamento).</div>';
     fila.innerHTML = aviso + html;
   }
+  function dashAcao(nome, o) { var fb = document.createElement('button'); fb.setAttribute('data-of-id', o.id); fb.setAttribute('data-of-numero', numOf(o)); try { window.__dashH.acao(fb, nome, o); } catch (e) { toast('Ação indisponível: ' + e.message, 'var(--red)'); } }
+  function acoesModal(o, m) {
+    var antigo = document.getElementById('dom-acoes-ov'); if (antigo) antigo.remove();
+    var ut = urgTipo(o), semPapel = !!(o.sem_papel || o.sem_papelao);
+    var ov = document.createElement('div'); ov.id = 'dom-acoes-ov';
+    var prev = String(o.previsao_entrega_papel || '').slice(0, 10), obs = String(o.papel_observacao || '');
+    ov.innerHTML = '<div class="doa-box" role="dialog" aria-modal="true"><header><h2>Ações da OF #' + esc(numOf(o)) + '</h2><button type="button" class="doa-x" data-o="fechar" aria-label="Fechar">✕</button></header>'
+      + '<p class="doa-sub">' + esc(cliOf(o)) + ' · ' + esc(prodOf(o)) + ' · ' + esc(m) + '</p>'
+      + '<div class="doa-estado st-' + ut + '"><b>' + (ut === 'urgente' ? 'Urgência ativa' : (ut === 'atrasada' ? 'OF atrasada' : 'Sem urgência')) + '</b><span>' + (ut === 'urgente' ? 'Priorizada na fila.' : (ut === 'atrasada' ? 'Fora do prazo de entrega.' : 'No prazo.')) + '</span></div>'
+      + '<button type="button" class="doa-op doa-pri" data-o="passou"><b>✓ Passou pela máquina</b><span>conclui esta etapa e manda para a próxima máquina</span></button>'
+      + '<button type="button" class="doa-op ' + (urg(o) ? '' : 'doa-red') + '" data-o="urgente"><b>' + (urg(o) ? 'Remover urgência' : '🚨 Marcar como urgente') + '</b><span>' + (urg(o) ? 'volta ao normal' : 'priorizar na produção') + '</span></button>'
+      + '<button type="button" class="doa-op" data-o="sempapel"><b>' + (semPapel ? 'Tirar “Sem papelão”' : '🟨 Marcar Sem Papelão') + '</b><span>destaca em amarelo</span></button>'
+      + '<div class="doa-papel"><label>Papel / previsão<textarea rows="2" maxlength="255" data-p="obs" placeholder="Ex.: comprado pedido 123, aguardando fornecedor">' + esc(obs) + '</textarea></label>'
+      + '<label>Previsão de entrega do papel<input type="date" data-p="prev" value="' + esc(prev) + '"></label><button type="button" class="doa-op" data-o="papel"><b>💾 Salvar dados do papel</b><span>atualiza previsão e observação</span></button></div>'
+      + '<button type="button" class="doa-op" data-o="movermaq"><b>↔ Mover de máquina</b><span>trocar fila</span></button>'
+      + '<button type="button" class="doa-op" data-o="alterardata"><b>📅 Alterar data</b><span>reagendar</span></button>'
+      + '<button type="button" class="doa-op" data-o="movermaqdata"><b>📅↔ Mover máquina e data</b><span>altera os dois de uma vez</span></button>'
+      + '<div class="doa-dupla"><button type="button" class="doa-op" data-o="sobe"><b>↑ Mover para cima</b><span>priorizar</span></button><button type="button" class="doa-op" data-o="desce"><b>↓ Mover para baixo</b><span>adiar</span></button></div>'
+      + '<div class="doa-dupla"><button type="button" class="doa-op" data-o="abrir"><b>✏️ Abrir / editar OF</b></button><button type="button" class="doa-op" data-o="imprimir"><b>🖨 Imprimir OF</b></button></div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    function fechar() { ov.remove(); }
+    function depois(msg) { fechar(); if (msg) toast(msg); setTimeout(function () { recarregarOfs().then(render); }, 600); }
+    ov.addEventListener('click', function (ev) {
+      if (ev.target === ov) return fechar();
+      var b = ev.target.closest('[data-o]'); if (!b) return; var k = b.getAttribute('data-o');
+      if (k === 'fechar') return fechar();
+      if (k === 'passou') {
+        b.disabled = true;
+        var fluxo = arr(o.fluxo_maquinas).map(nomeMaq).filter(Boolean); if (!fluxo.length) fluxo = arr(o.maq).map(nomeMaq).filter(Boolean);
+        var i = fluxo.findIndex(function (x) { return norm(x) === norm(m); }), prox = i >= 0 ? fluxo[i + 1] : '';
+        req('POST', '/api/ofs/' + encodeURIComponent(o.id) + '/passou-maquina', { maquina_nome: m, maquina: m })
+          .then(function () { return req('POST', '/api/operador/pos-passagem', { of_id: o.id, status_anterior: o.status, proxima_maquina: prox, indice: i + 1 }); })
+          .then(function () { depois('OF ' + numOf(o) + ' passou pela ' + m + (prox ? ' · foi para ' + prox : '')); })
+          .catch(function (e) { b.disabled = false; toast('Erro: ' + e.message, 'var(--red)'); });
+        return;
+      }
+      if (k === 'papel') {
+        var t = ov.querySelector('[data-p="obs"]').value.trim().slice(0, 255), pv = ov.querySelector('[data-p="prev"]').value;
+        req('PATCH', '/api/ofs/' + encodeURIComponent(o.id), { papel_observacao: t || null, previsao_entrega_papel: /^\d{4}-\d{2}-\d{2}$/.test(pv) ? pv : null })
+          .then(function () { o.papel_observacao = t || null; o.previsao_entrega_papel = pv || null; depois('Dados do papel salvos'); })
+          .catch(function (e) { toast('Erro ao salvar: ' + e.message, 'var(--red)'); });
+        return;
+      }
+      if (k === 'sobe' || k === 'desce') {
+        var l2 = filaAtual(m), i2 = l2.findIndex(function (z) { return z.id === o.id; }), j2 = k === 'sobe' ? i2 - 1 : i2 + 1;
+        if (i2 >= 0 && j2 >= 0 && j2 < l2.length) { var t2 = l2[i2]; l2[i2] = l2[j2]; l2[j2] = t2; salvarSeq(m, l2); render(); }
+        return fechar();
+      }
+      if (k === 'abrir') { fechar(); return dashAcao('alterar', o); }
+      if (k === 'imprimir') { fechar(); try { window.imprimirOF(numOf(o)); } catch (_) {} return; }
+      fechar(); dashAcao(k, o); setTimeout(function () { recarregarOfs().then(render); }, 2500);
+    });
+  }
+  function raizLegado() { var r = document.querySelector('#page-ofmaq #ofmaq-final-history-today'); return r ? r.parentNode : null; }
   function acoesLegado(id) {
-    var root = document.getElementById('ofmaq-final-root');
+    var root = raizLegado();
     if (!root) return false;
     var b = document.createElement('button'); b.type = 'button'; b.hidden = true; b.setAttribute('data-ofmaq-final-actions', id);
-    root.appendChild(b); b.click(); b.remove();
-    return !!document.querySelector('[id*="ofmaq-final-actions"]:not(button), .ofmaq-final-modal');
+    root.appendChild(b); try { b.click(); } catch (_) {} b.remove();
+    return !!document.querySelector('.ofmaq-final-modal[data-modal="ofmaq-final-actions"]');
   }
   function imagemLegado(id, url) {
-    var root = document.getElementById('ofmaq-final-root');
+    var root = raizLegado();
     if (root) { var b = document.createElement('button'); b.type = 'button'; b.hidden = true; b.setAttribute('data-ofmaq-final-image', id); root.appendChild(b); b.click(); b.remove(); return; }
     if (url) window.open(url, '_blank');
   }
@@ -71890,7 +71945,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var j = a === 'sobe' ? i - 1 : i + 1; if (i < 0 || j < 0 || j >= l.length) return;
       var t = l[i]; l[i] = l[j]; l[j] = t; salvarSeq(mT, l); render(); return;
     }
-    if (a === 'acoes') { if (!acoesLegado(id)) menuOf(b, l[i], mT); return; }
+    if (a === 'acoes') { if (l[i]) acoesModal(l[i], mT); return; }
     if (a === 'img') { imagemLegado(id, imgDe(l[i] || {})); return; }
     if (a === 'menu') { menuOf(b, l[i], mT); }
   }
@@ -72057,7 +72112,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-img{width:34px;height:34px;border-radius:7px;border:1px solid var(--border);background:var(--s2);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;padding:0;cursor:pointer;color:var(--text3)}.dom-img img{width:100%;height:100%;object-fit:cover}.dom-img.vazio{cursor:default}'
     + '.dom-c-prod{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dom-c-txt{white-space:nowrap;color:var(--text2);font-size:12.5px}.dom-c-papel{max-width:180px;color:var(--text2);font-size:12.5px}.dom-c-dt{white-space:nowrap;color:var(--text2)}'
     + '.dom-chip.st-normal{background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green);font-weight:600}.dom-chip.st-urgente{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red);font-weight:700}.dom-chip.st-atrasada{background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow);font-weight:600}'
-    + '.dom-acoes{height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff!important;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;width:auto!important}.dom-acoes.urg{background:var(--red);border-color:var(--red)}'
+    + '#ds-ofmaq .dom-c-acao button.dom-acoes{height:30px;width:auto;padding:0 12px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12.5px;font-weight:600}#ds-ofmaq .dom-c-acao button.dom-acoes:hover{background:var(--accent2)}#ds-ofmaq .dom-c-acao button.dom-acoes.urg{background:var(--red);border-color:var(--red)}'
     + '.dom-c-acao .dom-mais{width:28px}'
     + '#ds-ofmaq-voltar{margin:10px 16px;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:600;cursor:pointer}'
     + '#ds-ofmaq{padding:18px 20px 40px;color:var(--text);font-size:14px}'
@@ -72107,6 +72162,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-aviso{font-size:12px;color:var(--text3);margin-right:8px}.dom-c-maq{white-space:nowrap;color:var(--text2);font-size:12.5px}'
     + '@media (max-width:768px){.dom-ferr .dom-btn{flex:1 1 calc(50% - 8px);height:38px}.dom-dias{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.dom-grupo{display:block!important;padding:6px 10px!important}.dom-grupo td{display:block!important}.dom-c-maq{grid-area:auto}}'
     + '.dom-rod{display:flex;justify-content:space-between;gap:10px;margin-top:10px;color:var(--text3);font-size:12px;flex-wrap:wrap}.dom-link{background:none;border:0;color:var(--text2);text-decoration:underline;cursor:pointer;font:inherit;font-size:12px}'
+    + '#dom-acoes-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.doa-box{width:min(520px,100%);max-height:calc(100% - 16px);overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:0 20px 60px rgba(0,0,0,.45)}'
+    + '.doa-box header{display:flex;justify-content:space-between;align-items:center}.doa-box h2{margin:0;font-size:18px}.doa-x{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer}'
+    + '.doa-sub{margin:-4px 0 4px;color:var(--text2);font-size:12.5px}'
+    + '.doa-estado{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px}.doa-estado span{color:var(--text2)}.doa-estado.st-urgente{border-color:var(--red)}.doa-estado.st-atrasada{border-color:var(--yellow)}'
+    + '.doa-op{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;cursor:pointer;text-align:left}'
+    + '.doa-op:hover{border-color:var(--b2);background:var(--s3)}.doa-op b{font-size:13.5px}.doa-op span{font-size:11.5px;color:var(--text2);text-align:right}'
+    + '.doa-pri{background:var(--accent);border-color:var(--accent);color:#fff}.doa-pri span{color:rgba(255,255,255,.8)}.doa-pri:hover{background:var(--accent2)}'
+    + '.doa-red{border-color:color-mix(in srgb,var(--red) 55%,var(--border));color:var(--red)}'
+    + '.doa-papel{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px}.doa-papel label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--text2)}'
+    + '.doa-papel textarea,.doa-papel input{border-radius:8px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:13.5px;padding:8px 10px}'
+    + '.doa-dupla{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
     + '#dom-menu{position:fixed;z-index:9999;min-width:210px;padding:5px;border-radius:10px;border:1px solid var(--border);background:var(--surface);box-shadow:0 12px 32px rgba(0,0,0,.35)}#dom-menu button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer}#dom-menu button:hover{background:var(--s3)}'
     + '@media (max-width:768px){#ds-ofmaq{padding:12px 12px 110px}.dom-maqs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dom-maq{padding:10px}.dom-maq-num{font-size:19px}'
     + '.dom-tabela thead{display:none}.dom-tabela,.dom-tabela tbody{display:block}.dom-tabela tr{display:grid;grid-template-columns:auto auto 1fr auto;grid-template-areas:"pos img of acao" "cli cli cli cli" "prod prod prod prod" "ent ent qtd qtd" "st st tempo tempo";gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}'
