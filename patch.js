@@ -69245,19 +69245,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   (document.head || document.documentElement).appendChild(st);
 })();
 
-/* ===== ERP 2.0 — VISUAL NOVO (só com a chave de teste data-ui="2") =====
- * Ativar: abrir o sistema com ?ui=2 no endereço. Voltar ao visual atual: ?ui=1.
+/* ===== ERP 2.0 — VISUAL NOVO (padrão; data-ui="2") =====
+ * Voltar ao visual antigo: abrir com ?ui=1 no endereço. Voltar ao novo: ?ui=2.
  * Identidade: Archivo (títulos/números) + Source Sans 3 (texto); petróleo #1E4D57, teal #55A4AD,
  * verde #A8CF4E, kraft #C9A47E. Elemento-assinatura: a "onda" de papelão ondulado em kraft sob os
  * títulos e no item de menu ativo. Só aparência: nenhum campo, botão ou regra muda. */
 (function () {
   try {
     var q = new URLSearchParams(location.search).get('ui');
-    if (q === '2') localStorage.setItem('erp_ui', '2');
-    if (q === '1') localStorage.removeItem('erp_ui');
+    if (q === '2') localStorage.removeItem('erp_ui');
+    if (q === '1') localStorage.setItem('erp_ui', '1');
   } catch (_) {}
-  var ativo = false;
-  try { ativo = localStorage.getItem('erp_ui') === '2'; } catch (_) {}
+  // Visual novo é o padrão; ?ui=1 volta ao antigo (fica salvo), ?ui=2 retorna ao novo.
+  var ativo = true;
+  try { ativo = localStorage.getItem('erp_ui') !== '1'; } catch (_) {}
   if (!ativo) return;
   document.documentElement.setAttribute('data-ui', '2');
   if (!document.getElementById('erp-ui2-fonts')) {
@@ -69268,8 +69269,22 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   // onda de papelão ondulado (flauta) em kraft, desenhada em SVG
   var onda = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='6' viewBox='0 0 16 6'%3E%3Cpath d='M0 3 Q4 0 8 3 T16 3' fill='none' stroke='%23C9A47E' stroke-width='1.6'/%3E%3C/svg%3E\")";
-  var R = 'html[data-ui="2"]';
+  var R = 'html[data-ui="2"]:not([data-theme="light"])';
+  var L = 'html[data-ui="2"][data-theme="light"]';
   var css = ''
+    // tema claro (papel kraft claro + petróleo)
+    + L + '{--petroleo:#1E4D57;--teal:#2F7F88;--verde:#6E9A1E;--kraft:#A9825A;--bg:#F3F0E9;--surface:#FFFFFF;--border:#DCD4C4;--text:#17282C;--text2:#46595D;--text3:#7A8A8C;--accent:#1E4D57;--font:"Source Sans 3",system-ui,sans-serif}'
+    + L + ' body{font-family:var(--font)!important}'
+    + L + ' h1,' + L + ' h2,' + L + ' h3,' + L + ' .btn{font-family:"Archivo",var(--font)!important;font-stretch:87.5%}'
+    + L + ' .sidebar .nav-item.active{background:var(--petroleo)!important;color:#fff!important;background-image:' + onda + '!important;background-repeat:repeat-x!important;background-position:left bottom!important;background-size:16px 6px!important}'
+    + L + ' .btn-accent,' + L + ' .btn-primary{background:var(--petroleo)!important;color:#fff!important;border-color:var(--petroleo)!important}'
+    // cartões e modais no escuro
+    + R + ' .card,' + R + ' .cli-card,' + R + ' .kpi-card,' + R + ' .stat-card,' + R + ' .panel{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:none!important}'
+    + R + ' .cli-card:hover{border-color:var(--teal)!important}'
+    + R + ' .modal,' + R + ' .estoque-modal-shell{background:#12292F!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:0 24px 60px rgba(0,0,0,.45)!important}'
+    + R + ' .modal-overlay.open,' + R + ' .estoque-modal-overlay{background:rgba(6,16,19,.72)!important;backdrop-filter:none!important}'
+    + R + ' .estoque-modal-header{background:transparent!important;border-bottom:1px solid var(--border)!important}'
+    + R + ' .tbadge{border-radius:6px!important;font-family:"Archivo",var(--font)!important;font-stretch:87.5%}'
     + R + '{--petroleo:#1E4D57;--teal:#55A4AD;--verde:#A8CF4E;--kraft:#C9A47E;'
     + '--bg:#0E2227;--surface:#15323A;--border:#2A4A52;--text:#E8F0EF;--text2:#A9BEC0;--text3:#6F8C90;'
     + '--accent:#55A4AD;--accent2:#3F8A93;--green:#A8CF4E;--orange:#C9A47E;--yellow:#D9B56B;--red:#E0665A;'
