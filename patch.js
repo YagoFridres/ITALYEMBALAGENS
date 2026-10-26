@@ -71387,3 +71387,24 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   aplicar(); setInterval(aplicar, 2000);
 })();
+
+/* ===== DESEMPENHO 3 (26/10/2026): lista de clientes leve =====
+ * A tela de Clientes desenha ~1.400 cartões (28 mil elementos). Cartões fora da tela não são
+ * mais calculados (content-visibility) e, ao sair da tela, a grade é esvaziada — ela é redesenhada
+ * sozinha ao voltar (go('clientes') chama renderClientes). Assim o resto do sistema não carrega
+ * esses 28 mil elementos em todas as varreduras. */
+(function () {
+  if (window.__dsCliLeve) return; window.__dsCliLeve = true;
+  try {
+    var st = document.createElement('style'); st.id = 'ds-cli-leve';
+    st.textContent = '#cli-grid > .cli-card{content-visibility:auto;contain-intrinsic-size:auto 216px}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+  setInterval(function () {
+    try {
+      var pg = document.getElementById('page-clientes'), g = document.getElementById('cli-grid');
+      if (!pg || !g || !g.firstElementChild) return;
+      if (pg.offsetParent === null && getComputedStyle(pg).display === 'none') g.textContent = '';
+    } catch (_) {}
+  }, 4000);
+})();
