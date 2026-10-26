@@ -71834,7 +71834,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<td class="dom-c-acao"><button type="button" class="dom-acoes' + (ut === 'urgente' ? ' urg' : '') + '" data-a="acoes">Ações</button><button type="button" class="dom-mais" data-a="menu" title="Mais">⋯</button></td>'
         + '</tr>';
     }).join('');
-    return '<div class="dom-tabela-wrap"><table class="dom-tabela no-card"><thead><tr><th>Seq.</th><th>Imagem</th><th>OF</th><th>Dia agendado<small>produção</small></th><th>Entrega<small>cliente</small></th><th>Cliente</th><th>Status</th><th>Produto</th><th class="dom-c-num">Qtd. caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / previsão</th><th>Máquina</th><th class="dom-c-num">Tempo</th><th>Ações</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
+    return '<div class="dom-tabela-wrap"><table class="dom-tabela no-card" data-no-mobile-cards="1"><thead><tr><th>Seq.</th><th>Imagem</th><th>OF</th><th>Dia agendado<small>produção</small></th><th>Entrega<small>cliente</small></th><th>Cliente</th><th>Status</th><th>Produto</th><th class="dom-c-num">Qtd. caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / previsão</th><th>Máquina</th><th class="dom-c-num">Tempo</th><th>Ações</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
   }
   function renderFila(G) {
     var fila = raiz.querySelector('.dom-fila'); if (!fila) return;
@@ -72304,7 +72304,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     r.querySelector('.alx-kpis').innerHTML = '<div><span>Total comprado · ' + esc(periodo) + '</span><b>' + moeda(totalSel) + '</b></div><div><span>Ordens</span><b>' + l.length + '</b></div><div><span>Aguardando compra</span><b>' + abertas + '</b></div>';
     var lista = r.querySelector('.alx-lista');
     if (E.carregando && !E.lista.length) { lista.innerHTML = '<div class="alx-vazio">Carregando…</div>'; return; }
-    lista.innerHTML = l.length ? '<table class="alx-tab no-card"><thead><tr><th>Nº</th><th>Data</th><th>Fornecedor</th><th>Itens</th><th>Status</th><th class="alx-n">Total</th><th></th></tr></thead><tbody>'
+    lista.innerHTML = l.length ? '<table class="alx-tab no-card" data-no-mobile-cards="1"><thead><tr><th>Nº</th><th>Data</th><th>Fornecedor</th><th>Itens</th><th>Status</th><th class="alx-n">Total</th><th></th></tr></thead><tbody>'
       + l.map(function (o) {
         var it = o.itens || [], resumo = it.slice(0, 3).map(function (i) { return esc(i.descricao); }).join(', ') + (it.length > 3 ? ' +' + (it.length - 3) : '');
         return '<tr data-id="' + esc(o.id) + '"><td class="alx-num">#' + esc(o.numero || '—') + '</td><td>' + dataBr(o.data) + '</td><td class="alx-forn">' + esc(o.fornecedor || '—') + (o.solicitante ? '<small>Pedido por ' + esc(o.solicitante) + '</small>' : '') + '</td>'
