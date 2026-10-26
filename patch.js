@@ -71214,18 +71214,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 })();
 
 ;(function __jarvisGaveta(){
-  // Jarvis: abre como painel lateral à direita, inteiro na tela, sem trocar de página (antes ia para o
+  // Jarvis: abre grande no meio da tela (como o Chat), sem trocar de página (antes ia para o
   // Início e a janela ficava deslocada no canto — dois módulos antigos brigavam pela posição).
   try { if (window.__jarvisGaveta) return; window.__jarvisGaveta = true; } catch (_) {}
-  var POS = { top: '0px', right: '0px', bottom: '0px', left: 'auto', inset: '0px 0px 0px auto', width: 'min(480px, 100%)', 'max-width': '100%', height: 'auto', 'max-height': 'none', 'border-radius': '0', transform: 'none', margin: '0' };
+  var POS = { inset: 'auto', top: '50%', left: '50%', right: 'auto', bottom: 'auto', transform: 'translate(-50%, -50%)', width: 'min(920px, calc(100% - 32px))', 'max-width': 'calc(100% - 32px)', height: 'min(86%, 860px)', 'max-height': 'calc(100% - 32px)', 'border-radius': '14px', margin: '0' };
   function encaixar() {
     var p = document.getElementById('assist-panel');
     if (!p || !p.classList.contains('open')) return;
     Object.keys(POS).forEach(function (k) { if (p.style.getPropertyValue(k) !== POS[k] || p.style.getPropertyPriority(k) !== 'important') p.style.setProperty(k, POS[k], 'important'); });
-    p.style.setProperty('border-left', '1px solid var(--border)', 'important');
+    p.style.setProperty('border', '1px solid var(--border)', 'important');
     p.style.setProperty('box-shadow', 'var(--shadow-lg)', 'important');
     var g = document.getElementById('painel-jarvis-grande');
-    if (g) { g.style.setProperty('background', 'rgba(10,12,16,.35)', 'important'); }
+    if (g) { g.style.setProperty('background', 'rgba(10,12,16,.55)', 'important'); }
   }
   function instalar() {
     var orig = window.abrirPainelJarvis;
@@ -71243,4 +71243,30 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   try {
     new MutationObserver(function () { encaixar(); }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
   } catch (_) {}
+})();
+
+
+;(function __marcaUnica(){
+  // Marca: uma vez só, no topo — árvore da logo + "Italy Embalagens" e "PCP ERP". Sai o bloco repetido do menu.
+  // Início: sem os botões "Usar como inicial" e "Atualizar".
+  try { if (window.__marcaUnica) return; window.__marcaUnica = true; } catch (_) {}
+  var css = '.sidebar .sidebar-brand{display:none!important}'
+    + '#page-hub > .ptoolbar{display:none!important}'
+    + '.topbar .logo{display:flex!important;align-items:center!important;gap:10px!important}'
+    + '.topbar .logo .logo-icon{width:30px!important;height:30px!important;min-width:30px;padding:0!important;background:transparent!important;border:none!important;box-shadow:none!important;display:flex;align-items:center;justify-content:center}'
+    + '.topbar .logo .logo-icon img{width:30px!important;height:30px!important;object-fit:contain!important;border-radius:0!important}'
+    + '.ds-marca{display:flex;flex-direction:column;line-height:1.15}.ds-marca b{font-size:15px;font-weight:650;letter-spacing:-.01em;color:var(--text)}.ds-marca small{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.02em}';
+  var st = document.createElement('style'); st.id = 'ds-marca-css'; st.setAttribute('data-ds3', 'marca'); st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+  function aplicar() {
+    try {
+      document.querySelectorAll('.topbar .logo').forEach(function (l) {
+        var ic = l.querySelector('.logo-icon');
+        if (ic) { var im = ic.querySelector('img'); if (!im) { im = document.createElement('img'); ic.innerHTML = ''; ic.appendChild(im); } if (im.getAttribute('src') !== '/logo-simbolo.png') { im.setAttribute('src', '/logo-simbolo.png'); im.alt = ''; } }
+        var txt = Array.prototype.find.call(l.children, function (c) { return c !== ic; });
+        if (txt && !txt.classList.contains('ds-marca')) { txt.className = 'ds-marca'; txt.removeAttribute('style'); txt.innerHTML = '<b>Italy Embalagens</b><small>PCP ERP</small>'; }
+      });
+    } catch (_) {}
+  }
+  aplicar(); setInterval(aplicar, 2000);
 })();
