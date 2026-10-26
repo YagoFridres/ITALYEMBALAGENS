@@ -70460,7 +70460,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + 'body:not(.is-mobile) #btn-nova-of-rapida,body:not(.is-mobile) #dash-btn-of-rapida{display:none!important}'
     + 'body.is-mobile .ds-abas-central{padding:6px 10px 0}'
     + 'body.is-mobile .ds-btn-ofrapida{display:none}'
-    + 'body.is-mobile #ds-page-title{display:none}';
+    + 'body.is-mobile #ds-page-title{display:none}'
+    + '.sbox:has(#ds-inicio-grafico) > .sbox-h{display:none!important}'
+    + '.sbox > #ds-inicio-grafico{border:none!important;background:transparent!important;border-radius:0!important}'
+    + '#page-hub > .ptoolbar > span:first-child,#page-hub > .ptoolbar > button[onclick^="go(\'home\')"]{display:none!important}'
+    + '#page-hub > .ptoolbar{justify-content:flex-end;min-height:0;padding-top:8px;padding-bottom:8px}'
+    + 'html[data-ds="3"] body:not(.is-mobile) .topbar #clock,html[data-ds="3"] body:not(.is-mobile) .topbar > button[onclick^="exportarDadosCompletos"]{display:none!important}';
   var st = document.createElement('style'); st.id = 'ds3-nav-css'; st.setAttribute('data-ds3', 'nav'); st.textContent = css;
   (document.head || document.documentElement).appendChild(st);
 
