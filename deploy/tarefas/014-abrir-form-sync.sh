@@ -14,8 +14,8 @@ open(f,'w').write(s)
 PY
 fi
 caddy validate --config $F --adapter caddyfile >/dev/null 2>&1 && systemctl reload caddy
-pkill -f form-sync.js || true
-nohup node /opt/pcp-pro/app/deploy/form-sync.js "$P" >/opt/pcp-pro/tarefas-log/form-sync.out 2>&1 &
+systemctl stop pcp-form-sync 2>/dev/null || true
+systemd-run --unit=pcp-form-sync --collect /usr/bin/node /opt/pcp-pro/app/deploy/form-sync.js "$P"
 sleep 2
 echo "LINK: https://teste.italyembalagens.com.br$P"
 grep -n "3005" $F
