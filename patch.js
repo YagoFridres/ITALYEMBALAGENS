@@ -66241,8 +66241,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   try { if (window.__mapaClientesModalLeakGuardInstalled) return; window.__mapaClientesModalLeakGuardInstalled = true; } catch (_) {}
   function fecharTodosModaisAbertos(){
     try {
-      document.querySelectorAll('[role="dialog"],.modal,.modal-backdrop,.overlay,[data-modal],[id*="modal-"][id*="estado"],[id*="modal-"][id*="cidade"],[id*="modal-"][id*="ramo"],[id*="novo-estado"],[id*="novo-estado"]').forEach(function(m){
-        try { if (m && typeof m.remove === 'function') m.remove(); else if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_rm) {}
+      // Antes removia TODO .modal da página (inclusive os modais fixos do index.html, como o de Fornecedor),
+      // deixando-os vazios para sempre. Agora: modais fixos (.modal-overlay) só são fechados; só os
+      // criados dinamicamente pelo Mapa de Clientes antigo são removidos.
+      document.querySelectorAll('.modal-overlay.open').forEach(function(o){
+        try { if (o.id === 'jarvis-modal') return; o.classList.remove('open'); } catch (_c) {}
+      });
+      document.querySelectorAll('[data-modal-padrao],.modal-backdrop,[id*="modal-"][id*="estado"],[id*="modal-"][id*="cidade"],[id*="modal-"][id*="ramo"],[id*="novo-estado"]').forEach(function(m){
+        try { if (m.closest && m.closest('.modal-overlay:not([data-modal-padrao])') && !m.classList.contains('modal-backdrop')) return; m.remove(); } catch (_rm) {}
       });
       document.querySelectorAll('.modal-open,.overflow-hidden').forEach(function(b){
         try { b.classList && b.classList.remove('modal-open','overflow-hidden'); } catch (_cl) {}
