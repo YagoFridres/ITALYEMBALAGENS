@@ -69335,3 +69335,61 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   setTimeout(resetar, 1500); setTimeout(resetar, 5000);
 })();
+
+/* ===== Orçamentos: Editar carrega os parâmetros salvos (26/10/2026) =====
+ * A lista de orçamentos vem "enxuta" (sem parametros/itens). Ao clicar em Editar, a calculadora
+ * recebia esse objeto e ficava com os parâmetros comerciais digitados por último (ex.: Custo Fixo 20
+ * num orçamento salvo com 15) — e salvar gravava valores errados. Agora busca o orçamento completo antes. */
+(function () {
+  function instalar() {
+    var orig = window.carregarOrcamentoCalc;
+    if (typeof orig !== 'function' || orig.__fullFetch) return;
+    var wrap = function (orc) {
+      var self = this, args = arguments;
+      try {
+        var id = orc && String(orc.id || '').trim();
+        var incompleto = orc && !orc.parametros && !orc.itens && !orc.resultados;
+        if (id && incompleto) {
+          var tk = ''; try { tk = localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) {}
+          return fetch('/api/orcamentos/' + encodeURIComponent(id), { headers: tk ? { Authorization: 'Bearer ' + tk } : {} })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+              var full = (j && (j.data || j)) || null;
+              if (full && full.id) { var a = Array.prototype.slice.call(args); a[0] = Object.assign({}, orc, full); return orig.apply(self, a); }
+              return orig.apply(self, args);
+            })
+            .catch(function () { return orig.apply(self, args); });
+        }
+      } catch (_) {}
+      return orig.apply(self, args);
+    };
+    wrap.__fullFetch = true;
+    window.carregarOrcamentoCalc = wrap;
+  }
+  instalar(); setTimeout(instalar, 2000); setTimeout(instalar, 6000);
+})();
+
+/* Calculadora: "Custo Merc. (%)" é o que sobra para a mercadoria (100 − fixo − margem − comissão −
+ * impostos), igual à planilha Garcia. Antes era um campo digitável que não mudava nada; agora é
+ * calculado e atualiza junto. */
+(function () {
+  function sync() {
+    try {
+      var g = function (id, def) { var v = parseFloat((document.getElementById(id) || {}).value); return isFinite(v) ? v : def; };
+      var cm = document.getElementById('calc-cm');
+      if (!cm) return;
+      var w3 = 100 - g('calc-cf', 15) - g('calc-mg', 25) - g('calc-cv', 1) - g('calc-imp', 10);
+      var txt = String(Math.round(w3 * 10) / 10);
+      if (cm.value !== txt) cm.value = txt;
+      cm.readOnly = true; cm.tabIndex = -1;
+      cm.title = 'Calculado: 100 − custo fixo − margem − comissão − impostos';
+      cm.style.opacity = '.75';
+      Array.prototype.forEach.call(document.querySelectorAll('#modal-calc *'), function (el) {
+        if (el.children.length === 0 && /CUSTO MERCANTIL\s*=/i.test(el.textContent || '')) el.textContent = el.textContent.replace(/=\s*[-\d.,]+%/, '= ' + w3.toFixed(1) + '%');
+      });
+    } catch (_) {}
+  }
+  document.addEventListener('input', function (e) { if (e.target && /^calc-(cf|mg|cv|imp)$/.test(e.target.id || '')) setTimeout(sync, 0); }, true);
+  document.addEventListener('change', function (e) { if (e.target && /^calc-/.test(e.target.id || '')) setTimeout(sync, 0); }, true);
+  setInterval(function () { if (document.getElementById('modal-calc') && document.getElementById('calc-cm')) sync(); }, 1500);
+})();
