@@ -70604,3 +70604,44 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   (document.head || document.documentElement).appendChild(st);
   setInterval(tick, 1200);
 })();
+
+/* ===== DESIGN 3 — OF RÁPIDA organizada por assunto (26/10/2026) =====
+ * Mesmos campos e mesma gravação; só a arrumação: coluna "Pedido" (cliente, produto, referência,
+ * empresa/vendedor, quantidade/valor, entrega) e coluna "Produção" (medidas, cores, máquina, facas,
+ * imagem, urgente). No celular as colunas ficam uma embaixo da outra. */
+(function () {
+  try { if (window.__ds3OfRapida) return; window.__ds3OfRapida = true; } catch (_) {}
+  var PEDIDO = [/^\s*Cliente/i, /^\s*Produto/i, /^\s*Refer[êe]ncia/i, /^\s*Empresa/i, /^\s*Qtd/i, /^\s*Data de Entrega/i];
+  var PRODUCAO = [/^\s*Larg/i, /^\s*Cores de Impress/i, /^\s*M[áa]quina Principal/i, /^\s*Facas da OF/i, /^\s*Imagem da OF/i, /Urgente/i];
+  function arrumar() {
+    var ov = document.getElementById('modal-of-rapida'); if (!ov) return;
+    var lab = Array.prototype.find.call(ov.querySelectorAll('label'), function (l) { return /PRODUTO \/ DESCRI/i.test(l.textContent || ''); });
+    if (!lab) return;
+    var body = lab.parentElement && lab.parentElement.parentElement; if (!body || body.classList.contains('ds-ofr-body')) return;
+    var filhos = Array.prototype.slice.call(body.children);
+    var colA = document.createElement('section'), colB = document.createElement('section');
+    colA.className = 'ds-ofr-col'; colB.className = 'ds-ofr-col';
+    colA.innerHTML = '<h4 class="ds-ofr-sec">Pedido</h4>'; colB.innerHTML = '<h4 class="ds-ofr-sec">Produção</h4>';
+    function txt(el) { return String(el.textContent || '').replace(/\s+/g, ' ').trim(); }
+    function onde(el, lista) { for (var i = 0; i < lista.length; i++) if (lista[i].test(txt(el))) return i; return -1; }
+    var a = [], b = [];
+    filhos.forEach(function (el) { var i = onde(el, PEDIDO); if (i >= 0) { a.push([i, el]); return; } var j = onde(el, PRODUCAO); if (j >= 0 && !/Mais itens/i.test(txt(el))) b.push([j, el]); });
+    if (a.length < 4 || b.length < 3) return; // estrutura inesperada: não mexe
+    a.sort(function (x, y) { return x[0] - y[0]; }).forEach(function (p) { colA.appendChild(p[1]); });
+    b.sort(function (x, y) { return x[0] - y[0]; }).forEach(function (p) { colB.appendChild(p[1]); });
+    var grade = document.createElement('div'); grade.className = 'ds-ofr-grade';
+    grade.appendChild(colA); grade.appendChild(colB);
+    body.insertBefore(grade, body.firstChild);
+    body.classList.add('ds-ofr-body');
+    var shell = body.parentElement; if (shell) shell.classList.add('ds-ofr-shell');
+  }
+  var css = '#modal-of-rapida .ds-ofr-shell{width:min(980px,96vw)!important;max-width:96vw!important}'
+    + '#modal-of-rapida .ds-ofr-grade{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}'
+    + '#modal-of-rapida .ds-ofr-col{display:flex;flex-direction:column;gap:12px;min-width:0}'
+    + '#modal-of-rapida .ds-ofr-sec{margin:0;padding-bottom:6px;border-bottom:1px solid var(--border);font-size:12px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}'
+    + '#modal-of-rapida button[onclick*="salvar" i]:not(.btn-ghost),#modal-of-rapida .btn-salvar-of{background:var(--accent)!important;background-image:none!important;border-color:var(--accent)!important;color:#fff!important}'
+    + '@media (max-width:820px){#modal-of-rapida .ds-ofr-grade{grid-template-columns:1fr}}';
+  var st = document.createElement('style'); st.id = 'ds3-ofr-css'; st.setAttribute('data-ds3', 'ofr'); st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+  setInterval(arrumar, 600);
+})();
