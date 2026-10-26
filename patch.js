@@ -69455,10 +69455,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try {
       var s = el.getAttribute('style');
       if (!s || s.length < 6) return;
-      if (el.closest && el.closest('.print-area,.rp,svg,[data-ds-ignorar]')) return;
+      if (el.hasAttribute('data-ds-ignorar') || (el.closest && el.closest('.print-area,.rp,svg,[data-ds-ignorar]'))) return;
       var r = cache.get(s);
       if (r === undefined) { r = converterBloco(s); if (cache.size > 6000) cache.clear(); cache.set(s, r); cache.set(r, r); }
-      if (r !== s) el.setAttribute('style', r);
+      if (r !== s) {
+        // proteção contra "briga": se outro código volta a cor toda hora, este elemento é deixado em paz
+        var agora = Date.now();
+        if (!el.__dsT || agora - el.__dsT > 2000) { el.__dsT = agora; el.__dsN = 0; }
+        if (++el.__dsN > 4) { el.setAttribute('data-ds-ignorar', '1'); return; }
+        el.setAttribute('style', r);
+      }
     } catch (_) {}
   }
   function converterStyleTag(stEl) {
@@ -69468,7 +69474,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (stEl.__ds3Txt === t) return;
       var nt = converterCss(t);
       stEl.__ds3Txt = nt;
-      if (nt !== t) stEl.textContent = nt;
+      if (nt !== t) {
+        var ag = Date.now();
+        if (!stEl.__dsT || ag - stEl.__dsT > 2000) { stEl.__dsT = ag; stEl.__dsN = 0; }
+        if (++stEl.__dsN > 4) { stEl.setAttribute('data-ds3', 'ignorar'); return; }
+        stEl.textContent = nt;
+      }
     } catch (_) {}
   }
   function varrer(no) {
@@ -71192,6 +71203,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setInterval(function () {
     try {
       document.querySelectorAll('.cmpx-table-title').forEach(function (t) { if (t.textContent.trim() !== 'Tabela de Compras') t.textContent = 'Tabela de Compras'; });
+      document.querySelectorAll('#hub-quick .hub-qbtn,#hub-quick button').forEach(function (b) { if (/Armazenamento/i.test(b.textContent || '') && b.style.display !== 'none') b.style.display = 'none'; });
       document.querySelectorAll('.cmpx-wrap table td button').forEach(function (b) { if (/Excluir/i.test(b.textContent || '')) b.style.setProperty('color', 'var(--red)', 'important'); });
       if (!resetado) {
         var a = document.getElementById('cmp-fil-st'), b2 = document.getElementById('cmp-fil-emp');
