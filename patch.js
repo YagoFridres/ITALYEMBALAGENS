@@ -70939,6 +70939,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   ];
   var ocultas = {};
   try { ocultas = JSON.parse(localStorage.getItem('ds_central_cols_ocultas') || '{}') || {}; } catch (_) {}
+  // proteção: se TODAS as colunas ficaram ocultas (cliques automáticos de módulos antigos), volta ao padrão
+  try { if (Object.keys(ocultas).length >= 20) { ocultas = {}; localStorage.removeItem('ds_central_cols_ocultas'); } } catch (_) {}
   function colsVisiveis() { return COLS.filter(function (c) { return c.fixa || !ocultas[c.k]; }); }
   function linhaHtml(o) {
     var id = esc(o.id || ''), n = esc(o.of), urg = sim(o.urg) || sim(o.urgente), sp = sim(o.sem_papel) || sim(o.sem_papelao);
@@ -71069,7 +71071,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     document.body.appendChild(m);
     var r = btn.getBoundingClientRect(); var z = parseFloat(getComputedStyle(document.body).zoom) || 1;
     m.style.left = Math.max(8, Math.min(r.right - m.offsetWidth, window.innerWidth / z - m.offsetWidth - 8)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
-    m.addEventListener('change', function (ev) { var k = ev.target.getAttribute('data-c'); if (!k) return; if (ev.target.checked) delete ocultas[k]; else ocultas[k] = 1; try { localStorage.setItem('ds_central_cols_ocultas', JSON.stringify(ocultas)); } catch (_) {} render(); });
+    m.addEventListener('change', function (ev) { var k = ev.target.getAttribute('data-c'); if (!k || !ev.isTrusted) { if (k) ev.target.checked = !ocultas[k]; return; } if (ev.target.checked) delete ocultas[k]; else ocultas[k] = 1; try { localStorage.setItem('ds_central_cols_ocultas', JSON.stringify(ocultas)); } catch (_) {} render(); });
     m.addEventListener('click', function (ev) { if (ev.target.getAttribute('data-todas')) { ocultas = {}; try { localStorage.removeItem('ds_central_cols_ocultas'); } catch (_) {} m.querySelectorAll('input').forEach(function (i) { i.checked = true; }); render(); } });
     menuAberto = m;
   }
