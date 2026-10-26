@@ -71563,3 +71563,396 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== OFs POR MÁQUINA — visual novo + MODO OPERADOR (26/10/2026) =====
+ * - Máquinas em grade (sem rolar para o lado), cada uma com OFs na fila, tempo previsto e ocupação.
+ * - Fila da máquina na ordem salva no servidor (arrastar ou setas); vale para todos os usuários.
+ * - Usa a lista de OFs já carregada pelo sistema e guarda a última lista válida (as OFs não somem
+ *   quando uma atualização volta vazia).
+ * - Modo Operador (opcional): escolhe a máquina, inicia a OF (fica "Em produção", conta o tempo),
+ *   finaliza (registra a passagem, manda para a próxima máquina do fluxo e grava o tempo real).
+ *   As velocidades reais medidas recalculam o tempo previsto das OFs de cada máquina.
+ * - "Tela anterior" volta para a tela antiga. */
+(function () {
+  if (window.__dsOfmaq2) return; window.__dsOfmaq2 = true;
+  var CAP_DIA = 480; // minutos úteis por dia
+  var E = { maq: '', antiga: false, ultimaLista: [], seq: {}, vel: {}, sessoes: [], maquinas: [], carregado: false, opMaq: '', opAberto: false };
+  try { E.maq = localStorage.getItem('ds_ofmaq_maq') || ''; E.antiga = localStorage.getItem('ds_ofmaq_antiga') === '1'; E.opMaq = localStorage.getItem('ds_operador_maq') || ''; } catch (_) {}
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { try { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); } catch (_) { return String(s || '').toLowerCase().trim(); } }
+  function req(m, url, body) {
+    var h = { 'Content-Type': 'application/json' }; var t = ''; try { t = localStorage.getItem('token') || ''; } catch (_) {}
+    if (t) h.Authorization = 'Bearer ' + t;
+    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+  }
+  function toast(msg, cor) { try { if (typeof window.toast === 'function') return window.toast(msg, cor || 'var(--green)'); } catch (_) {} }
+  function ofsBase() {
+    var l = []; try { l = (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { l = window.OFs || []; }
+    if (l && l.length) E.ultimaLista = l;
+    return E.ultimaLista || [];
+  }
+  function arr(v) { if (Array.isArray(v)) return v; if (typeof v === 'string' && v.trim()) { try { var p = JSON.parse(v); return Array.isArray(p) ? p : [p]; } catch (_) { return v.split(',').map(function (x) { return x.trim(); }).filter(Boolean); } } return v ? [v] : []; }
+  function nomeMaq(x) { return String(x && typeof x === 'object' ? (x.nome || x.col || x.maquina || x.name || '') : (x || '')).trim(); }
+  function maqDaOf(o) {
+    var c = [o.maquina_atual, o.maquina, o.maquina_agendada].map(nomeMaq).filter(Boolean);
+    if (c.length) return c[0];
+    var a = arr(o.maq); return a.length ? nomeMaq(a[0]) : '';
+  }
+  var FECHADA = /conclu|cancel|pedido pronto|despach|entreg|finaliz|faturad|exclu/i;
+  function aberta(o) { return o && !o.deleted_at && !FECHADA.test(String(o.status || '')) && !(o.passou_maquina === true || o.passou_maquina === 1 || o.passou_maquina === '1'); }
+  function emProducao(o) { return /produ/i.test(String(o.status || '')); }
+  function numOf(o) { return String(o.numero || o.of || o.of_num || ''); }
+  function qtdOf(o) { return Number(o.qtd || o.quantidade || o.qtd_pedida || 0) || 0; }
+  function entOf(o) { return String(o.ent || o.data_entrega || '').slice(0, 10); }
+  function urg(o) { var u = o.urg != null ? o.urg : o.urgente; return u === true || u === 1 || u === '1' || u === 'true'; }
+  function cliOf(o) { return String(o.cliNome || o.cliente || o.cliente_nome || o.clinome || '—'); }
+  function prodOf(o) { return String(o.produto || o.prodDesc || o.descricao || ''); }
+  function minutosPrevistos(o, maq) {
+    var q = qtdOf(o), v = E.vel[maq];
+    if (v && v.amostras >= 2 && v.cx_hora > 0 && q > 0) return Math.max(5, Math.round(q / v.cx_hora * 60));
+    try { var d = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maq) : null; var t = typeof window.calcularTempoOf === 'function' ? Number(window.calcularTempoOf(o, d)) : 0; if (t > 0) return Math.round(t); } catch (_) {}
+    return Math.max(5, Math.round(q / 12) || 30);
+  }
+  function fmtMin(m) { m = Math.round(m || 0); var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? String(r).padStart(2, '0') : '') : r + 'min'; }
+  function fmtData(iso) { if (!iso) return '—'; var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0].slice(2); }
+  function hojeIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function grupos() {
+    var g = {}, ord = [];
+    E.maquinas.forEach(function (m) { if (!g[m]) { g[m] = []; ord.push(m); } });
+    ofsBase().forEach(function (o) {
+      if (!aberta(o)) return;
+      var m = maqDaOf(o) || 'Sem máquina';
+      if (!g[m]) { g[m] = []; ord.push(m); }
+      g[m].push(o);
+    });
+    ord.forEach(function (m) { g[m] = ordenar(g[m], m); });
+    if (g['Sem máquina'] && !g['Sem máquina'].length) { delete g['Sem máquina']; ord = ord.filter(function (x) { return x !== 'Sem máquina'; }); }
+    return { g: g, ord: ord };
+  }
+  function ordenar(lista, maq) {
+    var pos = E.seq[maq] || {};
+    return lista.slice().sort(function (a, b) {
+      var pa = pos[a.id], pb = pos[b.id];
+      if (pa != null && pb != null) return pa - pb;
+      if (pa != null) return -1; if (pb != null) return 1;
+      var pa2 = emProducao(a) ? 0 : 1, pb2 = emProducao(b) ? 0 : 1; if (pa2 !== pb2) return pa2 - pb2;
+      var ua = urg(a) ? 0 : 1, ub = urg(b) ? 0 : 1; if (ua !== ub) return ua - ub;
+      var ea = entOf(a) || '9999', eb = entOf(b) || '9999'; if (ea !== eb) return ea < eb ? -1 : 1;
+      return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+    });
+  }
+  function carregarApoio(forcar) {
+    if (E.carregado && !forcar) return Promise.resolve();
+    E.carregado = true;
+    return Promise.all([
+      req('GET', '/api/maquinas').then(function (l) { E.maquinas = (l || []).filter(function (m) { return m.ativa !== false; }).sort(function (a, b) { return (a.ordem || 99) - (b.ordem || 99); }).map(function (m) { return String(m.nome || m.col || '').trim(); }).filter(Boolean); }).catch(function () {}),
+      req('GET', '/api/ofmaq/sequencia').then(function (l) { var s = {}; (l || []).forEach(function (x) { (s[x.maquina] = s[x.maquina] || {})[x.of_id] = Number(x.posicao) || 0; }); E.seq = s; }).catch(function () {}),
+      req('GET', '/api/operador/velocidades').then(function (v) { E.vel = v || {}; }).catch(function () {}),
+      req('GET', '/api/operador/sessoes').then(function (l) { E.sessoes = l || []; }).catch(function () {})
+    ]);
+  }
+  function salvarSeq(maq, lista) {
+    var ids = lista.map(function (o) { return o.id; });
+    var s = {}; ids.forEach(function (id, i) { s[id] = i + 1; }); E.seq[maq] = s;
+    return req('POST', '/api/ofmaq/sequencia', { maquina: maq, ordem: ids }).then(function () { toast('Sequência salva'); }).catch(function (e) { toast('Não foi possível salvar a sequência: ' + e.message, 'var(--red)'); });
+  }
+  function recarregarOfs() { try { if (typeof window.carregarOFs === 'function') return Promise.resolve(window.carregarOFs({ forcar: true })).catch(function () {}); } catch (_) {} return Promise.resolve(); }
+
+  /* ---------- tela ---------- */
+  var raiz = null;
+  function page() { return document.getElementById('page-ofmaq'); }
+  function ativa() { var p = page(); return !!(p && (p.classList.contains('active') || (p.offsetParent !== null && getComputedStyle(p).display !== 'none'))); }
+  function montar() {
+    var p = page(); if (!p) return;
+    raiz = document.getElementById('ds-ofmaq');
+    if (!raiz) {
+      raiz = document.createElement('div'); raiz.id = 'ds-ofmaq';
+      p.insertBefore(raiz, p.firstChild);
+      raiz.addEventListener('click', clique);
+      ligarArrastar();
+    }
+    p.classList.toggle('ds-ofmaq-ativa', !E.antiga);
+    var vb = document.getElementById('ds-ofmaq-voltar');
+    if (E.antiga) {
+      if (!vb) { vb = document.createElement('button'); vb.id = 'ds-ofmaq-voltar'; vb.type = 'button'; vb.textContent = 'Usar a tela nova'; vb.onclick = function () { E.antiga = false; try { localStorage.setItem('ds_ofmaq_antiga', '0'); } catch (_) {} montar(); render(); }; p.insertBefore(vb, p.firstChild); }
+    } else if (vb) vb.remove();
+  }
+  function render() {
+    if (!raiz || E.antiga) return;
+    var G = grupos(), total = 0, prod = 0;
+    G.ord.forEach(function (m) { total += G.g[m].length; G.g[m].forEach(function (o) { if (emProducao(o)) prod++; }); });
+    if (!E.maq || !G.g[E.maq]) E.maq = G.ord.filter(function (m) { return G.g[m].length; })[0] || G.ord[0] || '';
+    var cards = G.ord.map(function (m) {
+      var l = G.g[m], min = l.reduce(function (s, o) { return s + minutosPrevistos(o, m); }, 0);
+      var dias = min / CAP_DIA, pct = Math.round(min / (CAP_DIA * 5) * 100);
+      var tom = pct > 100 ? 'red' : (pct >= 70 ? 'yellow' : 'green');
+      var atr = l.filter(function (o) { var e = entOf(o); return e && e < hojeIso(); }).length;
+      var np = l.filter(emProducao).length;
+      var vel = E.vel[m] && E.vel[m].amostras >= 2 ? '<span class="dom-vel" title="Velocidade real medida">' + E.vel[m].cx_hora + ' cx/h</span>' : '';
+      return '<button type="button" class="dom-maq' + (m === E.maq ? ' on' : '') + '" data-maq="' + esc(m) + '">'
+        + '<span class="dom-maq-top"><b>' + esc(m) + '</b>' + (np ? '<span class="dom-prod" title="Em produção agora"></span>' : '') + '</span>'
+        + '<span class="dom-maq-num">' + l.length + ' <small>' + (l.length === 1 ? 'OF' : 'OFs') + '</small>' + (atr ? '<em>' + atr + ' atrasada' + (atr > 1 ? 's' : '') + '</em>' : '') + '</span>'
+        + '<span class="dom-barra"><i class="t-' + tom + '" style="width:' + Math.min(100, pct) + '%"></i></span>'
+        + '<span class="dom-maq-rod"><span class="t-' + tom + '">' + pct + '% da semana</span><span>' + fmtMin(min) + ' · ' + (dias < 0.1 ? '0' : dias.toFixed(1).replace('.', ',')) + ' dia' + (dias >= 2 ? 's' : '') + '</span></span>'
+        + (vel ? '<span class="dom-maq-rod">' + vel + '</span>' : '')
+        + '</button>';
+    }).join('');
+    var lista = G.g[E.maq] || [];
+    var acum = 0;
+    var linhas = lista.map(function (o, i) {
+      var min = minutosPrevistos(o, E.maq); acum += min;
+      var e = entOf(o), atras = e && e < hojeIso();
+      var ses = E.sessoes.find(function (s) { return s.of_id === o.id; });
+      return '<tr draggable="true" data-id="' + esc(o.id) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
+        + '<td class="dom-c-pos"><span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span>' + (i + 1) + '</td>'
+        + '<td class="dom-c-of"><b>' + esc(numOf(o)) + '</b>' + (urg(o) ? '<span class="dom-tag t-red">Urgente</span>' : '') + '</td>'
+        + '<td class="dom-c-cli"><span>' + esc(cliOf(o)) + '</span><small>' + esc(prodOf(o)) + '</small></td>'
+        + '<td class="dom-c-num">' + qtdOf(o).toLocaleString('pt-BR') + '</td>'
+        + '<td class="dom-c-ent' + (atras ? ' t-red' : '') + '">' + fmtData(e) + '</td>'
+        + '<td class="dom-c-num">' + fmtMin(min) + '<small>termina em ~' + fmtMin(acum) + '</small></td>'
+        + '<td class="dom-c-st">' + (emProducao(o) ? '<span class="dom-chip prod">Em produção' + (ses ? ' · ' + esc(ses.operador || '') : '') + '</span>' : '<span class="dom-chip">' + esc(o.status || 'Em aberto') + '</span>') + '</td>'
+        + '<td class="dom-c-acao"><button type="button" data-a="sobe" title="Subir">↑</button><button type="button" data-a="desce" title="Descer">↓</button><button type="button" data-a="menu" title="Mais ações">⋯</button></td>'
+        + '</tr>';
+    }).join('');
+    raiz.innerHTML = ''
+      + '<header class="dom-head"><div><h1>OFs por Máquina</h1><p>' + total + ' OFs na fila · ' + prod + ' em produção agora</p></div>'
+      + '<div class="dom-head-acoes"><button type="button" class="dom-btn" data-a="atualizar">Atualizar</button><button type="button" class="dom-btn dom-btn-pri" data-a="operador">Modo Operador</button></div></header>'
+      + '<div class="dom-maqs">' + cards + '</div>'
+      + '<section class="dom-fila"><div class="dom-fila-head"><h2>' + esc(E.maq || '—') + ' <small>' + lista.length + ' OFs na ordem de produção</small></h2>'
+      + '<div><button type="button" class="dom-btn" data-a="autoordem" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button></div></div>'
+      + (lista.length ? '<div class="dom-tabela-wrap"><table class="dom-tabela no-card"><thead><tr><th>#</th><th>OF</th><th>Cliente / produto</th><th class="dom-c-num">Qtd.</th><th>Entrega</th><th class="dom-c-num">Tempo previsto</th><th>Status</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div>'
+        : '<div class="dom-vazio">Nenhuma OF na fila desta máquina.</div>')
+      + '</section>'
+      + '<footer class="dom-rod"><span>O tempo previsto usa a velocidade real medida no Modo Operador quando já há medições da máquina.</span><button type="button" class="dom-link" data-a="antiga">Tela anterior</button></footer>';
+  }
+  function filaAtual() { return (grupos().g[E.maq] || []).slice(); }
+  function clique(ev) {
+    var mq = ev.target.closest('[data-maq]');
+    if (mq && raiz.contains(mq)) { E.maq = mq.getAttribute('data-maq'); try { localStorage.setItem('ds_ofmaq_maq', E.maq); } catch (_) {} render(); return; }
+    var b = ev.target.closest('[data-a]'); if (!b) return;
+    var a = b.getAttribute('data-a');
+    if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(render); return; }
+    if (a === 'operador') { abrirOperador(); return; }
+    if (a === 'antiga') { E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
+    if (a === 'autoordem') { var l0 = filaAtual(); E.seq[E.maq] = {}; var l1 = ordenar(l0, E.maq); salvarSeq(E.maq, l1); render(); return; }
+    var tr = b.closest('tr[data-id]'); if (!tr) return;
+    var id = tr.getAttribute('data-id'), l = filaAtual(), i = l.findIndex(function (o) { return o.id === id; });
+    if (a === 'sobe' || a === 'desce') {
+      var j = a === 'sobe' ? i - 1 : i + 1; if (i < 0 || j < 0 || j >= l.length) return;
+      var t = l[i]; l[i] = l[j]; l[j] = t; salvarSeq(E.maq, l); render(); return;
+    }
+    if (a === 'menu') { menuOf(b, l[i]); }
+  }
+  function menuOf(btn, o) {
+    fecharMenu();
+    var m = document.createElement('div'); m.id = 'dom-menu';
+    var itens = [['abrir', 'Abrir / editar OF'], ['imprimir', 'Imprimir OF'], ['topo', 'Mover para o topo da fila'], ['passou', 'Passou pela máquina']];
+    m.innerHTML = itens.map(function (x) { return '<button type="button" data-m="' + x[0] + '">' + x[1] + '</button>'; }).join('');
+    document.body.appendChild(m);
+    var r = btn.getBoundingClientRect(); m.style.top = Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px'; m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px';
+    m.addEventListener('click', function (ev) {
+      var x = ev.target.closest('[data-m]'); if (!x) return; var k = x.getAttribute('data-m'); fecharMenu();
+      if (k === 'abrir') { try { window.__dashH.acao(btn, 'alterar', o); } catch (_) {} }
+      if (k === 'imprimir') { try { window.imprimirOF(numOf(o)); } catch (_) {} }
+      if (k === 'passou') { try { window.__dashH.acao(btn, 'passoumaq', o); } catch (_) {} setTimeout(function () { recarregarOfs().then(render); }, 2500); }
+      if (k === 'topo') { var l = filaAtual().filter(function (z) { return z.id !== o.id; }); l.unshift(o); salvarSeq(E.maq, l); render(); }
+    });
+    setTimeout(function () { document.addEventListener('click', fecharMenu, { once: true }); }, 0);
+  }
+  function fecharMenu() { var m = document.getElementById('dom-menu'); if (m) m.remove(); }
+  function ligarArrastar() {
+    var arrastando = null;
+    raiz.addEventListener('dragstart', function (ev) { var tr = ev.target.closest('tr[data-id]'); if (!tr) return; arrastando = tr.getAttribute('data-id'); tr.classList.add('dom-arrastando'); try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', arrastando); } catch (_) {} });
+    raiz.addEventListener('dragover', function (ev) { if (!arrastando) return; var tr = ev.target.closest('tr[data-id]'); if (!tr) return; ev.preventDefault(); raiz.querySelectorAll('.dom-alvo').forEach(function (x) { x.classList.remove('dom-alvo'); }); tr.classList.add('dom-alvo'); });
+    raiz.addEventListener('dragend', function () { arrastando = null; raiz.querySelectorAll('.dom-alvo,.dom-arrastando').forEach(function (x) { x.classList.remove('dom-alvo'); x.classList.remove('dom-arrastando'); }); });
+    raiz.addEventListener('drop', function (ev) {
+      var tr = ev.target.closest('tr[data-id]'); if (!tr || !arrastando) return; ev.preventDefault();
+      var alvo = tr.getAttribute('data-id'); if (alvo === arrastando) return;
+      var l = filaAtual(), o = l.find(function (x) { return x.id === arrastando; }); l = l.filter(function (x) { return x.id !== arrastando; });
+      var j = l.findIndex(function (x) { return x.id === alvo; }); l.splice(j, 0, o); arrastando = null; salvarSeq(E.maq, l); render();
+    });
+  }
+
+  /* ---------- Modo Operador ---------- */
+  var op = null, relogio = null;
+  function abrirOperador() {
+    E.opAberto = true;
+    if (!op) { op = document.createElement('div'); op.id = 'ds-operador'; document.body.appendChild(op); op.addEventListener('click', cliqueOp); }
+    op.hidden = false; document.body.classList.add('ds-op-aberto');
+    carregarApoio(true).then(renderOp); renderOp();
+    if (!relogio) relogio = setInterval(tick, 1000);
+  }
+  function fecharOperador() { E.opAberto = false; if (op) op.hidden = true; document.body.classList.remove('ds-op-aberto'); clearInterval(relogio); relogio = null; render(); }
+  function sessaoDe(maq) { return E.sessoes.filter(function (s) { return s.maquina === maq; })[0] || null; }
+  function decorrido(s) { var ms = Date.now() - new Date(s.inicio).getTime(); var t = Math.max(0, Math.floor(ms / 1000)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); }
+  function tick() { if (!op || op.hidden) return; op.querySelectorAll('[data-relogio]').forEach(function (el) { var s = E.sessoes.find(function (z) { return z.id === el.getAttribute('data-relogio'); }); if (s) el.textContent = decorrido(s); }); }
+  function renderOp() {
+    if (!op) return;
+    var G = grupos();
+    if (!E.opMaq || !G.g[E.opMaq]) {
+      op.innerHTML = '<div class="op-caixa"><header class="op-head"><div><h1>Modo Operador</h1><p>Escolha a máquina em que você está trabalhando</p></div><button type="button" class="op-fechar" data-o="sair">Sair</button></header>'
+        + '<div class="op-maqs">' + G.ord.filter(function (m) { return m !== 'Sem máquina'; }).map(function (m) { var s = sessaoDe(m); return '<button type="button" class="op-maq" data-o="maq" data-maq="' + esc(m) + '"><b>' + esc(m) + '</b><span>' + G.g[m].length + ' OFs na fila</span>' + (s ? '<em>Produzindo OF ' + esc(s.of_numero) + '</em>' : '') + '</button>'; }).join('') + '</div></div>';
+      return;
+    }
+    var m = E.opMaq, l = G.g[m] || [], s = sessaoDe(m);
+    var atual = s ? (ofsBase().find(function (o) { return o.id === s.of_id; }) || null) : null;
+    var fila = l.filter(function (o) { return !s || o.id !== s.of_id; });
+    var bloco = s
+      ? '<section class="op-atual"><span class="op-rot">Produzindo agora</span><div class="op-of">OF ' + esc(s.of_numero) + '</div>'
+        + (atual ? '<div class="op-cli">' + esc(cliOf(atual)) + '</div><div class="op-prod">' + esc(prodOf(atual)) + ' · <b>' + qtdOf(atual).toLocaleString('pt-BR') + ' caixas</b></div>' : '')
+        + '<div class="op-relogio" data-relogio="' + esc(s.id) + '">' + decorrido(s) + '</div>'
+        + '<div class="op-info">Iniciada por ' + esc(s.operador || '') + ' às ' + new Date(s.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (atual ? ' · previsto ' + fmtMin(minutosPrevistos(atual, m)) : '') + '</div>'
+        + '<div class="op-botoes"><button type="button" class="op-btn op-fin" data-o="finalizar" data-s="' + esc(s.id) + '">Finalizar OF</button><button type="button" class="op-btn op-sec" data-o="cancelar" data-s="' + esc(s.id) + '">Cancelar início</button></div></section>'
+      : '<section class="op-atual op-livre"><span class="op-rot">Máquina livre</span><div class="op-info">Toque em <b>Iniciar</b> na próxima OF da fila.</div></section>';
+    op.innerHTML = '<div class="op-caixa"><header class="op-head"><div><h1>' + esc(m) + '</h1><p>Modo Operador</p></div><div class="op-head-b"><button type="button" class="op-fechar" data-o="trocar">Trocar máquina</button><button type="button" class="op-fechar" data-o="sair">Sair</button></div></header>'
+      + bloco
+      + '<h2 class="op-h2">Fila de produção <small>' + fila.length + ' OFs</small></h2><ol class="op-fila">'
+      + fila.map(function (o, i) {
+        var e = entOf(o);
+        return '<li class="' + (i === 0 ? 'op-prox' : '') + '"><div class="op-li-txt"><b>OF ' + esc(numOf(o)) + '</b>' + (urg(o) ? ' <span class="dom-tag t-red">Urgente</span>' : '') + '<span>' + esc(cliOf(o)) + ' · ' + esc(prodOf(o)) + '</span><small>' + qtdOf(o).toLocaleString('pt-BR') + ' caixas · entrega ' + fmtData(e) + ' · previsto ' + fmtMin(minutosPrevistos(o, m)) + '</small></div>'
+          + (s ? '' : '<button type="button" class="op-btn op-ini" data-o="iniciar" data-id="' + esc(o.id) + '">Iniciar</button>') + '</li>';
+      }).join('') + '</ol>' + (fila.length ? '' : '<div class="dom-vazio">Fila vazia.</div>') + '</div>';
+  }
+  function cliqueOp(ev) {
+    var b = ev.target.closest('[data-o]'); if (!b) return;
+    var a = b.getAttribute('data-o');
+    if (a === 'sair') return fecharOperador();
+    if (a === 'trocar') { E.opMaq = ''; try { localStorage.removeItem('ds_operador_maq'); } catch (_) {} return renderOp(); }
+    if (a === 'maq') { E.opMaq = b.getAttribute('data-maq'); try { localStorage.setItem('ds_operador_maq', E.opMaq); } catch (_) {} return renderOp(); }
+    if (a === 'iniciar') {
+      b.disabled = true; b.textContent = 'Iniciando…';
+      req('POST', '/api/operador/iniciar', { of_id: b.getAttribute('data-id'), maquina: E.opMaq })
+        .then(function (s) { E.sessoes.push(s); var o = ofsBase().find(function (x) { return x.id === s.of_id; }); if (o) o.status = 'Em produção'; toast('OF ' + s.of_numero + ' em produção'); renderOp(); recarregarOfs(); })
+        .catch(function (e) { toast('Não foi possível iniciar: ' + e.message, 'var(--red)'); renderOp(); });
+      return;
+    }
+    if (a === 'cancelar') {
+      if (!window.confirm('Cancelar o início desta OF? O tempo marcado será descartado.')) return;
+      var sid = b.getAttribute('data-s');
+      req('POST', '/api/operador/cancelar', { sessao_id: sid }).then(function () { E.sessoes = E.sessoes.filter(function (z) { return z.id !== sid; }); return recarregarOfs(); }).then(renderOp).catch(function (e) { toast(e.message, 'var(--red)'); });
+      return;
+    }
+    if (a === 'finalizar') { pedirQuantidade(b.getAttribute('data-s')); }
+  }
+  function pedirQuantidade(sid) {
+    var s = E.sessoes.find(function (z) { return z.id === sid; }); if (!s) return;
+    var o = ofsBase().find(function (x) { return x.id === s.of_id; });
+    var dlg = document.createElement('div'); dlg.className = 'op-dlg';
+    dlg.innerHTML = '<div class="op-dlg-box"><h3>Finalizar OF ' + esc(s.of_numero) + '</h3><p>Tempo: <b>' + decorrido(s) + '</b></p><label>Caixas feitas nesta máquina<input type="number" inputmode="numeric" min="0" value="' + (o ? qtdOf(o) : '') + '"></label>'
+      + '<div class="op-botoes"><button type="button" class="op-btn op-fin" data-d="ok">Confirmar</button><button type="button" class="op-btn op-sec" data-d="nao">Voltar</button></div></div>';
+    op.appendChild(dlg);
+    var inp = dlg.querySelector('input'); setTimeout(function () { inp.focus(); inp.select(); }, 50);
+    dlg.addEventListener('click', function (ev) {
+      var x = ev.target.closest('[data-d]'); if (!x) return;
+      if (x.getAttribute('data-d') === 'nao') { dlg.remove(); return; }
+      x.disabled = true; x.textContent = 'Salvando…';
+      var qtd = Number(inp.value) || 0;
+      req('POST', '/api/operador/finalizar', { sessao_id: sid, quantidade: qtd })
+        .then(function () { return req('POST', '/api/ofs/' + encodeURIComponent(s.of_id) + '/passou-maquina', { maquina_nome: s.maquina, maquina: s.maquina, quantidade: qtd }); })
+        .then(function () {
+          // próxima máquina do fluxo da OF: a OF entra na fila dela; se era a última, sai das filas (aguarda conclusão)
+          var fluxo = o ? arr(o.fluxo_maquinas).map(nomeMaq).filter(Boolean) : [];
+          if (!fluxo.length && o) fluxo = arr(o.maq).map(nomeMaq).filter(Boolean);
+          var i = fluxo.findIndex(function (x) { return norm(x) === norm(s.maquina); });
+          var prox = i >= 0 ? fluxo[i + 1] : '';
+          var corpo = prox ? { status: 'Em aberto', maquina_atual: prox, passou_maquina: false, maquina_atual_index: i + 1 } : { status: 'Em aberto' };
+          s.__prox = prox;
+          return req('PATCH', '/api/ofs/' + encodeURIComponent(s.of_id), corpo).catch(function () {});
+        })
+        .then(function () {
+          E.sessoes = E.sessoes.filter(function (z) { return z.id !== sid; });
+          dlg.remove(); toast('OF ' + s.of_numero + ' finalizada em ' + s.maquina + (s.__prox ? ' · foi para ' + s.__prox : ' · última etapa concluída'));
+          return recarregarOfs().then(function () { return carregarApoio(true); });
+        })
+        .then(renderOp)
+        .catch(function (e) { x.disabled = false; x.textContent = 'Confirmar'; toast('Erro ao finalizar: ' + e.message, 'var(--red)'); });
+    });
+  }
+
+  /* ---------- ciclo ---------- */
+  var assAnt = '';
+  function assinatura() { var l = ofsBase(); var mx = ''; for (var i = 0; i < l.length; i++) { var u = String(l[i].updated_at || ''); if (u > mx) mx = u; } return l.length + '|' + mx + '|' + E.maq + '|' + E.sessoes.length + '|' + JSON.stringify(E.seq[E.maq] || {}).length; }
+  function ciclo() {
+    try {
+      if (!ativa()) return;
+      var p = page();
+      if (!raiz || !p.contains(raiz)) { raiz = null; montar(); carregarApoio().then(function () { assAnt = ''; ciclo(); }); }
+      else p.classList.toggle('ds-ofmaq-ativa', !E.antiga);
+      var a = assinatura(); if (a !== assAnt) { assAnt = a; render(); }
+    } catch (e) { try { console.warn('[ds-ofmaq]', e); } catch (_) {} }
+  }
+  setInterval(ciclo, 1200);
+  setInterval(function () { if (ativa() || E.opAberto) req('GET', '/api/operador/sessoes').then(function (l) { E.sessoes = l || []; if (E.opAberto) renderOp(); }).catch(function () {}); }, 30000);
+  window.dsOperador = { abrir: abrirOperador };
+
+  var css = ''
+    + '#page-ofmaq.ds-ofmaq-ativa > :not(#ds-ofmaq):not(style):not(script){display:none!important}'
+    + '#page-ofmaq:not(.ds-ofmaq-ativa) > #ds-ofmaq{display:none!important}'
+    + '#ds-ofmaq-voltar{margin:10px 16px;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:600;cursor:pointer}'
+    + '#ds-ofmaq{padding:18px 20px 40px;color:var(--text);font-size:14px}'
+    + '.dom-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}'
+    + '.dom-head h1{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}.dom-head p{margin:3px 0 0;color:var(--text2);font-size:13px}'
+    + '.dom-head-acoes{display:flex;gap:8px}'
+    + '.dom-btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-weight:600;font-size:13px;cursor:pointer}'
+    + '.dom-btn:hover{background:var(--s3)}.dom-btn-pri{background:var(--accent);border-color:var(--accent);color:#fff}.dom-btn-pri:hover{background:var(--accent2)}'
+    + '.dom-maqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px;margin-bottom:18px}'
+    + '.dom-maq{display:flex;flex-direction:column;gap:6px;text-align:left;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;cursor:pointer;min-width:0}'
+    + '.dom-maq:hover{border-color:var(--b2)}.dom-maq.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:color-mix(in srgb,var(--accent) 6%,var(--surface))}'
+    + '.dom-maq-top{display:flex;align-items:center;justify-content:space-between;gap:6px}.dom-maq-top b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.dom-prod{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 25%,transparent);animation:domPulso 1.6s infinite}'
+    + '@keyframes domPulso{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--green) 8%,transparent)}}'
+    + '.dom-maq-num{font-size:22px;font-weight:700;line-height:1}.dom-maq-num small{font-size:12px;font-weight:500;color:var(--text2)}.dom-maq-num em{display:block;font-style:normal;font-size:11.5px;font-weight:600;color:var(--red);margin-top:4px}'
+    + '.dom-barra{height:6px;border-radius:99px;background:var(--s3);overflow:hidden}.dom-barra i{display:block;height:100%;border-radius:99px}'
+    + '.dom-barra i.t-green{background:var(--green)}.dom-barra i.t-yellow{background:var(--yellow)}.dom-barra i.t-red{background:var(--red)}'
+    + '.dom-maq-rod{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:var(--text2)}'
+    + '.dom-maq-rod .t-green{color:var(--green);font-weight:600}.dom-maq-rod .t-yellow{color:var(--yellow);font-weight:600}.dom-maq-rod .t-red{color:var(--red);font-weight:600}'
+    + '.dom-vel{color:var(--text3)}'
+    + '.dom-fila{border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden}'
+    + '.dom-fila-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}'
+    + '.dom-fila-head h2{margin:0;font-size:15px;font-weight:700}.dom-fila-head h2 small{font-weight:500;color:var(--text2);font-size:12.5px;margin-left:6px}'
+    + '.dom-tabela-wrap{overflow:auto}'
+    + '.dom-tabela{width:100%;border-collapse:collapse}.dom-tabela th{text-align:left;font-size:12px;font-weight:600;color:var(--text2);padding:9px 10px;border-bottom:1px solid var(--border);background:var(--s2);white-space:nowrap;text-transform:none}'
+    + '.dom-tabela td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}.dom-tabela tr:last-child td{border-bottom:0}'
+    + '.dom-tabela tbody tr:hover td{background:var(--s2)}.dom-tabela tr.dom-em-prod td{background:color-mix(in srgb,var(--green) 7%,transparent)}'
+    + '.dom-tabela tr.dom-alvo td{box-shadow:inset 0 2px 0 var(--accent)}.dom-tabela tr.dom-arrastando{opacity:.45}'
+    + '.dom-c-pos{white-space:nowrap;color:var(--text2);width:56px}.dom-alca{cursor:grab;color:var(--text3);margin-right:6px;letter-spacing:-2px}'
+    + '.dom-c-of b{font-size:14px}.dom-c-cli span{display:block;font-weight:600;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dom-c-cli small{display:block;color:var(--text2);font-size:12px;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.dom-c-num{text-align:right!important;white-space:nowrap;font-variant-numeric:tabular-nums}.dom-c-num small{display:block;color:var(--text3);font-size:11px}'
+    + '.dom-c-ent{white-space:nowrap}.dom-c-ent.t-red{color:var(--red);font-weight:600}'
+    + '.dom-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:99px;font-size:10.5px;font-weight:700}.dom-tag.t-red{background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red)}'
+    + '.dom-chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--s3);color:var(--text2);white-space:nowrap}.dom-chip.prod{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);font-weight:600}'
+    + '.dom-c-acao{white-space:nowrap;text-align:right}.dom-c-acao button{width:28px;height:28px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--text2);cursor:pointer;font:inherit}.dom-c-acao button:hover{background:var(--s3);color:var(--text);border-color:var(--border)}'
+    + '.dom-vazio{padding:30px;text-align:center;color:var(--text3)}'
+    + '.dom-rod{display:flex;justify-content:space-between;gap:10px;margin-top:10px;color:var(--text3);font-size:12px;flex-wrap:wrap}.dom-link{background:none;border:0;color:var(--text2);text-decoration:underline;cursor:pointer;font:inherit;font-size:12px}'
+    + '#dom-menu{position:fixed;z-index:9999;min-width:210px;padding:5px;border-radius:10px;border:1px solid var(--border);background:var(--surface);box-shadow:0 12px 32px rgba(0,0,0,.35)}#dom-menu button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer}#dom-menu button:hover{background:var(--s3)}'
+    + '@media (max-width:768px){#ds-ofmaq{padding:12px 12px 110px}.dom-maqs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dom-maq{padding:10px}.dom-maq-num{font-size:19px}'
+    + '.dom-tabela thead{display:none}.dom-tabela,.dom-tabela tbody{display:block}.dom-tabela tr{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"pos of acao" "cli cli cli" "qtd ent tempo" "st st st";gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}'
+    + '.dom-tabela td{display:block;padding:0;border:0!important}.dom-c-pos{grid-area:pos;width:auto}.dom-c-of{grid-area:of}.dom-c-cli{grid-area:cli}.dom-c-cli span,.dom-c-cli small{max-width:none}.dom-tabela td:nth-child(4){grid-area:qtd;text-align:left!important}.dom-c-ent{grid-area:ent}.dom-tabela td:nth-child(6){grid-area:tempo}.dom-c-st{grid-area:st}.dom-c-acao{grid-area:acao}.dom-tabela td::before{content:none!important}'
+    + '.dom-head-acoes{width:100%}.dom-head-acoes .dom-btn{flex:1;height:42px}}'
+    /* modo operador */
+    + '#ds-operador{position:fixed;inset:0;z-index:9800;background:var(--bg);overflow:auto;color:var(--text)}#ds-operador[hidden]{display:none}'
+    + 'body.ds-op-aberto{overflow:hidden}'
+    + '.op-caixa{max-width:900px;margin:0 auto;padding:20px 18px 60px}'
+    + '.op-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px}.op-head h1{margin:0;font-size:24px;font-weight:700}.op-head p{margin:2px 0 0;color:var(--text2)}.op-head-b{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}'
+    + '.op-fechar{height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-weight:600;cursor:pointer}'
+    + '.op-maqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}'
+    + '.op-maq{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;cursor:pointer;text-align:left}.op-maq:hover{border-color:var(--accent)}.op-maq b{font-size:20px}.op-maq span{color:var(--text2)}.op-maq em{font-style:normal;color:var(--green);font-weight:600;font-size:13px}'
+    + '.op-atual{border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:22px;text-align:center;margin-bottom:22px}'
+    + '.op-atual:not(.op-livre){border-color:color-mix(in srgb,var(--green) 55%,var(--border));box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent) inset}'
+    + '.op-rot{display:inline-block;font-size:12px;font-weight:700;color:var(--green);text-transform:none;margin-bottom:6px}.op-livre .op-rot{color:var(--text2)}'
+    + '.op-of{font-size:30px;font-weight:800}.op-cli{font-size:17px;font-weight:600;margin-top:4px}.op-prod{color:var(--text2);margin-top:2px}'
+    + '.op-relogio{font-size:56px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin:14px 0 4px}'
+    + '.op-info{color:var(--text2);font-size:13.5px}'
+    + '.op-botoes{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}'
+    + '.op-btn{min-height:48px;padding:0 22px;border-radius:12px;border:1px solid transparent;font:inherit;font-size:16px;font-weight:700;cursor:pointer}.op-btn:disabled{opacity:.6;cursor:default}'
+    + '.op-fin{background:var(--green);color:#fff}.op-ini{background:var(--accent);color:#fff;min-height:44px;font-size:15px}.op-sec{background:transparent;border-color:var(--b2);color:var(--text)}'
+    + '.op-h2{font-size:16px;font-weight:700;margin:0 0 10px}.op-h2 small{color:var(--text2);font-weight:500;font-size:13px}'
+    + '.op-fila{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}'
+    + '.op-fila li{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--surface)}.op-fila li.op-prox{border-color:var(--accent)}'
+    + '.op-li-txt{flex:1;min-width:0}.op-li-txt b{font-size:16px}.op-li-txt span{display:block;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.op-li-txt small{display:block;color:var(--text2);margin-top:2px}'
+    + '.op-dlg{position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.op-dlg-box{width:min(420px,100%);background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center}.op-dlg-box h3{margin:0 0 6px;font-size:19px}.op-dlg-box p{margin:0 0 14px;color:var(--text2)}'
+    + '.op-dlg-box label{display:block;text-align:left;font-size:13px;font-weight:600;color:var(--text2)}.op-dlg-box input{display:block;width:100%;box-sizing:border-box;margin-top:6px;height:52px;border-radius:10px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:22px;font-weight:700;text-align:center}'
+    + '@media (max-width:600px){.op-relogio{font-size:44px}.op-of{font-size:26px}.op-fila li{flex-wrap:wrap}.op-ini{width:100%}}';
+  try { var st = document.createElement('style'); st.id = 'ds-ofmaq-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
