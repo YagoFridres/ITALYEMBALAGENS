@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026104500';
-const SW_RUNTIME_VERSION = '20261026104500';
+const PATCH_RUNTIME_VERSION = '20261026110000';
+const SW_RUNTIME_VERSION = '20261026110000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -7038,9 +7038,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         if (_dupBody.confirmarDuplicata === true || _dupBody.confirmar_duplicata === true || String(_dupBody.confirmarDuplicata || _dupBody.confirmar_duplicata || '').trim().toLowerCase() === 'true' || _dupBody.forcar === true || String(_dupBody.forcar || '').toLowerCase() === 'true') confirmarDup = true;
       } catch (_) { confirmarDup = false; }
       if (!confirmarDup && !req.params.id) {
-        var _dupCliId = String(merged && merged.cli_id != null ? merged.cli_id : (filtered.cli_id || '')).trim();
-        var _dupProd = String(merged && merged.produto != null ? merged.produto : (merged.descricao || filtered.descricao || filtered.produto || '')).trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/s+/g,' ').toLowerCase();
-        var _dupQtd = Math.trunc(Number(merged && merged.qtd != null ? (Number(merged.qtd)||0) : (Number(merged.quantidade) || Number(filtered.qtd) || Number(filtered.quantidade) || 0)) || 0);
+        var _dupM = _dupBody; // 'merged' não existe neste escopo (antes: ReferenceError → anti-duplicata nunca rodava)
+        var _dupCliId = String(_dupM && _dupM.cli_id != null ? _dupM.cli_id : (filtered.cli_id || '')).trim();
+        var _dupProd = String(_dupM && _dupM.produto != null ? _dupM.produto : (_dupM.descricao || filtered.descricao || filtered.produto || '')).trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').toLowerCase();
+        var _dupQtd = Math.trunc(Number(_dupM && _dupM.qtd != null ? (Number(_dupM.qtd)||0) : (Number(_dupM.quantidade) || Number(filtered.qtd) || Number(filtered.quantidade) || 0)) || 0);
         var _dupEmpresa = String(filtered.empresa_id || empresaUuid || '').trim();
         if (_dupCliId && _dupProd && _dupQtd > 0 && _dupEmpresa) {
           var _dupCorteIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
@@ -7056,7 +7057,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           var _dupMatches = [];
           if (_dupRes && !_dupRes.error && Array.isArray(_dupRes.data)) {
             _dupRes.data.forEach(function (o) {
-              var pA = String(o.produto || o.descricao || '').trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/s+/g,' ').toLowerCase();
+              var pA = String(o.produto || o.descricao || '').trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').toLowerCase();
               var pB = _dupProd;
               if (pA !== pB) return;
               var q1 = Math.trunc(Number(o.qtd || o.quantidade || 0) || 0);
@@ -14310,8 +14311,8 @@ async function _calcularAggMaquinasComDistinctOf(req, passagensRows) {
       if (!ofQtdCol) selectCols.push('quantidade', 'qtd');
       const safeSelect = _filterColsForTable ? _filterColsForTable('ofs', Array.from(new Set(selectCols)).join(',')) : Array.from(new Set(selectCols)).join(',');
       if (idsArr.length) {
-        for (let i = 0; i < idsArr.length; i += 900) {
-          const chunk = idsArr.slice(i, i + 900);
+        for (let i = 0; i < idsArr.length; i += 150) {
+          const chunk = idsArr.slice(i, i + 150);
           const r = await supabase.from('ofs').select(safeSelect).in('id', chunk).limit(900);
           if (r?.error) console.warn('[agg-distinct-of] ids chunk erro:', String(r.error.message || r.error).slice(0,120));
           const arr = Array.isArray(r?.data) ? r.data : [];
