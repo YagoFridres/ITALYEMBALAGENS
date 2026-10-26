@@ -28267,14 +28267,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       purgeLegacyViews();
       var rootEl = shell.root || getContainer();
       if (!rootEl) return;
-      var oldWrap = rootEl.querySelector('.ofmaq-final-table-wrap');
+      // Só a tabela da visão "máquina única" (fora dos blocos do "Ver Todas"). Antes pegava a 1ª tabela
+      // de qualquer lugar e, como o cabeçalho tem 16 colunas (não 15), apagava a tabela da 1ª máquina
+      // no "Ver Todas" (IMP 01 aparecia sem nenhuma OF).
+      var oldWrap = null;
+      Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-table-wrap')).forEach(function(w) {
+        if (!oldWrap && !(w.closest && w.closest('.ofmaq-final-machine-blocks'))) oldWrap = w;
+      });
       if (oldWrap) {
         var curThs = oldWrap.querySelectorAll('table thead th');
         var temPapelCol = false;
         for (var _i = 0; _i < curThs.length; _i++) {
           if (String(curThs[_i].textContent || '').trim().indexOf('Papel / Previsão') >= 0) { temPapelCol = true; break; }
         }
-        if (!temPapelCol || curThs.length !== 15) { try { oldWrap.remove(); } catch (_e) {} oldWrap = null; }
+        if (!temPapelCol || curThs.length !== 16) { try { oldWrap.remove(); } catch (_e) {} oldWrap = null; }
       }
       var rows = sortedVisibleRows(currentVisibleRows());
       var curStableKey = typeof _stableKeyOfState === 'function' ? _stableKeyOfState(state) : null;
@@ -28345,6 +28351,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!order.length) {
           blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="16" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
         } else {
+          // Remove o aviso "Sem dados" que sobra de um filtro anterior sem resultados.
+          Array.prototype.slice.call(blocks.children).forEach(function(ch) {
+            if (!(ch.matches && ch.matches('section[data-maquina-bloco]'))) { try { ch.remove(); } catch (_) {} }
+          });
           var frag = document.createDocumentFragment();
           for (var _om = 0; _om < order.length; _om++) {
             var maq = order[_om];
@@ -28370,6 +28380,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
                 + '  <div class="ofmaq-final-table-wrap">'
                 + '    <table class="ofmaq-final-table">' + theadFixed + '<tbody></tbody></table>'
                 + '  </div>';
+            }
+            if (!sectionEl.querySelector('.ofmaq-final-table-wrap')) {
+              var _tw = document.createElement('div');
+              _tw.className = 'ofmaq-final-table-wrap';
+              _tw.innerHTML = '<table class="ofmaq-final-table">' + theadFixed + '<tbody></tbody></table>';
+              sectionEl.appendChild(_tw);
             }
             var h3El = sectionEl.querySelector('.ofmaq-maq-h');
             if (h3El) h3El.textContent = maq;
