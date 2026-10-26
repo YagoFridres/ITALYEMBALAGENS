@@ -69676,3 +69676,37 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 })();
 /* A página inteira nunca rola para o lado (Jarvis/gavetas deslocavam o menu lateral para fora da tela). */
 (function () { var st = document.createElement('style'); st.textContent = 'html,body{overflow-x:hidden!important}'; (document.head || document.documentElement).appendChild(st); })();
+
+;(function __pcpMobileCardsCompactos(){
+  // Celular: cada OF do PCP vira um card compacto (Nº OF + status, cliente, entrega/qtd/total,
+  // só as máquinas usadas e as ações numa linha) em vez de um "quadradão" com um campo por linha.
+  try { if (window.__pcpMobileCardsCompactos) return; window.__pcpMobileCardsCompactos = true; } catch (_) {}
+  var R = 'html body.is-mobile #page-pcp table.pcp-table > tbody > tr';
+  var css = ''
+    + R + '{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px 10px!important;padding:10px 12px!important;margin:0 0 8px!important;border-radius:12px!important;border:1px solid rgba(148,163,184,.22)!important;background:var(--surface,rgba(15,23,42,.6))!important;min-height:0!important;height:auto!important}'
+    + R + ' > td{display:block!important;border:none!important;padding:0!important;margin:0!important;width:auto!important;min-width:0!important;max-width:100%!important;text-align:left!important;background:transparent!important;font-size:13px!important;line-height:1.3!important;min-height:0!important;height:auto!important}'
+    + R + ' > td::before{display:none!important;content:none!important}'
+    + R + ' > td[data-label="SEQ"],' + R + ' > td[data-label="DIA PEDIDO"],' + R + ' > td[data-label="IMG"],' + R + ' > td[data-label="VL. UNIT."]{display:none!important}'
+    + R + ' > td:first-child{order:0!important;flex:0 0 auto!important}'
+    + R + ' > td[data-label="Nº OF"]{order:1!important;flex:1 1 0!important;font-size:15px!important;font-weight:800!important}'
+    + R + ' > td[data-label="Nº OF"] br{display:none!important}'
+    + R + ' > td[data-label="Nº OF"] span[title]{display:inline!important;margin-left:8px!important;font-weight:400!important;max-width:none!important;font-size:11px!important}'
+    + R + ' > td[data-label="STATUS"]{order:2!important;flex:0 0 auto!important}'
+    + R + ' > td[data-label="CLIENTE"]{order:3!important;flex:1 1 100%!important;font-weight:700!important;font-size:14px!important;white-space:normal!important}'
+    + R + ' > td[data-label="VENDEDOR"]{order:4!important;flex:1 1 100%!important;font-size:11px!important;opacity:.7!important;margin-top:-4px!important}'
+    + R + ' > td[data-label="ENTREGA"],' + R + ' > td[data-label="QUANTIDADE"],' + R + ' > td[data-label="TOTAL"]{order:5!important;flex:1 1 28%!important;padding:6px 8px!important;border-radius:8px!important;background:rgba(148,163,184,.08)!important;font-weight:700!important;white-space:nowrap!important}'
+    + R + ' > td[data-label="ENTREGA"]::before,' + R + ' > td[data-label="QUANTIDADE"]::before,' + R + ' > td[data-label="TOTAL"]::before{display:block!important;content:attr(data-label)!important;font-size:9.5px!important;letter-spacing:.06em!important;opacity:.6!important;font-weight:700!important;text-transform:uppercase!important;margin-bottom:2px!important}'
+    + R + ' > td[data-label="QUANTIDADE"]::before{content:"QTD"!important}'
+    + R + ' > td.tc:empty,' + R + ' > td:empty{display:none!important}'
+    + R + ' > td[data-label^="IMP"],' + R + ' > td[data-label="CORTE VINCO ROTATIVA"],' + R + ' > td[data-label="Riscador"]{order:6!important;flex:0 0 auto!important}'
+    + R + ' > td[data-label="AÇÕES"]{order:7!important;flex:1 1 100%!important;display:flex!important;flex-wrap:wrap!important;gap:6px!important;padding-top:6px!important;border-top:1px solid rgba(148,163,184,.15)!important}'
+    + R + ' > td[data-label="AÇÕES"] button{min-height:34px!important;min-width:38px!important;margin:0!important}';
+  function inject(){
+    try {
+      if (document.getElementById('pcp-mobile-cards-css')) return;
+      var st = document.createElement('style'); st.id = 'pcp-mobile-cards-css'; st.textContent = css;
+      (document.head || document.documentElement).appendChild(st);
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject); else inject();
+})();
