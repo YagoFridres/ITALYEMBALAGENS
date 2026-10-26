@@ -14722,13 +14722,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           id: modalId,
           titulo: 'Salvar Orçamento',
           subtitulo: 'Escolha quais ondas (B, C, BC) gravar antes de salvar.',
-          largura: '520px',
-          hero: 'Salvar',
+          largura: '420px',
+          hero: '💾',
           bodyHtml: ''
             + '<div style="display:grid;gap:12px">'
-            + '  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + modalId + '-b"' + (current.indexOf('B') >= 0 ? ' checked' : '') + '> <span>Onda B</span></label>'
-            + '  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + modalId + '-c"' + (current.indexOf('C') >= 0 ? ' checked' : '') + '> <span>Onda C</span></label>'
-            + '  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + modalId + '-bc"' + (current.indexOf('BC') >= 0 ? ' checked' : '') + '> <span>Onda BC</span></label>'
+            + '  <label style="display:flex!important;flex-direction:row!important;gap:12px;align-items:center;justify-content:flex-start;padding:12px 14px;border:1px solid rgba(148,163,184,.25);border-radius:10px;cursor:pointer;font-weight:700;margin:0"><input type="checkbox" style="width:20px!important;height:20px!important;flex:0 0 20px!important;margin:0!important;accent-color:#55A4AD" id="' + modalId + '-b"' + (current.indexOf('B') >= 0 ? ' checked' : '') + '> <span>Onda B</span></label>'
+            + '  <label style="display:flex!important;flex-direction:row!important;gap:12px;align-items:center;justify-content:flex-start;padding:12px 14px;border:1px solid rgba(148,163,184,.25);border-radius:10px;cursor:pointer;font-weight:700;margin:0"><input type="checkbox" style="width:20px!important;height:20px!important;flex:0 0 20px!important;margin:0!important;accent-color:#55A4AD" id="' + modalId + '-c"' + (current.indexOf('C') >= 0 ? ' checked' : '') + '> <span>Onda C</span></label>'
+            + '  <label style="display:flex!important;flex-direction:row!important;gap:12px;align-items:center;justify-content:flex-start;padding:12px 14px;border:1px solid rgba(148,163,184,.25);border-radius:10px;cursor:pointer;font-weight:700;margin:0"><input type="checkbox" style="width:20px!important;height:20px!important;flex:0 0 20px!important;margin:0!important;accent-color:#55A4AD" id="' + modalId + '-bc"' + (current.indexOf('BC') >= 0 ? ' checked' : '') + '> <span>Onda BC</span></label>'
             + '</div>',
           footerHtml: ''
             + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button>'
@@ -69858,4 +69858,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return true;
   }
   if (!instalar()) { var n = 0; var t = setInterval(function(){ if (instalar() || ++n > 40) clearInterval(t); }, 250); }
+})();
+
+;(function __relogioSemErro(){
+  // O relógio do topo (index.html startClock) quebra a cada segundo se #clock sumir do DOM.
+  setInterval(function(){
+    try {
+      if (document.getElementById('clock')) return;
+      var c = document.createElement('div'); c.id = 'clock'; c.className = 'clock'; c.style.display = 'none';
+      (document.querySelector('.topbar') || document.body).appendChild(c);
+    } catch (_) {}
+  }, 900);
 })();
