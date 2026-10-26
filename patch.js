@@ -70568,6 +70568,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } else if (sb.lastElementChild !== document.getElementById('ds-recolher')) sb.appendChild(document.getElementById('ds-recolher'));
   }
   function paginaAtual() {
+    // áreas que desenham por cima de outra página (Relatórios, Entradas, Saídas, Operadores…) só aparecem em _PAGE_ATUAL
+    try { var pa = String(window._PAGE_ATUAL || '').trim(); if (pa && (ITENS[pa] || document.getElementById('page-' + pa))) return pa; } catch (_) {}
     var a = document.querySelector('.page.active');
     if (a && a.id) return a.id.replace(/^page-/, '');
     var vis = Array.prototype.find.call(document.querySelectorAll('[id^="page-"]'), function (p) { return p.offsetParent !== null && p.style.display !== 'none'; });
@@ -70576,7 +70578,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var ultimaPg = null;
   function sincronizar() {
     var pg = paginaAtual();
-    var chave = CENTRAL.indexOf(pg) >= 0 ? 'pcp' : pg;
+    var chave = CENTRAL.indexOf(pg) >= 0 ? 'pcp' : (pg === 'compras' ? '@papelao' : pg);
     var sb = document.querySelector('.sidebar');
     // título no cabeçalho
     var tb = document.querySelector('.topbar');
@@ -72436,4 +72438,17 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.alx-tab thead{display:none}.alx-tab,.alx-tab tbody{display:block}.alx-tab tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px;border-bottom:1px solid var(--border)}.alx-tab td{display:block;padding:0;border:0}.alx-tab td::before{content:none!important}.alx-ac{grid-column:1 / -1;text-align:left}.alx-ac button{margin:4px 6px 0 0}.alx-n{text-align:right}'
     + '.alx-grid{grid-template-columns:1fr}.alx-its-head{display:none}.alx-it{grid-template-columns:1fr 1fr 34px;grid-template-areas:"d d d" "q u rm" "v s s";padding:10px;border:1px solid var(--border);border-radius:10px}.alx-it [data-k=descricao]{grid-area:d}.alx-q{grid-area:q}.alx-u{grid-area:u}.alx-v{grid-area:v}.alx-sub{grid-area:s}.alx-rm{grid-area:rm}.alx-tot label{width:100%}.alx-modal{padding:14px}.alx-modal footer .alx-btn{flex:1;height:44px}}';
   try { var st = document.createElement('style'); st.id = 'ds-almox-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
+
+/* Entradas / Saídas de chapas: botões no visual novo (o primeiro azul, os demais neutros) */
+(function () {
+  try {
+    if (document.getElementById('ds-estoque-acoes')) return;
+    var st = document.createElement('style'); st.id = 'ds-estoque-acoes';
+    st.textContent = 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn{background:var(--s2)!important;background-image:none!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:none!important;min-height:40px!important;border-radius:9px!important;font-weight:600!important}'
+      + 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn:hover{background:var(--s3)!important;border-color:var(--b2)!important}'
+      + 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn:first-child{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+      + 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn:first-child:hover{background:var(--accent2)!important}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
 })();
