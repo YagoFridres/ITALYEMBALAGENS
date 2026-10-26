@@ -69210,3 +69210,66 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   st.textContent = css;
   (document.head || document.documentElement).appendChild(st);
 })();
+
+/* ===== ERP 2.0 — VISUAL NOVO (só com a chave de teste data-ui="2") =====
+ * Ativar: abrir o sistema com ?ui=2 no endereço. Voltar ao visual atual: ?ui=1.
+ * Identidade: Archivo (títulos/números) + Source Sans 3 (texto); petróleo #1E4D57, teal #55A4AD,
+ * verde #A8CF4E, kraft #C9A47E. Elemento-assinatura: a "onda" de papelão ondulado em kraft sob os
+ * títulos e no item de menu ativo. Só aparência: nenhum campo, botão ou regra muda. */
+(function () {
+  try {
+    var q = new URLSearchParams(location.search).get('ui');
+    if (q === '2') localStorage.setItem('erp_ui', '2');
+    if (q === '1') localStorage.removeItem('erp_ui');
+  } catch (_) {}
+  var ativo = false;
+  try { ativo = localStorage.getItem('erp_ui') === '2'; } catch (_) {}
+  if (!ativo) return;
+  document.documentElement.setAttribute('data-ui', '2');
+  if (!document.getElementById('erp-ui2-fonts')) {
+    var l = document.createElement('link');
+    l.id = 'erp-ui2-fonts'; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87.5,500;87.5,600;87.5,700;87.5,800&family=Source+Sans+3:wght@400;500;600;700&display=swap';
+    document.head.appendChild(l);
+  }
+  // onda de papelão ondulado (flauta) em kraft, desenhada em SVG
+  var onda = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='6' viewBox='0 0 16 6'%3E%3Cpath d='M0 3 Q4 0 8 3 T16 3' fill='none' stroke='%23C9A47E' stroke-width='1.6'/%3E%3C/svg%3E\")";
+  var R = 'html[data-ui="2"]';
+  var css = ''
+    + R + '{--petroleo:#1E4D57;--teal:#55A4AD;--verde:#A8CF4E;--kraft:#C9A47E;'
+    + '--bg:#0E2227;--surface:#15323A;--border:#2A4A52;--text:#E8F0EF;--text2:#A9BEC0;--text3:#6F8C90;'
+    + '--accent:#55A4AD;--accent2:#3F8A93;--green:#A8CF4E;--orange:#C9A47E;--yellow:#D9B56B;--red:#E0665A;'
+    + '--font:"Source Sans 3",system-ui,sans-serif;--shadow:none}'
+    + R + ' body{background:var(--bg)!important;color:var(--text);font-family:var(--font)!important;letter-spacing:0}'
+    + R + ' h1,' + R + ' h2,' + R + ' h3,' + R + ' .page-title,' + R + ' .section-title{font-family:"Archivo",var(--font)!important;font-stretch:87.5%;font-weight:700;letter-spacing:-.01em}'
+    // assinatura: onda kraft sob o título principal de cada tela
+    + R + ' .page.active > h1:first-of-type,' + R + ' .page.active h2:first-of-type{padding-bottom:10px;background:' + onda + ' left bottom / 16px 6px repeat-x;background-size:16px 6px;background-repeat:repeat-x;background-position:left bottom;max-width:max-content;padding-right:24px}'
+    // topo e menu lateral
+    + R + ' .topbar{background:#0B1C20!important;border-bottom:1px solid var(--border)!important;box-shadow:none!important;backdrop-filter:none!important}'
+    + R + ' .sidebar{background:#0B1C20!important;border-right:1px solid var(--border)!important}'
+    + R + ' .sidebar .nav-item{border-radius:6px!important;color:var(--text2)!important;font-weight:500}'
+    + R + ' .sidebar .nav-item:hover{background:rgba(85,164,173,.10)!important;color:var(--text)!important}'
+    + R + ' .sidebar .nav-item.active{background:var(--petroleo)!important;color:#fff!important;border:none!important;box-shadow:inset 0 -3px 0 0 transparent;background-image:' + onda + '!important;background-repeat:repeat-x!important;background-position:left bottom!important;background-size:16px 6px!important}'
+    + R + ' .nav-group-header{font-family:"Archivo",var(--font)!important;font-stretch:87.5%;letter-spacing:.02em!important;color:var(--text3)!important}'
+    // botões discretos, levemente arredondados
+    + R + ' .btn,' + R + ' button.btn{border-radius:6px!important;font-family:"Archivo",var(--font)!important;font-stretch:87.5%;font-weight:600!important;box-shadow:none!important;background-image:none}'
+    + R + ' .btn-accent,' + R + ' .btn-primary{background:var(--teal)!important;color:#08262B!important;border-color:var(--teal)!important}'
+    + R + ' .btn-ghost{background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important}'
+    // campos
+    + R + ' input,' + R + ' select,' + R + ' textarea{border-radius:6px!important;font-family:var(--font)!important}'
+    + R + ' input:focus,' + R + ' select:focus,' + R + ' textarea:focus{outline:2px solid var(--teal)!important;outline-offset:1px}'
+    + R + ' :focus-visible{outline:2px solid var(--teal)!important;outline-offset:2px}'
+    // tabelas
+    + R + ' table thead th{background:#12292F!important;color:var(--text2)!important;font-family:"Archivo",var(--font)!important;font-stretch:87.5%;font-weight:600!important;letter-spacing:.01em!important;text-transform:none!important;border-bottom:1px solid var(--border)!important}'
+    + R + ' table tbody tr:hover td{background:rgba(85,164,173,.06)!important}'
+    + R + ' td{font-variant-numeric:tabular-nums}'
+    // números de destaque (cartões de resumo)
+    + R + ' [class*="stat"] b,' + R + ' [class*="kpi"] b,' + R + ' [class*="card"] .val,' + R + ' [class*="card"] .value{font-family:"Archivo",var(--font)!important;font-stretch:87.5%}'
+    + '@media (prefers-reduced-motion: reduce){' + R + ' *{transition:none!important;animation:none!important}}';
+  var st = document.createElement('style');
+  st.id = 'erp-ui2-css';
+  st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+  // garante que fique por último (depois de estilos injetados mais tarde pelo patch)
+  setTimeout(function () { try { document.head.appendChild(st); } catch (_) {} }, 3000);
+})();
