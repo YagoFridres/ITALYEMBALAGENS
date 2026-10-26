@@ -69177,3 +69177,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setTimeout(instalar, 1500);
   setTimeout(instalar, 5000);
 })();
+
+/* ===== MOBILE-HEADER-FIX (26/10/2026): cabeçalho do celular não sobrepõe mais o conteúdo ===== */
+(function () {
+  if (document.getElementById('mobile-header-fix-css')) return;
+  var css = ''
+    + '@media (max-width: 900px){'
+    + 'body.is-mobile .topbar,body[data-device="mobile"] .topbar{height:auto!important;min-height:52px!important;max-height:none!important;flex-wrap:wrap!important;row-gap:6px!important;padding:6px 10px!important;overflow:visible!important}'
+    + 'body.is-mobile .topbar #gsearch-wrap,body[data-device="mobile"] .topbar #gsearch-wrap{flex:1 1 100%!important;order:5;min-width:0!important}'
+    + 'body.is-mobile .topbar #gsearch-wrap input,body[data-device="mobile"] .topbar #gsearch-wrap input{width:100%!important;min-height:40px;font-size:16px!important}'
+    + 'body.is-mobile #btn-instalar-app,body[data-device="mobile"] #btn-instalar-app{display:none!important}'
+    + 'body.is-mobile .content,body[data-device="mobile"] .content{padding-bottom:calc(80px + env(safe-area-inset-bottom))!important}'
+    + '}';
+  var st = document.createElement('style');
+  st.id = 'mobile-header-fix-css';
+  st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+})();
