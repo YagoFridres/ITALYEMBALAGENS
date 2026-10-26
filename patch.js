@@ -33098,7 +33098,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
       } catch (_) {}
     }
+    var __tickMenusUlt = 0, __tickMenusTimer = null;
     function tickMenus() {
+      // desempenho: no máximo uma varredura a cada 2 s (antes rodava a cada alteração da página)
+      var agora = Date.now();
+      if (agora - __tickMenusUlt < 2000) {
+        if (!__tickMenusTimer) __tickMenusTimer = setTimeout(function () { __tickMenusTimer = null; tickMenus(); }, 2000 - (agora - __tickMenusUlt));
+        return;
+      }
+      __tickMenusUlt = agora;
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
       try { _patchGoPapelaoBlockV4(); } catch (_) {}
@@ -58429,10 +58437,9 @@ function _ocultarGraficoComissoes() {
       if (sec && sec.offsetParent !== null) return true;
     } catch (_) {}
     try {
-      var el = Array.from(document.querySelectorAll('*')).find(function(e) {
-        return e && String(e.textContent || '').indexOf('Comissão por Vendedor') >= 0 && e.offsetParent !== null;
-      });
-      if (el) return true;
+      // desempenho: a busca antiga lia o texto de TODOS os elementos da página (muito lenta)
+      var el = document.getElementById('_com_topo_v3');
+      if (el && el.offsetParent !== null) return true;
     } catch (_) {}
     return false;
   }
@@ -66267,14 +66274,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           if (ths && ths.length >= 4) return;
         }
       }
-      var todos = document.querySelectorAll('body *');
+      // desempenho: antes lia innerText de TODOS os elementos (forçava recálculo de layout, ~3s)
+      if (String(document.body && document.body.textContent || '').indexOf('Carregando amostras') < 0) return;
+      var todos = [];
+      try {
+        var tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null), nt;
+        while ((nt = tw.nextNode())) { if (nt.nodeValue.indexOf('Carregando amostras') >= 0 && nt.parentElement && todos.indexOf(nt.parentElement) < 0) todos.push(nt.parentElement); }
+      } catch (_) {}
       for (var i = 0; i < todos.length; i++) {
         var el = todos[i];
         var tag = (el.tagName || '').toUpperCase();
         if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE') continue;
         var filhos = el.children || [];
         if (filhos && filhos.length) continue;
-        var txt = (el.innerText || el.textContent || '').trim();
+        var txt = (el.textContent || '').trim();
         if (!txt || txt.length > 120) continue;
         var contem = txt.indexOf('Carregando amostras') >= 0;
         if (!contem) continue;
