@@ -8837,13 +8837,18 @@ window._compraPapelaoForceFullscreenShell = function(overlay) {
   var footer = shell && shell.querySelector('.ccpx-fs-footer');
   var isMobile = false;
   try { isMobile = window.matchMedia && window.matchMedia('(max-width: 920px)').matches; } catch (_) {}
+  // Com o "zoom da interface" (Configurações) o body fica com zoom < 1 e 100vw/100vh encolhem junto;
+  // por isso mede a janela real e divide pelo zoom.
+  var _uiz = 1;
+  try { _uiz = parseFloat(getComputedStyle(document.body).zoom) || 1; } catch (_) { _uiz = 1; }
+  var _W = Math.round(window.innerWidth / _uiz), _H = Math.round(window.innerHeight / _uiz);
   try {
     overlay.style.setProperty('position', 'fixed', 'important');
     overlay.style.setProperty('inset', '0', 'important');
-    overlay.style.setProperty('width', '100vw', 'important');
-    overlay.style.setProperty('height', '100vh', 'important');
-    overlay.style.setProperty('max-width', '100vw', 'important');
-    overlay.style.setProperty('max-height', '100vh', 'important');
+    overlay.style.setProperty('width', _W + 'px', 'important');
+    overlay.style.setProperty('height', _H + 'px', 'important');
+    overlay.style.setProperty('max-width', 'none', 'important');
+    overlay.style.setProperty('max-height', 'none', 'important');
     overlay.style.setProperty('padding', isMobile ? '0' : '18px', 'important');
     overlay.style.setProperty('margin', '0', 'important');
     overlay.style.setProperty('display', 'flex', 'important');
@@ -8853,10 +8858,10 @@ window._compraPapelaoForceFullscreenShell = function(overlay) {
   } catch (_) {}
   try {
     if (shell) {
-      shell.style.setProperty('width', isMobile ? '100vw' : 'min(1680px, calc(100vw - 36px))', 'important');
-      shell.style.setProperty('height', isMobile ? '100vh' : 'min(94vh, 1180px)', 'important');
-      shell.style.setProperty('max-width', isMobile ? '100vw' : '1680px', 'important');
-      shell.style.setProperty('max-height', '94vh', 'important');
+      shell.style.setProperty('width', isMobile ? (_W + 'px') : (Math.min(1680, _W - 36) + 'px'), 'important');
+      shell.style.setProperty('height', isMobile ? (_H + 'px') : (Math.min(Math.round(_H * 0.94), 1180) + 'px'), 'important');
+      shell.style.setProperty('max-width', isMobile ? (_W + 'px') : '1680px', 'important');
+      shell.style.setProperty('max-height', isMobile ? (_H + 'px') : (Math.round(_H * 0.94) + 'px'), 'important');
       shell.style.setProperty('border-radius', isMobile ? '0' : '24px', 'important');
       shell.style.setProperty('margin', '0 auto', 'important');
       shell.style.setProperty('overflow', 'hidden', 'important');
@@ -8893,9 +8898,9 @@ window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
   var numero = window._compraPapelaoNumeroLabel(header.numero_compra || window._compraPapelaoNextNumeroPreview());
   return ''
-    + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="Nova Compra de Papelão">'
+    + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="' + (compraId ? 'Editar' : 'Nova') + ' Compra de Papelão">'
     + '  <div class="ccpx-fs-header">'
-      + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">Nova Compra de Papelão</div><div class="ccpx-fs-subtitle">Shell full-screen real com cabeçalho fixo, corpo ocupando toda a viewport e itens organizados como planilha compacta.</div></div>'
+      + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">' + (compraId ? 'Editar Compra de Papelão' : 'Nova Compra de Papelão') + '</div><div class="ccpx-fs-subtitle">Preencha os itens como numa planilha: medidas, vincos, quantidade e valor.</div></div>'
     + '    <div class="ccpx-fs-header-side"><div class="ccpx-fs-badge"><div class="lbl">Número da Compra</div><div class="val" id="ccpx-numero-card">' + window._compraPapelaoEsc(numero) + '</div></div><button type="button" class="ccpx-fs-close" id="ccpx-close-compra" aria-label="Fechar">×</button></div>'
     + '  </div>'
     + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
@@ -68987,3 +68992,50 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
 
 
+
+
+/* ===== UI-ZOOM-OVERLAY-FIX (servidor de teste, 26/10/2026) =====
+ * Quando o usuário escolhe zoom da interface < 100% (Configurações), o <body> recebe CSS zoom e
+ * todo overlay "tela cheia" (position:fixed + 100vw/100vh ou inset:0) passa a cobrir só uma parte
+ * da tela, com o modal deslocado para o canto. Aqui esses overlays são redimensionados para a
+ * janela real. Com zoom 100% não faz nada. */
+(function () {
+  if (window.__UIZ_OVERLAY_FIX__) return;
+  window.__UIZ_OVERLAY_FIX__ = true;
+  function zoomAtual() { try { var v = parseFloat(getComputedStyle(document.body).zoom); return v > 0 ? v : 1; } catch (_) { return 1; } }
+  function ajustar(el, z) {
+    try {
+      if (!el || el.nodeType !== 1 || !el.getClientRects().length) return;
+      if (Math.abs(z - 1) < 0.01) {
+        if (el.dataset.uizFix) { ['width', 'height', 'max-width', 'max-height'].forEach(function (p) { el.style.removeProperty(p); }); delete el.dataset.uizFix; }
+        return;
+      }
+      if (getComputedStyle(el).position !== 'fixed') return;
+      var W = window.innerWidth / z, H = window.innerHeight / z;
+      if (!el.dataset.uizFix) {
+        var r = el.getBoundingClientRect();
+        if (Math.abs(r.left) > 2 || Math.abs(r.top) > 2) return;
+        var cobreLargura = Math.abs(r.width - window.innerWidth * z) < 4;
+        var cobreAltura = Math.abs(r.height - window.innerHeight * z) < 4;
+        if (!(cobreLargura && cobreAltura)) return;
+      }
+      el.dataset.uizFix = '1';
+      el.style.setProperty('width', W + 'px', 'important');
+      el.style.setProperty('height', H + 'px', 'important');
+      el.style.setProperty('max-width', 'none', 'important');
+      el.style.setProperty('max-height', 'none', 'important');
+    } catch (_) {}
+  }
+  function varrer() {
+    var z = zoomAtual();
+    if (Math.abs(z - 1) < 0.01 && !document.querySelector('[data-uiz-fix]')) return;
+    var alvos = document.querySelectorAll('body > *, [data-uiz-fix], .modal-overlay, [class*="overlay"], [id^="modal"]');
+    for (var i = 0; i < alvos.length; i++) ajustar(alvos[i], z);
+  }
+  try {
+    new MutationObserver(function () { setTimeout(varrer, 0); }).observe(document.body, { childList: true });
+  } catch (_) {}
+  window.addEventListener('resize', varrer);
+  setInterval(varrer, 800);
+  setTimeout(varrer, 500);
+})();
