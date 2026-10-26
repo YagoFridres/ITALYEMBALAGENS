@@ -69196,6 +69196,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     // papel, tempo…). Mostra de volta, respeitando células escondidas de propósito.
     + 'body.is-mobile .content table:not(.no-card) > tbody > tr > td:nth-child(n+8):not([hidden]):not(.hidden):not([style*="display:none"]):not([style*="display: none"]),body[data-device="mobile"] .content table:not(.no-card) > tbody > tr > td:nth-child(n+8):not([hidden]):not(.hidden):not([style*="display:none"]):not([style*="display: none"]){display:flex!important}'
     + 'body.is-mobile #page-ofmaq .of-ln-prod,body[data-device="mobile"] #page-ofmaq .of-ln-prod{display:block!important}'
+    + 'body.is-mobile .content table:not(.no-card) > tbody > tr > td::before,body[data-device="mobile"] .content table:not(.no-card) > tbody > tr > td::before{text-align:left!important;flex:0 0 42%!important;margin-right:10px!important;justify-self:flex-start!important}'
+    + 'body.is-mobile .content table:not(.no-card) > tbody > tr > td,body[data-device="mobile"] .content table:not(.no-card) > tbody > tr > td{justify-content:space-between!important;align-items:center!important;text-align:right!important;gap:8px}'
     + '}';
   var st = document.createElement('style');
   st.id = 'mobile-header-fix-css';
