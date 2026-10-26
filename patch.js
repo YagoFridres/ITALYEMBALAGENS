@@ -69828,3 +69828,34 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function iniciar(){ inject(); organizar(); setInterval(organizar, 800); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
+
+;(function __orcEdicaoAtualizaEmVezDeDuplicar(){
+  // Editar orçamento criava uma CÓPIA nova ao salvar: o id era gravado em window._orcIdAtual,
+  // mas o salvar lê a variável _orcIdAtual do index.html (let, não fica no window).
+  try { if (window.__orcEdicaoAtualizaFix) return; window.__orcEdicaoAtualizaFix = true; } catch (_) {}
+  function setId(id, numero){
+    try { _orcIdAtual = id; } catch (_) {}
+    try { if (numero != null) _orcNumeroAtual = numero; } catch (_) {}
+    try { window._orcIdAtual = id; } catch (_) {}
+  }
+  function instalar(){
+    var orig = window.abrirCalculadoraComOrc;
+    if (typeof orig !== 'function' || orig.__orcIdFix) return false;
+    var novo = async function(id){
+      var sid = String(id || '').trim();
+      var r = await orig.apply(this, arguments);
+      if (sid) {
+        var num = null;
+        try { var o = (window.ORCAMENTOS || []).find(function(x){ return String(x && x.id || '') === sid; }); if (o) num = String(o.numero_orcamento || o.numero || '').trim() || null; } catch (_) {}
+        setId(sid, num);
+        // o carregamento dos campos é assíncrono; garante o id depois que terminar
+        setTimeout(function(){ try { if (!_orcIdAtual) setId(sid, num); } catch (_) { setId(sid, num); } }, 1500);
+      }
+      return r;
+    };
+    novo.__orcIdFix = true;
+    window.abrirCalculadoraComOrc = novo;
+    return true;
+  }
+  if (!instalar()) { var n = 0; var t = setInterval(function(){ if (instalar() || ++n > 40) clearInterval(t); }, 250); }
+})();
