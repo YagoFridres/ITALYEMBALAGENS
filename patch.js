@@ -7826,31 +7826,17 @@ window._compraPapelaoItemFieldsOrder = function() {
   return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'area_m2', 'valor_m2', 'valor_total', 'observacao', 'ped_fornecedor'];
 };
 window._compraVincosArrayFull = function(item) {
-  var out = [];
-  var seen = new Set();
-  var pushC = function(v) {
-    var t = String(v == null ? '' : v).trim();
-    if (!t) return;
-    if (seen.has(t)) return;
-    seen.add(t);
-    out.push(t);
-  };
-  var splitStr = function(s) {
-    var ss = String(s == null ? '' : s).trim();
-    if (!ss) return;
-    ss.split(/[,;\/]+/).forEach(pushC);
-  };
-  var _legacyText = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-  if (_legacyText) splitStr(_legacyText);
-  if (Array.isArray(item && item.vincos) && item.vincos.length) item.vincos.forEach(pushC);
-  if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) item.vincos_extra.forEach(pushC);
-  else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') splitStr(item.vincos_extra);
-  if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) item.vincos_lista.forEach(pushC);
-  else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') splitStr(item.vincos_lista);
-  if (!out.length) {
-    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) pushC(vv); });
-  }
-  return out;
+  // Vincos são medidas POSICIONAIS (ex.: 9/8/9/9) — repetir valor é normal, nunca deduplicar.
+  // Lê UMA fonte só (antes juntava texto + lista + extras e deduplicava → 9/8/9/9 virava 9/8).
+  if (!item) return [];
+  var clean = function(v) { return String(v == null ? '' : v).trim(); };
+  var split = function(s) { return String(s == null ? '' : s).split(/[,;\/]+/).map(clean).filter(Boolean); };
+  if (Array.isArray(item.vincos) && item.vincos.length) return item.vincos.map(clean).filter(Boolean);
+  var txt = clean(item.vincos) || clean(item.vincos_texto) || (Array.isArray(item.vincos_lista) ? item.vincos_lista.join('/') : clean(item.vincos_lista));
+  if (txt) return split(txt);
+  var pos = ['vinco1', 'vinco2', 'vinco3', 'vinco4'].map(function(k) { return clean(item[k]); }).filter(Boolean);
+  var extras = Array.isArray(item.vincos_extra) ? item.vincos_extra.map(clean).filter(Boolean) : split(item.vincos_extra);
+  return pos.concat(extras);
 };
 window._compraVincosPosicional = function(item) {
   return window._compraVincosArrayFull(item) || [];
@@ -8679,9 +8665,7 @@ window._compraPapelaoCollectModalRows = function(overlay) {
         Array.prototype.slice.call(chips).forEach(function(input) {
           var v = String((input && input.value) || '').trim();
           if (!v) return;
-          if (vistos.has(v)) return;
-          vistos.add(v);
-          lista.push(v);
+          lista.push(v); // sem deduplicar: 9/8/9/9 é válido
         });
       }
       var fbIdx = ['vinco1', 'vinco2', 'vinco3', 'vinco4'];
@@ -62789,47 +62773,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
 
   function compraAllVincos(item) {
-    var out = [];
-    var pushClean = function(v) {
-      var t = String(v == null ? '' : v).trim();
-      if (t) out.push(t);
-    };
-    var splitCsv = function(s) {
-      var ss = String(s == null ? '' : s).trim();
-      if (!ss) return;
-      ss.split(/[,;\/]+/).forEach(pushClean);
-    };
-    var legacyText = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-    if (legacyText) {
-      splitCsv(legacyText);
-    }
-    if (Array.isArray(item && item.vincos) && item.vincos.length) {
-      item.vincos.forEach(pushClean);
-    }
-    if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
-      item.vincos_extra.forEach(pushClean);
-    } else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') {
-      splitCsv(item.vincos_extra);
-    }
-    if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) {
-      item.vincos_lista.forEach(pushClean);
-    } else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') {
-      splitCsv(item.vincos_lista);
-    }
-    if (!out.length) {
-      ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
-        var val = item && item[k] != null ? String(item[k]) : '';
-        val = val.trim();
-        if (val) out.push(val);
-      });
-    }
-    var seen = {};
-    var uniq = [];
-    for (var i = 0; i < out.length; i++) {
-      var k = String(out[i]);
-      if (!seen[k]) { seen[k] = 1; uniq.push(out[i]); }
-    }
-    return uniq;
+    return (window._compraVincosArrayFull(item) || []).slice();
   }
   function compraRenderVincosInputs(item) {
     var values = compraAllVincos(item);
