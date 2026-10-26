@@ -69036,7 +69036,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (el.dataset.uizFix) { ['width', 'height', 'max-width', 'max-height'].forEach(function (p) { el.style.removeProperty(p); }); delete el.dataset.uizFix; }
         return;
       }
-      if (getComputedStyle(el).position !== 'fixed') return;
+      var _cs = getComputedStyle(el);
+      if (_cs.position !== 'fixed') return;
+      if (!el.dataset.uizFix && (parseFloat(_cs.opacity) < 0.05 || _cs.visibility === 'hidden' || _cs.pointerEvents === 'none')) return;
       var W = window.innerWidth / z, H = window.innerHeight / z;
       if (!el.dataset.uizFix) {
         var r = el.getBoundingClientRect();
@@ -69053,6 +69055,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } catch (_) {}
   }
   function varrer() {
+    // Celular: não mexe em nada (evita qualquer camada invisível cobrindo a tela).
+    try { if (document.body.classList.contains('is-mobile') || (window.matchMedia && window.matchMedia('(max-width: 900px)').matches)) return; } catch (_) {}
     var z = zoomAtual();
     if (Math.abs(z - 1) < 0.01 && !document.querySelector('[data-uiz-fix]')) return;
     var alvos = document.querySelectorAll('body > *, [data-uiz-fix], .modal-overlay, [class*="overlay"], [id^="modal"]');
@@ -69187,6 +69191,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + 'body.is-mobile .topbar #gsearch-wrap,body[data-device="mobile"] .topbar #gsearch-wrap{flex:1 1 100%!important;order:5;min-width:0!important}'
     + 'body.is-mobile .topbar #gsearch-wrap input,body[data-device="mobile"] .topbar #gsearch-wrap input{width:100%!important;min-height:40px;font-size:16px!important}'
     + 'body.is-mobile .content,body[data-device="mobile"] .content{padding-bottom:calc(80px + env(safe-area-inset-bottom))!important}'
+    // iPhone: nada pode ficar mais largo que a tela (gaveta de cidade escondida à direita alargava a página
+    // e travava rolagem/toques). Painéis com rolagem por toque nativa.
+    + 'html,body{max-width:100%!important;overflow-x:hidden!important}'
+    + 'body.is-mobile .page-body,body.is-mobile .content,body[data-device="mobile"] .page-body,body[data-device="mobile"] .content{-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior-y:contain}'
     // Tabelas em modo "cartão" no celular herdavam a largura mínima do computador (~1000px) e os
     // valores ficavam fora da tela; agora o cartão ocupa só a largura da tela.
     + 'body.is-mobile .content table:not(.no-card),body[data-device="mobile"] .content table:not(.no-card){min-width:0!important;width:100%!important;max-width:100%!important}'
@@ -69278,4 +69286,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   (document.head || document.documentElement).appendChild(st);
   // garante que fique por último (depois de estilos injetados mais tarde pelo patch)
   setTimeout(function () { try { document.head.appendChild(st); } catch (_) {} }, 3000);
+})();
+
+
+/* Gaveta "cidade" fechada fica invisível (antes ficava fora da tela à direita e, no iPhone, alargava a página). */
+(function () {
+  var st = document.createElement('style');
+  st.textContent = '#cidade-drawer{visibility:hidden}#cidade-drawer[style*="right: 0"]{visibility:visible}';
+  (document.head || document.documentElement).appendChild(st);
 })();
