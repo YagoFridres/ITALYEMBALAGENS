@@ -70476,6 +70476,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + 'body.is-mobile .ds-abas-central{padding:6px 10px 0}'
     + 'body.is-mobile .ds-btn-ofrapida{display:none}'
     + 'body.is-mobile #ds-page-title{display:none}'
+    + 'html[data-ds="3"] body:not(.is-mobile) .topbar #gsearch-wrap{margin-left:auto!important}'
     + '.sbox:has(#ds-inicio-grafico) > .sbox-h{display:none!important}'
     + '.sbox > #ds-inicio-grafico{border:none!important;background:transparent!important;border-radius:0!important}'
     + '#page-hub > .ptoolbar > span:first-child,#page-hub > .ptoolbar > button[onclick^="go(\'home\')"]{display:none!important}'
@@ -70935,7 +70936,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         }
         if (a === 'maisHead') {
           abrirMenu(b, [['excel', 'Exportar para Excel', IC.baixo], ['sergio', 'Relatório Sérgio', IC.imprimir], '-', ['antiga', 'Tela anterior', IC.seta]], function (k) {
-            if (k === 'excel') cliqueAntigo('#page-pcp .btn-excel', /Excel/);
+            if (k === 'excel') cliqueAntigo('#pcp-aba-conteudo-ofs .excel-export-bar button', /Excel/);
             else if (k === 'sergio') cliqueAntigo('#pcp-btn-relatorio-sergio', /Relat[óo]rio S[ée]rgio/);
             else if (k === 'antiga') alternarAntiga(true);
           });
@@ -71055,6 +71056,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsc-menu button:hover,.dsc-menu button:focus{background:var(--s3);outline:none}.dsc-menu button svg{color:var(--text2)}.dsc-menu .dsc-m-perigo{color:var(--red)}.dsc-menu .dsc-m-perigo svg{color:var(--red)}'
     + '.dsc-menu hr{border:none;border-top:1px solid var(--border);margin:6px 2px}'
     + '#ds-voltar-nova{margin-left:auto;margin-bottom:6px;height:32px}'
+    + '#ds-central .excel-export-bar{display:none!important}'
+    + '#ds-central .dsc-filtros > .dsc-sel{width:auto!important;flex:0 0 auto!important;max-width:240px}'
+    + '#ds-central .dsc-filtros > .dsc-btn{flex:0 0 auto}'
+    + '#ds-central .dsc-busca{min-width:260px}'
+    + '#ds-central .dsc-avancado .dsc-sel,#ds-central .dsc-avancado input[type=date]{width:auto!important}'
     // tablet: colunas menos importantes saem
     + '@media (max-width:1180px){.dsc-c-tot{display:none}.dsc-c-maq{display:none}}'
     // celular: cada OF vira um cartão
