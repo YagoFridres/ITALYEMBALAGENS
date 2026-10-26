@@ -48,3 +48,43 @@ alter table public.tipos_caixa
   add column if not exists emp_id text,
   add column if not exists observacoes text;
 grant all on public.pedidos_recorrentes to anon, authenticated, service_role;
+-- Modo operador (sessões de produção) e sequência manual das OFs por máquina (26/10/2026)
+create table if not exists public.producao_sessoes (
+  id uuid primary key default gen_random_uuid(),
+  of_id text not null,
+  of_numero text,
+  maquina text not null,
+  operador text,
+  operador_fim text,
+  inicio timestamptz not null default now(),
+  fim timestamptz,
+  minutos integer,
+  quantidade integer,
+  status text not null default 'aberta',
+  status_anterior text,
+  created_at timestamptz default now()
+);
+create index if not exists producao_sessoes_maq_idx on public.producao_sessoes (maquina, status);
+create table if not exists public.sequenciamento_manual (
+  of_id text not null,
+  maquina text not null,
+  posicao integer not null default 0,
+  updated_at timestamptz default now(),
+  primary key (of_id, maquina)
+);
+alter table public.ofs add column if not exists prioridade_producao integer;
+create table if not exists public.tempos_reais (
+  id uuid primary key default gen_random_uuid(),
+  maquina_id text,
+  maquina_nome text,
+  of_id text,
+  tipo_caixa text,
+  velocidade_cxh integer,
+  quantidade integer,
+  setup_min integer,
+  producao_min integer,
+  data date,
+  obs text,
+  created_at timestamptz default now()
+);
+grant all on public.producao_sessoes, public.sequenciamento_manual, public.tempos_reais to anon, authenticated, service_role;

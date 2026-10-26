@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026163841';
-const SW_RUNTIME_VERSION = '20261026163841';
+const PATCH_RUNTIME_VERSION = '20261026164134';
+const SW_RUNTIME_VERSION = '20261026164134';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39543,6 +39543,119 @@ async function _imgLimparConcluidas(motivo) {
 function _imgAgendarLimpeza(motivo, ms) { clearTimeout(_IMG_LIMPEZA.timer); _IMG_LIMPEZA.timer = setTimeout(() => _imgLimparConcluidas(motivo), ms || 5000); }
 setTimeout(() => _imgLimparConcluidas('inicio'), 90 * 1000);
 setInterval(() => _imgLimparConcluidas('periodica'), 10 * 60 * 1000);
+// ===== MODO OPERADOR (26/10/2026) =====
+// O operador escolhe a máquina, inicia a OF (fica "Em produção" e o tempo começa a contar) e finaliza.
+// Cada sessão fica em producao_sessoes; ao finalizar o tempo vai também para tempos_reais.
+// A velocidade média real de cada máquina (caixas/hora) é usada para recalcular o tempo previsto das OFs.
+function _opNome(req) { return String((req.usuario && (req.usuario.nome || req.usuario.email)) || 'Operador').trim(); }
+app.get('/api/operador/sessoes', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('producao_sessoes').select('*').eq('status', 'aberta').order('inicio', { ascending: true }).limit(200);
+    if (req.query.maquina) q = q.eq('maquina', String(req.query.maquina));
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/operador/iniciar', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const ofId = String(b.of_id || '').trim(), maquina = String(b.maquina || '').trim();
+    if (!ofId || !maquina) return res.status(400).json({ ok: false, error: 'of_id e maquina são obrigatórios' });
+    const { data: aberta } = await supabase.from('producao_sessoes').select('*').eq('of_id', ofId).eq('status', 'aberta').maybeSingle();
+    if (aberta) return ok(res, aberta);
+    const { data: of, error: eOf } = await supabase.from('ofs').select('id,numero,of,status').eq('id', ofId).maybeSingle();
+    if (eOf) throw eOf;
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    const row = { of_id: ofId, of_numero: String(of.numero || of.of || ''), maquina, operador: _opNome(req), inicio: new Date().toISOString(), status: 'aberta', status_anterior: of.status || null };
+    const { data, error } = await supabase.from('producao_sessoes').insert([row]).select('*').single();
+    if (error) throw error;
+    let up = await supabase.from('ofs').update({ status: 'Em produção', updated_at: new Date().toISOString() }).eq('id', ofId);
+    if (up.error) console.warn('[OPERADOR] status em produção falhou:', up.error.message);
+    try { _clearOfsCaches(); } catch (_) {}
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/operador/cancelar', authMiddleware, async (req, res) => {
+  try {
+    const id = String((req.body || {}).sessao_id || '').trim();
+    const { data: s } = await supabase.from('producao_sessoes').select('*').eq('id', id).maybeSingle();
+    if (!s) return res.status(404).json({ ok: false, error: 'Sessão não encontrada' });
+    await supabase.from('producao_sessoes').update({ status: 'cancelada', fim: new Date().toISOString() }).eq('id', id);
+    await supabase.from('ofs').update({ status: s.status_anterior && !/produ/i.test(s.status_anterior) ? s.status_anterior : 'Em aberto', updated_at: new Date().toISOString() }).eq('id', s.of_id);
+    try { _clearOfsCaches(); } catch (_) {}
+    return ok(res, { cancelada: true });
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/operador/finalizar', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const id = String(b.sessao_id || '').trim();
+    const { data: s, error: es } = await supabase.from('producao_sessoes').select('*').eq('id', id).maybeSingle();
+    if (es) throw es;
+    if (!s) return res.status(404).json({ ok: false, error: 'Sessão não encontrada' });
+    if (s.status !== 'aberta') return ok(res, s);
+    const fim = new Date();
+    const minutos = Math.max(1, Math.round((fim - new Date(s.inicio)) / 60000));
+    const qtd = Math.max(0, Math.trunc(Number(b.quantidade) || 0));
+    const { data: fechada, error: eu } = await supabase.from('producao_sessoes')
+      .update({ status: 'finalizada', fim: fim.toISOString(), minutos, quantidade: qtd || null, operador_fim: _opNome(req) })
+      .eq('id', id).select('*').single();
+    if (eu) throw eu;
+    // tempos reais (mesma tabela usada pela área Tempos Reais)
+    try {
+      const tr = { maquina_id: s.maquina, maquina_nome: s.maquina, of_id: s.of_id, quantidade: qtd || null, producao_min: minutos,
+        velocidade_cxh: qtd ? Math.round(qtd / (minutos / 60)) : null, data: fim.toISOString().slice(0, 10), obs: 'Modo operador · OF ' + (s.of_numero || '') + ' · ' + (s.operador || '') };
+      let r = await supabase.from('tempos_reais').insert([tr]);
+      if (r.error) { delete tr.maquina_id; r = await supabase.from('tempos_reais').insert([tr]); }
+      if (r.error) console.warn('[OPERADOR] tempos_reais:', r.error.message);
+    } catch (eT) { console.warn('[OPERADOR] tempos_reais erro', eT.message); }
+    return ok(res, fechada);
+  } catch (e) { return err(res, e); }
+});
+app.get('/api/operador/velocidades', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('producao_sessoes').select('maquina,minutos,quantidade,fim')
+      .eq('status', 'finalizada').not('quantidade', 'is', null).order('fim', { ascending: false }).limit(3000);
+    if (error) throw error;
+    const por = {};
+    (data || []).forEach((r) => {
+      const m = String(r.maquina || ''); const min = Number(r.minutos) || 0, q = Number(r.quantidade) || 0;
+      if (!m || min <= 0 || q <= 0) return;
+      const a = por[m] || (por[m] = { amostras: 0, minutos: 0, caixas: 0 });
+      if (a.amostras >= 60) return; // últimas 60 por máquina
+      a.amostras++; a.minutos += min; a.caixas += q;
+    });
+    Object.keys(por).forEach((m) => { const a = por[m]; a.cx_hora = Math.round(a.caixas / (a.minutos / 60)); });
+    return ok(res, por);
+  } catch (e) { return err(res, e); }
+});
+// sequência manual por máquina (OFs por Máquina)
+app.get('/api/ofmaq/sequencia', authMiddleware, async (req, res) => {
+  try {
+    const maquina = String(req.query.maquina || '').trim();
+    let q = supabase.from('sequenciamento_manual').select('of_id,maquina,posicao').limit(20000);
+    if (maquina) q = q.eq('maquina', maquina);
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/ofmaq/sequencia', authMiddleware, async (req, res) => {
+  try {
+    const maquina = String((req.body || {}).maquina || '').trim();
+    const ordem = Array.isArray((req.body || {}).ordem) ? req.body.ordem : [];
+    if (!maquina) return res.status(400).json({ ok: false, error: 'maquina obrigatória' });
+    const nowIso = new Date().toISOString();
+    const up = ordem.map((id, i) => ({ of_id: String(id), maquina, posicao: i + 1, updated_at: nowIso })).filter((x) => x.of_id).slice(0, 5000);
+    if (up.length) {
+      const { error } = await supabase.from('sequenciamento_manual').upsert(up, { onConflict: 'of_id,maquina' });
+      if (error) throw error;
+    }
+    return ok(res, { salvos: up.length });
+  } catch (e) { return err(res, e); }
+});
+
 app.get('/api/infra/limpeza-imagens', requireAdmin, (req, res) => res.json({ ok: true, ultima: _IMG_LIMPEZA.ultima, rodando: _IMG_LIMPEZA.rodando }));
 
 app.listen(PORT, () => {
