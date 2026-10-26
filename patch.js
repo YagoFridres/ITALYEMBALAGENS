@@ -69393,3 +69393,245 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('change', function (e) { if (e.target && /^calc-/.test(e.target.id || '')) setTimeout(sync, 0); }, true);
   setInterval(function () { if (document.getElementById('modal-calc') && document.getElementById('calc-cm')) sync(); }, 1500);
 })();
+
+/* ===== MAPA DE CLIENTES (refeito, 26/10/2026) =====
+ * Uma tela só com Estados, Cidades e Ramos de atividade: lista, quantos clientes há em cada um,
+ * adicionar / editar / excluir, e "Trazer dos clientes" (cadastra o que os clientes já usam e ainda
+ * não está cadastrado). No cadastro de cliente, Estado / Cidade / Ramo viram listas desses cadastros. */
+(function () {
+  var API = { estados: '/api/estados', cidades: '/api/cidades', ramos: '/api/ramos_atividade' };
+  var st = { estados: [], cidades: [], ramos: [], ufFiltro: '', busca: { estados: '', cidades: '', ramos: '' }, editando: null, excluir: null };
+  function tk() { try { return localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) { return ''; } }
+  function req(url, opt) {
+    opt = opt || {};
+    var h = { 'Content-Type': 'application/json' }; var t = tk(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch(url, { method: opt.method || 'GET', headers: h, body: opt.body ? JSON.stringify(opt.body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function lista(j) { return Array.isArray(j) ? j : (j && Array.isArray(j.data) ? j.data : []); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { try { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase(); } catch (_) { return String(s || '').trim().toLowerCase(); } }
+  function toast(m, c) { try { window.toast(m, c || 'var(--green)'); } catch (_) {} }
+  function clientes() { try { return Array.isArray(window.CLIENTES) ? window.CLIENTES : []; } catch (_) { return []; } }
+  function carregar() {
+    return Promise.all([req(API.estados), req(API.cidades + '?limit=4000'), req(API.ramos)]).then(function (r) {
+      st.estados = lista(r[0]); st.cidades = lista(r[1]); st.ramos = lista(r[2]);
+      try { localStorage.setItem('ramos_atividade', JSON.stringify(st.ramos.map(function (x) { return x.nome; }))); } catch (_) {}
+      try { window.RAMOS = st.ramos.map(function (x) { return x.nome; }); } catch (_) {}
+    });
+  }
+  function contagens() {
+    var uf = {}, cid = {}, ramo = {};
+    clientes().forEach(function (c) {
+      var u = String(c.uf || '').trim().toUpperCase(); if (u) uf[u] = (uf[u] || 0) + 1;
+      var k = norm(c.cidade) + '|' + u; if (norm(c.cidade)) cid[k] = (cid[k] || 0) + 1;
+      var r = norm(c.ramo); if (r) ramo[r] = (ramo[r] || 0) + 1;
+    });
+    return { uf: uf, cid: cid, ramo: ramo };
+  }
+  function linha(tipo, item, n, texto, sub) {
+    var id = String(item.id);
+    if (st.editando && st.editando.tipo === tipo && st.editando.id === id) {
+      var campos = tipo === 'estados'
+        ? '<input data-mc-f="uf" maxlength="2" value="' + esc(item.uf) + '" style="width:56px" aria-label="UF"><input data-mc-f="nome" value="' + esc(item.nome) + '" aria-label="Nome"><input data-mc-f="icms_pct" type="number" step="0.01" value="' + esc(item.icms_pct == null ? '' : item.icms_pct) + '" style="width:80px" aria-label="ICMS %">'
+        : tipo === 'cidades'
+          ? '<input data-mc-f="nome" value="' + esc(item.nome) + '" aria-label="Nome"><select data-mc-f="uf" aria-label="UF">' + ufOptions(item.uf) + '</select>'
+          : '<input data-mc-f="nome" value="' + esc(item.nome) + '" aria-label="Nome">';
+      return '<li class="mc-row mc-edit" data-mc-row="' + tipo + ':' + id + '">' + campos + '<button type="button" class="btn btn-accent btn-sm" data-mc-act="salvar">Salvar</button><button type="button" class="btn btn-ghost btn-sm" data-mc-act="cancelar">Cancelar</button></li>';
+    }
+    var confirmando = st.excluir && st.excluir.tipo === tipo && st.excluir.id === id;
+    return '<li class="mc-row" data-mc-row="' + tipo + ':' + id + '"><div class="mc-txt"><strong>' + esc(texto) + '</strong>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>'
+      + '<span class="mc-n" title="Clientes com este cadastro">' + n + (n === 1 ? ' cliente' : ' clientes') + '</span>'
+      + '<button type="button" class="btn btn-ghost btn-sm" data-mc-act="editar">Editar</button>'
+      + (confirmando ? '<button type="button" class="btn btn-sm mc-del-ok" data-mc-act="excluir-ok">Confirmar exclusão</button>' : '<button type="button" class="btn btn-ghost btn-sm mc-del" data-mc-act="excluir">Excluir</button>')
+      + '</li>';
+  }
+  function ufOptions(sel) {
+    var ufs = st.estados.map(function (e) { return String(e.uf || '').trim().toUpperCase(); }).filter(Boolean);
+    if (sel && ufs.indexOf(String(sel).toUpperCase()) === -1) ufs.push(String(sel).toUpperCase());
+    ufs.sort();
+    return '<option value="">UF</option>' + ufs.map(function (u) { return '<option' + (String(sel || '').toUpperCase() === u ? ' selected' : '') + '>' + esc(u) + '</option>'; }).join('');
+  }
+  function faltando() {
+    var c = contagens();
+    var ufsCad = {}; st.estados.forEach(function (e) { ufsCad[String(e.uf || '').trim().toUpperCase()] = 1; });
+    var cidCad = {}; st.cidades.forEach(function (x) { cidCad[norm(x.nome) + '|' + String(x.uf || '').trim().toUpperCase()] = 1; });
+    var ramCad = {}; st.ramos.forEach(function (x) { ramCad[norm(x.nome)] = 1; });
+    var f = { estados: [], cidades: [], ramos: [] }, vistos = {};
+    clientes().forEach(function (cl) {
+      var u = String(cl.uf || '').trim().toUpperCase();
+      if (/^[A-Z]{2}$/.test(u) && !ufsCad[u] && !vistos['u' + u]) { vistos['u' + u] = 1; f.estados.push(u); }
+      var nomeC = String(cl.cidade || '').trim();
+      var kc = norm(nomeC) + '|' + u;
+      if (nomeC && /^[A-Z]{2}$/.test(u) && !cidCad[kc] && !vistos['c' + kc]) { vistos['c' + kc] = 1; f.cidades.push({ nome: nomeC, uf: u }); }
+      var r = String(cl.ramo || '').trim();
+      if (r && !ramCad[norm(r)] && !vistos['r' + norm(r)]) { vistos['r' + norm(r)] = 1; f.ramos.push(r); }
+    });
+    return f;
+  }
+  function render() {
+    var root = document.getElementById('page-mapa-clientes');
+    if (!root) return;
+    var c = contagens(), f = faltando();
+    var nFalta = f.estados.length + f.cidades.length + f.ramos.length;
+    var bEst = norm(st.busca.estados), bCid = norm(st.busca.cidades), bRam = norm(st.busca.ramos);
+    var estados = st.estados.slice().sort(function (a, b) { return String(a.uf).localeCompare(String(b.uf)); })
+      .filter(function (e) { return !bEst || norm(e.uf + ' ' + e.nome).indexOf(bEst) !== -1; });
+    var cidades = st.cidades.slice().filter(function (x) { return (!st.ufFiltro || String(x.uf || '').trim().toUpperCase() === st.ufFiltro) && (!bCid || norm(x.nome).indexOf(bCid) !== -1); })
+      .sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+    var ramos = st.ramos.slice().filter(function (x) { return !bRam || norm(x.nome).indexOf(bRam) !== -1; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+    var semCidade = clientes().filter(function (x) { return !String(x.cidade || '').trim(); }).length;
+    root.innerHTML = ''
+      + '<div class="mc-wrap">'
+      + '<header class="mc-head"><div><h2>Mapa de Clientes</h2><p>Estados, cidades e ramos de atividade usados no cadastro de clientes. O número ao lado mostra quantos clientes estão em cada um.</p></div>'
+      + '<div class="mc-head-act"><button type="button" class="btn btn-ghost" data-mc-act="ir-clientes">Ir para Clientes</button>'
+      + (nFalta ? '<button type="button" class="btn btn-accent" data-mc-act="importar">Trazer dos clientes (' + nFalta + ' faltando)</button>' : '<span class="mc-ok">Tudo que os clientes usam já está cadastrado</span>')
+      + '</div></header>'
+      + (semCidade ? '<p class="mc-aviso">' + semCidade + ' clientes estão sem cidade no cadastro.</p>' : '')
+      + '<div class="mc-grid">'
+      // ESTADOS
+      + '<section class="mc-col"><div class="mc-col-head"><h3>Estados <small>' + st.estados.length + '</small></h3><input type="search" placeholder="Buscar estado" data-mc-busca="estados" value="' + esc(st.busca.estados) + '"></div>'
+      + '<form class="mc-add" data-mc-add="estados"><input name="uf" maxlength="2" placeholder="UF" required style="width:56px"><input name="nome" placeholder="Nome do estado" required><input name="icms_pct" type="number" step="0.01" placeholder="ICMS %" style="width:80px"><button class="btn btn-accent btn-sm">Adicionar</button></form>'
+      + '<ul class="mc-list">' + (estados.map(function (e) { var u = String(e.uf || '').trim().toUpperCase(); return linha('estados', e, c.uf[u] || 0, u + ' · ' + (e.nome || ''), e.icms_pct != null ? ('ICMS ' + String(e.icms_pct).replace('.', ',') + '%') : ''); }).join('') || '<li class="mc-vazio">Nenhum estado cadastrado.</li>') + '</ul></section>'
+      // CIDADES
+      + '<section class="mc-col"><div class="mc-col-head"><h3>Cidades <small>' + st.cidades.length + '</small></h3><div class="mc-filtros"><select data-mc-uf="1" aria-label="Filtrar por UF">' + ufOptions(st.ufFiltro).replace('>UF<', '>Todos os estados<') + '</select><input type="search" placeholder="Buscar cidade" data-mc-busca="cidades" value="' + esc(st.busca.cidades) + '"></div></div>'
+      + '<form class="mc-add" data-mc-add="cidades"><input name="nome" placeholder="Nome da cidade" required><select name="uf" required>' + ufOptions(st.ufFiltro) + '</select><button class="btn btn-accent btn-sm">Adicionar</button></form>'
+      + '<ul class="mc-list">' + (cidades.map(function (x) { var u = String(x.uf || '').trim().toUpperCase(); return linha('cidades', x, c.cid[norm(x.nome) + '|' + u] || 0, x.nome, u); }).join('') || '<li class="mc-vazio">Nenhuma cidade' + (st.ufFiltro ? ' em ' + esc(st.ufFiltro) : '') + '.</li>') + '</ul></section>'
+      // RAMOS
+      + '<section class="mc-col"><div class="mc-col-head"><h3>Ramos de atividade <small>' + st.ramos.length + '</small></h3><input type="search" placeholder="Buscar ramo" data-mc-busca="ramos" value="' + esc(st.busca.ramos) + '"></div>'
+      + '<form class="mc-add" data-mc-add="ramos"><input name="nome" placeholder="Novo ramo (ex.: Moveleiro)" required><button class="btn btn-accent btn-sm">Adicionar</button></form>'
+      + '<ul class="mc-list">' + (ramos.map(function (x) { return linha('ramos', x, c.ramo[norm(x.nome)] || 0, x.nome, ''); }).join('') || '<li class="mc-vazio">Nenhum ramo cadastrado.</li>') + '</ul></section>'
+      + '</div></div>';
+  }
+  function corpo(tipo, root) {
+    var g = function (n) { var el = root.querySelector('[name="' + n + '"],[data-mc-f="' + n + '"]'); return el ? String(el.value || '').trim() : ''; };
+    if (tipo === 'estados') { var icms = g('icms_pct'); return { uf: g('uf').toUpperCase(), nome: g('nome'), icms_pct: icms === '' ? null : Number(icms.replace(',', '.')) }; }
+    if (tipo === 'cidades') return { nome: g('nome'), uf: g('uf').toUpperCase() };
+    return { nome: g('nome') };
+  }
+  function recarregar(msg) { return carregar().then(function () { render(); if (msg) toast(msg); }).catch(function (e) { toast('Erro: ' + e.message, 'var(--red)'); }); }
+  function importar() {
+    var f = faltando(), ops = [];
+    f.estados.forEach(function (u) { ops.push(function () { return req(API.estados, { method: 'POST', body: { uf: u, nome: u } }); }); });
+    f.ramos.forEach(function (r) { ops.push(function () { return req(API.ramos, { method: 'POST', body: { nome: r } }); }); });
+    f.cidades.forEach(function (x) { ops.push(function () { return req(API.cidades, { method: 'POST', body: x }); }); });
+    var ok = 0, err = 0;
+    toast('Cadastrando ' + ops.length + ' itens...', 'var(--accent)');
+    return ops.reduce(function (p, fn) { return p.then(function () { return fn().then(function () { ok++; }, function () { err++; }); }); }, Promise.resolve())
+      .then(function () { return recarregar(ok + ' itens cadastrados' + (err ? (' · ' + err + ' com erro') : '')); });
+  }
+  document.addEventListener('submit', function (ev) {
+    var form = ev.target && ev.target.closest && ev.target.closest('[data-mc-add]');
+    if (!form) return;
+    ev.preventDefault();
+    var tipo = form.getAttribute('data-mc-add');
+    var b = corpo(tipo, form);
+    if (!b.nome || (tipo !== 'ramos' && !b.uf)) { toast('Preencha nome' + (tipo !== 'ramos' ? ' e UF' : ''), 'var(--yellow)'); return; }
+    req(API[tipo], { method: 'POST', body: b }).then(function () { return recarregar('Adicionado'); }).catch(function (e) { toast('Não foi possível adicionar: ' + e.message, 'var(--red)'); });
+  }, true);
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t || !t.closest || !t.closest('#page-mapa-clientes')) return;
+    var k = t.getAttribute('data-mc-busca');
+    if (k) { st.busca[k] = t.value; var pos = t.selectionStart; render(); var n = document.querySelector('[data-mc-busca="' + k + '"]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (_) {} } }
+  }, true);
+  document.addEventListener('change', function (ev) {
+    var t = ev.target; if (!t || !t.closest || !t.closest('#page-mapa-clientes')) return;
+    if (t.getAttribute('data-mc-uf')) { st.ufFiltro = t.value; render(); }
+  }, true);
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest && ev.target.closest('#page-mapa-clientes [data-mc-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-mc-act');
+    if (act === 'ir-clientes') { try { window.go('clientes'); } catch (_) {} return; }
+    if (act === 'importar') { b.disabled = true; importar(); return; }
+    var row = b.closest('[data-mc-row]'); if (!row) return;
+    var parts = row.getAttribute('data-mc-row').split(':'), tipo = parts[0], id = parts.slice(1).join(':');
+    if (act === 'editar') { st.editando = { tipo: tipo, id: id }; st.excluir = null; render(); return; }
+    if (act === 'cancelar') { st.editando = null; render(); return; }
+    if (act === 'excluir') { st.excluir = { tipo: tipo, id: id }; render(); return; }
+    if (act === 'excluir-ok') { st.excluir = null; req(API[tipo] + '/' + encodeURIComponent(id), { method: 'DELETE' }).then(function () { return recarregar('Excluído'); }).catch(function (e) { toast('Não foi possível excluir: ' + e.message, 'var(--red)'); }); return; }
+    if (act === 'salvar') { var bd = corpo(tipo, row); st.editando = null; req(API[tipo] + '/' + encodeURIComponent(id), { method: 'PUT', body: bd }).then(function () { return recarregar('Salvo'); }).catch(function (e) { toast('Não foi possível salvar: ' + e.message, 'var(--red)'); }); return; }
+  }, true);
+  window.renderMapaClientes = function () {
+    var root = document.getElementById('page-mapa-clientes');
+    if (root && !st.estados.length) root.innerHTML = '<div class="mc-wrap"><p style="color:var(--text2)">Carregando cadastros…</p></div>';
+    return carregar().then(render).catch(function (e) { if (root) root.innerHTML = '<div class="mc-wrap"><p class="mc-aviso">Não foi possível carregar: ' + esc(e.message) + '. Toque em Atualizar ou abra a tela de novo.</p></div>'; });
+  };
+  // reaplica sempre que a tela abrir (outros patches antigos também desenham esta página)
+  var ultimo = '';
+  setInterval(function () {
+    var pg = document.getElementById('page-mapa-clientes');
+    var ativo = pg && pg.classList.contains('active');
+    if (ativo && ultimo !== 'mapa') { ultimo = 'mapa'; window.renderMapaClientes(); }
+    else if (!ativo) ultimo = '';
+    if (ativo && !pg.querySelector('.mc-wrap')) window.renderMapaClientes();
+  }, 400);
+
+  var css = ''
+    + '#page-mapa-clientes .mc-wrap{max-width:1500px;margin:0 auto;padding:4px 2px 24px}'
+    + '.mc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px}'
+    + '.mc-head h2{margin:0 0 4px;font-size:22px}.mc-head p{margin:0;color:var(--text2);max-width:70ch;font-size:13px}'
+    + '.mc-head-act{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mc-ok{color:var(--green);font-size:13px}'
+    + '.mc-aviso{background:rgba(202,138,4,.12);border:1px solid rgba(202,138,4,.35);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;margin:0 0 12px}'
+    + '.mc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}'
+    + '@media (max-width:1100px){.mc-grid{grid-template-columns:1fr}}'
+    + '.mc-col{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}'
+    + '.mc-col-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.mc-col-head h3{margin:0;font-size:16px}.mc-col-head small{color:var(--text3);font-weight:500;margin-left:4px}'
+    + '.mc-col-head input,.mc-filtros select,.mc-filtros input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px;min-width:0}'
+    + '.mc-filtros{display:flex;gap:6px;flex-wrap:wrap}'
+    + '.mc-add{display:flex;gap:6px;flex-wrap:wrap}.mc-add input,.mc-add select,.mc-edit input,.mc-edit select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px;flex:1;min-width:0}'
+    + '.mc-list{list-style:none;margin:0;padding:0;max-height:62vh;overflow:auto;border-top:1px solid var(--border)}'
+    + '.mc-row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border)}'
+    + '.mc-txt{flex:1;min-width:0;display:flex;flex-direction:column}.mc-txt strong{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mc-txt span{color:var(--text3);font-size:12px}'
+    + '.mc-n{font-size:12px;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}'
+    + '.mc-del{color:var(--red)!important}.mc-del-ok{background:var(--red)!important;color:#fff!important;border:none}'
+    + '.mc-vazio{color:var(--text3);padding:12px 2px;font-size:13px}'
+    + '@media (max-width:600px){.mc-row{flex-wrap:wrap}.mc-row .btn{min-height:40px}}';
+  var s2 = document.createElement('style'); s2.id = 'mapa-clientes-v2-css'; s2.textContent = css; (document.head || document.documentElement).appendChild(s2);
+
+  /* ---- Cadastro de cliente: Estado / Cidade / Ramo como listas dos cadastros ---- */
+  function trocarPorSelect(id) {
+    var el = document.getElementById(id);
+    if (!el || el.tagName === 'SELECT') return el;
+    var s = document.createElement('select');
+    s.id = id; s.className = el.className; s.style.cssText = el.style.cssText; s.setAttribute('data-mc-select', '1');
+    el.id = id + '-texto-antigo'; el.style.display = 'none';
+    el.parentNode.insertBefore(s, el);
+    return s;
+  }
+  function preencherSelect(s, valores, atual, vazio) {
+    var v = valores.slice();
+    if (atual && !valores.some(function (x) { return norm(x) === norm(atual); })) v.unshift(atual);
+    s.innerHTML = '<option value="">' + esc(vazio) + '</option>' + v.map(function (x) { return '<option' + (norm(x) === norm(atual) ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('');
+    if (atual) { var m = Array.prototype.find.call(s.options, function (o) { return norm(o.value) === norm(atual); }); if (m) s.value = m.value; }
+  }
+  function prepararModalCliente(cliente) {
+    carregar().then(function () {
+      var atualUf = String((cliente && cliente.uf) || (document.getElementById('cl-uf') || {}).value || '').trim().toUpperCase();
+      var atualCid = String((cliente && cliente.cidade) || (document.getElementById('cl-cidade') || {}).value || '').trim();
+      var atualRamo = String((cliente && cliente.ramo) || (document.getElementById('cliente-ramo') || {}).value || '').trim();
+      var sUf = trocarPorSelect('cl-uf'), sCid = trocarPorSelect('cl-cidade'), sRamo = document.getElementById('cliente-ramo');
+      if (!sUf || !sCid) return;
+      preencherSelect(sUf, st.estados.map(function (e) { return String(e.uf || '').trim().toUpperCase(); }).filter(Boolean).sort(), atualUf, 'Estado');
+      var porUf = function (u) { return st.cidades.filter(function (c) { return !u || String(c.uf || '').trim().toUpperCase() === u; }).map(function (c) { return c.nome; }).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); }); };
+      preencherSelect(sCid, porUf(atualUf), atualCid, atualUf ? 'Cidade' : 'Escolha o estado primeiro');
+      sUf.onchange = function () { preencherSelect(sCid, porUf(sUf.value), '', sUf.value ? 'Cidade' : 'Escolha o estado primeiro'); };
+      if (sRamo && sRamo.tagName === 'SELECT') preencherSelect(sRamo, st.ramos.map(function (r) { return r.nome; }).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); }), atualRamo, '—');
+    }).catch(function () {});
+  }
+  function instalarModal() {
+    var orig = window.abrirModalCliente;
+    if (typeof orig !== 'function' || orig.__mc) return;
+    var w = function (id) {
+      var r = orig.apply(this, arguments);
+      var c = null;
+      try { c = (id && typeof id === 'object') ? id : (id ? (window.CLIENTES || []).find(function (x) { return x.id === id; }) : null); } catch (_) {}
+      prepararModalCliente(c);
+      return r;
+    };
+    w.__mc = true;
+    window.abrirModalCliente = w;
+    try { window.editarCliente = function (id) { return window.abrirModalCliente(id); }; } catch (_) {}
+  }
+  instalarModal(); setTimeout(instalarModal, 2000); setTimeout(instalarModal, 6000);
+})();
