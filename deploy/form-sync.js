@@ -23,9 +23,14 @@ const srv = http.createServer((q, r) => {
     r.writeHead(200, H);
     r.end('<meta charset=utf-8><h2>Senha OK! Puxando os dados (uns 10 minutos; o sistema de teste fica fora do ar nesse tempo). Pode fechar e avisar o Claude.</h2>');
     srv.close();
-    const log = fs.openSync('/opt/pcp-pro/tarefas-log/sync-dados.log', 'w');
-    const c = spawn('bash', ['/opt/pcp-pro/app/deploy/sync-dados.sh'], { detached: true, stdio: ['pipe', log, log] });
-    c.stdin.end(cs + '\n' + g('k') + '\n'); c.unref();
+    // A cópia roda numa unidade própria do systemd: antes ela era filha deste formulário e era
+    // encerrada junto quando o formulário fechava (ficava parada no passo do backup).
+    const ent = '/run/pcp-sync-' + Date.now() + '.in';
+    fs.writeFileSync(ent, cs + '\n' + g('k') + '\n', { mode: 0o600 });
+    fs.writeFileSync('/opt/pcp-pro/tarefas-log/sync-dados.log', '');
+    spawnSync('systemctl', ['stop', 'pcp-sync-dados'], { timeout: 20000 });
+    const c = spawnSync('systemd-run', ['--unit=pcp-sync-dados', '--collect', '-p', 'StandardOutput=append:/opt/pcp-pro/tarefas-log/sync-dados.log', '-p', 'StandardError=append:/opt/pcp-pro/tarefas-log/sync-dados.log', '--setenv=HOME=/root', '--setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', '/bin/bash', '/opt/pcp-pro/app/deploy/sync-dados.sh', ent], { encoding: 'utf8', timeout: 20000 });
+    if (c.status !== 0) fs.appendFileSync('/opt/pcp-pro/tarefas-log/sync-dados.log', 'falha ao iniciar: ' + (c.stderr || c.error) + '\n');
     setTimeout(() => process.exit(0), 2000);
   });
 });
