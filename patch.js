@@ -69295,3 +69295,43 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   st.textContent = '#cidade-drawer{visibility:hidden}#cidade-drawer[style*="right: 0"]{visibility:visible}';
   (document.head || document.documentElement).appendChild(st);
 })();
+
+/* ===== Itens retirados da interface a pedido do Yago (26/10/2026) =====
+ * - Barra "EMPRESA: Todas / Italy / Cartoeste / Oestepack" do topo (o sistema é uma operação só;
+ *   empresa só importa dentro da OF).
+ * - PCP: filtros Todos status / Todos vendedores / Todas empresas e botões Exportar/Importar JSON.
+ * As funções continuam existindo; só os controles saem da tela. Se algum filtro escondido estava
+ * marcado, volta para "todos" uma vez. */
+(function () {
+  var st = document.createElement('style');
+  st.id = 'ui-removidos-css';
+  st.textContent = '#emp-bar,.emp-sel-bar{display:none!important}'
+    + '#page-pcp #pcp-status,#page-pcp #pcp-vend,#page-pcp #pcp-emp,#btn-backup-exportar,#btn-backup-importar{display:none!important}';
+  (document.head || document.documentElement).appendChild(st);
+  var feito = { emp: false, pcp: false };
+  function resetar() {
+    try {
+      if (!feito.emp) {
+        var bar = document.getElementById('emp-bar');
+        if (bar) {
+          var todas = Array.prototype.find.call(bar.querySelectorAll('button,[onclick]'), function (b) { return /^\s*Todas\s*$/i.test(b.textContent || ''); });
+          var ativo = bar.querySelector('.active,.on,[aria-pressed="true"]');
+          if (todas && ativo && ativo !== todas) todas.click();
+          if (todas) feito.emp = true;
+        }
+      }
+      if (!feito.pcp) {
+        var ids = ['pcp-status', 'pcp-vend', 'pcp-emp'], mudou = false, achou = false;
+        ids.forEach(function (id) {
+          var s = document.getElementById(id);
+          if (!s) return;
+          achou = true;
+          if (s.value !== '') { s.value = ''; mudou = true; }
+        });
+        if (mudou) { var s0 = document.getElementById('pcp-status'); try { s0.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} }
+        if (achou) feito.pcp = true;
+      }
+    } catch (_) {}
+  }
+  setTimeout(resetar, 1500); setTimeout(resetar, 5000);
+})();
