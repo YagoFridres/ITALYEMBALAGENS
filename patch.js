@@ -69271,14 +69271,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + D + '{--bg:#0D0F13;--surface:#14171C;--s1:#14171C;--s2:#1A1E24;--s3:#20252C;--s4:#29303A;--border:#262B33;--b2:#343B46;--border2:#343B46;'
     + '--text:#E8EAEE;--text1:#E8EAEE;--text2:#A1A8B4;--text3:#6C7482;--text4:#8A92A0;--field:#101318;--sidebar-bg:#101317;'
     + '--accent:#3B82F6;--accent2:#2563EB;--accent-soft:rgba(59,130,246,.14);--ring:rgba(59,130,246,.35);--card-hover:#1A1E24;'
-    + '--shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 18px 48px rgba(0,0,0,.55);color-scheme:dark}'
+    + '--shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 18px 48px rgba(0,0,0,.55);--tint-k1:0%;--tint-k2:0%;--bg2:#1A1E24;--bg1:#14171C;--bg3:#20252C;color-scheme:dark}'
     + Lt + '{--bg:#F4F5F7;--surface:#FFFFFF;--s1:#FFFFFF;--s2:#F7F8FA;--s3:#EEF0F3;--s4:#E3E6EB;--border:#E3E6EB;--b2:#CED3DB;--border2:#CED3DB;'
     + '--text:#111827;--text1:#111827;--text2:#4B5563;--text3:#8B93A1;--text4:#6B7280;--field:#FFFFFF;--sidebar-bg:#FFFFFF;'
     + '--accent:#2563EB;--accent2:#1D4ED8;--accent-soft:rgba(37,99,235,.09);--ring:rgba(37,99,235,.25);--card-hover:#F7F8FA;'
     + '--shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.07);--shadow-lg:0 18px 48px rgba(16,24,40,.16);'
     + '--modal-bg:#FFFFFF;--input-bg:#FFFFFF;--input-border:#CED3DB;--input-text:#111827;--card-bg:#FFFFFF;--card-border:#E3E6EB;'
     + '--table-header-bg:#F7F8FA;--table-row-hover:#F7F8FA;--table-border:#E3E6EB;--topbar-bg:#FFFFFF;--topbar-border:#E3E6EB;'
-    + '--sidebar-text:#4B5563;--sidebar-hover:#EEF0F3;--btn-bg:#FFFFFF;--btn-text:#111827;--btn-border:#CED3DB;--btn-hover:#F7F8FA;color-scheme:light}'
+    + '--sidebar-text:#4B5563;--sidebar-hover:#EEF0F3;--btn-bg:#FFFFFF;--btn-text:#111827;--btn-border:#CED3DB;--btn-hover:#F7F8FA;--tint-k1:58%;--tint-k2:38%;--bg2:#F7F8FA;--bg1:#FFFFFF;--bg3:#EEF0F3;color-scheme:light}'
     // base
     + A + ' body{background:var(--bg)!important;color:var(--text)!important;font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif!important;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}'
     + A + ' ::selection{background:var(--accent-soft)}'
@@ -69369,7 +69369,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function corTexto(tok, permiteBranco) {
     var c = parseCor(tok); if (!c) return tok;
-    var i = info(c); if (!i.neutro || i.a < 0.35) return tok;
+    var i = info(c);
+    if (!i.neutro) {
+      // texto colorido clarinho (feito para fundo escuro): no tema claro escurece mantendo a cor
+      if (i.a >= 0.5 && i.lum > 0.55) return 'color-mix(in srgb, ' + tok + ', #000 ' + (i.lum > 0.75 ? 'var(--tint-k1)' : 'var(--tint-k2)') + ')';
+      return tok;
+    }
+    if (i.a < 0.35) return tok;
     if (i.lum >= 0.985 && !permiteBranco) return tok;
     if (i.lum > 0.8) return 'var(--text)';
     if (i.lum > 0.52) return 'var(--text2)';
