@@ -70069,3 +70069,56 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   cor();
   try { new MutationObserver(cor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (_) {}
 })();
+
+;(function __telasAtualizamSozinhas(){
+  // Tempo real nas telas de cadastro: o PCP / Hub / OFs por Máquina já se atualizam a cada 30 s.
+  // Aqui: Clientes, Fornecedores, Vendedores, Orçamentos e Compras recarregam do servidor a cada 45 s
+  // e ao voltar para a janela — só quando é seguro (nenhuma janela/formulário aberto, ninguém
+  // digitando, 10 s sem mexer). Mantém a posição da rolagem.
+  try { if (window.__telasAtualizamSozinhas) return; window.__telasAtualizamSozinhas = true; } catch (_) {}
+  var TELAS = {
+    'clientes':     ['carregarClientes', 'renderClientes'],
+    'fornecedores': ['carregarFornecedores', 'renderFornecedores'],
+    'vendedores':   ['carregarVendedores', 'renderVendedores'],
+    'orcamentos':   ['carregarOrcamentos', 'renderOrcamentos'],
+    'compras':      ['carregarCompras', 'renderCompras']
+  };
+  var ultimoMexer = Date.now(), ocupado = false, ultimaVez = 0;
+  ['keydown', 'pointerdown', 'wheel', 'touchstart', 'input'].forEach(function(ev){
+    document.addEventListener(ev, function(){ ultimoMexer = Date.now(); }, true);
+  });
+  function paginaAtual(){
+    var a = document.querySelector('.page.active');
+    if (a && a.id) return a.id.replace(/^page-/, '');
+    try { return String(window._PAGE_ATUAL || ''); } catch (_) { return ''; }
+  }
+  function seguro(){
+    if (document.hidden) return false;
+    if (Date.now() - ultimoMexer < 10000) return false;
+    if (document.querySelector('.modal-overlay.open,.estoque-modal-overlay,[data-modal-padrao],#mob-menu-mais,#modal-calc[style*="flex"],#modal-calculadora.open')) return false;
+    var f = document.activeElement;
+    if (f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) return false;
+    return true;
+  }
+  async function atualizar(motivo){
+    if (ocupado) return;
+    var pid = paginaAtual(), fn = TELAS[pid];
+    if (!fn || !seguro()) return;
+    if (Date.now() - ultimaVez < 20000 && motivo !== 'tempo') return;
+    var carregar = window[fn[0]], render = window[fn[1]];
+    if (typeof carregar !== 'function' || typeof render !== 'function') return;
+    ocupado = true; ultimaVez = Date.now();
+    var sc = document.querySelector('.content'), y = sc ? sc.scrollTop : 0, wy = window.scrollY;
+    try {
+      await carregar(true);
+      if (paginaAtual() === pid && seguro()) {
+        render();
+        if (sc) sc.scrollTop = y; window.scrollTo(0, wy);
+      }
+    } catch (e) { console.warn('[AUTO-ATUALIZAR]', pid, e && e.message || e); }
+    finally { ocupado = false; }
+  }
+  setInterval(function(){ atualizar('tempo'); }, 45000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) setTimeout(function(){ atualizar('voltou'); }, 800); });
+  window.addEventListener('focus', function(){ setTimeout(function(){ atualizar('voltou'); }, 800); });
+})();
