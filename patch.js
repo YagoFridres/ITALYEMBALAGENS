@@ -18,7 +18,7 @@
       obs = new Nativo(function (lista) {
         for (var i = 0; i < lista.length; i++) fila.push(lista[i]);
         if (timer) return;
-        var espera = Math.max(0, 120 - (Date.now() - ultimo));
+        var espera = Math.max(0, 200 - (Date.now() - ultimo));
         timer = setTimeout(rodar, espera);
       });
       return obs;
@@ -26,6 +26,60 @@
     Agrupado.prototype = Nativo.prototype;
     window.MutationObserver = Agrupado;
     window.__dsMutationObserverNativo = Nativo;
+  } catch (_) {}
+})();
+
+/* ===== DESEMPENHO 2 (26/10/2026): alterações repetidas e inúteis no DOM são ignoradas =====
+ * Vários módulos antigos regravam o mesmo atributo/classe/conteúdo a cada segundo. Cada regravação
+ * acorda todos os observadores da página (varreduras pesadas). Aqui, gravar o MESMO valor vira no-op. */
+(function () {
+  try {
+    if (window.__dsNoopGuard) return; window.__dsNoopGuard = true;
+    var EP = Element.prototype;
+    var sa = EP.setAttribute, ra = EP.removeAttribute;
+    EP.setAttribute = function (n, v) { try { if (this.getAttribute(n) === String(v)) return; } catch (_) {} return sa.call(this, n, v); };
+    EP.removeAttribute = function (n) { try { if (!this.hasAttribute(n)) return; } catch (_) {} return ra.call(this, n); };
+    var TL = DOMTokenList.prototype, add = TL.add, rem = TL.remove, tog = TL.toggle;
+    TL.add = function () { for (var i = 0; i < arguments.length; i++) if (!this.contains(arguments[i])) return add.apply(this, arguments); };
+    TL.remove = function () { for (var i = 0; i < arguments.length; i++) if (this.contains(arguments[i])) return rem.apply(this, arguments); };
+    TL.toggle = function (c, f) { if (arguments.length > 1) { var tem = this.contains(c); if (!!f === tem) return tem; } return tog.apply(this, arguments); };
+    function prop(proto, nome, cmp) {
+      try {
+        var d = Object.getOwnPropertyDescriptor(proto, nome); if (!d || !d.set) return;
+        Object.defineProperty(proto, nome, { configurable: true, enumerable: d.enumerable, get: d.get,
+          set: function (v) { try { if (cmp(d.get.call(this), v)) return; } catch (_) {} d.set.call(this, v); } });
+      } catch (_) {}
+    }
+    var bool = function (a, b) { return a === !!b; }, str = function (a, b) { return a === String(b == null ? '' : b); };
+    prop(HTMLButtonElement.prototype, 'disabled', bool);
+    prop(HTMLInputElement.prototype, 'disabled', bool);
+    prop(HTMLSelectElement.prototype, 'disabled', bool);
+    prop(HTMLTextAreaElement.prototype, 'disabled', bool);
+    prop(HTMLInputElement.prototype, 'readOnly', bool);
+    prop(HTMLTextAreaElement.prototype, 'readOnly', bool);
+    prop(HTMLElement.prototype, 'title', str);
+    prop(HTMLElement.prototype, 'hidden', bool);
+    prop(HTMLElement.prototype, 'tabIndex', function (a, b) { return a === Number(b); });
+    prop(HTMLButtonElement.prototype, 'type', str);
+    prop(Element.prototype, 'className', str);
+    prop(Element.prototype, 'id', str);
+    // innerHTML: ignora só quando o conteúdo é idêntico e o elemento é "passivo" (datalist, texto puro, <style>)
+    try {
+      var dH = Object.getOwnPropertyDescriptor(EP, 'innerHTML');
+      Object.defineProperty(EP, 'innerHTML', { configurable: true, enumerable: dH.enumerable, get: dH.get,
+        set: function (v) {
+          try {
+            var s = String(v == null ? '' : v), tag = this.nodeName;
+            if (s.length < 200000 && (tag === 'DATALIST' || tag === 'STYLE' || (!this.firstElementChild && s.indexOf('<') < 0)) && dH.get.call(this) === s) return;
+          } catch (_) {}
+          dH.set.call(this, v);
+        } });
+    } catch (_) {}
+    try {
+      var dT = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+      Object.defineProperty(Node.prototype, 'textContent', { configurable: true, enumerable: dT.enumerable, get: dT.get,
+        set: function (v) { try { if (this.nodeType === 1 && !this.firstElementChild && dT.get.call(this) === String(v == null ? '' : v)) return; } catch (_) {} dT.set.call(this, v); } });
+    } catch (_) {}
   } catch (_) {}
 })();
 
@@ -70904,29 +70958,30 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     page.insertBefore(raiz, abas ? abas.nextSibling : page.firstChild);
     ligar();
   }
+  function H(el, h) { if (!el) return; if (el.__dsH === h && el.childNodes.length) return; el.__dsH = h; el.innerHTML = h; }
   function render() {
     if (!raiz) return;
     var r = filtrar(), c = r.cont, linhas = r.linhas;
     var resumo = c.abertas + ' em aberto · <span class="' + (c.atrasadas ? 'dsc-txt-atr' : '') + '">' + c.atrasadas + ' atrasadas</span> · ' + c.urgentes + ' urgentes · ' + c.producao + ' em produção';
-    raiz.querySelector('.dsc-resumo').innerHTML = resumo;
+    H(raiz.querySelector('.dsc-resumo'), resumo);
     var vs = [['abertas', 'Em aberto', c.abertas], ['atrasadas', 'Atrasadas', c.atrasadas], ['urgentes', 'Urgentes', c.urgentes], ['producao', 'Em produção', c.producao], ['concluidas', 'Concluídas', c.concluidas], ['todas', 'Todas', c.todas]];
-    raiz.querySelector('.dsc-vistas').innerHTML = vs.map(function (v) { return '<button type="button" role="tab" data-v="' + v[0] + '" aria-selected="' + (E.vista === v[0]) + '" class="' + (E.vista === v[0] ? 'on' : '') + '">' + v[1] + '<span>' + v[2] + '</span></button>'; }).join('');
+    H(raiz.querySelector('.dsc-vistas'), vs.map(function (v) { return '<button type="button" role="tab" data-v="' + v[0] + '" aria-selected="' + (E.vista === v[0]) + '" class="' + (E.vista === v[0] ? 'on' : '') + '">' + v[1] + '<span>' + v[2] + '</span></button>'; }).join(''));
     var lf = listasFiltro();
-    var sp = raiz.querySelector('[data-f="periodo"]'); if (document.activeElement !== sp) sp.innerHTML = opcoes([['hoje', 'Entrega hoje'], ['amanha', 'Entrega amanhã'], ['semana', 'Entrega nesta semana'], ['7d', 'Próximos 7 dias'], ['mes', 'Entrega neste mês']], E.periodo, 'Qualquer entrega');
-    var sm = raiz.querySelector('[data-f="maquina"]'); if (document.activeElement !== sm) sm.innerHTML = opcoes(lf.maq.map(function (m) { return [m, m]; }), E.maquina, 'Todas as máquinas');
-    var sv = raiz.querySelector('[data-f="vendedor"]'); if (document.activeElement !== sv) sv.innerHTML = opcoes(lf.vend.map(function (m) { return [m, m]; }), E.vendedor, 'Todos');
-    var se = raiz.querySelector('[data-f="empresa"]'); if (document.activeElement !== se) se.innerHTML = opcoes([['E1', 'Italy'], ['E2', 'Cartoeste'], ['E3', 'Oestepack']], E.empresa, 'Todas');
+    var sp = raiz.querySelector('[data-f="periodo"]'); if (document.activeElement !== sp) H(sp, opcoes([['hoje', 'Entrega hoje'], ['amanha', 'Entrega amanhã'], ['semana', 'Entrega nesta semana'], ['7d', 'Próximos 7 dias'], ['mes', 'Entrega neste mês']], E.periodo, 'Qualquer entrega'));
+    var sm = raiz.querySelector('[data-f="maquina"]'); if (document.activeElement !== sm) H(sm, opcoes(lf.maq.map(function (m) { return [m, m]; }), E.maquina, 'Todas as máquinas'));
+    var sv = raiz.querySelector('[data-f="vendedor"]'); if (document.activeElement !== sv) H(sv, opcoes(lf.vend.map(function (m) { return [m, m]; }), E.vendedor, 'Todos'));
+    var se = raiz.querySelector('[data-f="empresa"]'); if (document.activeElement !== se) H(se, opcoes([['E1', 'Italy'], ['E2', 'Cartoeste'], ['E3', 'Oestepack']], E.empresa, 'Todas'));
     var nAv = (E.vendedor ? 1 : 0) + (E.empresa ? 1 : 0) + (E.pedDe ? 1 : 0) + (E.pedAte ? 1 : 0) + (E.semPapel ? 1 : 0);
     raiz.querySelector('.dsc-nf').textContent = nAv ? nAv : '';
-    raiz.querySelector('thead').innerHTML = '<tr><th class="dsc-c-chk"><input type="checkbox" class="dsc-chk-todos" aria-label="Selecionar página"></th>' + colsVisiveis().map(function (c) { return th(c.ord || '', c.t, c.c + '" data-col="' + c.k); }).join('') + '<th class="dsc-c-acao">Ações</th></tr>';
+    H(raiz.querySelector('thead'), '<tr><th class="dsc-c-chk"><input type="checkbox" class="dsc-chk-todos" aria-label="Selecionar página"></th>' + colsVisiveis().map(function (c) { return th(c.ord || '', c.t, c.c + '" data-col="' + c.k); }).join('') + '<th class="dsc-c-acao">Ações</th></tr>');
     var total = linhas.length, pags = Math.max(1, Math.ceil(total / E.porPagina));
     if (E.pagina > pags) E.pagina = pags;
     var ini = (E.pagina - 1) * E.porPagina, pagina = linhas.slice(ini, ini + E.porPagina);
-    raiz.querySelector('tbody').innerHTML = pagina.map(linhaHtml).join('');
+    H(raiz.querySelector('tbody'), pagina.map(linhaHtml).join(''));
     var vazio = raiz.querySelector('.dsc-vazio');
     var carregando = !lista().length;
     vazio.hidden = total > 0;
-    vazio.innerHTML = carregando ? '<div class="dsc-skel"></div><div class="dsc-skel"></div><div class="dsc-skel"></div>' : svg(IC.vazio, 28) + '<b>Nenhuma OF encontrada</b><span>Ajuste a busca ou os filtros.</span>' + (E.busca || nAv || E.periodo || E.maquina ? '<button type="button" class="dsc-btn dsc-btn-sec" data-a="limpar">Limpar filtros</button>' : '');
+    H(vazio, carregando ? '<div class="dsc-skel"></div><div class="dsc-skel"></div><div class="dsc-skel"></div>' : svg(IC.vazio, 28) + '<b>Nenhuma OF encontrada</b><span>Ajuste a busca ou os filtros.</span>' + (E.busca || nAv || E.periodo || E.maquina ? '<button type="button" class="dsc-btn dsc-btn-sec" data-a="limpar">Limpar filtros</button>' : ''));
     raiz.querySelector('.dsc-pag-info').textContent = total ? ('Mostrando ' + (ini + 1) + '–' + Math.min(ini + E.porPagina, total) + ' de ' + total.toLocaleString('pt-BR')) : '';
     var pg = '';
     if (pags > 1) {
@@ -70935,7 +70990,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       for (var i = a; i <= b; i++) pg += '<button type="button" class="dsc-ib' + (i === E.pagina ? ' on' : '') + '" data-p="' + i + '">' + i + '</button>';
       pg += '<button type="button" class="dsc-ib" data-p="' + (E.pagina + 1) + '"' + (E.pagina >= pags ? ' disabled' : '') + ' aria-label="Próxima página">›</button>';
     }
-    raiz.querySelector('.dsc-pag').innerHTML = pg;
+    H(raiz.querySelector('.dsc-pag'), pg);
     var nSel = Object.keys(E.sel).length;
     var lote = raiz.querySelector('.dsc-lote'); lote.hidden = !nSel;
     lote.querySelector('.dsc-lote-n').textContent = nSel + (nSel === 1 ? ' OF selecionada' : ' OFs selecionadas');
