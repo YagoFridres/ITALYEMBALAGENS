@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026125306';
-const SW_RUNTIME_VERSION = '20261026125306';
+const PATCH_RUNTIME_VERSION = '20261026125547';
+const SW_RUNTIME_VERSION = '20261026125547';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -17901,8 +17901,16 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
 app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.id || '').trim();
+    let clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.id || '').trim();
     if (!clienteId) return res.status(400).json({ ok: false, error: 'cliente_id_obrigatorio' });
+    // Alguns botões mandam o CÓDIGO do cliente (ex.: "C002") em vez do id → converte para o id.
+    if (!_isUuid(clienteId)) {
+      try {
+        const { data: porCodigo } = await supabase.from('clientes').select('id').eq('codigo', clienteId).limit(1);
+        if (Array.isArray(porCodigo) && porCodigo[0] && porCodigo[0].id) clienteId = String(porCodigo[0].id);
+        else return res.status(404).json({ ok: false, error: 'cliente_nao_encontrado' });
+      } catch (_) { return res.status(404).json({ ok: false, error: 'cliente_nao_encontrado' }); }
+    }
     let empresaAtual = null;
     try { empresaAtual = await _resolveEmpresaUuid(req); } catch (_) { empresaAtual = null; }
     let cliente = null;
