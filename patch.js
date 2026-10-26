@@ -7442,9 +7442,11 @@ window._compraPapelaoResolveItemMetrics = function(item) {
     : false;
   var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
-  var totalUnit = area * window._compraPapelaoNum(item && item.valor_m2);
-  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (totalUnit * Math.max(quantidade, 0));
-  var mil = quantidade > 0 ? (total / quantidade) * 1000 : (totalUnit * 1000);
+  // 'area' já é a área TOTAL do item (m² de uma chapa × quantidade). Antes multiplicava pela
+  // quantidade de novo: 100 chapas de 2 m² a R$ 2,50 davam R$ 50.000 em vez de R$ 500.
+  var totalCalc = area * window._compraPapelaoNum(item && item.valor_m2);
+  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : totalCalc;
+  var mil = quantidade > 0 ? (total / quantidade) * 1000 : base.vl_p_mil;
   return {
     area_pedido_mm2: base.area_pedido_mm2,
     area_m2: area,
