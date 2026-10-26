@@ -69744,7 +69744,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       });
     } catch (_) {}
   }
-  function iniciar(){ inject(); rotular(); setInterval(rotular, 700); }
+  function iniciar(){
+    inject(); rotular(); setInterval(rotular, 1500);
+    try {
+      var agendado = false;
+      new MutationObserver(function(){ if (agendado) return; agendado = true; (window.requestAnimationFrame || setTimeout)(function(){ agendado = false; rotular(); }); })
+        .observe(document.getElementById('page-pcp') || document.body, { childList: true, subtree: true });
+    } catch (_) {}
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
 
