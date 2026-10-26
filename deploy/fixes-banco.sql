@@ -88,3 +88,15 @@ create table if not exists public.tempos_reais (
   created_at timestamptz default now()
 );
 grant all on public.producao_sessoes, public.sequenciamento_manual, public.tempos_reais to anon, authenticated, service_role;
+-- Tempos Reais: a tela usa estas colunas, mas a tabela só tinha id/maquina_id/of_id/tempo_minutos (26/10/2026)
+alter table public.tempos_reais alter column maquina_id type text using maquina_id::text;
+alter table public.tempos_reais alter column of_id type text using of_id::text;
+alter table public.tempos_reais
+  add column if not exists maquina_nome text,
+  add column if not exists tipo_caixa text,
+  add column if not exists velocidade_cxh integer,
+  add column if not exists quantidade integer,
+  add column if not exists setup_min integer,
+  add column if not exists producao_min integer,
+  add column if not exists data date,
+  add column if not exists obs text;

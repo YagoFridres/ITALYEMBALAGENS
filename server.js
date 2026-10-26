@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026164502';
-const SW_RUNTIME_VERSION = '20261026164502';
+const PATCH_RUNTIME_VERSION = '20261026164632';
+const SW_RUNTIME_VERSION = '20261026164632';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39610,7 +39610,9 @@ app.post('/api/operador/finalizar', authMiddleware, async (req, res) => {
     if (eu) throw eu;
     // tempos reais (mesma tabela usada pela área Tempos Reais)
     try {
-      const tr = { maquina_id: s.maquina, maquina_nome: s.maquina, of_id: s.of_id, quantidade: qtd || null, producao_min: minutos,
+      let maqId = 'virtual-maquina-' + String(s.maquina).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      try { const { data: mr } = await supabase.from('maquinas').select('id,nome,col'); const achou = (mr || []).find((m) => String(m.nome || m.col || '').trim().toLowerCase() === String(s.maquina).trim().toLowerCase()); if (achou) maqId = String(achou.id); } catch (_) {}
+      const tr = { maquina_id: maqId, maquina_nome: s.maquina, tempo_minutos: minutos, of_id: s.of_id, quantidade: qtd || null, producao_min: minutos,
         velocidade_cxh: qtd ? Math.round(qtd / (minutos / 60)) : null, data: fim.toISOString().slice(0, 10), obs: 'Modo operador · OF ' + (s.of_numero || '') + ' · ' + (s.operador || '') };
       let r = await supabase.from('tempos_reais').insert([tr]);
       if (r.error) { delete tr.maquina_id; r = await supabase.from('tempos_reais').insert([tr]); }
