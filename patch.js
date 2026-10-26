@@ -69669,4 +69669,4 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   (document.head || document.documentElement).appendChild(st);
 })();
 /* A página inteira nunca rola para o lado (Jarvis/gavetas deslocavam o menu lateral para fora da tela). */
-(function () { var st = document.createElement('style'); st.textContent = 'html,body{overflow-x:hidden!important;max-width:100vw}'; (document.head || document.documentElement).appendChild(st); })();
+(function () { var st = document.createElement('style'); st.textContent = 'html,body{overflow-x:hidden!important}'; (document.head || document.documentElement).appendChild(st); })();
