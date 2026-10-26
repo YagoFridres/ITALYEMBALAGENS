@@ -71469,3 +71469,25 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* Orçamentos no visual novo: um botão principal azul, demais neutros, excluir em vermelho */
+(function () {
+  try {
+    if (document.getElementById('ds-orc-visual')) return;
+    var P = 'html[data-ds="3"] #page-orcamentos ';
+    var st = document.createElement('style'); st.id = 'ds-orc-visual';
+    st.textContent = ''
+      + P + '.pep-btn{background:var(--s2)!important;background-image:none!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:none!important;text-transform:none!important;letter-spacing:0!important;font-weight:600!important}'
+      + P + '.pep-btn:hover{border-color:var(--b2)!important;background:var(--s3)!important}'
+      + P + '.pep-btn.primary{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+      + P + '.pep-btn.primary:hover{background:var(--accent2)!important}'
+      + P + '.orx-folder-pill{background:var(--surface)!important;background-image:none!important;border:1px solid var(--border)!important;box-shadow:none!important}'
+      + P + '.orx-folder-pill.is-active{background:color-mix(in srgb,var(--accent) 12%,var(--surface))!important;border-color:var(--accent)!important}'
+      + P + 'td button.is-edit,' + P + 'td button.is-copy,' + P + 'td button.is-print,' + P + 'td button.is-versions,' + P + 'td button.danger'
+      + '{background:transparent!important;background-image:none!important;border:1px solid var(--border)!important;color:var(--text2)!important;box-shadow:none!important;font-weight:500!important}'
+      + P + 'td button.is-edit:hover,' + P + 'td button.is-copy:hover,' + P + 'td button.is-print:hover,' + P + 'td button.is-versions:hover{color:var(--text)!important;border-color:var(--b2)!important;background:var(--s2)!important}'
+      + P + 'td button.danger{color:var(--red)!important}'
+      + P + 'td button.danger:hover{background:color-mix(in srgb,var(--red) 12%,transparent)!important;border-color:var(--red)!important}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
