@@ -60352,9 +60352,15 @@ function _ocultarGraficoComissoes() {
     try {
       var page = document.getElementById('page-pedidos-recorrentes');
       if (!page) return;
-      if (page.dataset.buscaUniversalMsg === '1') return;
-      page.dataset.buscaUniversalMsg = '1';
-      page.innerHTML = '<div style="padding:26px;color:#94a3b8;text-align:center">Use o 🔍 Buscador do Sistema no menu acima.</div>';
+      if (page.dataset.buscaUniversalMsg === '2' && page.querySelector('#pcp-busca-universal')) return;
+      page.dataset.buscaUniversalMsg = '2';
+      // a aba "Buscador" mostra o buscador direto na página (antes só mandava usar a busca do topo)
+      try { ensureStyle(); } catch (_) {}
+      page.innerHTML = sectionInnerHtml();
+      var root = page.querySelector('#pcp-busca-universal');
+      if (root) { try { bindUi(root); } catch (_) {} }
+      var inp = root && root.querySelector('#busca-universal-input');
+      if (inp && page.offsetParent) { try { inp.focus(); } catch (_) {} }
     } catch (_) {}
   }
 
@@ -60412,7 +60418,9 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  var __renUlt = 0;
   function renomearAba() {
+    var ag = Date.now(); if (ag - __renUlt < 3000) return; __renUlt = ag;
     try {
       Array.prototype.slice.call(document.querySelectorAll('button, a, li, span, div')).forEach(function(el) {
         try {
@@ -71422,4 +71430,42 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (pg.offsetParent === null && getComputedStyle(pg).display === 'none') g.textContent = '';
     } catch (_) {}
   }, 4000);
+})();
+
+/* Amostras / Buscador: só o conteúdo da aba (sem o botão "OF Rápida" ao lado das abas) */
+(function () {
+  try {
+    if (document.getElementById('ds-abas-enxutas')) return;
+    var st = document.createElement('style'); st.id = 'ds-abas-enxutas';
+    st.textContent = '#page-pcp:not([data-ds-sub="ofs"]) .ds-abas-central .ds-btn-ofrapida{display:none!important}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
+
+/* Buscador dentro da aba (Central de OFs › Buscador), no visual novo */
+(function () {
+  try {
+    if (document.getElementById('ds-buscador-aba')) return;
+    var S = '#page-pedidos-recorrentes ';
+    var st = document.createElement('style'); st.id = 'ds-buscador-aba';
+    st.textContent = ''
+      + S + '#pcp-busca-universal{padding:16px 0}'
+      + S + '.bu-search{display:flex;gap:10px;align-items:center;margin-bottom:12px}'
+      + S + '.bu-input{flex:1;min-width:0;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0 14px;font:inherit;font-size:14px;color:var(--text);outline:none}'
+      + S + '.bu-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}'
+      + S + '.bu-btn{height:40px;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}'
+      + S + '.bu-chips{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border)}'
+      + S + '.bu-chip{background:transparent;border:1px solid var(--border);border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;color:var(--text2);cursor:pointer}'
+      + S + '.bu-chip:hover{color:var(--text);border-color:var(--b2)}'
+      + S + '.bu-chip.is-active{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:var(--accent);color:var(--text)}'
+      + S + '.bu-results{padding-top:6px}'
+      + S + '.bu-empty{display:flex;align-items:center;justify-content:center;min-height:260px;color:var(--text3);text-align:center}'
+      + S + '.bu-title{text-transform:none!important;color:var(--text3)!important}'
+      + S + '.bu-title:after{background:var(--border)!important}'
+      + S + '.bu-card{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;transform:none!important}'
+      + S + '.bu-card:hover{border-color:var(--accent)!important;background:var(--s2)!important}'
+      + S + '.bu-main{color:var(--text)!important}' + S + '.bu-sub{color:var(--text2)!important}'
+      + '@media (max-width:600px){' + S + '.bu-search{flex-direction:column;align-items:stretch}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
 })();
