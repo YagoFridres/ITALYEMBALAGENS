@@ -1271,6 +1271,7 @@ function _makePwaIconPng(size) {
   return png;
 }
 app.get('/icon-192.png', (req, res) => {
+  try { const fp = path.join(__dirname, 'icon-192.png'); if (fs.existsSync(fp)) { res.setHeader('Cache-Control', 'public, max-age=86400'); return res.sendFile(fp); } } catch (_) {}
   const buf = _makePwaIconPng(192);
   if (!buf) return res.status(404).end();
   res.setHeader('Content-Type', 'image/png');
@@ -1278,6 +1279,7 @@ app.get('/icon-192.png', (req, res) => {
   res.end(buf);
 });
 app.get('/icon-512.png', (req, res) => {
+  try { const fp = path.join(__dirname, 'icon-512.png'); if (fs.existsSync(fp)) { res.setHeader('Cache-Control', 'public, max-age=86400'); return res.sendFile(fp); } } catch (_) {}
   const buf = _makePwaIconPng(512);
   if (!buf) return res.status(404).end();
   res.setHeader('Content-Type', 'image/png');
@@ -1306,8 +1308,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026141703';
-const SW_RUNTIME_VERSION = '20261026141703';
+const PATCH_RUNTIME_VERSION = '20261026141821';
+const SW_RUNTIME_VERSION = '20261026141821';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||

@@ -70037,3 +70037,29 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } catch (_) {}
   }, 900);
 })();
+
+;(function __pwaIconesETema(){
+  // Ícone do app (iPhone/iPad usam apple-touch-icon em PNG; SVG não funciona) e cor da barra do
+  // navegador/app acompanhando o tema claro/escuro.
+  try {
+    var l = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!l) { l = document.createElement('link'); l.rel = 'apple-touch-icon'; document.head.appendChild(l); }
+    l.href = '/apple-touch-icon.png'; l.setAttribute('sizes', '180x180');
+    var ic = document.querySelector('link[rel="icon"]');
+    if (!ic) { ic = document.createElement('link'); ic.rel = 'icon'; document.head.appendChild(ic); }
+    ic.type = 'image/png'; ic.href = '/icon-192.png';
+  } catch (_) {}
+  function cor(){
+    try {
+      var claro = document.documentElement.getAttribute('data-theme') === 'light';
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+      var c = claro ? '#FFFFFF' : '#14171C';
+      if (m.content !== c) m.content = c;
+      var sb = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (sb) sb.content = claro ? 'default' : 'black-translucent';
+    } catch (_) {}
+  }
+  cor();
+  try { new MutationObserver(cor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (_) {}
+})();
