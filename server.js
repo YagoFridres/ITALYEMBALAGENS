@@ -7047,7 +7047,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           var _dupCorteIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
           var _dupQuery = supabase
             .from('ofs')
-            .select('id,numero,of,of_num,created_at,cli_id,cliente_id,clinome,cliente_nome,produto,descricao,qtd,quantidade')
+            .select('id,numero,of,of_num,created_at,cli_id,cliente_id,clinome,cliente_nome,descricao,qtd,quantidade')
             .eq('empresa_id', _dupEmpresa)
             .gte('created_at', _dupCorteIso)
             .or('cli_id.eq.' + _dupCliId + ',cliente_id.eq.' + _dupCliId)
