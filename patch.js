@@ -69491,6 +69491,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var c = parseCor(tok); if (!c) return tok;
     var i = info(c); if (!i.neutro) return tok;
     if (i.lum < 0.24) {
+      // listras/realces escuros translúcidos (feitos para o tema escuro): viram um tom leve que funciona nos dois temas
+      if (i.a < 0.45 && i.lum >= 0.02 && i.a >= 0.06) return 'color-mix(in srgb, var(--text) ' + Math.max(2, Math.min(7, Math.round(i.a * 14))) + '%, transparent)';
       if (i.a < 0.45) return tok;           // sombras/sobreposições translúcidas ficam
       if (i.lum < 0.02 && i.a < 0.95) return tok; // fundo preto translúcido = escurecer a tela atrás de janelas
       if (i.lum < 0.06) return 'var(--surface)';
@@ -71494,9 +71496,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 (function () {
   try {
     if (document.getElementById('ds-orc-visual')) return;
-    var P = 'html[data-ds="3"] #page-orcamentos ';
+    var PS = ['html[data-ds="3"] #page-orcamentos ', 'html[data-ds="3"] #page-compras '];
     var st = document.createElement('style'); st.id = 'ds-orc-visual';
-    st.textContent = ''
+    st.textContent = PS.map(function (P) { return ''
       + P + '.pep-btn{background:var(--s2)!important;background-image:none!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:none!important;text-transform:none!important;letter-spacing:0!important;font-weight:600!important}'
       + P + '.pep-btn:hover{border-color:var(--b2)!important;background:var(--s3)!important}'
       + P + '.pep-btn.primary{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
@@ -71507,7 +71509,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '{background:transparent!important;background-image:none!important;border:1px solid var(--border)!important;color:var(--text2)!important;box-shadow:none!important;font-weight:500!important}'
       + P + 'td button.is-edit:hover,' + P + 'td button.is-copy:hover,' + P + 'td button.is-print:hover,' + P + 'td button.is-versions:hover{color:var(--text)!important;border-color:var(--b2)!important;background:var(--s2)!important}'
       + P + 'td button.danger{color:var(--red)!important}'
-      + P + 'td button.danger:hover{background:color-mix(in srgb,var(--red) 12%,transparent)!important;border-color:var(--red)!important}';
+      + P + 'td button.danger:hover{background:color-mix(in srgb,var(--red) 12%,transparent)!important;border-color:var(--red)!important}'
+      + P + 'td button.is-folder{background:transparent!important;background-image:none!important;border:1px solid var(--border)!important;color:var(--text2)!important;box-shadow:none!important;font-weight:500!important}'
+      + P + '.cmpx-folder-pill{background:var(--surface)!important;background-image:none!important;border:1px solid var(--border)!important;box-shadow:none!important}'
+      + P + '.cmpx-folder-pill.is-active{background:color-mix(in srgb,var(--accent) 12%,var(--surface))!important;border-color:var(--accent)!important}'
+      + P + '.cmpx-table-wrap,' + P + '.orx-table-wrap{background:var(--surface)!important}'
+      + P + 'td button.primary.is-edit{background:transparent!important}'; }).join('');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
