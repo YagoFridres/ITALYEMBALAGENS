@@ -39652,6 +39652,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     input.onfocus = null;
     input.addEventListener('focus', function() { try { window.buscarClienteOrcamento(String(input.value || '')); } catch (_) {} }, true);
     input.addEventListener('input', function() { try { window.buscarClienteOrcamento(String(input.value || '')); } catch (_) {} }, true);
+    // Nome digitado por inteiro (sem clicar na sugestão): vincula o cliente se bater exatamente
+    // com um cadastro; se o texto mudar, desfaz o vínculo antigo. Antes o orçamento era salvo
+    // sem cliente e com o nome "-- Selecione o cliente --".
+    function _normNome(v) { try { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase(); } catch (_) { return String(v || '').trim().toLowerCase(); } }
+    function resolverDigitado() {
+      try {
+        var alvo = _normNome(input.value);
+        var atualId = String(hidden.value || '').trim();
+        if (!alvo) { if (atualId) { hidden.value = ''; try { sel.value = ''; } catch (_) {} } return; }
+        if (atualId) {
+          var atual = clientesRef().filter(function(c) { return String(c && c.id || '') === atualId; })[0];
+          if (atual && _normNome(atual.nome || atual.rs || atual.razao_social) === alvo) return;
+        }
+        var achados = clientesRef().filter(function(c) { return _normNome(c && (c.nome || c.rs || c.razao_social || c.razao)) === alvo; });
+        if (achados.length === 1) {
+          window.selecionarClienteOrcamento(achados[0].id, String(achados[0].nome || achados[0].rs || input.value).trim());
+        } else if (atualId) {
+          hidden.value = '';
+          try { sel.value = ''; } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    input.addEventListener('input', function() { setTimeout(resolverDigitado, 0); }, false);
+    input.addEventListener('change', resolverDigitado, false);
+    input.addEventListener('blur', function() { setTimeout(resolverDigitado, 150); }, false);
     document.addEventListener('click', function(ev) {
       try { if (!ev.target.closest('#wrap-calc-cliente')) close(); } catch (_) {}
     }, true);

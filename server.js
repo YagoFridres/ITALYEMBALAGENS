@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026111916';
-const SW_RUNTIME_VERSION = '20261026111916';
+const PATCH_RUNTIME_VERSION = '20261026112048';
+const SW_RUNTIME_VERSION = '20261026112048';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -20003,8 +20003,19 @@ app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     return ok(res, data);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
+// Nunca gravar o texto do placeholder do select como nome do cliente do orçamento.
+function _orcLimparClientePlaceholder(body) {
+  try {
+    if (!body || typeof body !== 'object') return body;
+    ['cliente_nome', 'cliente', 'clienteNome', 'cliNome', 'clinome'].forEach((k) => {
+      if (typeof body[k] === 'string' && /selecione\s+o\s+cliente/i.test(body[k])) body[k] = null;
+    });
+  } catch (_) {}
+  return body;
+}
 app.post('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
+    _orcLimparClientePlaceholder(req.body);
     try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const b = req.body || {};
     let empresaUuid = '';
@@ -20086,6 +20097,7 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
 });
 app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
+    _orcLimparClientePlaceholder(req.body);
     try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
