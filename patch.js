@@ -69660,3 +69660,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return orig.call(this, input, init);
   };
 })();
+
+/* Histórico de Passagens: a tabela mensal rolava dentro de uma caixinha própria e a primeira linha
+ * sumia sob o cabeçalho; agora rola junto com a página. */
+(function () {
+  var st = document.createElement('style');
+  st.textContent = '#page-historico-passagens .hist-month-table-wrap{max-height:none!important;overflow-y:visible!important;overflow-x:auto!important}';
+  (document.head || document.documentElement).appendChild(st);
+})();
+/* A página inteira nunca rola para o lado (Jarvis/gavetas deslocavam o menu lateral para fora da tela). */
+(function () { var st = document.createElement('style'); st.textContent = 'html,body{overflow-x:hidden!important;max-width:100vw}'; (document.head || document.documentElement).appendChild(st); })();
