@@ -69187,6 +69187,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + 'body.is-mobile .topbar #gsearch-wrap,body[data-device="mobile"] .topbar #gsearch-wrap{flex:1 1 100%!important;order:5;min-width:0!important}'
     + 'body.is-mobile .topbar #gsearch-wrap input,body[data-device="mobile"] .topbar #gsearch-wrap input{width:100%!important;min-height:40px;font-size:16px!important}'
     + 'body.is-mobile .content,body[data-device="mobile"] .content{padding-bottom:calc(80px + env(safe-area-inset-bottom))!important}'
+    // Tabelas em modo "cartão" no celular herdavam a largura mínima do computador (~1000px) e os
+    // valores ficavam fora da tela; agora o cartão ocupa só a largura da tela.
+    + 'body.is-mobile .content table:not(.no-card),body[data-device="mobile"] .content table:not(.no-card){min-width:0!important;width:100%!important;max-width:100%!important}'
+    + 'body.is-mobile .content table:not(.no-card) > tbody > tr,body[data-device="mobile"] .content table:not(.no-card) > tbody > tr{min-width:0!important;width:auto!important;max-width:100%!important}'
+    + 'body.is-mobile .content table:not(.no-card) > tbody > tr > td,body[data-device="mobile"] .content table:not(.no-card) > tbody > tr > td{min-width:0!important;max-width:100%!important;box-sizing:border-box!important;word-break:break-word}'
     + '}';
   var st = document.createElement('style');
   st.id = 'mobile-header-fix-css';
