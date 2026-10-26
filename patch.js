@@ -69034,6 +69034,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   try {
     new MutationObserver(function () { setTimeout(varrer, 0); }).observe(document.body, { childList: true });
+    // Algumas telas (ex.: Calculadora de Orçamentos) reaplicam width:100vw inline depois de abrir;
+    // observa o style dos overlays já ajustados e corrige na hora (sem loop: só age se mudou).
+    new MutationObserver(function (ms) {
+      var z = zoomAtual();
+      if (Math.abs(z - 1) < 0.01) return;
+      ms.forEach(function (m) {
+        var el = m.target;
+        if (!el || !el.dataset || !el.dataset.uizFix) return;
+        var W = (window.innerWidth / z) + 'px';
+        if (el.style.getPropertyValue('width') !== W) ajustar(el, z);
+      });
+    }).observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true });
   } catch (_) {}
   window.addEventListener('resize', varrer);
   setInterval(varrer, 800);
