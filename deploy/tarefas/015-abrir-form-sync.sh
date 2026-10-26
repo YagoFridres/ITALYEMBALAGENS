@@ -12,6 +12,8 @@ s=open(f).read()
 s=s.replace("\t# ERP (server.js)", "\thandle "+p+"* {\n\t\treverse_proxy 127.0.0.1:3005\n\t}\n\n\t# ERP (server.js)",1)
 open(f,'w').write(s)
 PY
+else
+  sed -i "s#handle /sync-[0-9a-f]*\*#handle $P*#" $F
 fi
 caddy validate --config $F --adapter caddyfile >/dev/null 2>&1 && systemctl reload caddy
 systemctl stop pcp-form-sync 2>/dev/null || true
