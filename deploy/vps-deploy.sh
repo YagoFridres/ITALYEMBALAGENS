@@ -39,7 +39,7 @@ for f in deploy/tarefas/*.sh; do
   n=$(basename "$f")
   [ -e "$FEITAS/$n" ] && continue
   echo "tarefa: $n"
-  ( cd "$APP" && timeout 1800 bash "$f" ) > "$LOGDIR/$n.log" 2>&1
+  ( cd "$APP" && timeout 1800 bash "$f" ) < /dev/null > "$LOGDIR/$n.log" 2>&1
   echo "exit=$?" >> "$LOGDIR/$n.log"
   touch "$FEITAS/$n"
 done
