@@ -71511,3 +71511,55 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* Chat grande no centro da tela (igual ao Jarvis) */
+(function () {
+  try {
+    if (document.getElementById('ds-chat-centro')) return;
+    var st = document.createElement('style'); st.id = 'ds-chat-centro';
+    st.textContent = '#chat-painel{top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%)!important;'
+      + 'width:min(920px,calc(100% - 32px))!important;max-width:calc(100% - 32px)!important;height:min(86%,860px)!important;max-height:calc(100% - 32px)!important;'
+      + 'z-index:9500!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.45),0 20px 60px rgba(0,0,0,.45)!important;background:var(--surface)!important}'
+      + '@media (max-width:700px){#chat-painel{width:calc(100% - 16px)!important;max-width:calc(100% - 16px)!important;height:calc(100% - 24px)!important;max-height:calc(100% - 24px)!important}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
+
+/* ===== CELULAR (26/10/2026): páginas rolam até o fim (sem a faixa cortando o conteúdo perto do Jarvis)
+ * e cartões da Central de OFs organizados. ===== */
+(function () {
+  try {
+    if (document.getElementById('ds-celular-2')) return;
+    var M = 'body.is-mobile ';
+    var C = 'html body.is-mobile .content #page-pcp #ds-central table.dsc-tabela > tbody > tr';
+    var st = document.createElement('style'); st.id = 'ds-celular-2';
+    st.textContent = ''
+      + M + '.content{padding-bottom:0!important}'
+      + M + '.content > .page.active{height:100%!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}'
+      + M + '.content > .page > .page-body{padding-bottom:110px!important}'
+      + M + '#ds-central{padding:4px 12px 110px!important}'
+      + M + '#ds-central .dsc-tabela-wrap{max-height:none!important;overflow:visible!important;border:0!important;background:transparent!important}'
+      + C + '{display:grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;grid-template-areas:"chk of acao" "chk cli cli" "chk prod prod" "chk ent qtd" "chk st st"!important;gap:3px 10px!important;padding:12px 12px 10px!important;margin:0 0 10px!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--surface)!important;width:auto!important;height:auto!important}'
+      + C + ' > td{display:block!important;padding:0!important;border:none!important;min-height:0!important;text-align:left!important;width:auto!important;min-width:0!important;max-width:none!important;background:transparent!important;white-space:normal!important;box-shadow:none!important;position:static!important}'
+      + C + ' > td[data-col]:not(.dsc-c-of):not(.dsc-c-cli):not(.dsc-c-ent):not(.dsc-c-qtd):not(.dsc-c-st):not(.dsc-c-prod){display:none!important}'
+      + C + ' > td.dsc-c-chk{grid-area:chk!important;padding-top:3px!important}'
+      + C + ' > td.dsc-c-chk input{width:18px!important;height:18px!important;margin:0!important}'
+      + C + ' > td.dsc-c-of{grid-area:of!important;font-size:16px!important;font-weight:700!important;color:var(--text)!important}'
+      + C + ' > td.dsc-c-cli{grid-area:cli!important;font-weight:600!important;font-size:14px!important;color:var(--text)!important}'
+      + C + ' > td.dsc-c-prod{grid-area:prod!important;font-size:13px!important;color:var(--text2)!important}'
+      + C + ' > td.dsc-c-ent{grid-area:ent!important;display:flex!important;gap:8px;align-items:baseline;font-size:13px!important;color:var(--text2)!important}'
+      + C + ' > td.dsc-c-qtd{grid-area:qtd!important;text-align:right!important;font-weight:600!important;color:var(--text)!important}'
+      + C + ' > td.dsc-c-st{grid-area:st!important;margin-top:4px!important}'
+      + C + ' > td.dsc-c-acao{grid-area:acao!important;text-align:right!important;display:flex!important;gap:2px;justify-content:flex-end;align-items:flex-start}'
+      + C + ' > td::before{content:none!important;display:none!important}'
+      + 'html body.is-mobile .content #page-pcp #ds-central table.dsc-tabela, html body.is-mobile .content #page-pcp #ds-central table.dsc-tabela > tbody{display:block!important;width:100%!important;min-width:0!important}'
+      + 'html body.is-mobile .content #page-pcp #ds-central table.dsc-tabela > thead{display:none!important}'
+      + M + '#ds-central .dsc-head{flex-wrap:wrap;gap:10px}'
+      + M + '#ds-central .dsc-filtros{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}'
+      + M + '#ds-central .dsc-filtros > *{max-width:none!important;width:100%!important;min-width:0!important}'
+      + M + '#ds-central .dsc-filtros > .dsc-busca{grid-column:1 / -1}'
+      + M + '.ds-abas-central{position:relative;z-index:2;background:var(--bg);flex-shrink:0!important;min-height:42px!important;overflow-y:hidden!important}'
+      + '.ds-abas-central{flex-shrink:0}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
