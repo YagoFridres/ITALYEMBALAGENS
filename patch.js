@@ -71922,7 +71922,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function legado(sel) { var b = document.querySelector('#page-ofmaq ' + sel); if (b) { b.click(); return true; } toast('Abra a tela anterior uma vez para carregar esta função.', 'var(--yellow)'); return false; }
   function filaAtual(m) { return (grupos().g[m || E.maq] || []).slice(); }
   function clique(ev) {
-    var mq = ev.target.closest('[data-maq]');
+    var mq = ev.target.closest('.dom-maq[data-maq]');
     if (mq && raiz.contains(mq)) { E.todas = false; E.maq = mq.getAttribute('data-maq'); try { localStorage.setItem('ds_ofmaq_maq', E.maq); } catch (_) {} render(); return; }
     var dd0 = ev.target.closest('[data-dia],[data-sem]');
     var b = ev.target.closest('[data-a]'); if (!b && !dd0) return;
@@ -72398,7 +72398,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }, 700);
   var css = ''
     + '#page-almoxarifado.active{overflow-y:auto;height:100%}'
-    + '#ds-almox{padding:18px 20px 40px;color:var(--text);font-size:14px;max-width:1400px}'
+    + '#ds-almox{padding:18px 20px 40px;color:var(--text);font-size:14px}'
+    + '#ds-almox .alx-sel{width:auto!important;flex:0 0 190px!important;min-width:0}'
+    + '@media (max-width:768px){#ds-almox .alx-sel{flex:1 1 100%!important}}'
     + '.alx-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}.alx-head h1{margin:0;font-size:20px;font-weight:700}.alx-head p{margin:3px 0 0;color:var(--text2);font-size:13px}'
     + '.alx-btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-weight:600;font-size:13px;cursor:pointer}.alx-btn:hover{background:var(--s3)}'
     + '.alx-pri{background:var(--accent);border-color:var(--accent);color:#fff}.alx-pri:hover{background:var(--accent2)}'
