@@ -69635,3 +69635,28 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   instalarModal(); setTimeout(instalarModal, 2000); setTimeout(instalarModal, 6000);
 })();
+
+/* ===== Toda chamada /api/ leva o token de login (26/10/2026) =====
+ * Algumas telas (ex.: Compra de Papelão) às vezes faziam a primeira chamada sem o token e
+ * mostravam "token_missing". Aqui, se a chamada para /api/ não tiver Authorization, o token salvo é anexado. */
+(function () {
+  if (window.__API_TOKEN_FETCH__) return;
+  window.__API_TOKEN_FETCH__ = true;
+  var orig = window.fetch;
+  window.fetch = function (input, init) {
+    try {
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var mesmoSite = url.charAt(0) === '/' || url.indexOf(location.origin) === 0;
+      if (mesmoSite && /\/api\//.test(url) && !/\/api\/(auth\/login|login)/.test(url)) {
+        var tk = '';
+        try { tk = localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) {}
+        if (tk) {
+          init = Object.assign({}, init || {});
+          var h = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {});
+          if (!h.has('Authorization')) { h.set('Authorization', 'Bearer ' + tk); init.headers = h; }
+        }
+      }
+    } catch (_) {}
+    return orig.call(this, input, init);
+  };
+})();
