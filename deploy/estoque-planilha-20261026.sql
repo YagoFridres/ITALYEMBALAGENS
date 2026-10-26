@@ -1,7 +1,5 @@
--- Substitui o estoque de chapas do servidor de TESTE pela planilha contole_de_estoque_9.xlsx (aba CONTROLE ESTOQUE) enviada pelo Yago em 26/10/2026.
--- Mesma chapa (fornecedor + nomenclatura + tamanho + nome) é atualizada; chapas novas são criadas; as que não estão na planilha saem (ou ficam zeradas se tiverem vínculo).
+-- Estoque de chapas do TESTE = planilha do Yago (26/10/2026). Só insere quando a tabela está vazia.
 begin;
-create table if not exists public.chapas_estoque_v2_bkp_20261026 as select * from public.chapas_estoque_v2;
 create temp table planilha (fornecedor text, gramatura text, nomenclatura text, tamanho text, nome text, qual_cnpj text, nf text, quantidade numeric, valor_unitario numeric, valor_total numeric, categoria text) on commit drop;
 insert into planilha values
 ('FAPOLPA','290','FCM03','2170X1350','ESTOQUE SIMPLES','CARTOESTE','124298',678,6.56,4447.68,'Estoque Simples'),
@@ -164,20 +162,7 @@ insert into planilha values
 ('FAPOLPA','470','FCM07','1440X1662','JP MOVEIS','CARTOESTE','119522',280,8.52,2385.6,null),
 ('ADAMI','444','AB24','260X829','MATACURA','CARTOESTE','868466',1044,0.6789,708.77,null),
 ('ADAMI','638','ADC21','1446X2240','PERASSOLI','CARTOESTE','888473',1024,13.9226,14256.74,null);
-create temp table chave_ok on commit drop as
-  select c.id, p.* from public.chapas_estoque_v2 c join planilha p
-    on upper(trim(c.fornecedor)) = upper(p.fornecedor) and upper(trim(coalesce(c.nomenclatura,''))) = upper(coalesce(p.nomenclatura,''))
-   and upper(replace(trim(c.tamanho),' ','')) = upper(p.tamanho) and upper(trim(coalesce(c.nome_uso, c.nome, ''))) = upper(coalesce(p.nome,''));
--- uma linha da planilha casa no máximo com uma chapa existente
-delete from chave_ok a using chave_ok b where a.ctid > b.ctid and a.fornecedor=b.fornecedor and a.nomenclatura is not distinct from b.nomenclatura and a.tamanho=b.tamanho and a.nome is not distinct from b.nome;
-delete from chave_ok a using chave_ok b where a.ctid > b.ctid and a.id=b.id;
-update public.chapas_estoque_v2 c set gramatura=k.gramatura, nome_uso=k.nome, nome=k.nome, qual_cnpj=k.qual_cnpj, nf=k.nf, numero_nf=k.nf,
-  quantidade=k.quantidade, quantidade_atual=k.quantidade, valor_unitario=k.valor_unitario, valor_total=k.valor_total,
-  categoria=coalesce(k.categoria, c.categoria), updated_at=now(), atualizado_por='Planilha 26/10/2026'
-  from chave_ok k where c.id=k.id;
 insert into public.chapas_estoque_v2 (fornecedor, gramatura, nomenclatura, tamanho, nome_uso, nome, qual_cnpj, nf, numero_nf, quantidade, quantidade_atual, valor_unitario, valor_total, categoria, criado_por, atualizado_por)
   select p.fornecedor, p.gramatura, p.nomenclatura, p.tamanho, p.nome, p.nome, p.qual_cnpj, p.nf, p.nf, p.quantidade, p.quantidade, p.valor_unitario, p.valor_total, p.categoria, 'Planilha 26/10/2026', 'Planilha 26/10/2026'
-  from planilha p where not exists (select 1 from chave_ok k where k.fornecedor=p.fornecedor and k.nomenclatura is not distinct from p.nomenclatura and k.tamanho=p.tamanho and k.nome is not distinct from p.nome);
-create temp table sobras on commit drop as
-  select c.id from public.chapas_estoque_v2 c where c.id not in (select id from chave_ok) and coalesce(c.criado_por,'') <> 'Planilha 26/10/2026';
+  from planilha p where not exists (select 1 from public.chapas_estoque_v2);
 commit;
