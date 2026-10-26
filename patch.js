@@ -70635,7 +70635,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     body.classList.add('ds-ofr-body');
     var shell = body.parentElement; if (shell) shell.classList.add('ds-ofr-shell');
   }
-  var css = '#modal-of-rapida .ds-ofr-shell{width:min(980px,96vw)!important;max-width:96vw!important}'
+  var css = '#modal-of-rapida.ds-ofr-shell,#modal-of-rapida .ds-ofr-shell{width:min(980px,96vw)!important;max-width:96vw!important}'
     + '#modal-of-rapida .ds-ofr-grade{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}'
     + '#modal-of-rapida .ds-ofr-col{display:flex;flex-direction:column;gap:12px;min-width:0}'
     + '#modal-of-rapida .ds-ofr-sec{margin:0;padding-bottom:6px;border-bottom:1px solid var(--border);font-size:12px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}'
