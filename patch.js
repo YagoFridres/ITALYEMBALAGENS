@@ -5063,6 +5063,7 @@ try {
     try {
       if (patch && typeof patch === 'object' && ('sem_papel' in patch)) {
         var novo = !!patch.sem_papel;
+        var targets = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + sid + '"], .kb-card-ofmaq[data-id="' + sid + '"], .patch-ofmaq-v2-row[data-of-id="' + sid + '"], tr.patch-ofmaq-row[data-of-id="' + sid + '"], #ofmaq-tbody-zero tr[data-of-id="' + sid + '"], table.ofmaq-final-table tr[data-of-id="' + sid + '"], table.rtbl tr[data-of-id="' + sid + '"], tbody tr[data-of-id="' + sid + '"], div[data-of-id="' + sid + '"]');
         targets.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
         targets.forEach(function(el) {
           try {
@@ -5537,12 +5538,14 @@ try {
       var payload = { sem_papel: novo };
       var row = await persistPatch(id, payload);
       mergeOfLocal(id, Object.assign({}, payload, row || {}));
+      var cards = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + id + '"], .kb-card-ofmaq[data-id="' + id + '"], .patch-ofmaq-v2-row[data-of-id="' + id + '"], tr.patch-ofmaq-row[data-of-id="' + id + '"], table.ofmaq-final-table tr[data-of-id="' + id + '"], table.rtbl tr[data-of-id="' + id + '"], tbody tr[data-of-id="' + id + '"], div[data-of-id="' + id + '"]');
       cards.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
       try {
         var rowZero = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
         if (rowZero) rowZero.setAttribute('data-sem-papel', novo ? '1' : '0');
       } catch (_) {}
       try {
+        var rowsFinal = document.querySelectorAll('.ofmaq-final-table-wrap tr[data-of-id="' + id + '"], .ofmaq-final-row[data-of-id="' + id + '"], .ofmaq-row[data-of-id="' + id + '"], table.ofmaq-final-table tr[data-of-id="' + id + '"], table.rtbl tr[data-of-id="' + id + '"], tbody tr[data-of-id="' + id + '"], div[data-of-id="' + id + '"]');
         rowsFinal.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
       } catch (_) {}
       try {
