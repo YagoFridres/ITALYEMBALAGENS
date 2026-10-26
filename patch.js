@@ -69397,7 +69397,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '--accent:#3E7BFA;--accent2:#2F68E0;--accent-soft:rgba(62,123,250,.14);--ring:rgba(62,123,250,.40);--card-hover:#1A1B1F;'
     + '--green:#2EA36B;--green-soft:rgba(46,163,107,.14);--marca-verde:#2EA36B;--yellow:#D9A11A;--yellow-soft:rgba(217,161,26,.14);--orange:#E0782F;--orange-soft:rgba(224,120,47,.14);--red:#E5484D;--red-soft:rgba(229,72,77,.14);--purple:#8B7CF6;--teal:#3BA7B5;--blue:#3E7BFA;'
     + '--mono:"Inter",system-ui,sans-serif;--font:"Inter",system-ui,sans-serif;'
-    + '--shadow:0 1px 2px rgba(0,0,0,.4);--shadow-lg:0 16px 48px rgba(0,0,0,.55);--tint-k1:0%;--tint-k2:0%;--bg2:#1A1B1F;--bg1:#141518;--bg3:#212227;color-scheme:dark}'
+    + '--shadow:0 1px 2px rgba(0,0,0,.4);--shadow-lg:0 16px 48px rgba(0,0,0,.55);--tint-k1:0%;--tint-k2:0%;--ds-mix-escuro:100%;--bg2:#1A1B1F;--bg1:#141518;--bg3:#212227;color-scheme:dark}'
     + Lt + '{--bg:#F7F7F8;--surface:#FFFFFF;--s1:#FFFFFF;--s2:#F7F7F8;--s3:#EFEFF1;--s4:#E4E4E7;--border:#E6E6E9;--b2:#D4D4D8;--border2:#D4D4D8;'
     + '--text:#18181B;--text1:#18181B;--text2:#52525B;--text3:#8B8B93;--text4:#6B6B73;--field:#FFFFFF;--sidebar-bg:#FBFBFB;'
     + '--accent:#2563EB;--accent2:#1D4ED8;--accent-soft:rgba(37,99,235,.08);--ring:rgba(37,99,235,.25);--card-hover:#F7F7F8;'
@@ -69406,7 +69406,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '--shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);--shadow-lg:0 16px 48px rgba(16,24,40,.14);'
     + '--modal-bg:#FFFFFF;--input-bg:#FFFFFF;--input-border:#D4D4D8;--input-text:#18181B;--card-bg:#FFFFFF;--card-border:#E6E6E9;'
     + '--table-header-bg:#F7F7F8;--table-row-hover:#F7F7F8;--table-border:#E6E6E9;--topbar-bg:#FFFFFF;--topbar-border:#E6E6E9;'
-    + '--sidebar-text:#52525B;--sidebar-hover:#EFEFF1;--btn-bg:#FFFFFF;--btn-text:#18181B;--btn-border:#D4D4D8;--btn-hover:#F7F7F8;--tint-k1:58%;--tint-k2:38%;--bg2:#F7F7F8;--bg1:#FFFFFF;--bg3:#EFEFF1;color-scheme:light}'
+    + '--sidebar-text:#52525B;--sidebar-hover:#EFEFF1;--btn-bg:#FFFFFF;--btn-text:#18181B;--btn-border:#D4D4D8;--btn-hover:#F7F7F8;--tint-k1:58%;--tint-k2:38%;--ds-mix-escuro:22%;--bg2:#F7F7F8;--bg1:#FFFFFF;--bg3:#EFEFF1;color-scheme:light}'
     // base
     + A + ' body{background:var(--bg)!important;color:var(--text)!important;font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif!important;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}'
     + A + ' ::selection{background:var(--accent-soft)}'
@@ -69487,9 +69487,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return { neutro: (mx - mn) <= 48, lum: (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255, a: c[3] };
   }
   var COR_RE = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|\bwhite\b|\bblack\b/g;
+  var __textoClaro = false, __permiteEscuro = false;
   function corFundo(tok) {
     var c = parseCor(tok); if (!c) return tok;
-    var i = info(c); if (!i.neutro) return tok;
+    var i = info(c);
+    // fundo colorido bem escuro (destaques feitos para o tema escuro, ex.: linha azul-marinho) sem texto branco
+    // no mesmo bloco: vira um tom suave da mesma cor sobre a superfície (legível nos dois temas)
+    if (!i.neutro) return (__permiteEscuro && i.lum < 0.1 && i.a > 0.5 && !__textoClaro) ? 'color-mix(in srgb, ' + tok + ' var(--ds-mix-escuro,100%), var(--surface))' : tok;
     if (i.lum < 0.24) {
       // listras/realces escuros translúcidos (feitos para o tema escuro): viram um tom leve que funciona nos dois temas
       if (i.a < 0.45 && i.lum >= 0.02 && i.a >= 0.06) return 'color-mix(in srgb, var(--text) ' + Math.max(2, Math.min(7, Math.round(i.a * 14))) + '%, transparent)';
@@ -69535,9 +69539,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!/#[0-9a-fA-F]{3}|rgba?\(|white|black/.test(body)) return body;
     var decls = body.split(';');
     var colorido = false, fundoNeutro = false;
+    __textoClaro = false;
     decls.forEach(function (d) {
       var k = d.indexOf(':'); if (k < 0) return;
       var p = d.slice(0, k).trim().toLowerCase();
+      if (p === 'color') { String(d.slice(k + 1)).replace(COR_RE, function (t) { var c = parseCor(t); if (c && info(c).lum > 0.85 && c[3] > 0.5) __textoClaro = true; return t; }); }
       if (p === 'background' || p === 'background-color' || p === 'background-image') {
         var v = d.slice(k + 1);
         if (fundoColorido(v)) colorido = true;
@@ -69573,7 +69579,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       idx = j; re.lastIndex = j;
     }
     partes.push({ t: txt.slice(idx), conv: true });
-    return partes.map(function (p) { return p.conv ? p.t.replace(/\{([^{}]*)\}/g, function (all, body) { var nb = converterBloco(body); return nb === body ? all : '{' + nb + '}'; }) : p.t; }).join('');
+    return partes.map(function (p) { return p.conv ? p.t.replace(/([^{}]*)\{([^{}]*)\}/g, function (all, sel, body) { __permiteEscuro = /(^|[\s>+~,])(tr|td|th)\b|row|linha/i.test(sel); var nb = converterBloco(body); __permiteEscuro = false; return nb === body ? all : sel + '{' + nb + '}'; }) : p.t; }).join('');
   }
   var cache = new Map();
   function converterInline(el) {
@@ -69581,8 +69587,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var s = el.getAttribute('style');
       if (!s || s.length < 6) return;
       if (el.hasAttribute('data-ds-ignorar') || (el.closest && el.closest('.print-area,.rp,svg,[data-ds-ignorar]'))) return;
-      var r = cache.get(s);
-      if (r === undefined) { r = converterBloco(s); if (cache.size > 6000) cache.clear(); cache.set(s, r); cache.set(r, r); }
+      var tg = el.tagName, k0 = (tg === 'TR' || tg === 'TD' || tg === 'TH') ? 'L|' + s : s;
+      var r = cache.get(k0);
+      if (r === undefined) { __permiteEscuro = k0 !== s; r = converterBloco(s); __permiteEscuro = false; if (cache.size > 6000) cache.clear(); cache.set(k0, r); cache.set(r, r); }
+      if (false) { if (cache.size > 6000) cache.clear(); cache.set(s, r); cache.set(r, r); }
       if (r !== s) {
         // proteção contra "briga": se outro código volta a cor toda hora, este elemento é deixado em paz
         var agora = Date.now();
@@ -71625,15 +71633,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function hojeIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function grupos() {
     var g = {}, ord = [];
-    E.maquinas.forEach(function (m) { if (!g[m]) { g[m] = []; ord.push(m); } });
+    // só as máquinas de produção (Corte Plana, Acabamento e Coladeira aparecem apenas na conclusão da OF)
+    var nomes = {}; E.maquinas.forEach(function (m) { nomes[String(m).toUpperCase().replace(/\s+/g, ' ').trim()] = m; });
+    MAQS_OFMAQ.forEach(function (k) { var m = nomes[k] || (k === 'RISCADOR' ? 'Riscador' : k); g[m] = []; ord.push(m); });
+    var porChave = {}; ord.forEach(function (m) { porChave[String(m).toUpperCase().replace(/\s+/g, ' ').trim()] = m; });
     ofsBase().forEach(function (o) {
       if (!aberta(o)) return;
-      var m = maqDaOf(o) || 'Sem máquina'; if (/^sem m/i.test(norm(m))) m = 'Sem máquina';
-      if (!g[m]) { g[m] = []; ord.push(m); }
-      g[m].push(o);
+      var m = porChave[String(maqDaOf(o)).toUpperCase().replace(/\s+/g, ' ').trim()];
+      if (m) g[m].push(o);
     });
     ord.forEach(function (m) { g[m] = ordenar(g[m], m); });
-    if (g['Sem máquina'] && !g['Sem máquina'].length) { delete g['Sem máquina']; ord = ord.filter(function (x) { return x !== 'Sem máquina'; }); }
     return { g: g, ord: ord };
   }
   function ordenar(lista, maq) {
@@ -71684,61 +71693,123 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!vb) { vb = document.createElement('button'); vb.id = 'ds-ofmaq-voltar'; vb.type = 'button'; vb.textContent = 'Usar a tela nova'; vb.onclick = function () { E.antiga = false; try { localStorage.setItem('ds_ofmaq_antiga', '0'); } catch (_) {} montar(); render(); }; p.insertBefore(vb, p.firstChild); }
     } else if (vb) vb.remove();
   }
+  var MAQS_OFMAQ = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'RISCADOR', 'CORTE VINCO ROTATIVA'];
+  function maqVisivel(m) { return MAQS_OFMAQ.indexOf(String(m || '').toUpperCase().replace(/\s+/g, ' ').trim()) >= 0; }
+  function txt(h) { var d = document.createElement('div'); d.innerHTML = String(h == null ? '' : h); return (d.textContent || '').trim(); }
+  function setupDe(o) { var c = '', t = ''; try { c = txt(window.__dashH.cores(o)); } catch (_) {} try { t = txt(window.__dashH.tamanho(o)); } catch (_) {} return ((c && c !== '—' ? c : 'sem cor') + ' · ' + (t && t !== '—' ? t : 'sem medida')); }
+  function diaDe(o) {
+    var d = String(o.dia_programacao_exibicao || o.dia_programacao || o.data_programada || o.ent || o.data_entrega || '').slice(0, 10);
+    var h = hojeIso(); return (!d || d < h) ? h : d;
+  }
+  function segunda(iso) { var d = new Date(iso + 'T12:00:00'); var w = d.getDay(); d.setDate(d.getDate() - ((w + 6) % 7)); return d.toISOString().slice(0, 10); }
+  function somaDias(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+  if (!E.semana) E.semana = segunda(hojeIso());
+  function listaVisivel(G) {
+    var l = [];
+    if (E.todas) G.ord.forEach(function (m) { G.g[m].forEach(function (o) { l.push({ o: o, m: m }); }); });
+    else (G.g[E.maq] || []).forEach(function (o) { l.push({ o: o, m: E.maq }); });
+    if (E.dia) l = l.filter(function (x) { return diaDe(x.o) === E.dia; });
+    var q = norm(E.busca || '');
+    if (q) l = l.filter(function (x) { return norm(numOf(x.o) + ' ' + cliOf(x.o) + ' ' + prodOf(x.o) + ' ' + x.m).indexOf(q) >= 0; });
+    if (E.setup) {
+      var ordem = [], grupos2 = {};
+      l.forEach(function (x) { var k = (E.todas ? x.m + ' | ' : '') + setupDe(x.o); x.k = k; if (!grupos2[k]) { grupos2[k] = []; ordem.push(k); } grupos2[k].push(x); });
+      l = []; ordem.forEach(function (k) { l = l.concat(grupos2[k]); });
+    }
+    return l;
+  }
   function render() {
     if (!raiz || E.antiga) return;
+    if (!raiz.querySelector('.dom-head')) {
+      raiz.innerHTML = '<header class="dom-head"><div><h1>OFs por Máquina</h1><p class="dom-resumo"></p></div>'
+        + '<div class="dom-head-acoes"><button type="button" class="dom-btn" data-a="atualizar">Atualizar</button><button type="button" class="dom-btn dom-btn-pri" data-a="operador">Modo Operador</button></div></header>'
+        + '<div class="dom-maqs"></div>'
+        + '<div class="dom-ferr"><label class="dom-busca"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Buscar OF, cliente, produto…" aria-label="Buscar OFs"></label>'
+        + '<button type="button" class="dom-btn" data-a="todas">Ver todas as máquinas</button><button type="button" class="dom-btn" data-a="setup">Agrupar por setup</button>'
+        + '<button type="button" class="dom-btn" data-a="relatorio">Gerar relatório</button><button type="button" class="dom-btn" data-a="historico">Histórico de hoje</button><button type="button" class="dom-btn" data-a="urgentes">OFs urgentes</button></div>'
+        + '<div class="dom-dias"></div>'
+        + '<section class="dom-fila"></section>'
+        + '<footer class="dom-rod"><span>Ocupação = tempo previsto da fila ÷ capacidade da semana (5 dias × 8 h). O tempo previsto usa a velocidade real medida no Modo Operador quando já há medições.</span><button type="button" class="dom-link" data-a="antiga">Tela anterior</button></footer>';
+      var inp = raiz.querySelector('.dom-busca input'), tb = null;
+      inp.value = E.busca || '';
+      inp.addEventListener('input', function () { clearTimeout(tb); tb = setTimeout(function () { E.busca = inp.value; renderFila(grupos()); }, 180); });
+    }
     var G = grupos(), total = 0, prod = 0;
     G.ord.forEach(function (m) { total += G.g[m].length; G.g[m].forEach(function (o) { if (emProducao(o)) prod++; }); });
     if (!E.maq || !G.g[E.maq]) E.maq = G.ord.filter(function (m) { return G.g[m].length; })[0] || G.ord[0] || '';
-    var cards = G.ord.map(function (m) {
+    raiz.querySelector('.dom-resumo').textContent = total + ' OFs na fila · ' + prod + ' em produção agora';
+    raiz.querySelector('.dom-maqs').innerHTML = G.ord.map(function (m) {
       var l = G.g[m], min = l.reduce(function (s, o) { return s + minutosPrevistos(o, m); }, 0);
       var dias = min / CAP_DIA, pct = Math.round(min / (CAP_DIA * 5) * 100);
       var tom = pct > 100 ? 'red' : (pct >= 70 ? 'yellow' : 'green');
       var atr = l.filter(function (o) { var e = entOf(o); return e && e < hojeIso(); }).length;
       var np = l.filter(emProducao).length;
       var vel = E.vel[m] && E.vel[m].amostras >= 2 ? '<span class="dom-vel" title="Velocidade real medida">' + E.vel[m].cx_hora + ' cx/h</span>' : '';
-      return '<button type="button" class="dom-maq' + (m === E.maq ? ' on' : '') + '" data-maq="' + esc(m) + '">'
+      return '<button type="button" class="dom-maq' + (!E.todas && m === E.maq ? ' on' : '') + '" data-maq="' + esc(m) + '">'
         + '<span class="dom-maq-top"><b>' + esc(m) + '</b>' + (np ? '<span class="dom-prod" title="Em produção agora"></span>' : '') + '</span>'
         + '<span class="dom-maq-num">' + l.length + ' <small>' + (l.length === 1 ? 'OF' : 'OFs') + '</small>' + (atr ? '<em>' + atr + ' atrasada' + (atr > 1 ? 's' : '') + '</em>' : '') + '</span>'
         + '<span class="dom-barra"><i class="t-' + tom + '" style="width:' + Math.min(100, pct) + '%"></i></span>'
-        + '<span class="dom-maq-rod" title="Ocupação = tempo previsto da fila ÷ capacidade da semana (5 dias × 8 h)"><span class="t-' + tom + '">' + pct + '% ocupada</span><span>' + (dias < 0.1 ? 'livre' : (dias < 1 ? fmtMin(min) : (dias.toFixed(1).replace('.', ',').replace(',0', '') + ' dia' + (dias >= 2 ? 's' : '')))) + '</span></span>'
+        + '<span class="dom-maq-rod"><span class="t-' + tom + '">' + pct + '% ocupada</span><span>' + (dias < 0.1 ? 'livre' : (dias < 1 ? fmtMin(min) : (dias.toFixed(1).replace('.', ',').replace(',0', '') + ' dia' + (dias >= 2 ? 's' : '')))) + '</span></span>'
         + (vel ? '<span class="dom-maq-rod">' + vel + '</span>' : '')
         + '</button>';
     }).join('');
-    var lista = G.g[E.maq] || [];
-    var acum = 0;
-    var linhas = lista.map(function (o, i) {
-      var min = minutosPrevistos(o, E.maq); acum += min;
+    raiz.querySelector('[data-a="todas"]').classList.toggle('on', !!E.todas);
+    raiz.querySelector('[data-a="setup"]').classList.toggle('on', !!E.setup);
+    // dias da semana
+    var base = E.todas ? [] : (G.g[E.maq] || []); if (E.todas) G.ord.forEach(function (m) { base = base.concat(G.g[m]); });
+    var cont = {}; base.forEach(function (o) { var d = diaDe(o); cont[d] = (cont[d] || 0) + 1; });
+    var nomes = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+    raiz.querySelector('.dom-dias').innerHTML = '<button type="button" class="dom-dia dom-seta" data-sem="-1" title="Semana anterior">‹</button>'
+      + '<button type="button" class="dom-dia' + (!E.dia ? ' on' : '') + '" data-dia="">Fila completa <span>' + base.length + '</span></button>'
+      + nomes.map(function (n, k) { var d = somaDias(E.semana, k); return '<button type="button" class="dom-dia' + (E.dia === d ? ' on' : '') + (d === hojeIso() ? ' hoje' : '') + '" data-dia="' + d + '">' + n + ' ' + d.slice(8, 10) + '/' + d.slice(5, 7) + ' <span>' + (cont[d] || 0) + '</span></button>'; }).join('')
+      + '<button type="button" class="dom-dia dom-seta" data-sem="1" title="Próxima semana">›</button>';
+    renderFila(G);
+  }
+  function renderFila(G) {
+    var fila = raiz.querySelector('.dom-fila'); if (!fila) return;
+    var l = listaVisivel(G), acum = 0, setupAnt = null, podeOrdenar = !E.todas && !E.setup && !E.busca && !E.dia;
+    var titulo = E.todas ? 'Todas as máquinas' : (E.maq || '—');
+    var linhas = l.map(function (x, i) {
+      var o = x.o, m = x.m;
+      var min = minutosPrevistos(o, m); acum += min;
       var e = entOf(o), atras = e && e < hojeIso();
       var ses = E.sessoes.find(function (s) { return s.of_id === o.id; });
-      return '<tr draggable="true" data-id="' + esc(o.id) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
-        + '<td class="dom-c-pos"><span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span>' + (i + 1) + '</td>'
+      var cab = '';
+      if (E.setup && x.k !== setupAnt) { setupAnt = x.k; var n = l.filter(function (z) { return z.k === x.k; }).length; cab = '<tr class="dom-grupo"><td colspan="' + (E.todas ? 9 : 8) + '">Setup: ' + esc(x.k) + ' <span>' + n + ' OF' + (n > 1 ? 's' : '') + '</span></td></tr>'; }
+      return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
+        + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span>' : '') + (i + 1) + '</td>'
         + '<td class="dom-c-of"><b>' + esc(numOf(o)) + '</b>' + (urg(o) ? '<span class="dom-tag t-red">Urgente</span>' : '') + '</td>'
+        + (E.todas ? '<td class="dom-c-maq">' + esc(m) + '</td>' : '')
         + '<td class="dom-c-cli"><span>' + esc(cliOf(o)) + '</span><small>' + esc(prodOf(o)) + '</small></td>'
         + '<td class="dom-c-num">' + qtdOf(o).toLocaleString('pt-BR') + '</td>'
         + '<td class="dom-c-ent' + (atras ? ' t-red' : '') + '">' + fmtData(e) + '</td>'
-        + '<td class="dom-c-num">' + fmtMin(min) + '<small>termina em ~' + fmtMin(acum) + '</small></td>'
+        + '<td class="dom-c-num">' + fmtMin(min) + (E.todas ? '' : '<small>termina em ~' + fmtMin(acum) + '</small>') + '</td>'
         + '<td class="dom-c-st">' + (emProducao(o) ? '<span class="dom-chip prod">Em produção' + (ses ? ' · ' + esc(ses.operador || '') : '') + '</span>' : '<span class="dom-chip">' + esc(o.status || 'Em aberto') + '</span>') + '</td>'
-        + '<td class="dom-c-acao"><button type="button" data-a="sobe" title="Subir">↑</button><button type="button" data-a="desce" title="Descer">↓</button><button type="button" data-a="menu" title="Mais ações">⋯</button></td>'
+        + '<td class="dom-c-acao">' + (podeOrdenar ? '<button type="button" data-a="sobe" title="Subir">↑</button><button type="button" data-a="desce" title="Descer">↓</button>' : '') + '<button type="button" data-a="menu" title="Mais ações">⋯</button></td>'
         + '</tr>';
     }).join('');
-    raiz.innerHTML = ''
-      + '<header class="dom-head"><div><h1>OFs por Máquina</h1><p>' + total + ' OFs na fila · ' + prod + ' em produção agora</p></div>'
-      + '<div class="dom-head-acoes"><button type="button" class="dom-btn" data-a="atualizar">Atualizar</button><button type="button" class="dom-btn dom-btn-pri" data-a="operador">Modo Operador</button></div></header>'
-      + '<div class="dom-maqs">' + cards + '</div>'
-      + '<section class="dom-fila"><div class="dom-fila-head"><h2>' + esc(E.maq || '—') + ' <small>' + lista.length + ' OFs na ordem de produção</small></h2>'
-      + '<div><button type="button" class="dom-btn" data-a="autoordem" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button></div></div>'
-      + (lista.length ? '<div class="dom-tabela-wrap"><table class="dom-tabela no-card"><thead><tr><th>#</th><th>OF</th><th>Cliente / produto</th><th class="dom-c-num">Qtd.</th><th>Entrega</th><th class="dom-c-num">Tempo previsto</th><th>Status</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div>'
-        : '<div class="dom-vazio">Nenhuma OF na fila desta máquina.</div>')
-      + '</section>'
-      + '<footer class="dom-rod"><span>O tempo previsto usa a velocidade real medida no Modo Operador quando já há medições da máquina.</span><button type="button" class="dom-link" data-a="antiga">Tela anterior</button></footer>';
+    var aviso = podeOrdenar ? '' : '<span class="dom-aviso">Para mudar a ordem, use a fila completa de uma máquina, sem busca nem agrupamento.</span>';
+    fila.innerHTML = '<div class="dom-fila-head"><h2>' + esc(titulo) + ' <small>' + l.length + ' OFs' + (E.dia ? ' · ' + fmtData(E.dia) : ' na ordem de produção') + '</small></h2>'
+      + '<div>' + aviso + (podeOrdenar ? '<button type="button" class="dom-btn" data-a="autoordem" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button>' : '') + '</div></div>'
+      + (l.length ? '<div class="dom-tabela-wrap"><table class="dom-tabela no-card"><thead><tr><th>#</th><th>OF</th>' + (E.todas ? '<th>Máquina</th>' : '') + '<th>Cliente / produto</th><th class="dom-c-num">Qtd.</th><th>Entrega</th><th class="dom-c-num">Tempo previsto</th><th>Status</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div>'
+        : '<div class="dom-vazio">Nenhuma OF ' + (E.busca ? 'encontrada.' : (E.dia ? 'para este dia.' : 'na fila desta máquina.')) + '</div>');
   }
+  function legado(sel) { var b = document.querySelector('#page-ofmaq ' + sel); if (b) { b.click(); return true; } toast('Abra a tela anterior uma vez para carregar esta função.', 'var(--yellow)'); return false; }
   function filaAtual() { return (grupos().g[E.maq] || []).slice(); }
   function clique(ev) {
     var mq = ev.target.closest('[data-maq]');
-    if (mq && raiz.contains(mq)) { E.maq = mq.getAttribute('data-maq'); try { localStorage.setItem('ds_ofmaq_maq', E.maq); } catch (_) {} render(); return; }
-    var b = ev.target.closest('[data-a]'); if (!b) return;
-    var a = b.getAttribute('data-a');
-    if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(render); return; }
+    if (mq && raiz.contains(mq)) { E.todas = false; E.maq = mq.getAttribute('data-maq'); try { localStorage.setItem('ds_ofmaq_maq', E.maq); } catch (_) {} render(); return; }
+    var dd0 = ev.target.closest('[data-dia],[data-sem]');
+    var b = ev.target.closest('[data-a]'); if (!b && !dd0) return;
+    var a = b ? b.getAttribute('data-a') : '';
+    var dd = ev.target.closest('[data-dia]'); if (dd && raiz.contains(dd)) { E.dia = dd.getAttribute('data-dia'); render(); return; }
+    var sm = ev.target.closest('[data-sem]'); if (sm && raiz.contains(sm)) { E.semana = somaDias(E.semana, 7 * Number(sm.getAttribute('data-sem'))); E.dia = ''; render(); return; }
+    if (a === 'todas') { E.todas = !E.todas; render(); return; }
+    if (a === 'setup') { E.setup = !E.setup; render(); return; }
+    if (a === 'relatorio') { if (typeof window.rrOpenMaquinasPeriodoModal === 'function') window.rrOpenMaquinasPeriodoModal({ source: 'ofmaq', preferredPeriod: 'dia', referenceDate: E.dia || hojeIso(), machines: E.todas ? grupos().ord : [E.maq] }); else legado('#ofmaq-final-report'); return; }
+    if (a === 'historico') { legado('#ofmaq-final-history-today'); return; }
+    if (a === 'urgentes') { legado('#ofmaq-final-urgentes'); return; }
+    if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(function () { b.textContent = 'Atualizar'; render(); }); return; }
     if (a === 'operador') { abrirOperador(); return; }
     if (a === 'antiga') { E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
     if (a === 'autoordem') { var l0 = filaAtual(); E.seq[E.maq] = {}; var l1 = ordenar(l0, E.maq); salvarSeq(E.maq, l1); render(); return; }
@@ -71929,6 +72000,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--s3);color:var(--text2);white-space:nowrap}.dom-chip.prod{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);font-weight:600}'
     + '.dom-c-acao{white-space:nowrap;text-align:right}.dom-c-acao button{width:28px;height:28px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--text2);cursor:pointer;font:inherit}.dom-c-acao button:hover{background:var(--s3);color:var(--text);border-color:var(--border)}'
     + '.dom-vazio{padding:30px;text-align:center;color:var(--text3)}'
+    + '.dom-ferr{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}'
+    + '.dom-busca{flex:1 1 260px;display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--b2);border-radius:8px;background:var(--surface);color:var(--text3)}'
+    + '.dom-busca input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13.5px;height:100%;padding:0}'
+    + '.dom-btn.on{background:color-mix(in srgb,var(--accent) 14%,var(--surface));border-color:var(--accent);color:var(--text)}'
+    + '.dom-dias{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}'
+    + '.dom-dia{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}'
+    + '.dom-dia span{display:inline-block;min-width:18px;margin-left:4px;padding:0 5px;border-radius:99px;background:var(--s3);color:var(--text2);font-size:11px;text-align:center}'
+    + '.dom-dia:hover{color:var(--text);border-color:var(--b2)}.dom-dia.on{border-color:var(--accent);color:var(--text);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}.dom-dia.on span{background:var(--accent);color:#fff}'
+    + '.dom-dia.hoje{box-shadow:inset 0 -2px 0 var(--accent)}.dom-seta{width:32px;padding:0;font-size:17px}'
+    + '.dom-grupo td{background:var(--s2)!important;font-size:12px;font-weight:700;color:var(--text2);padding:7px 10px!important}.dom-grupo td span{font-weight:500;color:var(--text3);margin-left:6px}'
+    + '.dom-aviso{font-size:12px;color:var(--text3);margin-right:8px}.dom-c-maq{white-space:nowrap;color:var(--text2);font-size:12.5px}'
+    + '@media (max-width:768px){.dom-ferr .dom-btn{flex:1 1 calc(50% - 8px);height:38px}.dom-dias{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.dom-grupo{display:block!important;padding:6px 10px!important}.dom-grupo td{display:block!important}.dom-c-maq{grid-area:auto}}'
     + '.dom-rod{display:flex;justify-content:space-between;gap:10px;margin-top:10px;color:var(--text3);font-size:12px;flex-wrap:wrap}.dom-link{background:none;border:0;color:var(--text2);text-decoration:underline;cursor:pointer;font:inherit;font-size:12px}'
     + '#dom-menu{position:fixed;z-index:9999;min-width:210px;padding:5px;border-radius:10px;border:1px solid var(--border);background:var(--surface);box-shadow:0 12px 32px rgba(0,0,0,.35)}#dom-menu button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer}#dom-menu button:hover{background:var(--s3)}'
     + '@media (max-width:768px){#ds-ofmaq{padding:12px 12px 110px}.dom-maqs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dom-maq{padding:10px}.dom-maq-num{font-size:19px}'
