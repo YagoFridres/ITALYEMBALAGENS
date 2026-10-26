@@ -72110,6 +72110,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-pilulas{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.dom-pilulas span{padding:3px 9px;border-radius:99px;border:1px solid var(--border);font-size:12px;color:var(--text2)}.dom-pilulas b{color:var(--text);margin-left:3px}'
     + '.dom-btn-p{height:30px;font-size:12.5px}'
     + '.dom-tabela th small{display:block;font-size:10.5px;font-weight:500;color:var(--text3)}'
+    + '#ds-ofmaq input.dom-seq{width:46px!important;min-width:0!important;max-width:46px!important;flex:none!important;}'
     + '.dom-seq{width:46px;height:30px;border-radius:7px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-weight:700;text-align:center;padding:0}'
     + '.dom-img{width:34px;height:34px;border-radius:7px;border:1px solid var(--border);background:var(--s2);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;padding:0;cursor:pointer;color:var(--text3)}.dom-img img{width:100%;height:100%;object-fit:cover}.dom-img.vazio{cursor:default}'
     + '.dom-c-prod{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dom-c-txt{white-space:nowrap;color:var(--text2);font-size:12.5px}.dom-c-papel{max-width:180px;color:var(--text2);font-size:12.5px}.dom-c-dt{white-space:nowrap;color:var(--text2)}'
