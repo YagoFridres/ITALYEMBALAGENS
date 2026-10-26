@@ -71787,37 +71787,74 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<button type="button" class="dom-dia dom-seta" data-sem="1" title="Próxima semana">›</button>';
     renderFila(G);
   }
-  function renderFila(G) {
-    var fila = raiz.querySelector('.dom-fila'); if (!fila) return;
-    var l = listaVisivel(G), acum = 0, setupAnt = null, podeOrdenar = !E.todas && !E.setup && !E.busca && !E.dia;
-    var titulo = E.todas ? 'Todas as máquinas' : (E.maq || '—');
+  function imgDe(o) { var u = o.imagem_url || o.imagem || o.img || ''; if (!u) { var a2 = arr(o.imgs || o.imagens); if (a2.length) u = typeof a2[0] === 'string' ? a2[0] : (a2[0] && (a2[0].url || a2[0].src)) || ''; } return String(u || ''); }
+  function h(fn, o) { try { var v = window.__dashH[fn](o); return v == null ? '' : String(v); } catch (_) { return ''; } }
+  function urgTipo(o) { if (urg(o)) return 'urgente'; var e = entOf(o); return (e && e < hojeIso()) ? 'atrasada' : 'normal'; }
+  function tabelaMaquina(m, l, podeOrdenar) {
+    var acum = 0, setupAnt = null;
     var linhas = l.map(function (x, i) {
-      var o = x.o, m = x.m;
-      var min = minutosPrevistos(o, m); acum += min;
-      var e = entOf(o), atras = e && e < hojeIso();
-      var ses = E.sessoes.find(function (s) { return s.of_id === o.id; });
+      var o = x.o; var min = minutosPrevistos(o, m); acum += min;
+      var e = entOf(o), atras = e && e < hojeIso(), ut = urgTipo(o);
+      var ses = E.sessoes.find(function (z) { return z.of_id === o.id; });
       var cab = '';
-      if (E.setup && x.k !== setupAnt) { setupAnt = x.k; var n = l.filter(function (z) { return z.k === x.k; }).length; cab = '<tr class="dom-grupo"><td colspan="' + (E.todas ? 9 : 8) + '">Setup: ' + esc(x.k) + ' <span>' + n + ' OF' + (n > 1 ? 's' : '') + '</span></td></tr>'; }
-      return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
-        + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span>' : '') + (i + 1) + '</td>'
-        + '<td class="dom-c-of"><b>' + esc(numOf(o)) + '</b>' + (urg(o) ? '<span class="dom-tag t-red">Urgente</span>' : '') + '</td>'
-        + (E.todas ? '<td class="dom-c-maq">' + esc(m) + '</td>' : '')
-        + '<td class="dom-c-cli"><span>' + esc(cliOf(o)) + '</span><small>' + esc(prodOf(o)) + '</small></td>'
-        + '<td class="dom-c-num">' + qtdOf(o).toLocaleString('pt-BR') + '</td>'
+      if (E.setup && x.k !== setupAnt) { setupAnt = x.k; var n = l.filter(function (z) { return z.k === x.k; }).length; cab = '<tr class="dom-grupo"><td colspan="16">Setup: ' + esc(String(x.k).replace(/^.*? \| /, '')) + ' <span>' + n + ' OF' + (n > 1 ? 's' : '') + '</span></td></tr>'; }
+      var img = imgDe(o);
+      var st = emProducao(o) ? '<span class="dom-chip prod">Em produção' + (ses ? ' · ' + esc(ses.operador || '') : '') + '</span>'
+        : '<span class="dom-chip st-' + ut + '">' + (ut === 'urgente' ? 'Urgente' : (ut === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span>';
+      var cores = h('cores', o), tam = h('tamanho', o), faca = h('faca', o), papel = h('papelPrev', o);
+      return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '" data-maq="' + esc(m) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
+        + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span><input class="dom-seq" type="number" min="1" value="' + (i + 1) + '" aria-label="Posição na fila">' : (i + 1)) + '</td>'
+        + '<td class="dom-c-img">' + (img ? '<button type="button" class="dom-img" data-a="img" title="Ver imagem"><img src="' + esc(img) + '" alt="" loading="lazy"></button>' : '<span class="dom-img vazio" title="Sem imagem">—</span>') + '</td>'
+        + '<td class="dom-c-of"><b>' + esc(numOf(o)) + '</b></td>'
+        + '<td class="dom-c-dt">' + fmtData(diaDe(o)) + '</td>'
         + '<td class="dom-c-ent' + (atras ? ' t-red' : '') + '">' + fmtData(e) + '</td>'
-        + '<td class="dom-c-num">' + fmtMin(min) + (E.todas ? '' : '<small>termina em ~' + fmtMin(acum) + '</small>') + '</td>'
-        + '<td class="dom-c-st">' + (emProducao(o) ? '<span class="dom-chip prod">Em produção' + (ses ? ' · ' + esc(ses.operador || '') : '') + '</span>' : '<span class="dom-chip">' + esc(o.status || 'Em aberto') + '</span>') + '</td>'
-        + '<td class="dom-c-acao">' + (podeOrdenar ? '<button type="button" data-a="sobe" title="Subir">↑</button><button type="button" data-a="desce" title="Descer">↓</button>' : '') + '<button type="button" data-a="menu" title="Mais ações">⋯</button></td>'
+        + '<td class="dom-c-cli"><span>' + esc(cliOf(o)) + '</span></td>'
+        + '<td class="dom-c-st">' + st + '</td>'
+        + '<td class="dom-c-prod">' + esc(prodOf(o)) + '</td>'
+        + '<td class="dom-c-num">' + qtdOf(o).toLocaleString('pt-BR') + '</td>'
+        + '<td class="dom-c-txt">' + (txt(tam) || '—') + '</td>'
+        + '<td class="dom-c-txt">' + (cores || '—') + '</td>'
+        + '<td class="dom-c-txt">' + (txt(faca) || '—') + '</td>'
+        + '<td class="dom-c-papel">' + (papel || '—') + '</td>'
+        + '<td class="dom-c-maq">' + esc(m) + '</td>'
+        + '<td class="dom-c-num">' + fmtMin(min) + (E.setup || E.busca ? '' : '<small>termina em ~' + fmtMin(acum) + '</small>') + '</td>'
+        + '<td class="dom-c-acao"><button type="button" class="dom-acoes' + (ut === 'urgente' ? ' urg' : '') + '" data-a="acoes">Ações</button><button type="button" class="dom-mais" data-a="menu" title="Mais">⋯</button></td>'
         + '</tr>';
     }).join('');
-    var aviso = podeOrdenar ? '' : '<span class="dom-aviso">Para mudar a ordem, use a fila completa de uma máquina, sem busca nem agrupamento.</span>';
-    fila.innerHTML = '<div class="dom-fila-head"><h2>' + esc(titulo) + ' <small>' + l.length + ' OFs' + (E.dia ? ' · ' + fmtData(E.dia) : ' na ordem de produção') + '</small></h2>'
-      + '<div>' + aviso + (podeOrdenar ? '<button type="button" class="dom-btn" data-a="autoordem" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button>' : '') + '</div></div>'
-      + (l.length ? '<div class="dom-tabela-wrap"><table class="dom-tabela no-card"><thead><tr><th>#</th><th>OF</th>' + (E.todas ? '<th>Máquina</th>' : '') + '<th>Cliente / produto</th><th class="dom-c-num">Qtd.</th><th>Entrega</th><th class="dom-c-num">Tempo previsto</th><th>Status</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div>'
-        : '<div class="dom-vazio">Nenhuma OF ' + (E.busca ? 'encontrada.' : (E.dia ? 'para este dia.' : 'na fila desta máquina.')) + '</div>');
+    return '<div class="dom-tabela-wrap"><table class="dom-tabela no-card"><thead><tr><th>Seq.</th><th>Imagem</th><th>OF</th><th>Dia agendado<small>produção</small></th><th>Entrega<small>cliente</small></th><th>Cliente</th><th>Status</th><th>Produto</th><th class="dom-c-num">Qtd. caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / previsão</th><th>Máquina</th><th class="dom-c-num">Tempo</th><th>Ações</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
+  }
+  function renderFila(G) {
+    var fila = raiz.querySelector('.dom-fila'); if (!fila) return;
+    var l = listaVisivel(G), podeOrdenar = !E.setup && !E.busca && !E.dia;
+    var maqs = E.todas ? G.ord : [E.maq];
+    var html = maqs.map(function (m) {
+      var lm = l.filter(function (x) { return x.m === m; });
+      if (E.todas && !lm.length) return '';
+      var cx = lm.reduce(function (s2, x) { return s2 + qtdOf(x.o); }, 0), min = lm.reduce(function (s2, x) { return s2 + minutosPrevistos(x.o, m); }, 0);
+      return '<section class="dom-bloco"><div class="dom-fila-head"><h2>' + esc(m) + ' <small>' + (E.dia ? 'dia ' + fmtData(E.dia) : 'fila completa') + ' · sequência ajustável</small></h2>'
+        + '<div class="dom-pilulas"><span>OFs <b>' + lm.length + '</b></span><span>Caixas <b>' + cx.toLocaleString('pt-BR') + '</b></span><span>Tempo <b>' + fmtMin(min) + '</b></span>'
+        + (podeOrdenar && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="autoordem" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button>' : '') + '</div></div>'
+        + (lm.length ? tabelaMaquina(m, lm, podeOrdenar) : '<div class="dom-vazio">Nenhuma OF ' + (E.busca ? 'encontrada.' : (E.dia ? 'para este dia.' : 'na fila desta máquina.')) + '</div>')
+        + '</section>';
+    }).join('');
+    if (!html) html = '<section class="dom-bloco"><div class="dom-vazio">Nenhuma OF encontrada.</div></section>';
+    var aviso = podeOrdenar ? '' : '<div class="dom-aviso">Para mudar a ordem, use a fila completa (sem busca, dia ou agrupamento).</div>';
+    fila.innerHTML = aviso + html;
+  }
+  function acoesLegado(id) {
+    var root = document.getElementById('ofmaq-final-root');
+    if (!root) return false;
+    var b = document.createElement('button'); b.type = 'button'; b.hidden = true; b.setAttribute('data-ofmaq-final-actions', id);
+    root.appendChild(b); b.click(); b.remove();
+    return !!document.querySelector('[id*="ofmaq-final-actions"]:not(button), .ofmaq-final-modal');
+  }
+  function imagemLegado(id, url) {
+    var root = document.getElementById('ofmaq-final-root');
+    if (root) { var b = document.createElement('button'); b.type = 'button'; b.hidden = true; b.setAttribute('data-ofmaq-final-image', id); root.appendChild(b); b.click(); b.remove(); return; }
+    if (url) window.open(url, '_blank');
   }
   function legado(sel) { var b = document.querySelector('#page-ofmaq ' + sel); if (b) { b.click(); return true; } toast('Abra a tela anterior uma vez para carregar esta função.', 'var(--yellow)'); return false; }
-  function filaAtual() { return (grupos().g[E.maq] || []).slice(); }
+  function filaAtual(m) { return (grupos().g[m || E.maq] || []).slice(); }
   function clique(ev) {
     var mq = ev.target.closest('[data-maq]');
     if (mq && raiz.contains(mq)) { E.todas = false; E.maq = mq.getAttribute('data-maq'); try { localStorage.setItem('ds_ofmaq_maq', E.maq); } catch (_) {} render(); return; }
@@ -71834,19 +71871,22 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(function () { b.textContent = 'Atualizar'; render(); }); return; }
     if (a === 'operador') { abrirOperador(); return; }
     if (a === 'antiga') { E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
-    if (a === 'autoordem') { var l0 = filaAtual(); E.seq[E.maq] = {}; var l1 = ordenar(l0, E.maq); salvarSeq(E.maq, l1); render(); return; }
+    if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA); salvarSeq(mA, l1); render(); return; }
     var tr = b.closest('tr[data-id]'); if (!tr) return;
-    var id = tr.getAttribute('data-id'), l = filaAtual(), i = l.findIndex(function (o) { return o.id === id; });
+    var mT = tr.getAttribute('data-maq') || E.maq;
+    var id = tr.getAttribute('data-id'), l = filaAtual(mT), i = l.findIndex(function (o) { return o.id === id; });
     if (a === 'sobe' || a === 'desce') {
       var j = a === 'sobe' ? i - 1 : i + 1; if (i < 0 || j < 0 || j >= l.length) return;
-      var t = l[i]; l[i] = l[j]; l[j] = t; salvarSeq(E.maq, l); render(); return;
+      var t = l[i]; l[i] = l[j]; l[j] = t; salvarSeq(mT, l); render(); return;
     }
-    if (a === 'menu') { menuOf(b, l[i]); }
+    if (a === 'acoes') { if (!acoesLegado(id)) menuOf(b, l[i], mT); return; }
+    if (a === 'img') { imagemLegado(id, imgDe(l[i] || {})); return; }
+    if (a === 'menu') { menuOf(b, l[i], mT); }
   }
-  function menuOf(btn, o) {
-    fecharMenu();
+  function menuOf(btn, o, maqM) {
+    fecharMenu(); maqM = maqM || E.maq;
     var m = document.createElement('div'); m.id = 'dom-menu';
-    var itens = [['abrir', 'Abrir / editar OF'], ['imprimir', 'Imprimir OF'], ['topo', 'Mover para o topo da fila'], ['passou', 'Passou pela máquina']];
+    var itens = [['abrir', 'Abrir / editar OF'], ['imprimir', 'Imprimir OF'], ['topo', 'Mover para o topo da fila'], ['sobe', 'Mover para cima'], ['desce', 'Mover para baixo'], ['passou', 'Passou pela máquina']];
     m.innerHTML = itens.map(function (x) { return '<button type="button" data-m="' + x[0] + '">' + x[1] + '</button>'; }).join('');
     document.body.appendChild(m);
     var r = btn.getBoundingClientRect(); m.style.top = Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px'; m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px';
@@ -71855,21 +71895,30 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (k === 'abrir') { try { window.__dashH.acao(btn, 'alterar', o); } catch (_) {} }
       if (k === 'imprimir') { try { window.imprimirOF(numOf(o)); } catch (_) {} }
       if (k === 'passou') { try { window.__dashH.acao(btn, 'passoumaq', o); } catch (_) {} setTimeout(function () { recarregarOfs().then(render); }, 2500); }
-      if (k === 'topo') { var l = filaAtual().filter(function (z) { return z.id !== o.id; }); l.unshift(o); salvarSeq(E.maq, l); render(); }
+      if (k === 'topo') { var l = filaAtual(maqM).filter(function (z) { return z.id !== o.id; }); l.unshift(o); salvarSeq(maqM, l); render(); }
+      if (k === 'sobe' || k === 'desce') { var l2 = filaAtual(maqM), i2 = l2.findIndex(function (z) { return z.id === o.id; }), j2 = k === 'sobe' ? i2 - 1 : i2 + 1; if (i2 >= 0 && j2 >= 0 && j2 < l2.length) { var t2 = l2[i2]; l2[i2] = l2[j2]; l2[j2] = t2; salvarSeq(maqM, l2); render(); } }
     });
     setTimeout(function () { document.addEventListener('click', fecharMenu, { once: true }); }, 0);
   }
   function fecharMenu() { var m = document.getElementById('dom-menu'); if (m) m.remove(); }
   function ligarArrastar() {
     var arrastando = null;
+    raiz.addEventListener('change', function (ev) {
+      var inp = ev.target.closest('.dom-seq'); if (!inp) return;
+      var tr = inp.closest('tr[data-id]'), mS = tr.getAttribute('data-maq') || E.maq, id = tr.getAttribute('data-id');
+      var l = filaAtual(mS), o = l.find(function (x) { return x.id === id; }); if (!o) return;
+      var n = Math.max(1, Math.min(l.length, Math.round(Number(inp.value) || 1)));
+      l = l.filter(function (x) { return x.id !== id; }); l.splice(n - 1, 0, o); salvarSeq(mS, l); render();
+    });
     raiz.addEventListener('dragstart', function (ev) { var tr = ev.target.closest('tr[data-id]'); if (!tr) return; arrastando = tr.getAttribute('data-id'); tr.classList.add('dom-arrastando'); try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', arrastando); } catch (_) {} });
     raiz.addEventListener('dragover', function (ev) { if (!arrastando) return; var tr = ev.target.closest('tr[data-id]'); if (!tr) return; ev.preventDefault(); raiz.querySelectorAll('.dom-alvo').forEach(function (x) { x.classList.remove('dom-alvo'); }); tr.classList.add('dom-alvo'); });
     raiz.addEventListener('dragend', function () { arrastando = null; raiz.querySelectorAll('.dom-alvo,.dom-arrastando').forEach(function (x) { x.classList.remove('dom-alvo'); x.classList.remove('dom-arrastando'); }); });
     raiz.addEventListener('drop', function (ev) {
       var tr = ev.target.closest('tr[data-id]'); if (!tr || !arrastando) return; ev.preventDefault();
       var alvo = tr.getAttribute('data-id'); if (alvo === arrastando) return;
-      var l = filaAtual(), o = l.find(function (x) { return x.id === arrastando; }); l = l.filter(function (x) { return x.id !== arrastando; });
-      var j = l.findIndex(function (x) { return x.id === alvo; }); l.splice(j, 0, o); arrastando = null; salvarSeq(E.maq, l); render();
+      var mD = tr.getAttribute('data-maq') || E.maq;
+      var l = filaAtual(mD), o = l.find(function (x) { return x.id === arrastando; }); if (!o) { arrastando = null; return; } l = l.filter(function (x) { return x.id !== arrastando; });
+      var j = l.findIndex(function (x) { return x.id === alvo; }); l.splice(j, 0, o); arrastando = null; salvarSeq(mD, l); render();
     });
   }
 
@@ -71987,6 +72036,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var css = ''
     + '#page-ofmaq.ds-ofmaq-ativa > :not(#ds-ofmaq):not(style):not(script){display:none!important}'
     + '#page-ofmaq:not(.ds-ofmaq-ativa) > #ds-ofmaq{display:none!important}'
+    + '#page-ofmaq.ds-ofmaq-ativa.active{overflow-y:auto!important;height:100%!important}'
+    + '.dom-bloco{border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden;margin-bottom:14px}'
+    + '.dom-fila{border:0!important;background:transparent!important;overflow:visible!important}'
+    + '.dom-pilulas{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.dom-pilulas span{padding:3px 9px;border-radius:99px;border:1px solid var(--border);font-size:12px;color:var(--text2)}.dom-pilulas b{color:var(--text);margin-left:3px}'
+    + '.dom-btn-p{height:30px;font-size:12.5px}'
+    + '.dom-tabela th small{display:block;font-size:10.5px;font-weight:500;color:var(--text3)}'
+    + '.dom-seq{width:46px;height:30px;border-radius:7px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-weight:700;text-align:center;padding:0}'
+    + '.dom-img{width:34px;height:34px;border-radius:7px;border:1px solid var(--border);background:var(--s2);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;padding:0;cursor:pointer;color:var(--text3)}.dom-img img{width:100%;height:100%;object-fit:cover}.dom-img.vazio{cursor:default}'
+    + '.dom-c-prod{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dom-c-txt{white-space:nowrap;color:var(--text2);font-size:12.5px}.dom-c-papel{max-width:180px;color:var(--text2);font-size:12.5px}.dom-c-dt{white-space:nowrap;color:var(--text2)}'
+    + '.dom-chip.st-normal{background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green);font-weight:600}.dom-chip.st-urgente{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red);font-weight:700}.dom-chip.st-atrasada{background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow);font-weight:600}'
+    + '.dom-acoes{height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff!important;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;width:auto!important}.dom-acoes.urg{background:var(--red);border-color:var(--red)}'
+    + '.dom-c-acao .dom-mais{width:28px}'
     + '#ds-ofmaq-voltar{margin:10px 16px;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:600;cursor:pointer}'
     + '#ds-ofmaq{padding:18px 20px 40px;color:var(--text);font-size:14px}'
     + '.dom-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}'
@@ -72037,8 +72098,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-rod{display:flex;justify-content:space-between;gap:10px;margin-top:10px;color:var(--text3);font-size:12px;flex-wrap:wrap}.dom-link{background:none;border:0;color:var(--text2);text-decoration:underline;cursor:pointer;font:inherit;font-size:12px}'
     + '#dom-menu{position:fixed;z-index:9999;min-width:210px;padding:5px;border-radius:10px;border:1px solid var(--border);background:var(--surface);box-shadow:0 12px 32px rgba(0,0,0,.35)}#dom-menu button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer}#dom-menu button:hover{background:var(--s3)}'
     + '@media (max-width:768px){#ds-ofmaq{padding:12px 12px 110px}.dom-maqs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dom-maq{padding:10px}.dom-maq-num{font-size:19px}'
-    + '.dom-tabela thead{display:none}.dom-tabela,.dom-tabela tbody{display:block}.dom-tabela tr{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"pos of acao" "cli cli cli" "qtd ent tempo" "st st st";gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}'
-    + '.dom-tabela td{display:block;padding:0;border:0!important}.dom-c-pos{grid-area:pos;width:auto}.dom-c-of{grid-area:of}.dom-c-cli{grid-area:cli}.dom-c-cli span,.dom-c-cli small{max-width:none}.dom-tabela td:nth-child(4){grid-area:qtd;text-align:left!important}.dom-c-ent{grid-area:ent}.dom-tabela td:nth-child(6){grid-area:tempo}.dom-c-st{grid-area:st}.dom-c-acao{grid-area:acao}.dom-tabela td::before{content:none!important}'
+    + '.dom-tabela thead{display:none}.dom-tabela,.dom-tabela tbody{display:block}.dom-tabela tr{display:grid;grid-template-columns:auto auto 1fr auto;grid-template-areas:"pos img of acao" "cli cli cli cli" "prod prod prod prod" "ent ent qtd qtd" "st st tempo tempo";gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}'
+    + '.dom-tabela td{display:block;padding:0;border:0!important}.dom-tabela td.dom-c-txt,.dom-tabela td.dom-c-papel,.dom-tabela td.dom-c-maq,.dom-tabela td.dom-c-dt{display:none}.dom-c-pos{grid-area:pos;width:auto}.dom-c-img{grid-area:img}.dom-c-of{grid-area:of}.dom-c-cli{grid-area:cli}.dom-c-prod{grid-area:prod;max-width:none;white-space:normal}.dom-c-cli span{max-width:none}.dom-tabela td:nth-child(9){grid-area:qtd}.dom-c-ent{grid-area:ent}.dom-tabela td:nth-child(15){grid-area:tempo}.dom-c-st{grid-area:st}.dom-c-acao{grid-area:acao}.dom-tabela td::before{content:none!important}.dom-fila-head{flex-direction:column;align-items:flex-start}'
     + '.dom-head-acoes{width:100%}.dom-head-acoes .dom-btn{flex:1;height:42px}}'
     /* modo operador */
     + '#ds-operador{position:fixed;inset:0;z-index:9800;background:var(--bg);overflow:auto;color:var(--text)}#ds-operador[hidden]{display:none}'

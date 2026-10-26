@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026170346';
-const SW_RUNTIME_VERSION = '20261026170346';
+const PATCH_RUNTIME_VERSION = '20261026174853';
+const SW_RUNTIME_VERSION = '20261026174853';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39683,6 +39683,95 @@ app.post('/api/ofmaq/sequencia', authMiddleware, async (req, res) => {
       if (error) throw error;
     }
     return ok(res, { salvos: up.length });
+  } catch (e) { return err(res, e); }
+});
+
+// ===== ALMOXARIFADO (26/10/2026): ordens de compra de itens (ferramentas, parafusos…) =====
+function _almoxItens(arr) {
+  return (Array.isArray(arr) ? arr : []).map((it) => ({
+    descricao: String(it && it.descricao || '').trim().slice(0, 300),
+    quantidade: Math.max(0, Number(String(it && it.quantidade).replace(',', '.')) || 0),
+    unidade: String(it && it.unidade || 'un').trim().slice(0, 20) || 'un',
+    valor_unitario: Math.max(0, Number(String(it && it.valor_unitario).replace(',', '.')) || 0),
+  })).filter((it) => it.descricao);
+}
+function _almoxPayload(b, req) {
+  const itens = _almoxItens(b.itens);
+  const vItens = Math.round(itens.reduce((s, it) => s + it.quantidade * it.valor_unitario, 0) * 100) / 100;
+  const vt = b.valor_total === '' || b.valor_total == null ? vItens : Math.max(0, Number(String(b.valor_total).replace(',', '.')) || 0);
+  const st = ['Aberta', 'Comprada', 'Recebida', 'Cancelada'].includes(String(b.status)) ? String(b.status) : 'Aberta';
+  return { data: /^\d{4}-\d{2}-\d{2}$/.test(String(b.data || '')) ? b.data : new Date().toISOString().slice(0, 10),
+    fornecedor: String(b.fornecedor || '').trim() || null, solicitante: String(b.solicitante || '').trim() || null, status: st,
+    itens, valor_itens: vItens, valor_total: Math.round(vt * 100) / 100, observacoes: String(b.observacoes || '').trim() || null,
+    atualizado_por: _opNome(req), updated_at: new Date().toISOString() };
+}
+app.get('/api/almoxarifado/ordens', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('almox_ordens').select('*').is('deleted_at', null).order('data', { ascending: false }).order('numero', { ascending: false }).limit(2000);
+    const ano = String(req.query.ano || '').trim();
+    if (/^\d{4}$/.test(ano)) q = q.gte('data', ano + '-01-01').lte('data', ano + '-12-31');
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/almoxarifado/ordens', authMiddleware, async (req, res) => {
+  try {
+    const p = _almoxPayload(req.body || {}, req);
+    if (!p.itens.length) return res.status(400).json({ ok: false, error: 'Inclua pelo menos um item' });
+    const { data: ult } = await supabase.from('almox_ordens').select('numero').order('numero', { ascending: false, nullsFirst: false }).limit(1);
+    p.numero = ((ult && ult[0] && Number(ult[0].numero)) || 0) + 1;
+    p.criado_por = p.atualizado_por;
+    const { data, error } = await supabase.from('almox_ordens').insert([p]).select('*').single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/almoxarifado/ordens/:id', authMiddleware, async (req, res) => {
+  try {
+    const p = _almoxPayload(req.body || {}, req);
+    if (!p.itens.length) return res.status(400).json({ ok: false, error: 'Inclua pelo menos um item' });
+    const { data, error } = await supabase.from('almox_ordens').update(p).eq('id', String(req.params.id)).select('*').single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.delete('/api/almoxarifado/ordens/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('almox_ordens').update({ deleted_at: new Date().toISOString(), atualizado_por: _opNome(req) }).eq('id', String(req.params.id));
+    if (error) throw error;
+    return ok(res, { excluida: true });
+  } catch (e) { return err(res, e); }
+});
+
+// Importa uma planilha de estoque de chapas (substitui o estoque atual). Só administrador. Usado no servidor de TESTE.
+app.post('/api/infra/importar-estoque-chapas', requireAdmin, async (req, res) => {
+  try {
+    const linhas = Array.isArray((req.body || {}).linhas) ? req.body.linhas : [];
+    if (!linhas.length) return res.status(400).json({ ok: false, error: 'linhas vazias' });
+    const chave = (f, n, t) => [f, n, t].map((x) => String(x || '').trim().toUpperCase().replace(/\s+/g, '')).join('|');
+    const { data: atuais, error: e0 } = await supabase.from('chapas_estoque_v2').select('id,fornecedor,nomenclatura,tamanho');
+    if (e0) throw e0;
+    const porChave = new Map((atuais || []).map((c) => [chave(c.fornecedor, c.nomenclatura, c.tamanho), c.id]));
+    const usados = new Set(); let atualizadas = 0, criadas = 0, removidas = 0, zeradas = 0; const erros = [];
+    const cat = (n) => { n = String(n || '').toUpperCase(); return n.startsWith('ESTOQUE SIMPLES') ? 'Estoque Simples' : (n.startsWith('ESTOQUE DUPLO') ? 'Estoque Duplo' : null); };
+    for (const r of linhas) {
+      const q = Math.max(0, Math.trunc(Number(r.quantidade) || 0)); const vu = r.valor_unitario == null ? null : Number(r.valor_unitario);
+      const p = { fornecedor: r.fornecedor, gramatura: String(r.gramatura || ''), nomenclatura: r.nomenclatura || null, tamanho: r.tamanho, nome_uso: r.nome || null, nome: r.nome || null,
+        qual_cnpj: r.qual_cnpj || null, nf: r.nf || null, numero_nf: r.nf || null, quantidade: q, quantidade_atual: q, valor_unitario: vu,
+        valor_total: vu == null ? null : Math.round(q * vu * 100) / 100, updated_at: new Date().toISOString(), atualizado_por: 'Planilha ' + new Date().toLocaleDateString('pt-BR') };
+      const c2 = cat(r.nome); if (c2) p.categoria = c2;
+      const k = chave(r.fornecedor, r.nomenclatura, r.tamanho); const id = porChave.get(k);
+      if (id && !usados.has(id)) { const u = await supabase.from('chapas_estoque_v2').update(p).eq('id', id); if (u.error) erros.push(k + ': ' + u.error.message); else { atualizadas++; usados.add(id); } }
+      else { p.criado_por = p.atualizado_por; const i = await supabase.from('chapas_estoque_v2').insert([p]).select('id').single(); if (i.error) erros.push(k + ': ' + i.error.message); else { criadas++; usados.add(i.data.id); } }
+    }
+    for (const c of (atuais || [])) {
+      if (usados.has(c.id)) continue;
+      const d = await supabase.from('chapas_estoque_v2').delete().eq('id', c.id);
+      if (d.error) { await supabase.from('chapas_estoque_v2').update({ quantidade: 0, quantidade_atual: 0, valor_total: 0 }).eq('id', c.id); zeradas++; } else removidas++;
+    }
+    try { cacheClearPrefix('chapas_'); cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+    return ok(res, { atualizadas, criadas, removidas, zeradas, erros: erros.slice(0, 20) });
   } catch (e) { return err(res, e); }
 });
 

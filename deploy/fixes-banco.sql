@@ -100,3 +100,23 @@ alter table public.tempos_reais
   add column if not exists producao_min integer,
   add column if not exists data date,
   add column if not exists obs text;
+-- Almoxarifado: ordens de compra de itens (martelo, parafuso…) com total por mês (26/10/2026)
+create table if not exists public.almox_ordens (
+  id uuid primary key default gen_random_uuid(),
+  numero integer,
+  data date not null default current_date,
+  fornecedor text,
+  solicitante text,
+  status text not null default 'Aberta',
+  itens jsonb not null default '[]'::jsonb,
+  valor_itens numeric not null default 0,
+  valor_total numeric not null default 0,
+  observacoes text,
+  criado_por text,
+  atualizado_por text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  deleted_at timestamptz
+);
+create index if not exists almox_ordens_data_idx on public.almox_ordens (data);
+grant all on public.almox_ordens to anon, authenticated, service_role;
