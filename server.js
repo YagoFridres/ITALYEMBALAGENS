@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026112048';
-const SW_RUNTIME_VERSION = '20261026112048';
+const PATCH_RUNTIME_VERSION = '20261026112138';
+const SW_RUNTIME_VERSION = '20261026112138';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2593,6 +2593,41 @@ async function _comissoesEnriquecerLista(baseRows) {
   } catch (_) {}
   applyValoresTopo(todasOFs);
   applyViewFallback(todasOFs);
+  // Regra do Yago (01/10/2026): a comissão de TODAS as OFs de um cliente vai para o vendedor ATUAL
+  // do cadastro do cliente (não o que estava gravado na OF). Aplicado aqui para que resumo,
+  // detalhamento, PDF e Excel usem o mesmo vendedor.
+  try {
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const cliDe = (of) => String(of?.cli_id || of?.cliId || of?.cliente_id || of?.cliid || '').trim();
+    const cliIds = Array.from(new Set(todasOFs.map(cliDe).filter((x) => uuidRe.test(x))));
+    const vendPorCli = new Map();
+    for (let i = 0; i < cliIds.length; i += 100) {
+      const { data: cls, error: ec } = await supabase.from('clientes').select('id,vendedor_id').in('id', cliIds.slice(i, i + 100));
+      if (ec || !Array.isArray(cls)) continue;
+      cls.forEach((c) => { const v = String(c?.vendedor_id || '').trim(); if (c?.id && v) vendPorCli.set(String(c.id), v); });
+    }
+    const vendIdsAtuais = Array.from(new Set(Array.from(vendPorCli.values())));
+    const nomeVend = new Map();
+    for (let i = 0; i < vendIdsAtuais.length; i += 100) {
+      const { data: vs, error: evn } = await supabase.from('vendedores').select('id,nome').in('id', vendIdsAtuais.slice(i, i + 100));
+      if (evn || !Array.isArray(vs)) continue;
+      vs.forEach((v) => { if (v?.id && v?.nome) nomeVend.set(String(v.id), String(v.nome)); });
+    }
+    todasOFs.forEach((of) => {
+      if (!of || typeof of !== 'object') return;
+      const vAtual = vendPorCli.get(cliDe(of));
+      if (!vAtual) return;
+      const vOf = String(_pickOfVendedorIdCompat(of) || '').trim();
+      if (vOf && vOf !== vAtual) {
+        of.__vendedor_id_na_of = vOf;
+        // % gravado na OF era do vendedor antigo: deixa o % padrão do vendedor atual valer.
+        if (of.comissao_rs == null) { of.comissao_pct = null; of.comissao = null; of.comissaoPct = null; }
+      }
+      of.vendedor_id = vAtual; of.vendId = vAtual; of.vendid = vAtual;
+      const nm = nomeVend.get(vAtual);
+      if (nm) { of.vendedor = nm; of.vendedor_nome = nm; of.vendNome = nm; of.__vendedor_nome_view = nm; }
+    });
+  } catch (_eVendAtual) { console.warn('[COM] vendedor atual do cliente: skip', String(_eVendAtual?.message || _eVendAtual).slice(0, 160)); }
   try {
     const vendIdsUniques = Array.from(new Set(
       (Array.isArray(todasOFs) ? todasOFs : [])
