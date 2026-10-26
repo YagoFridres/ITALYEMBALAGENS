@@ -71583,7 +71583,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function req(m, url, body) {
     var h = { 'Content-Type': 'application/json' }; var t = ''; try { t = localStorage.getItem('token') || ''; } catch (_) {}
     if (t) h.Authorization = 'Bearer ' + t;
-    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { try { var dh = r.headers.get('date'); if (dh) { var sk = new Date(dh).getTime() + 500 - Date.now(); if (isFinite(sk)) E.skew = sk; } } catch (_) {} return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
   }
   function toast(msg, cor) { try { if (typeof window.toast === 'function') return window.toast(msg, cor || 'var(--green)'); } catch (_) {} }
   function ofsBase() {
@@ -71621,7 +71621,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     E.maquinas.forEach(function (m) { if (!g[m]) { g[m] = []; ord.push(m); } });
     ofsBase().forEach(function (o) {
       if (!aberta(o)) return;
-      var m = maqDaOf(o) || 'Sem máquina';
+      var m = maqDaOf(o) || 'Sem máquina'; if (/^sem m/i.test(norm(m))) m = 'Sem máquina';
       if (!g[m]) { g[m] = []; ord.push(m); }
       g[m].push(o);
     });
@@ -71693,7 +71693,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<span class="dom-maq-top"><b>' + esc(m) + '</b>' + (np ? '<span class="dom-prod" title="Em produção agora"></span>' : '') + '</span>'
         + '<span class="dom-maq-num">' + l.length + ' <small>' + (l.length === 1 ? 'OF' : 'OFs') + '</small>' + (atr ? '<em>' + atr + ' atrasada' + (atr > 1 ? 's' : '') + '</em>' : '') + '</span>'
         + '<span class="dom-barra"><i class="t-' + tom + '" style="width:' + Math.min(100, pct) + '%"></i></span>'
-        + '<span class="dom-maq-rod"><span class="t-' + tom + '">' + pct + '% da semana</span><span>' + fmtMin(min) + ' · ' + (dias < 0.1 ? '0' : dias.toFixed(1).replace('.', ',')) + ' dia' + (dias >= 2 ? 's' : '') + '</span></span>'
+        + '<span class="dom-maq-rod" title="Ocupação = tempo previsto da fila ÷ capacidade da semana (5 dias × 8 h)"><span class="t-' + tom + '">' + pct + '% ocupada</span><span>' + (dias < 0.1 ? 'livre' : (dias < 1 ? fmtMin(min) : (dias.toFixed(1).replace('.', ',').replace(',0', '') + ' dia' + (dias >= 2 ? 's' : '')))) + '</span></span>'
         + (vel ? '<span class="dom-maq-rod">' + vel + '</span>' : '')
         + '</button>';
     }).join('');
@@ -71784,7 +71784,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function fecharOperador() { E.opAberto = false; if (op) op.hidden = true; document.body.classList.remove('ds-op-aberto'); clearInterval(relogio); relogio = null; render(); }
   function sessaoDe(maq) { return E.sessoes.filter(function (s) { return s.maquina === maq; })[0] || null; }
-  function decorrido(s) { var ms = Date.now() - new Date(s.inicio).getTime(); var t = Math.max(0, Math.floor(ms / 1000)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); }
+  function decorrido(s) { var ms = Date.now() + (E.skew || 0) - new Date(s.inicio).getTime(); var t = Math.max(0, Math.floor(ms / 1000)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); }
   function tick() { if (!op || op.hidden) return; op.querySelectorAll('[data-relogio]').forEach(function (el) { var s = E.sessoes.find(function (z) { return z.id === el.getAttribute('data-relogio'); }); if (s) el.textContent = decorrido(s); }); }
   function renderOp() {
     if (!op) return;
@@ -71855,9 +71855,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           if (!fluxo.length && o) fluxo = arr(o.maq).map(nomeMaq).filter(Boolean);
           var i = fluxo.findIndex(function (x) { return norm(x) === norm(s.maquina); });
           var prox = i >= 0 ? fluxo[i + 1] : '';
-          var corpo = prox ? { status: 'Em aberto', maquina_atual: prox, passou_maquina: false, maquina_atual_index: i + 1 } : { status: 'Em aberto' };
           s.__prox = prox;
-          return req('PATCH', '/api/ofs/' + encodeURIComponent(s.of_id), corpo).catch(function () {});
+          return req('POST', '/api/operador/pos-passagem', { of_id: s.of_id, status_anterior: s.status_anterior, proxima_maquina: prox, indice: i + 1 }).catch(function () {});
         })
         .then(function () {
           E.sessoes = E.sessoes.filter(function (z) { return z.id !== sid; });
@@ -71936,7 +71935,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.op-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px}.op-head h1{margin:0;font-size:24px;font-weight:700}.op-head p{margin:2px 0 0;color:var(--text2)}.op-head-b{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}'
     + '.op-fechar{height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-weight:600;cursor:pointer}'
     + '.op-maqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}'
-    + '.op-maq{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;cursor:pointer;text-align:left}.op-maq:hover{border-color:var(--accent)}.op-maq b{font-size:20px}.op-maq span{color:var(--text2)}.op-maq em{font-style:normal;color:var(--green);font-weight:600;font-size:13px}'
+    + '.op-maq{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;cursor:pointer;text-align:left}.op-maq:hover{border-color:var(--accent)}.op-maq b{font-size:20px;color:var(--text)}.op-maq span{color:var(--text2)}.op-maq em{font-style:normal;color:var(--green);font-weight:600;font-size:13px}'
     + '.op-atual{border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:22px;text-align:center;margin-bottom:22px}'
     + '.op-atual:not(.op-livre){border-color:color-mix(in srgb,var(--green) 55%,var(--border));box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent) inset}'
     + '.op-rot{display:inline-block;font-size:12px;font-weight:700;color:var(--green);text-transform:none;margin-bottom:6px}.op-livre .op-rot{color:var(--text2)}'

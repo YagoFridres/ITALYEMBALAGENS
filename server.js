@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026164632';
-const SW_RUNTIME_VERSION = '20261026164632';
+const PATCH_RUNTIME_VERSION = '20261026164852';
+const SW_RUNTIME_VERSION = '20261026164852';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39619,6 +39619,28 @@ app.post('/api/operador/finalizar', authMiddleware, async (req, res) => {
       if (r.error) console.warn('[OPERADOR] tempos_reais:', r.error.message);
     } catch (eT) { console.warn('[OPERADOR] tempos_reais erro', eT.message); }
     return ok(res, fechada);
+  } catch (e) { return err(res, e); }
+});
+// depois do "passou pela máquina": tira a OF de "Em produção" e, se o fluxo tiver próxima máquina, coloca a OF na fila dela
+app.post('/api/operador/pos-passagem', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const ofId = String(b.of_id || '').trim();
+    if (!ofId) return res.status(400).json({ ok: false, error: 'of_id obrigatório' });
+    const ant = String(b.status_anterior || '').trim();
+    const payload = { status: ant && !/produ/i.test(ant) ? ant : 'Em aberto', updated_at: new Date().toISOString() };
+    const prox = String(b.proxima_maquina || '').trim();
+    if (prox) { payload.maquina_atual = prox; payload.passou_maquina = false; payload.maquina_atual_index = Math.max(0, Math.trunc(Number(b.indice) || 0)); }
+    for (let i = 0; i < 6; i++) {
+      const r = await supabase.from('ofs').update(payload).eq('id', ofId);
+      if (!r.error) break;
+      const m = String(r.error.message || '').match(/'([^']+)' column|column "([^"]+)"/);
+      const col = m && (m[1] || m[2]);
+      if (col && Object.prototype.hasOwnProperty.call(payload, col)) { delete payload[col]; continue; }
+      throw r.error;
+    }
+    try { _clearOfsCaches(); } catch (_) {}
+    return ok(res, payload);
   } catch (e) { return err(res, e); }
 });
 app.get('/api/operador/velocidades', authMiddleware, async (req, res) => {
