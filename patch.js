@@ -69192,6 +69192,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + 'body.is-mobile .content table:not(.no-card),body[data-device="mobile"] .content table:not(.no-card){min-width:0!important;width:100%!important;max-width:100%!important}'
     + 'body.is-mobile .content table:not(.no-card) > tbody > tr,body[data-device="mobile"] .content table:not(.no-card) > tbody > tr{min-width:0!important;width:auto!important;max-width:100%!important}'
     + 'body.is-mobile .content table:not(.no-card) > tbody > tr > td,body[data-device="mobile"] .content table:not(.no-card) > tbody > tr > td{min-width:0!important;max-width:100%!important;box-sizing:border-box!important;word-break:break-word}'
+    // Regra antiga escondia toda coluna da 8ª em diante no celular (produto, quantidade, tamanhos, cores,
+    // papel, tempo…). Mostra de volta, respeitando células escondidas de propósito.
+    + 'body.is-mobile .content table:not(.no-card) > tbody > tr > td:nth-child(n+8):not([hidden]):not(.hidden):not([style*="display:none"]):not([style*="display: none"]),body[data-device="mobile"] .content table:not(.no-card) > tbody > tr > td:nth-child(n+8):not([hidden]):not(.hidden):not([style*="display:none"]):not([style*="display: none"]){display:flex!important}'
+    + 'body.is-mobile #page-ofmaq .of-ln-prod,body[data-device="mobile"] #page-ofmaq .of-ln-prod{display:block!important}'
     + '}';
   var st = document.createElement('style');
   st.id = 'mobile-header-fix-css';
