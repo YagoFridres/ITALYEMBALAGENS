@@ -1424,6 +1424,14 @@ try {
         { label: 'Custo total', value: rrFmtMoney(totalCusto), sub: 'Somatório do custo total' },
         { label: 'Custo médio/unid.', value: rrFmtMoney(custoMedio), sub: 'Custo total ÷ qtd produzida' }
       ],
+      summaryTitle: 'Resumo por cliente (maiores custos)',
+      summaryHeaders: ['Cliente', 'OFs', 'Qtd', 'Custo total'],
+      summaryRows: (function () {
+        var m = {};
+        rows.forEach(function (r) { var c = String(r && (r.cliente || r.cliente_nome) || '—'); var x = m[c] || (m[c] = { n: 0, q: 0, v: 0 }); x.n++; x.q += rrInt(r && r.qtd_produzida); x.v += rrNum(r && r.custo_total); });
+        return Object.keys(m).sort(function (a, b) { return m[b].v - m[a].v; }).slice(0, 15).map(function (c) { return [rrEsc(c), rrEsc(rrFmtNum(m[c].n, 0)), rrEsc(rrFmtNum(m[c].q, 0)), rrEsc(rrFmtMoney(m[c].v))]; });
+      })(),
+      emptySummaryCols: 4,
       detailTitle: 'Detalhamento',
       detailHeaders: ['OF', 'Cliente', 'Produto', 'Tamanho', 'Valor/m²', 'Custo unit.', 'Qtd', 'Custo total'],
       detailRows: rows.map(function(r) {
@@ -1693,6 +1701,20 @@ try {
     var isEntrada = String(kind || '') === 'entrada';
     var json = await rrFetchJson('/api/chapas_estoque_movimentos?tipo=' + encodeURIComponent(isEntrada ? 'entrada' : 'saida') + '&data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=5000');
     var rows = rrList(json, ['data', 'rows']);
+    // quando só existem registros do histórico (sem chapa, fornecedor ou quantidade), mostra o que de fato há: data, descrição e usuário
+    var soHistorico = rows.length > 0 && rows.every(function (r) { return !(r && (r.fornecedor || r.chapa_label || rrInt(r.quantidade))); });
+    if (soHistorico) {
+      return rrOpenPrint({
+        title: isEntrada ? 'Relatório de Entradas' : 'Relatório de Saídas (baixas registradas)',
+        periodo: ref.titulo,
+        cards: [{ label: 'Lançamentos', value: rrFmtNum(rows.length, 0), sub: 'Registros no período' }],
+        summaryTitle: 'Resumo por usuário', summaryHeaders: ['Usuário', 'Lançamentos'],
+        summaryRows: (function () { var m = {}; rows.forEach(function (r) { var u = String(r && r.usuario || '—'); m[u] = (m[u] || 0) + 1; }); return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).map(function (u) { return [rrEsc(u), rrEsc(rrFmtNum(m[u], 0))]; }); })(),
+        detailTitle: 'Detalhamento', detailHeaders: ['Data', 'Descrição', 'Usuário'],
+        detailRows: rows.map(function (row) { return [rrEsc(rrFmtDate(row && (row.data || row.created_at))), rrEsc(String(row && row.descricao || '—')), rrEsc(String(row && row.usuario || '—'))]; }),
+        emptySummaryCols: 2, emptyDetailCols: 3
+      });
+    }
     var resumo = new Map();
     rows.forEach(function(row) {
       var nome = String(row && row.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
@@ -2001,7 +2023,7 @@ try {
     qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
     qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/fornecedor?' + qs.join('&'));
-    var rows = Array.isArray(json) ? json : [];
+    var rows = rrList(json, ['data', 'rows']); // a API responde { ok, data: [...] }
     var resumo = rows.reduce(function(acc, r) {
       acc.total_fornecedores += 1;
       acc.total_compras += Number(r && r.total_compras || 0) || 0;
@@ -2046,7 +2068,7 @@ try {
     qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
     qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/resumo?' + qs.join('&'));
-    var resumo = json && typeof json === 'object' ? json : {};
+    var resumo = json && typeof json === 'object' ? ((json.data && typeof json.data === 'object' && !Array.isArray(json.data)) ? json.data : json) : {};
     return rrOpenPrint({
       title: 'Papelão — Quantidade e Valor Comprado no Período',
       periodo: ref.titulo || (String(ref && ref.data_inicio || '') + ' a ' + String(ref && ref.data_fim || '')),
@@ -72044,4 +72066,29 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.op-dlg-box label{display:block;text-align:left;font-size:13px;font-weight:600;color:var(--text2)}.op-dlg-box input{display:block;width:100%;box-sizing:border-box;margin-top:6px;height:52px;border-radius:10px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:22px;font-weight:700;text-align:center}'
     + '@media (max-width:600px){.op-relogio{font-size:44px}.op-of{font-size:26px}.op-fila li{flex-wrap:wrap}.op-ini{width:100%}}';
   try { var st = document.createElement('style'); st.id = 'ds-ofmaq-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
+
+
+/* Acentuação quebrada vinda do banco (ex.: "CONCLUÃ\u008dDO", "â€”") é corrigida nos relatórios impressos */
+(function () {
+  var CP = { 0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F };
+  var RE = /[Â-Ãâ][\u0080-¿ŒœŠšŸŽžƒˆ˜–—‘-„†-•…‰‹›€™]{1,2}/g;
+  function conserta(txt) {
+    var s = String(txt == null ? '' : txt); if (!/[ÂÃâ]/.test(s)) return s;
+    return s.replace(RE, function (m) {
+      try {
+        var bytes = []; for (var i = 0; i < m.length; i++) { var c = m.charCodeAt(i); var b = c < 256 ? c : CP[c]; if (b == null) return m; bytes.push(b); }
+        var d = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes));
+        return d;
+      } catch (_) { return m; }
+    });
+  }
+  window.dsConsertaAcentos = conserta;
+  function envolver() {
+    if (typeof window._buildStyledPrintHtml !== 'function' || window._buildStyledPrintHtml.__dsAcento) return false;
+    var o = window._buildStyledPrintHtml;
+    var w = function () { return conserta(o.apply(this, arguments)); }; w.__dsAcento = true;
+    window._buildStyledPrintHtml = w; return true;
+  }
+  if (!envolver()) { var n = 0, t = setInterval(function () { if (envolver() || ++n > 30) clearInterval(t); }, 1000); }
 })();
