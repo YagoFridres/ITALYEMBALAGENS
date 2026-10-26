@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026164435';
-const SW_RUNTIME_VERSION = '20261026164435';
+const PATCH_RUNTIME_VERSION = '20261026164502';
+const SW_RUNTIME_VERSION = '20261026164502';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30382,9 +30382,12 @@ app.delete('/api/chapas/pins/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
-    const limit = Math.max(1, Math.min(150, Math.trunc(_chapasToNum(req.query.limit, 120))));
+    const _temPeriodo = !!(req.query.de || req.query.data_inicio || req.query.dataInicio);
+    const limit = Math.max(1, Math.min(_temPeriodo ? 5000 : 150, Math.trunc(_chapasToNum(req.query.limit, _temPeriodo ? 5000 : 120))));
     const chapaId = String(req.query.chapa_id || '').trim();
     const tipo = String(req.query.tipo || '').trim().toLowerCase();
+    // corrige textos gravados com acentuação quebrada (ex.: "CONCLUÃDO", "â€”")
+    const _consertaTexto = (t) => { const x = String(t == null ? '' : t); if (!/[ÃÂâ]/.test(x)) return x; try { const y = Buffer.from(x, 'latin1').toString('utf8'); return /\uFFFD/.test(y) ? x : y; } catch (_) { return x; } };
     const empId = String(req.query.empId || '').trim();
     const de = String(req.query.de || req.query.data_inicio || req.query.dataInicio || '').trim();
     const ate = String(req.query.ate || req.query.data_fim || req.query.dataFim || '').trim();
@@ -30410,7 +30413,10 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     }
 
     if (movErr || !Array.isArray(movs) || movs.length === 0) {
-      const tipos = ['estoque_entrada', 'estoque_saida', 'estoque_ajuste', 'estoque_manual', 'estoque_chapas_patch', 'baixa_of'];
+      // relatório de Entradas não pode trazer baixas de OF (eram listadas como entrada)
+      const tipos = tipo === 'entrada' ? ['estoque_entrada']
+        : (tipo === 'saida' ? ['estoque_saida', 'baixa_of']
+        : ['estoque_entrada', 'estoque_saida', 'estoque_ajuste', 'estoque_manual', 'estoque_chapas_patch', 'baixa_of']);
       let qh = supabase
         .from('historico_acoes')
         .select('*')
@@ -30429,7 +30435,7 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
       return ok(res, (hist || []).map(h => ({
         id: h.id,
         tipo: h.tipo_acao,
-        descricao: h.descricao,
+        descricao: _consertaTexto(h.descricao),
         usuario: h.usuario,
         created_at: h.data_hora,
         delta: null,
