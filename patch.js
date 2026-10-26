@@ -72002,7 +72002,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-vazio{padding:30px;text-align:center;color:var(--text3)}'
     + '.dom-ferr{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}'
     + '.dom-busca{flex:1 1 260px;display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--b2);border-radius:8px;background:var(--surface);color:var(--text3)}'
-    + '.dom-busca input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13.5px;height:100%;padding:0}'
+    + '#ds-ofmaq .dom-busca input{flex:1;min-width:0;border:0!important;outline:0;box-shadow:none!important;background:transparent!important;color:var(--text);font:inherit;font-size:13.5px;height:100%!important;padding:0!important;margin:0!important;border-radius:0!important}'
     + '.dom-btn.on{background:color-mix(in srgb,var(--accent) 14%,var(--surface));border-color:var(--accent);color:var(--text)}'
     + '.dom-dias{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}'
     + '.dom-dia{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}'
