@@ -70978,7 +70978,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } else if (!velha && vb) vb.remove();
   }
   var ultimaAss = '';
-  function ass() { var l = lista(); var m = ''; for (var i = 0; i < l.length; i++) { var u = l[i] && (l[i].updated_at || ''); if (u > m) m = u; } return l.length + '|' + m; }
+  function ass() { var l = lista(); var m = '', ce = 0, cs = 0; for (var i = 0; i < l.length; i++) { var o = l[i]; if (!o) continue; var u = o.updated_at || ''; if (u > m) m = u; if (o.ent || o.data_entrega) ce++; if (o.status) cs += String(o.status).length; } return l.length + '|' + m + '|' + ce + '|' + cs; }
   function tick() {
     var page = document.getElementById('page-pcp'); if (!page) return;
     if (!raiz || !page.contains(raiz)) { raiz = null; montarEsqueleto(page); aplicarModo(); render(); ultimaAss = ass(); return; }
