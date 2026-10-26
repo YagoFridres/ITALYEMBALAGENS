@@ -69265,6 +69265,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + R + ' td{font-variant-numeric:tabular-nums}'
     // números de destaque (cartões de resumo)
     + R + ' [class*="stat"] b,' + R + ' [class*="kpi"] b,' + R + ' [class*="card"] .val,' + R + ' [class*="card"] .value{font-family:"Archivo",var(--font)!important;font-stretch:87.5%}'
+    + '' + R + ' [style*="#2563eb"],' + R + ' [style*="#1d4ed8"],' + R + ' [style*="#3b82f6"],' + R + ' [style*="#1e40af"],' + R + ' [style*="37,99,235"],' + R + ' [style*="37, 99, 235"],' + R + ' [style*="29,78,216"],' + R + ' [style*="29, 78, 216"],' + R + ' [style*="59,130,246"],' + R + ' [style*="59, 130, 246"]{background:var(--teal)!important;background-image:none!important;border-color:var(--teal)!important;color:#08262B!important}'
+    + '' + R + ' [style*="#0f172a"],' + R + ' [style*="#0b1220"],' + R + ' [style*="#1e2433"],' + R + ' [style*="#111827"],' + R + ' [style*="15,23,42"],' + R + ' [style*="15, 23, 42"],' + R + ' [style*="11,18,32"],' + R + ' [style*="30,41,59"],' + R + ' [style*="30, 41, 59"],' + R + ' [style*="#1e293b"]{background-color:var(--surface)!important;background-image:none!important;border-color:var(--border)!important}'
+    + R + ' .ofmaq-final-day-btn,' + R + ' .ofmaq-final-chip{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:6px!important;color:var(--text)!important;box-shadow:none!important}'
+    + R + ' .ofmaq-final-day-btn.active,' + R + ' .ofmaq-final-day-btn[aria-pressed="true"],' + R + ' .ofmaq-final-day-btn[data-active="1"],' + R + ' .ofmaq-final-chip.active,' + R + ' .ofmaq-final-chip[data-active="1"]{background:var(--petroleo)!important;border-color:var(--teal)!important;color:#fff!important}'
+    + R + ' .ofmaq-final-actions button,' + R + ' .ofmaq-final-actions .btn{background:var(--teal)!important;background-image:none!important;color:#08262B!important;border-radius:6px!important;border:none!important}'
+    + R + ' .ofmaq-final-machine-header,' + R + ' .ofmaq-final-machine-block{background:var(--surface)!important;background-image:none!important;border-color:var(--border)!important}'
     + '@media (prefers-reduced-motion: reduce){' + R + ' *{transition:none!important;animation:none!important}}';
   var st = document.createElement('style');
   st.id = 'erp-ui2-css';
