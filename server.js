@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261019163000';
-const SW_RUNTIME_VERSION = '20261019163000';
+const PATCH_RUNTIME_VERSION = '20261026104500';
+const SW_RUNTIME_VERSION = '20261026104500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2024,6 +2024,27 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
   }
+});
+
+// Servidor de TESTE (VPS HostGator): leitura dos logs de deploy/tarefas, só para admin.
+// Só existe onde a pasta /opt/pcp-pro/tarefas-log existe (no Railway não existe → 404).
+app.get('/api/infra/logs', requireAdmin, async (req, res) => {
+  try {
+    const base = '/opt/pcp-pro';
+    const dir = path.join(base, 'tarefas-log');
+    if (!fs.existsSync(dir)) return res.status(404).json({ ok: false, error: 'nao_disponivel' });
+    setNoCache(res);
+    const f = String(req.query.f || '').replace(/[^a-zA-Z0-9_.-]/g, '');
+    const tail = (p, n) => { try { const t = fs.readFileSync(p, 'utf8'); return t.length > n ? t.slice(-n) : t; } catch (_) { return null; } };
+    if (!f) {
+      const arquivos = fs.readdirSync(dir).sort();
+      return res.json({ ok: true, arquivos, deploy: tail(path.join(base, 'deploy.log'), 4000), erros_erp: tail([path.join(base, 'app-err-0.log'), path.join(base, 'app-err.log')].find((p) => fs.existsSync(p)) || '', 4000) });
+    }
+    const pm2Log = (k) => [path.join(base, 'app-' + k + '-0.log'), path.join(base, 'app-' + k + '.log')].find((p) => fs.existsSync(p)) || '';
+    if (f === 'erp-err') return res.type('text/plain').send(tail(pm2Log('err'), 60000) || '');
+    if (f === 'erp-out') return res.type('text/plain').send(tail(pm2Log('out'), 60000) || '');
+    return res.type('text/plain').send(tail(path.join(dir, f), 200000) || '(vazio)');
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
 app.post('/api/debug/check_usuario', authMiddleware, async (req, res) => {
@@ -7506,8 +7527,23 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (body.preco !== undefined) {
       body.preco = Number(body.preco);
     }
-    const { data, error } = await supabase
-      .from('ofs').update(body).eq('id', req.params.id).select().single();
+    // 'cliente' é só apelido do join com clientes (não é coluna de ofs) → nunca gravar.
+    delete body.cliente;
+    let data = null;
+    let error = null;
+    // Se o banco recusar alguma coluna inexistente, tira ela e tenta de novo (até 8x),
+    // em vez de perder a edição inteira do usuário.
+    for (let tentativa = 0; tentativa < 8; tentativa++) {
+      ({ data, error } = await supabase
+        .from('ofs').update(body).eq('id', req.params.id).select().single());
+      if (!error) break;
+      const msg = String(error.message || '');
+      const m = msg.match(/Could not find the '([^']+)' column/i) || msg.match(/column\s+"?(?:ofs\.)?([a-zA-Z0-9_]+)"?\s+(?:of relation "ofs" )?does not exist/i);
+      const col = m && m[1];
+      if (!col || !Object.prototype.hasOwnProperty.call(body, col)) break;
+      try { console.warn('[OF PATCH] coluna inexistente removida do update:', col); } catch (_) {}
+      delete body[col];
+    }
     if (error) return res.status(400).json({ ok: false, error: error.message });
     _clearOfsCaches();
     res.json({ ok: true, data: _sanitizeOfImagesForResponse(data) });
