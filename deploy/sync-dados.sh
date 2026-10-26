@@ -14,6 +14,8 @@ echo "==> Copiando banco"
 bash $B/02-copiar-banco.sh "$ORIGEM" || echo "!! cópia do banco teve erro"
 echo "==> Copiando fotos/arquivos"
 ORIGEM_URL=https://ubygjqxkflfachtlogdw.supabase.co ORIGEM_KEY="$ORIGEM_KEY" node $B/03-copiar-arquivos.js 2>&1 | tail -5
+echo "==> Reaplicando correções de banco"
+docker compose exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=0 < $B/app/deploy/fixes-banco.sql 2>&1 | grep -v NOTICE | tail -5
 docker compose exec -T db psql -U postgres -c "NOTIFY pgrst, 'reload schema';" >/dev/null
 echo "==> Conferência"
 docker compose exec -T db psql -U postgres -At -c "select 'ofs='||count(*)||' max='||max(numero) from ofs;"
