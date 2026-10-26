@@ -69156,6 +69156,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (typeof window.abrirPersonalizarHotbar === 'function') {
       html += '<button type="button" data-mmm-personalizar="1" style="width:100%;background:rgba(74,144,217,0.1);color:#4A90D9;border:1px solid rgba(74,144,217,0.25);border-radius:10px;padding:12px;cursor:pointer;font-size:13px;font-weight:600;margin-bottom:14px">⚙ Personalizar barra de navegação</button>';
     }
+    (function(){
+      var tema = document.body.classList.contains('light') || document.documentElement.getAttribute('data-theme') === 'light' ? '🌙 Tema escuro' : '☀️ Tema claro';
+      var acoes = [['tema', tema], ['trocar', '👤 Trocar usuário'], ['historico', '🕐 Histórico']];
+      try { var bi = document.getElementById('btn-instalar-app'); if (bi && bi.style.display !== 'none') acoes.push(['app', '📲 Instalar app']); } catch (_) {}
+      html += '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px">';
+      acoes.forEach(function(a){ html += '<button type="button" data-mmm-acao="' + a[0] + '" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px;min-height:44px;color:#e2e8f0;font-size:13px;cursor:pointer">' + esc(a[1]) + '</button>'; });
+      html += '</div>';
+    })();
     grupos.forEach(function (g, gi) {
       html += '<div style="margin-bottom:16px"><div style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">' + esc(g.titulo) + '</div>'
         + '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">';
@@ -69173,6 +69181,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (t === overlay || (t.closest && t.closest('[data-mmm-close]'))) { overlay.remove(); return; }
       var p = t.closest && t.closest('[data-mmm-personalizar]');
       if (p) { overlay.remove(); try { window.abrirPersonalizarHotbar(); } catch (_) {} return; }
+      var ac = t.closest && t.closest('[data-mmm-acao]');
+      if (ac) {
+        overlay.remove();
+        var k = ac.getAttribute('data-mmm-acao');
+        try {
+          if (k === 'tema' && typeof window.toggleTheme === 'function') window.toggleTheme();
+          else if (k === 'trocar' && typeof window.trocarUsuario === 'function') window.trocarUsuario();
+          else if (k === 'app' && typeof window.pwaDoInstall === 'function') window.pwaDoInstall();
+          else if (k === 'historico') { var nh = document.querySelector('#navhist-wrap > *'); if (nh) nh.click(); }
+        } catch (e) { console.warn('[MENU-MAIS] ação falhou', e); }
+        return;
+      }
       var b = t.closest && t.closest('[data-mmm-item]');
       if (!b) return;
       var parts = String(b.getAttribute('data-mmm-item')).split(':');
@@ -69681,7 +69701,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // Celular: cada OF do PCP vira um card compacto (Nº OF + status, cliente, entrega/qtd/total,
   // só as máquinas usadas e as ações numa linha) em vez de um "quadradão" com um campo por linha.
   try { if (window.__pcpMobileCardsCompactos) return; window.__pcpMobileCardsCompactos = true; } catch (_) {}
-  var R = 'html body.is-mobile #page-pcp table.pcp-table > tbody > tr';
+  var R = 'html body.is-mobile #page-pcp#page-pcp table.pcp-table > tbody > tr';
   var css = ''
     + R + '{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px 10px!important;padding:10px 12px!important;margin:0 0 8px!important;border-radius:12px!important;border:1px solid rgba(148,163,184,.22)!important;background:var(--surface,rgba(15,23,42,.6))!important;min-height:0!important;height:auto!important}'
     + R + ' > td{display:block!important;border:none!important;padding:0!important;margin:0!important;width:auto!important;min-width:0!important;max-width:100%!important;text-align:left!important;background:transparent!important;font-size:13px!important;line-height:1.3!important;min-height:0!important;height:auto!important}'
@@ -69705,6 +69725,49 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try {
       if (document.getElementById('pcp-mobile-cards-css')) return;
       var st = document.createElement('style'); st.id = 'pcp-mobile-cards-css'; st.textContent = css;
+      (document.head || document.documentElement).appendChild(st);
+    } catch (_) {}
+  }
+  css += 'html body.is-mobile #page-pcp#page-pcp table.pcp-table > thead{display:none!important}';
+  // Garante data-label em cada célula a partir do cabeçalho (nem sempre vem preenchido).
+  function rotular(){
+    try {
+      if (!document.body || !document.body.classList.contains('is-mobile')) return;
+      document.querySelectorAll('#page-pcp table.pcp-table').forEach(function(t){
+        var ths = t.querySelectorAll('thead th'); if (!ths.length) return;
+        var nomes = Array.prototype.map.call(ths, function(th){ return String(th.textContent || '').replace(/\s+/g, ' ').trim(); });
+        t.querySelectorAll('tbody > tr').forEach(function(tr){
+          if (tr.__pcpRot === tr.children.length) return;
+          Array.prototype.forEach.call(tr.children, function(td, i){ if (nomes[i] != null && td.getAttribute('data-label') !== nomes[i]) td.setAttribute('data-label', nomes[i]); });
+          tr.__pcpRot = tr.children.length;
+        });
+      });
+    } catch (_) {}
+  }
+  function iniciar(){ inject(); rotular(); setInterval(rotular, 700); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+
+
+;(function __mobileTopbarEnxuta(){
+  // Celular: cabeçalho numa linha só (logo + busca + sino + avatar). Tema, trocar usuário,
+  // histórico e instalar app ficam no menu "Mais"; contadores e backup saem do topo.
+  try { if (window.__mobileTopbarEnxuta) return; window.__mobileTopbarEnxuta = true; } catch (_) {}
+  var T = 'html body.is-mobile .topbar';
+  var css = '@media (max-width:900px){'
+    + T + '{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px 8px!important;padding:6px 10px!important;min-height:0!important;height:auto!important}'
+    + T + ' .topbar-badges,' + T + ' #navhist-wrap,' + T + ' > div[onclick^="toggleTheme"],' + T + ' #btn-instalar-app,' + T + ' #save-indicator,' + T + ' > button[onclick^="exportarDadosCompletos"],' + T + ' #topbar-user,' + T + ' #clock{display:none!important}'
+    + T + ' .logo{order:0!important;flex:1 1 auto!important;min-width:0!important;transform:none!important}'
+    + T + ' .logo img{max-height:24px!important}'
+    + T + ' #menu-notificacoes{order:1!important;flex:0 0 auto!important;min-width:36px!important;min-height:36px!important;display:flex!important;align-items:center!important;justify-content:center!important}'
+    + T + ' #header-avatar-btn{order:2!important;flex:0 0 auto!important}'
+    + T + ' #gsearch-wrap{order:3!important;flex:1 1 100%!important;width:100%!important;margin:0!important}'
+    + T + ' #gsearch{height:36px!important;min-height:36px!important;font-size:14px!important;padding-top:0!important;padding-bottom:0!important}'
+    + '}';
+  function inject(){
+    try {
+      if (document.getElementById('mobile-topbar-enxuta-css')) return;
+      var st = document.createElement('style'); st.id = 'mobile-topbar-enxuta-css'; st.textContent = css;
       (document.head || document.documentElement).appendChild(st);
     } catch (_) {}
   }
