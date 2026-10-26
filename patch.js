@@ -69773,3 +69773,51 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject); else inject();
 })();
+
+;(function __pcpToolbarMobileEnxuta(){
+  // Celular: barra do PCP em 3 linhas curtas — busca; navegação de dia (rolagem lateral);
+  // ações (rolagem lateral). A barra de "Aplicar fluxo" só aparece com OF selecionada.
+  try { if (window.__pcpToolbarMobileEnxuta) return; window.__pcpToolbarMobileEnxuta = true; } catch (_) {}
+  var css = ''
+    + 'html body.is-mobile #page-pcp .ptoolbar{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:6px!important;padding:6px 0!important}'
+    + 'html body.is-mobile #page-pcp .pcpm-linha{display:flex!important;flex-wrap:nowrap!important;gap:6px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;padding-bottom:2px!important}'
+    + 'html body.is-mobile #page-pcp .pcpm-linha::-webkit-scrollbar{display:none!important}'
+    + 'html body.is-mobile #page-pcp .pcpm-linha > *{flex:0 0 auto!important;white-space:nowrap!important;min-height:34px!important;font-size:12px!important;padding:0 10px!important;margin:0!important}'
+    + 'html body.is-mobile #page-pcp .pcpm-linha > #pcp-dia-label{display:flex!important;align-items:center!important;padding:0 8px!important;font-size:11px!important}'
+    + 'html body.is-mobile #page-pcp #pcp-busca{width:100%!important;height:38px!important;min-height:38px!important}'
+    + 'html body.is-mobile #page-pcp #live-badge-pcp{display:none!important}'
+    + 'html body.is-mobile #page-pcp #pcp-dia-resumo{font-size:11px!important;width:auto!important;opacity:.75}'
+    + 'html body.is-mobile #page-pcp #pcp-batchbar.pcpm-sem-selecao{display:none!important}';
+  function inject(){
+    if (document.getElementById('pcp-toolbar-mobile-css')) return;
+    var st = document.createElement('style'); st.id = 'pcp-toolbar-mobile-css'; st.textContent = css;
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function organizar(){
+    try {
+      if (!document.body || !document.body.classList.contains('is-mobile')) return;
+      var tb = document.querySelector('#page-pcp .ptoolbar');
+      if (!tb) return;
+      var bb = document.getElementById('pcp-batchbar');
+      if (bb) bb.classList.toggle('pcpm-sem-selecao', /nenhuma sele/i.test(bb.textContent || ''));
+      if (tb.__pcpmOk) return;
+      var nav = document.createElement('div'); nav.className = 'pcpm-linha pcpm-nav';
+      var acoes = document.createElement('div'); acoes.className = 'pcpm-linha pcpm-acoes';
+      Array.prototype.slice.call(tb.children).forEach(function(el){
+        if (el.classList.contains('pcpm-linha')) return;
+        var oc = String(el.getAttribute('onclick') || '');
+        var ehNav = /pcpNavDia|pcpSetSemanaAtual|__todas__/.test(oc) || el.id === 'pcp-dia-label';
+        var ehAcao = el.tagName === 'BUTTON' && !ehNav;
+        if (ehNav) nav.appendChild(el);
+        else if (ehAcao) acoes.appendChild(el);
+      });
+      var busca = document.getElementById('pcp-busca');
+      if (busca && busca.parentNode === tb) tb.insertBefore(busca, tb.firstChild);
+      tb.insertBefore(nav, busca ? busca.nextSibling : tb.firstChild);
+      tb.insertBefore(acoes, nav.nextSibling);
+      tb.__pcpmOk = true;
+    } catch (e) { console.warn('[PCP-MOBILE] toolbar', e); }
+  }
+  function iniciar(){ inject(); organizar(); setInterval(organizar, 800); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
