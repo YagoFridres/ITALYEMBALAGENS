@@ -70122,3 +70122,85 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) setTimeout(function(){ atualizar('voltou'); }, 800); });
   window.addEventListener('focus', function(){ setTimeout(function(){ atualizar('voltou'); }, 800); });
 })();
+
+;(function __modoTablet(){
+  // Tablet: escolhendo "Tablet" no login, ou em modo PC numa tela entre 769 e 1180 px (iPad deitado etc.).
+  // Menu lateral vira faixa de ícones (com o nome ao segurar/passar o dedo) e o botão ☰ abre o menu
+  // completo; topo enxuto; botões maiores para o dedo; PCP esconde Dia Pedido, Imagem e Vl. Unit.
+  try { if (window.__modoTablet) return; window.__modoTablet = true; } catch (_) {}
+  var SEL = ['body[data-device="tablet"]:not(.is-mobile)', 'body.ds-tablet-auto:not(.is-mobile)'];
+  function r(sufixo, decl){ return SEL.map(function(s){ return s + ' ' + sufixo; }).join(',') + '{' + decl + '}'; }
+  function rb(decl){ return SEL.join(',') + '{' + decl + '}'; }
+  var ABERTO = SEL.map(function(s){ return s + '.ds-rail-aberto'; });
+  function ra(sufixo, decl){ return ABERTO.map(function(s){ return s + ' ' + sufixo; }).join(',') + '{' + decl + '}'; }
+  var css = ''
+    + r('.sidebar', 'width:64px!important;min-width:64px!important;overflow-x:hidden!important;overflow-y:auto!important;transition:width .18s ease')
+    + r('.sidebar .sidebar-brand,.sidebar .sidebar-section', 'display:none!important')
+    + r('.sidebar .nav-item', 'font-size:0!important;justify-content:center!important;padding:11px 0!important;margin:2px 8px!important;min-height:42px;gap:0!important')
+    + r('.sidebar .nav-item .ico,.sidebar .nav-group-header .ng-ico', 'font-size:18px!important;margin:0!important;width:auto!important')
+    + r('.sidebar .nav-item .badge-n', 'display:none!important')
+    + r('.sidebar .nav-group-header', 'font-size:0!important;justify-content:center!important;padding:11px 0!important;min-height:42px')
+    + r('.sidebar .nav-group-header .ng-arr', 'display:none!important')
+    + r('.sidebar .nav-group.open .nav-group-items,.sidebar .nav-group-items', 'padding-left:0!important;margin-left:0!important;border-left:none!important')
+    + r('#ds-rail-toggle', 'display:flex!important')
+    // menu completo aberto
+    + ra('.sidebar', 'width:240px!important;min-width:240px!important;position:fixed!important;z-index:400!important;top:var(--ds-topbar-h,56px)!important;bottom:0!important;left:0!important;box-shadow:var(--shadow-lg)!important')
+    + ra('.sidebar .nav-item', 'font-size:13.5px!important;justify-content:flex-start!important;padding:10px 12px!important;gap:10px!important')
+    + ra('.sidebar .nav-group-header', 'font-size:11px!important;justify-content:flex-start!important;padding:10px 12px!important;gap:8px!important')
+    + ra('.sidebar .nav-group-header .ng-arr', 'display:inline!important;margin-left:auto')
+    + ra('#ds-rail-fundo', 'display:block!important')
+    // topo enxuto
+    + r('.topbar .topbar-badges,.topbar #clock,.topbar #save-indicator,.topbar > button[onclick^="exportarDadosCompletos"],.topbar #topbar-user-name,.topbar #navhist-wrap', 'display:none!important')
+    + r('.topbar #btn-instalar-app', 'font-size:0!important;padding:0 10px!important')
+    + r('.topbar #btn-instalar-app::before', 'content:"📲";font-size:16px')
+    + r('.topbar #gsearch-wrap', 'max-width:280px')
+    // toque
+    + r('.btn-sm', 'min-height:34px!important')
+    + r('.btn', 'min-height:38px')
+    + r('input[type=checkbox]', 'width:20px;height:20px')
+    // PCP: colunas menos usadas saem para caber na tela
+    + r('#page-pcp table.pcp-table > thead > tr > th:nth-child(3),#page-pcp table.pcp-table > tbody > tr > td:nth-child(3),#page-pcp table.pcp-table > thead > tr > th:nth-child(6),#page-pcp table.pcp-table > tbody > tr > td:nth-child(6),#page-pcp table.pcp-table > thead > tr > th:nth-child(10),#page-pcp table.pcp-table > tbody > tr > td:nth-child(10)', 'display:none!important')
+    + r('.table-wrap,.tbl-wrap,[class*="table-wrap"]', '-webkit-overflow-scrolling:touch;overflow-x:auto')
+    + '#ds-rail-toggle{display:none;align-items:center;justify-content:center;width:44px;height:40px;margin:8px auto 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:18px;cursor:pointer}'
+    + '#ds-rail-fundo{display:none;position:fixed;inset:0;z-index:399;background:rgba(10,12,16,.35)}';
+  var st = document.createElement('style'); st.id = 'ds-tablet-css'; st.setAttribute('data-ds3', 'tablet'); st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+
+  function autoTablet(){
+    try {
+      var w = window.innerWidth / (parseFloat(getComputedStyle(document.body).zoom) || 1);
+      var dev = document.body.getAttribute('data-device') || 'desktop';
+      document.body.classList.toggle('ds-tablet-auto', dev === 'desktop' && w >= 769 && w <= 1180);
+      var tb = document.querySelector('.topbar');
+      if (tb) document.documentElement.style.setProperty('--ds-topbar-h', tb.offsetHeight + 'px');
+    } catch (_) {}
+  }
+  function montar(){
+    var sb = document.querySelector('.sidebar');
+    if (!sb) return;
+    if (!document.getElementById('ds-rail-toggle')) {
+      var b = document.createElement('button');
+      b.id = 'ds-rail-toggle'; b.type = 'button'; b.title = 'Abrir menu'; b.textContent = '☰';
+      b.onclick = function(){ document.body.classList.toggle('ds-rail-aberto'); };
+      sb.insertBefore(b, sb.firstChild);
+      var f = document.createElement('div'); f.id = 'ds-rail-fundo';
+      f.onclick = function(){ document.body.classList.remove('ds-rail-aberto'); };
+      document.body.appendChild(f);
+      sb.addEventListener('click', function(ev){
+        var it = ev.target.closest && ev.target.closest('.nav-item');
+        if (it) setTimeout(function(){ document.body.classList.remove('ds-rail-aberto'); }, 50);
+      });
+    }
+    // nome do item como dica (aparece ao passar o mouse / segurar)
+    sb.querySelectorAll('.nav-item,.nav-group-header').forEach(function(n){
+      if (n.title) return;
+      var t = String(n.textContent || '').replace(/[▶▼►]/g, '').replace(/\s+/g, ' ').trim();
+      var ico = n.querySelector('.ico,.ng-ico'); if (ico) t = t.replace(String(ico.textContent || '').trim(), '').trim();
+      if (t) n.title = t;
+    });
+  }
+  function iniciar(){ autoTablet(); montar(); setInterval(montar, 3000); }
+  window.addEventListener('resize', autoTablet);
+  try { new MutationObserver(autoTablet).observe(document.body || document.documentElement, { attributes: true, attributeFilter: ['data-device', 'class'] }); } catch (_) {}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
