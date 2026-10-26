@@ -7,6 +7,16 @@
     if (window.__dsMOThrottle || typeof window.MutationObserver !== 'function') return;
     window.__dsMOThrottle = true;
     var Nativo = window.MutationObserver;
+    // relógios e marcadores internos mudam o tempo todo e não interessam a nenhum observador
+    var RUIDO = { clock: 1, 'tv-clock2': 1, 'ds-relogio': 1 };
+    var ruido = function (m) {
+      try {
+        var t = m.target; if (t && t.nodeType !== 1) t = t.parentNode;
+        if (t && RUIDO[t.id]) return true;
+        if (m.type === 'attributes' && m.attributeName === 'data-simd-universal-bound') return true;
+      } catch (_) {}
+      return false;
+    };
     var Agrupado = function (cb) {
       if (typeof cb !== 'function' || cb.__dsImediato) return new Nativo(cb);
       var fila = [], timer = null, ultimo = 0, obs;
@@ -16,8 +26,9 @@
         try { cb.call(obs, lote, obs); } catch (e) { try { console.warn('[MO]', e); } catch (_) {} }
       };
       obs = new Nativo(function (lista) {
-        for (var i = 0; i < lista.length; i++) fila.push(lista[i]);
-        if (timer) return;
+        var n0 = fila.length;
+        for (var i = 0; i < lista.length; i++) { if (!ruido(lista[i])) fila.push(lista[i]); }
+        if (timer || fila.length === n0) return;
         var espera = Math.max(0, 200 - (Date.now() - ultimo));
         timer = setTimeout(rodar, espera);
       });
@@ -70,7 +81,11 @@
         set: function (v) {
           try {
             var s = String(v == null ? '' : v), tag = this.nodeName;
-            if (s.length < 200000 && (tag === 'DATALIST' || tag === 'STYLE' || (!this.firstElementChild && s.indexOf('<') < 0)) && dH.get.call(this) === s) return;
+            if (s.length < 200000 && (tag === 'DATALIST' || tag === 'STYLE' || (!this.firstElementChild && s.indexOf('<') < 0))) {
+              if (this.__dsUltH === s && this.childNodes.length) return;
+              if (dH.get.call(this) === s) { this.__dsUltH = s; return; }
+              this.__dsUltH = s;
+            }
           } catch (_) {}
           dH.set.call(this, v);
         } });
