@@ -69077,3 +69077,103 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setInterval(varrer, 800);
   setTimeout(varrer, 500);
 })();
+
+/* ===== MENU-MAIS-COMPLETO (celular, 26/10/2026) =====
+ * O menu "Mais" do celular mostrava uma lista fixa e incompleta. Agora é montado a partir do
+ * próprio menu lateral do computador: mesmos grupos, mesmas áreas (só as que o usuário pode ver),
+ * e cada botão executa exatamente a mesma ação do item do computador. */
+(function () {
+  if (window.__MENU_MAIS_COMPLETO__) return;
+  window.__MENU_MAIS_COMPLETO__ = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function visivel(el) {
+    try {
+      if (!el) return false;
+      if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+      var st = getComputedStyle(el);
+      return st.display !== 'none' && st.visibility !== 'hidden';
+    } catch (_) { return true; }
+  }
+  function itemInfo(it) {
+    var icoEl = it.querySelector('.ico');
+    var ico = icoEl ? String(icoEl.textContent || '').trim() : '';
+    var txt = String(it.textContent || '').replace(/\s+/g, ' ').trim();
+    if (ico && txt.indexOf(ico) === 0) txt = txt.slice(ico.length).trim();
+    return { el: it, ico: ico || '📌', label: txt };
+  }
+  function coletarGrupos() {
+    var sb = document.querySelector('.sidebar');
+    if (!sb) return [];
+    var grupos = [];
+    var soltos = { titulo: 'Produção', itens: [] };
+    Array.prototype.forEach.call(sb.children, function (ch) {
+      if (ch.classList && ch.classList.contains('nav-item')) {
+        if (visivel(ch)) soltos.itens.push(itemInfo(ch));
+      } else if (ch.classList && ch.classList.contains('nav-group')) {
+        if (!visivel(ch)) return;
+        var hdr = ch.querySelector('.nav-group-header');
+        var titulo = String(hdr ? hdr.textContent : ch.id).replace(/[▶▼►]/g, '').replace(/\s+/g, ' ').trim();
+        titulo = titulo.replace(/^[^\wÀ-ÿ]+/, '').trim();
+        var itens = Array.prototype.filter.call(ch.querySelectorAll('.nav-item'), visivel).map(itemInfo);
+        if (itens.length) grupos.push({ titulo: titulo, itens: itens });
+      }
+    });
+    if (soltos.itens.length) grupos.unshift(soltos);
+    return grupos;
+  }
+  function abrirItem(el) {
+    var menu = document.getElementById('mob-menu-mais');
+    if (menu) menu.remove();
+    var origToggle = window.toggleMobMenu;
+    try { window.toggleMobMenu = function () {}; } catch (_) {}
+    try { el.click(); } catch (e) { console.warn('[MENU-MAIS] falha ao abrir', e); }
+    try { window.toggleMobMenu = origToggle; } catch (_) {}
+    try { if (typeof window.closeMobMenu === 'function') window.closeMobMenu(); } catch (_) {}
+    try { window.scrollTo(0, 0); } catch (_) {}
+  }
+  function abrirMenuMaisCompleto() {
+    var old = document.getElementById('mob-menu-mais');
+    if (old) { old.remove(); return; }
+    var grupos = coletarGrupos();
+    var overlay = document.createElement('div');
+    overlay.id = 'mob-menu-mais';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end';
+    var html = '<div class="mmm-sheet" style="background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(84px + env(safe-area-inset-bottom))">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+      + '<span style="color:#e2e8f0;font-weight:700;font-size:17px">Menu</span>'
+      + '<button type="button" data-mmm-close="1" aria-label="Fechar" style="background:none;border:none;color:#94a3b8;font-size:26px;min-width:44px;min-height:44px;cursor:pointer">✕</button>'
+      + '</div>';
+    if (typeof window.abrirPersonalizarHotbar === 'function') {
+      html += '<button type="button" data-mmm-personalizar="1" style="width:100%;background:rgba(74,144,217,0.1);color:#4A90D9;border:1px solid rgba(74,144,217,0.25);border-radius:10px;padding:12px;cursor:pointer;font-size:13px;font-weight:600;margin-bottom:14px">⚙ Personalizar barra de navegação</button>';
+    }
+    grupos.forEach(function (g, gi) {
+      html += '<div style="margin-bottom:16px"><div style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">' + esc(g.titulo) + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">';
+      g.itens.forEach(function (it, ii) {
+        html += '<button type="button" data-mmm-item="' + gi + ':' + ii + '" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:12px 6px;min-height:76px;cursor:pointer;color:#e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:manipulation;-webkit-tap-highlight-color:transparent">'
+          + '<span style="font-size:22px;line-height:1">' + esc(it.ico) + '</span>'
+          + '<span style="font-size:12px;line-height:1.2;text-align:center;word-break:break-word">' + esc(it.label) + '</span></button>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+    overlay.innerHTML = html;
+    overlay.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (t === overlay || (t.closest && t.closest('[data-mmm-close]'))) { overlay.remove(); return; }
+      var p = t.closest && t.closest('[data-mmm-personalizar]');
+      if (p) { overlay.remove(); try { window.abrirPersonalizarHotbar(); } catch (_) {} return; }
+      var b = t.closest && t.closest('[data-mmm-item]');
+      if (!b) return;
+      var parts = String(b.getAttribute('data-mmm-item')).split(':');
+      var it = grupos[+parts[0]] && grupos[+parts[0]].itens[+parts[1]];
+      if (it) abrirItem(it.el);
+    });
+    document.body.appendChild(overlay);
+  }
+  function instalar() { window.abrirMenuMais = abrirMenuMaisCompleto; }
+  instalar();
+  document.addEventListener('DOMContentLoaded', instalar);
+  setTimeout(instalar, 1500);
+  setTimeout(instalar, 5000);
+})();
