@@ -1289,6 +1289,15 @@ app.get('/icon-512.png', (req, res) => {
 
 app.use((req, res, next) => {
   try {
+    if (/^(POST|PUT|PATCH)$/.test(req.method) && /^\/api\/(ofs|amostras|of-passagens|apontamentos)/.test(req.path)) {
+      res.on('finish', () => { if (res.statusCode < 400) { try { _imgAgendarLimpeza('alteracao ' + req.path, 6000); } catch (_) {} } });
+    }
+  } catch (_) {}
+  next();
+});
+
+app.use((req, res, next) => {
+  try {
     req._rid = _newRid();
     res.setHeader('x-request-id', String(req._rid));
   } catch (_) {}
@@ -1308,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026153926';
-const SW_RUNTIME_VERSION = '20261026153926';
+const PATCH_RUNTIME_VERSION = '20261026155700';
+const SW_RUNTIME_VERSION = '20261026155700';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39458,6 +39467,84 @@ setInterval(agendarOFsAutomaticamente, 30 * 60 * 1000);
 setTimeout(agendarOFsAutomaticamente, 10 * 1000);
 
 const PORT = process.env.PORT || 3000;
+
+// ===== Imagens de OFs e amostras concluídas são apagadas (pedido do Yago, 26/10/2026) =====
+// A OF/amostra continua; só a foto/arquivo anexado sai do armazenamento e dos campos imagem_url/imgs.
+// OF: status concluído / pedido pronto / finalizado / faturado. Amostra: status "Feita" ou concluída.
+const _IMG_LIMPEZA = { rodando: false, timer: null, ultima: null };
+function _imgStatusOfConcluida(st) { const n = String(st || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); return /conclu|pedido pronto|finaliz|faturad/.test(n); }
+function _imgStatusAmostraFeita(st) { const n = String(st || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); return /^feita|conclu|finaliz/.test(n); }
+function _imgListaUrls(row) {
+  const out = [];
+  const add = (v) => { const t = String(v || '').trim(); if (t && t !== 'null') out.push(t); };
+  add(row.imagem_url);
+  let arr = row.imgs;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch (_) { arr = arr ? [arr] : []; } }
+  if (Array.isArray(arr)) arr.forEach((x) => add(typeof x === 'string' ? x : (x && (x.url || x.src))));
+  return Array.from(new Set(out));
+}
+async function _imgRemoverDoStorage(urls) {
+  let n = 0;
+  for (const u of urls) {
+    const m = String(u).match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/?#]+)\/([^?#]+)/);
+    if (!m) continue; // base64 ou link externo: só limpa o campo
+    try { const r = await supabase.storage.from(m[1]).remove([decodeURIComponent(m[2])]); if (!r.error) n++; } catch (_) {}
+  }
+  return n;
+}
+async function _imgLimparTabela(tabela, ehConcluida, colunas) {
+  let lidos = 0, limpos = 0, arquivos = 0;
+  for (let pagina = 0; pagina < 50; pagina++) {
+    const sel = 'id,status,' + colunas.join(',');
+    let q = supabase.from(tabela).select(sel).not('imagem_url', 'is', null).neq('imagem_url', '').range(pagina * 200, pagina * 200 + 199);
+    let { data, error } = await q;
+    if (error && colunas.includes('imgs')) { ({ data, error } = await supabase.from(tabela).select('id,status,imagem_url').not('imagem_url', 'is', null).neq('imagem_url', '').range(pagina * 200, pagina * 200 + 199)); }
+    if (error) { console.warn('[IMG LIMPEZA]', tabela, error.message); break; }
+    const rows = Array.isArray(data) ? data : [];
+    lidos += rows.length;
+    for (const row of rows) {
+      if (!ehConcluida(row.status)) continue;
+      const urls = _imgListaUrls(row);
+      arquivos += await _imgRemoverDoStorage(urls);
+      const payload = { imagem_url: null };
+      if (colunas.includes('imgs')) payload.imgs = [];
+      let up = await supabase.from(tabela).update(payload).eq('id', row.id);
+      if (up.error && payload.imgs) up = await supabase.from(tabela).update({ imagem_url: null, imgs: '[]' }).eq('id', row.id);
+      if (up.error) up = await supabase.from(tabela).update({ imagem_url: null }).eq('id', row.id);
+      if (!up.error) limpos++;
+    }
+    if (rows.length < 200) break;
+  }
+  return { lidos, limpos, arquivos };
+}
+async function _imgLimparConcluidas(motivo) {
+  if (_IMG_LIMPEZA.rodando || !supabase) return;
+  _IMG_LIMPEZA.rodando = true;
+  try {
+    const a = await _imgLimparTabela('ofs', _imgStatusOfConcluida, ['imagem_url', 'imgs']);
+    // OFs concluídas que só têm imgs (sem imagem_url)
+    try {
+      const { data } = await supabase.from('ofs').select('id,status,imgs').is('imagem_url', null).not('imgs', 'is', null).limit(2000);
+      for (const row of (Array.isArray(data) ? data : [])) {
+        if (!_imgStatusOfConcluida(row.status)) continue;
+        const urls = _imgListaUrls(row); if (!urls.length) continue;
+        a.arquivos += await _imgRemoverDoStorage(urls);
+        let up = await supabase.from('ofs').update({ imgs: [] }).eq('id', row.id);
+        if (up.error) up = await supabase.from('ofs').update({ imgs: '[]' }).eq('id', row.id);
+        if (!up.error) a.limpos++;
+      }
+    } catch (_) {}
+    const b = await _imgLimparTabela('amostras', _imgStatusAmostraFeita, ['imagem_url']);
+    _IMG_LIMPEZA.ultima = { em: new Date().toISOString(), motivo, ofs: a, amostras: b };
+    if (a.limpos || b.limpos) { console.log('[IMG LIMPEZA]', JSON.stringify(_IMG_LIMPEZA.ultima)); try { _clearOfsCaches(); } catch (_) {} }
+  } catch (e) { console.warn('[IMG LIMPEZA] erro', e.message || e); }
+  finally { _IMG_LIMPEZA.rodando = false; }
+}
+function _imgAgendarLimpeza(motivo, ms) { clearTimeout(_IMG_LIMPEZA.timer); _IMG_LIMPEZA.timer = setTimeout(() => _imgLimparConcluidas(motivo), ms || 5000); }
+setTimeout(() => _imgLimparConcluidas('inicio'), 90 * 1000);
+setInterval(() => _imgLimparConcluidas('periodica'), 10 * 60 * 1000);
+app.get('/api/infra/limpeza-imagens', requireAdmin, (req, res) => res.json({ ok: true, ultima: _IMG_LIMPEZA.ultima, rodando: _IMG_LIMPEZA.rodando }));
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
   _ensureOfsConclusaoMetricasCols().catch((e) => {

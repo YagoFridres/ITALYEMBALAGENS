@@ -1,3 +1,34 @@
+/* ===== DESEMPENHO (26/10/2026): observadores de DOM agrupados =====
+ * Dezenas de módulos antigos observam a página inteira e rodam varreduras pesadas a CADA alteração.
+ * Aqui os callbacks são agrupados: no máximo uma execução a cada 120 ms por observador, recebendo
+ * todas as alterações acumuladas. Observadores marcados com fn.__dsImediato = true continuam imediatos. */
+(function () {
+  try {
+    if (window.__dsMOThrottle || typeof window.MutationObserver !== 'function') return;
+    window.__dsMOThrottle = true;
+    var Nativo = window.MutationObserver;
+    var Agrupado = function (cb) {
+      if (typeof cb !== 'function' || cb.__dsImediato) return new Nativo(cb);
+      var fila = [], timer = null, ultimo = 0, obs;
+      var rodar = function () {
+        timer = null; ultimo = Date.now();
+        var lote = fila; fila = [];
+        try { cb.call(obs, lote, obs); } catch (e) { try { console.warn('[MO]', e); } catch (_) {} }
+      };
+      obs = new Nativo(function (lista) {
+        for (var i = 0; i < lista.length; i++) fila.push(lista[i]);
+        if (timer) return;
+        var espera = Math.max(0, 120 - (Date.now() - ultimo));
+        timer = setTimeout(rodar, espera);
+      });
+      return obs;
+    };
+    Agrupado.prototype = Nativo.prototype;
+    window.MutationObserver = Agrupado;
+    window.__dsMutationObserverNativo = Nativo;
+  } catch (_) {}
+})();
+
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
@@ -33044,15 +33075,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
     try {
       if (!window.__patchRelMensalObs) {
-        window.__patchRelMensalObs = new MutationObserver(_ocultarRelatorioMensal);
+        window.__patchRelMensalObs = new MutationObserver((function () { var t = null; return function () { clearTimeout(t); t = setTimeout(_ocultarRelatorioMensal, 300); }; })());
         window.__patchRelMensalObs.observe(document.body, { childList: true, subtree: true });
       }
     } catch (_) {}
     if (!window.__patchMenusExtrasObs) {
-      window.__patchMenusExtrasObs = new MutationObserver(function() {
-        if (window._pausarObservers) return;
-        tickMenus();
-      });
+      window.__patchMenusExtrasObs = new MutationObserver((function() {
+        var t = null;
+        return function() { if (window._pausarObservers) return; clearTimeout(t); t = setTimeout(function() { try { tickMenus(); } catch (_) {} }, 300); };
+      })());
       try { window.__patchMenusExtrasObs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
     }
   })();
@@ -36070,23 +36101,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     function liberarElementosNaoFinanceiro() {
+      // (26/10/2026) Versão leve: antes percorria TODOS os botões/links da página a cada 1,5 s e reescrevia
+      // atributos/classes mesmo sem mudança — gerava dezenas de milhares de alterações por minuto (sistema lento),
+      // reativava botões desabilitados de propósito e reexibia elementos escondidos. Agora só mexe no que está
+      // de fato bloqueado por permissão, e só quando precisa.
       try {
-        document.querySelectorAll('.nav-item, .menu-item, [data-section], button, a, [onclick]').forEach(function(el) {
+        document.querySelectorAll('.bloqueado, .is-disabled, .nav-item.disabled, .menu-item.disabled, .nav-item[disabled], .nav-item[aria-disabled], .menu-item[disabled], .menu-item[aria-disabled], [data-section].disabled, [data-section][disabled]').forEach(function(el) {
           if (!el) return;
-          var dentroFinanceiro = false;
+          try { if (el.closest('#nav-group-financeiro, #ng-financeiro, #menu-fin-orcamentos, #menu-fin-comissoes')) return; } catch (_) {}
+          try { if (el.hasAttribute('disabled')) el.removeAttribute('disabled'); } catch (_) {}
+          try { if (el.hasAttribute('aria-disabled')) el.removeAttribute('aria-disabled'); } catch (_) {}
+          try { if (el.style.pointerEvents === 'none') el.style.pointerEvents = ''; } catch (_) {}
+          try { ['bloqueado', 'disabled', 'is-disabled'].forEach(function(c) { if (el.classList.contains(c)) el.classList.remove(c); }); } catch (_) {}
+        });
+        document.querySelectorAll('.sidebar .nav-item[style*="display: none"], .sidebar .nav-item[style*="display:none"]').forEach(function(el) {
           try {
-            dentroFinanceiro = !!el.closest('#nav-group-financeiro, #ng-financeiro, #menu-fin-orcamentos, #menu-fin-comissoes');
-          } catch (_) {}
-          if (dentroFinanceiro) return;
-          try { el.disabled = false; } catch (_) {}
-          try { el.removeAttribute('disabled'); } catch (_) {}
-          try { el.removeAttribute('aria-disabled'); } catch (_) {}
-          try { el.style.pointerEvents = ''; } catch (_) {}
-          try { el.style.opacity = ''; } catch (_) {}
-          try { if (el.classList) el.classList.remove('bloqueado', 'disabled', 'is-disabled'); } catch (_) {}
-          try {
-            var ds = String(el.style.display || '').trim().toLowerCase();
-            if (ds === 'none') el.style.display = '';
+            if (el.closest('#nav-group-financeiro, #ng-financeiro, #ng-ds-gestao')) return;
+            var oc = String(el.getAttribute('onclick') || '');
+            if (/relmensal|sel-chapas|papelao-ia/.test(oc) || /Relat[óo]rio Mensal/i.test(el.textContent || '') || el.hasAttribute('data-ds-dup')) return;
+            el.style.display = '';
           } catch (_) {}
         });
       } catch (_) {}
@@ -69492,7 +69525,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function iniciar() {
     varrer(document.documentElement);
     try {
-      new MutationObserver(function (muts) {
+      var __cbConv = function (muts) {
         for (var i = 0; i < muts.length; i++) {
           var m = muts[i];
           if (m.type === 'attributes') converterInline(m.target);
@@ -69501,7 +69534,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             if (m.target && m.target.tagName === 'STYLE') converterStyleTag(m.target);
           }
         }
-      }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] });
+      };
+      __cbConv.__dsImediato = true;
+      new (window.__dsMutationObserverNativo || MutationObserver)(__cbConv).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] });
     } catch (_) {}
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
@@ -70368,8 +70403,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       ['display', 'visibility', 'height', 'overflow'].forEach(function (pp) { if (box.style[pp]) box.style[pp] = ''; });
       grp.querySelectorAll('.nav-item[data-ds-key]').forEach(function (it) { if (it.style.visibility === 'hidden' && it.style.height === '0px') { it.style.visibility = ''; it.style.height = ''; it.style.overflow = ''; it.style.display = ''; } });
       g.itens.forEach(function (k) { var it = porChave[k]; if (!it) return; decorar(it, k); if (it.parentNode !== box) box.appendChild(it); });
-      // reordena conforme a lista
-      g.itens.forEach(function (k) { var it = porChave[k]; if (it && it.parentNode === box) box.appendChild(it); });
+      // reordena conforme a lista (só mexe se a ordem estiver diferente)
+      var desejada = g.itens.map(function (k) { return porChave[k]; }).filter(function (it) { return it && it.parentNode === box; });
+      var atual = Array.prototype.filter.call(box.children, function (c) { return desejada.indexOf(c) >= 0; });
+      var difere = desejada.some(function (it, i) { return atual[i] !== it; });
+      if (difere) desejada.forEach(function (it) { box.appendChild(it); });
       var temVisivel = Array.prototype.some.call(box.children, function (c) { return c.style.display !== 'none' && getComputedStyle(c).display !== 'none'; });
       grp.style.display = temVisivel ? '' : 'none';
     });
@@ -70408,7 +70446,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var nome = (ITENS[pg] && ITENS[pg][1]) || (pg ? pg.replace(/-/g, ' ') : '');
       if (CENTRAL.indexOf(pg) >= 0 && pg !== 'pcp') nome = 'Central de OFs · ' + ITENS[pg][1];
       if (t.textContent !== nome) t.textContent = nome;
-      try { document.title = (nome ? nome + ' — ' : '') + 'Italy PCP'; } catch (_) {}
+      try { var tt = (nome ? nome + ' — ' : '') + 'Italy PCP'; if (document.title !== tt) document.title = tt; } catch (_) {}
     }
     if (CENTRAL.indexOf(pg) >= 0) abasCentral(pg);
     if (!sb || pg === ultimaPg) return;
@@ -71039,6 +71077,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var page = document.getElementById('page-pcp'); if (!page) return;
     var velha = antiga();
     page.classList.toggle('ds-central-ativa', !velha && subAtual === 'ofs');
+    page.setAttribute('data-ds-sub', subAtual);
     var vb = document.getElementById('ds-voltar-nova');
     if (velha && !vb) {
       vb = document.createElement('button'); vb.id = 'ds-voltar-nova'; vb.type = 'button'; vb.className = 'dsc-btn dsc-btn-sec'; vb.textContent = 'Nova Central de OFs';
@@ -71189,6 +71228,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 (function () {
   try { if (window.__dsAjustes1525) return; window.__dsAjustes1525 = true; } catch (_) {}
   var css = '.topbar #gsearch-wrap,.topbar #menu-notificacoes,.topbar #navhist-wrap{display:none!important}'
+    // Central: abas Amostras / Buscador sem a barra antiga do PCP nem as sub-abas repetidas
+    + '#page-pcp[data-ds-sub="amostras"] .ptoolbar:not(#page-amostras .ptoolbar),#page-pcp[data-ds-sub="recorrentes"] > .ptoolbar,#page-pcp[data-ds-sub="amostras"] > .ptoolbar,#page-pcp:not([data-ds-sub="ofs"]) #pcp-abas,#page-pcp:not([data-ds-sub="ofs"]) #pcp-batchbar{display:none!important}'
+    // Amostras: só a lista e o botão Nova Amostra
+    + '#page-amostras > .ptoolbar,#page-amostras .page-header .page-title,#page-amostras .page-header .page-title + *,#page-amostras .excel-export-bar{display:none!important}'
+    + '#page-amostras .page-header{justify-content:flex-end!important;border:none!important;padding-top:8px!important;padding-bottom:8px!important;min-height:0!important}'
+    // Orçamentos: sem título e explicações; tabela "Tabela Detalhada"
+    + '.orx-head .orx-title,.orx-head .orx-sub,.orx-table-head .orx-table-sub{display:none!important}'
     + 'html[data-ds="3"] body:not(.is-mobile) .topbar > div[onclick^="toggleTheme"]{margin-left:auto!important}'
     + '.cmpx-head .cmpx-title,.cmpx-head .cmpx-sub,.cmpx-table-head .cmpx-table-sub{display:none!important}'
     + '#page-compras #cmp-fil-st,#page-compras #cmp-fil-emp{display:none!important}'
@@ -71203,8 +71249,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setInterval(function () {
     try {
       document.querySelectorAll('.cmpx-table-title').forEach(function (t) { if (t.textContent.trim() !== 'Tabela de Compras') t.textContent = 'Tabela de Compras'; });
+      document.querySelectorAll('.orx-table-title').forEach(function (t) { if (t.textContent.trim() !== 'Tabela Detalhada') t.textContent = 'Tabela Detalhada'; });
       document.querySelectorAll('#hub-quick .hub-qbtn,#hub-quick button').forEach(function (b) { if (/Armazenamento/i.test(b.textContent || '') && b.style.display !== 'none') b.style.display = 'none'; });
-      document.querySelectorAll('.cmpx-wrap table td button').forEach(function (b) { if (/Excluir/i.test(b.textContent || '')) b.style.setProperty('color', 'var(--red)', 'important'); });
+      document.querySelectorAll('.cmpx-wrap table td button').forEach(function (b) { if (/Excluir/i.test(b.textContent || '') && b.style.getPropertyValue('color') !== 'var(--red)') b.style.setProperty('color', 'var(--red)', 'important'); });
       if (!resetado) {
         var a = document.getElementById('cmp-fil-st'), b2 = document.getElementById('cmp-fil-emp');
         if (a || b2) { [a, b2].forEach(function (x) { if (x && x.value !== '') { x.value = ''; try { x.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} } }); resetado = true; }
