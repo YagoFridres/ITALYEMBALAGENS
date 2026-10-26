@@ -1306,8 +1306,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261026112138';
-const SW_RUNTIME_VERSION = '20261026112138';
+const PATCH_RUNTIME_VERSION = '20261026112403';
+const SW_RUNTIME_VERSION = '20261026112403';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -20042,7 +20042,7 @@ app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
 function _orcLimparClientePlaceholder(body) {
   try {
     if (!body || typeof body !== 'object') return body;
-    ['cliente_nome', 'cliente', 'clienteNome', 'cliNome', 'clinome'].forEach((k) => {
+    ['cliente_nome', 'cliente', 'clienteNome', 'cliNome', 'clinome', 'descricao'].forEach((k) => {
       if (typeof body[k] === 'string' && /selecione\s+o\s+cliente/i.test(body[k])) body[k] = null;
     });
   } catch (_) {}
