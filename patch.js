@@ -71178,6 +71178,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 (function () {
   try { if (window.__dsAjustes1525) return; window.__dsAjustes1525 = true; } catch (_) {}
   var css = '.topbar #gsearch-wrap,.topbar #menu-notificacoes,.topbar #navhist-wrap{display:none!important}'
+    + 'html[data-ds="3"] body:not(.is-mobile) .topbar > div[onclick^="toggleTheme"]{margin-left:auto!important}'
     + '.cmpx-head .cmpx-title,.cmpx-head .cmpx-sub,.cmpx-table-head .cmpx-table-sub{display:none!important}'
     + '#page-compras #cmp-fil-st,#page-compras #cmp-fil-emp{display:none!important}'
     + '#page-compras > .ptoolbar:has(#cmp-fil-st){display:none!important}'
@@ -71198,4 +71199,36 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       }
     } catch (_) {}
   }, 800);
+})();
+
+;(function __jarvisGaveta(){
+  // Jarvis: abre como painel lateral à direita, inteiro na tela, sem trocar de página (antes ia para o
+  // Início e a janela ficava deslocada no canto — dois módulos antigos brigavam pela posição).
+  try { if (window.__jarvisGaveta) return; window.__jarvisGaveta = true; } catch (_) {}
+  var POS = { top: '0px', right: '0px', bottom: '0px', left: 'auto', inset: '0px 0px 0px auto', width: 'min(480px, 100%)', 'max-width': '100%', height: 'auto', 'max-height': 'none', 'border-radius': '0', transform: 'none', margin: '0' };
+  function encaixar() {
+    var p = document.getElementById('assist-panel');
+    if (!p || !p.classList.contains('open')) return;
+    Object.keys(POS).forEach(function (k) { if (p.style.getPropertyValue(k) !== POS[k] || p.style.getPropertyPriority(k) !== 'important') p.style.setProperty(k, POS[k], 'important'); });
+    p.style.setProperty('border-left', '1px solid var(--border)', 'important');
+    p.style.setProperty('box-shadow', 'var(--shadow-lg)', 'important');
+    var g = document.getElementById('painel-jarvis-grande');
+    if (g) { g.style.setProperty('background', 'rgba(10,12,16,.35)', 'important'); }
+  }
+  function instalar() {
+    var orig = window.abrirPainelJarvis;
+    if (typeof orig !== 'function' || orig.__semIrHub) return false;
+    var w = function () {
+      var goOrig = window.go;
+      try { window.go = function (id) { if (String(id) === 'hub') return; return goOrig.apply(this, arguments); }; } catch (_) {}
+      try { return orig.apply(this, arguments); }
+      finally { setTimeout(function () { try { window.go = goOrig; } catch (_) {} }, 0); [30, 120, 400, 900].forEach(function (d) { setTimeout(encaixar, d); }); }
+    };
+    w.__semIrHub = true; window.abrirPainelJarvis = w;
+    return true;
+  }
+  if (!instalar()) { var n = 0, t = setInterval(function () { if (instalar() || ++n > 40) clearInterval(t); }, 250); }
+  try {
+    new MutationObserver(function () { encaixar(); }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+  } catch (_) {}
 })();
