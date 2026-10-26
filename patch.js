@@ -69285,6 +69285,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + R + ' .modal-overlay.open,' + R + ' .estoque-modal-overlay{background:rgba(6,16,19,.72)!important;backdrop-filter:none!important}'
     + R + ' .estoque-modal-header{background:transparent!important;border-bottom:1px solid var(--border)!important}'
     + R + ' .tbadge{border-radius:6px!important;font-family:"Archivo",var(--font)!important;font-stretch:87.5%}'
+    // Clientes: botões do cartão sem sobreposição; filtros lado a lado
+    + 'html[data-ui="2"] #page-clientes .cli-card button.btn-sm{width:auto!important;min-width:0!important;flex:1 1 auto!important;white-space:nowrap!important;overflow:visible!important}'
+    + 'html[data-ui="2"] #page-clientes .cli-card button.btn-sm[style*="var(--red)"]{flex:0 0 auto!important}'
+    + 'html[data-ui="2"] body:not(.is-mobile) #page-clientes .ptoolbar{flex-wrap:wrap!important}'
+    + 'html[data-ui="2"] body:not(.is-mobile) #page-clientes .ptoolbar > select{width:auto!important;flex:0 1 220px!important;min-width:160px!important}'
     + R + '{--petroleo:#1E4D57;--teal:#55A4AD;--verde:#A8CF4E;--kraft:#C9A47E;'
     + '--bg:#0E2227;--surface:#15323A;--border:#2A4A52;--text:#E8F0EF;--text2:#A9BEC0;--text3:#6F8C90;'
     + '--accent:#55A4AD;--accent2:#3F8A93;--green:#A8CF4E;--orange:#C9A47E;--yellow:#D9B56B;--red:#E0665A;'
