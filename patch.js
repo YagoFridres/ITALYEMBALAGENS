@@ -70274,26 +70274,26 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     '@papelao': ['carrinho', 'Compra de Papelão'], 'fornecedores': ['caminhao', 'Fornecedores'], 'estoque': ['camadas', 'Estoque de Chapas'],
     'entradas-estoque': ['entrada', 'Entradas'], 'saidas-estoque': ['saida', 'Saídas'], 'checklist-recebimento': ['check', 'Checklist de Recebimento'],
     'facas1': ['faca', 'Estoque de Facas'], 'cliches': ['carimbo', 'Estoque de Clichês'], 'gramaturas': ['balanca', 'Gramaturas'],
-    'simd': ['reciclar', 'Simulador de Desperdício'], 'sel-chapas': ['camadas', 'Seleção de Chapas'], 'papelao-ia': ['grafico', 'Inteligência do Papelão'],
+    'simd': ['reciclar', 'Simulador de Desperdício'], 
     'inconformidades': ['alerta', 'Inconformidades'], 'caixas-perdidas': ['caixax', 'Caixas Perdidas'],
     'maquinas': ['maquina', 'Máquinas'], 'fluxos': ['fluxo', 'Fluxos'], 'tipos-caixa': ['caixa', 'Tipos de Caixa'], 'cores-impressao': ['paleta', 'Cores de Impressão'],
-    'relatorios': ['grafico', 'Relatórios'], 'relmensal': ['agenda', 'Relatório Mensal'], 'toneladas-vendidas': ['peso', 'Toneladas Vendidas'], 'central-custos': ['carteira', 'Central de Custos'],
-    '@chat': ['chat', 'Chat'], 'agenda': ['agenda', 'Agenda'],
+    'relatorios': ['grafico', 'Relatórios'], 'toneladas-vendidas': ['peso', 'Toneladas Vendidas'], 'central-custos': ['carteira', 'Central de Custos'],
+    '@chat': ['chat', 'Chat'], 'agenda': ['agenda', 'Agenda'], 'compras': ['carrinho', 'Compra de Papelão'],
     'usuarios': ['usuario', 'Usuários'], 'configuracoes': ['ajustes', 'Configurações'],
-    'dashboard': ['painel', 'Painel'], 'lancamento': ['arquivo', 'Armazenamento de OFs'], 'historico-passagens': ['historico', 'Histórico de Passagens']
+    'dashboard': ['painel', 'Painel'], 'lancamento': ['arquivo', 'Armazenamento de OFs'], 'historico-passagens': ['historico', 'Passagens']
   };
   var GRUPOS = [
-    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'tempos-reais', 'operadores'] },
-    { id: 'ng-ds-comercial', nome: 'Comercial', ico: 'maleta', itens: ['orcamentos', 'clientes', 'mapa-clientes', 'vendedores', 'comissoes'] },
-    { id: 'ng-ds-estoque', nome: 'Compras e Estoque', ico: 'camadas', itens: ['@papelao', 'fornecedores', 'estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'sel-chapas', 'papelao-ia', 'simd'] },
+    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens'] },
+    { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'operadores', 'vendedores', 'mapa-clientes'] },
+    { id: 'ng-ds-estoque', nome: 'Compras e Estoque', ico: 'camadas', itens: ['@papelao', 'fornecedores', 'estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'toneladas-vendidas', 'simd'] },
     { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
-    { id: 'ng-ds-fabrica', nome: 'Engenharia', ico: 'maquina', itens: ['maquinas', 'fluxos', 'tipos-caixa', 'cores-impressao'] },
-    { id: 'ng-ds-gestao', nome: 'Gestão', ico: 'grafico', itens: ['relatorios', 'relmensal', 'toneladas-vendidas', 'central-custos'] },
+    { id: 'ng-ds-fabrica', nome: 'Máquinas', ico: 'maquina', itens: ['maquinas', 'fluxos', 'tempos-reais'] },
+    { id: 'ng-ds-gestao', nome: 'Financeiro', ico: 'carteira', itens: ['orcamentos', 'comissoes', 'central-custos', 'relatorios'] },
     { id: 'ng-ds-comunicacao', nome: 'Comunicação', ico: 'chat', itens: ['@chat', 'agenda'] },
     { id: 'ng-ds-sistema', nome: 'Sistema', ico: 'ajustes', itens: ['usuarios', 'configuracoes'] }
   ];
-  var CENTRAL = ['pcp', 'dashboard', 'lancamento', 'historico-passagens'];
-  var ESCONDER = ['dashboard', 'lancamento', 'historico-passagens', '@jarvis'];
+  var CENTRAL = ['pcp'];
+  var ESCONDER = ['dashboard', 'lancamento', '@jarvis'];
 
   function chaveItem(it) {
     var oc = String(it.getAttribute('onclick') || '');
@@ -70353,6 +70353,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (depois.nextElementSibling !== grp) depois.after(grp);
       depois = grp;
       var box = grp.querySelector('.nav-group-items');
+      ['display', 'visibility', 'height', 'overflow'].forEach(function (pp) { if (box.style[pp]) box.style[pp] = ''; });
+      grp.querySelectorAll('.nav-item[data-ds-key]').forEach(function (it) { if (it.style.visibility === 'hidden' && it.style.height === '0px') { it.style.visibility = ''; it.style.height = ''; it.style.overflow = ''; it.style.display = ''; } });
       g.itens.forEach(function (k) { var it = porChave[k]; if (!it) return; decorar(it, k); if (it.parentNode !== box) box.appendChild(it); });
       // reordena conforme a lista
       g.itens.forEach(function (k) { var it = porChave[k]; if (it && it.parentNode === box) box.appendChild(it); });
@@ -70415,7 +70417,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var bar = page.querySelector(':scope > .ds-abas-central');
     if (!bar) {
       bar = document.createElement('div'); bar.className = 'ds-abas-central'; bar.setAttribute('role', 'tablist');
-      bar.innerHTML = [['pcp', 'OFs', 'central'], ['pcp:amostras', 'Amostras', 'caixa'], ['pcp:recorrentes', 'Buscador', 'doc'], ['dashboard', 'Painel', 'painel'], ['lancamento', 'Armazenamento', 'arquivo'], ['historico-passagens', 'Passagens', 'historico']].map(function (a) {
+      bar.innerHTML = [['pcp', 'OFs', 'central'], ['pcp:amostras', 'Amostras', 'caixa'], ['pcp:recorrentes', 'Buscador', 'doc']].map(function (a) {
         return '<button type="button" role="tab" data-pg="' + a[0] + '">' + svg(I[a[2]]) + '<span>' + a[1] + '</span></button>';
       }).join('') + '<span class="ds-abas-esp"></span><button type="button" class="ds-btn-ofrapida" title="OF Rápida (Ctrl+N)">+ OF Rápida</button>';
       bar.addEventListener('click', function (ev) {
@@ -70651,7 +70653,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     body.classList.add('ds-ofr-body');
     var shell = body.parentElement; if (shell) shell.classList.add('ds-ofr-shell');
   }
-  var css = '#modal-of-rapida.ds-ofr-shell,#modal-of-rapida .ds-ofr-shell{width:min(980px,96vw)!important;max-width:96vw!important}'
+  var css = '#modal-of-rapida.ds-ofr-shell,#modal-of-rapida .ds-ofr-shell{width:min(1240px,94vw)!important;max-width:94vw!important;max-height:92vh!important}'
+    + '@media (min-width:1100px){#modal-of-rapida .ds-ofr-body{padding:22px 28px!important;gap:16px!important}#modal-of-rapida .ds-ofr-grade{gap:22px 36px}#modal-of-rapida .ds-ofr-body input:not([type=checkbox]),#modal-of-rapida .ds-ofr-body select{min-height:42px!important;font-size:14.5px!important}}'
     + '#modal-of-rapida .ds-ofr-grade{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}'
     + '#modal-of-rapida .ds-ofr-col{display:flex;flex-direction:column;gap:12px;min-width:0}'
     + '#modal-of-rapida .ds-ofr-sec{margin:0;padding-bottom:6px;border-bottom:1px solid var(--border);font-size:12px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}'
@@ -71093,4 +71096,34 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var st = document.createElement('style'); st.id = 'ds-central-css'; st.setAttribute('data-ds3', 'central'); st.textContent = css;
   (document.head || document.documentElement).appendChild(st);
   setInterval(function () { try { ganchoRender(); tick(); } catch (e) { console.warn('[CENTRAL]', e); } }, 800);
+})();
+
+
+/* ===== Ajustes pedidos pelo Yago (26/10/2026, 15h) =====
+ * - Topo sem busca, sino e histórico.
+ * - Compra de Papelão: sem título/explicações e sem filtros Todos/Todas empresas; tabela "Tabela de Compras";
+ *   botões das linhas no padrão neutro. */
+(function () {
+  try { if (window.__dsAjustes1525) return; window.__dsAjustes1525 = true; } catch (_) {}
+  var css = '.topbar #gsearch-wrap,.topbar #menu-notificacoes,.topbar #navhist-wrap{display:none!important}'
+    + '.cmpx-head .cmpx-title,.cmpx-head .cmpx-sub,.cmpx-table-head .cmpx-table-sub{display:none!important}'
+    + '#page-compras #cmp-fil-st,#page-compras #cmp-fil-emp{display:none!important}'
+    + '#page-compras > .ptoolbar:has(#cmp-fil-st){display:none!important}'
+    + '.cmpx-wrap table td button,.cmpx-wrap table td .btn{background:var(--surface)!important;background-image:none!important;border:1px solid var(--b2)!important;color:var(--text)!important;box-shadow:none!important;border-radius:7px!important;font-weight:550!important}'
+    + '.cmpx-wrap table td button:hover{background:var(--s3)!important}'
+    + '.cmpx-wrap table td button[onclick*="xclu" i],.cmpx-wrap table td button[class*="danger"],.cmpx-wrap table td button[class*="excluir"]{color:var(--red)!important}'
+    + '.cmpx-table-title{font-size:16px!important;font-weight:650!important}';
+  var st = document.createElement('style'); st.id = 'ds-ajustes-1525'; st.setAttribute('data-ds3', 'aj'); st.textContent = css;
+  (document.head || document.documentElement).appendChild(st);
+  var resetado = false;
+  setInterval(function () {
+    try {
+      document.querySelectorAll('.cmpx-table-title').forEach(function (t) { if (t.textContent.trim() !== 'Tabela de Compras') t.textContent = 'Tabela de Compras'; });
+      document.querySelectorAll('.cmpx-wrap table td button').forEach(function (b) { if (/Excluir/i.test(b.textContent || '')) b.style.setProperty('color', 'var(--red)', 'important'); });
+      if (!resetado) {
+        var a = document.getElementById('cmp-fil-st'), b2 = document.getElementById('cmp-fil-emp');
+        if (a || b2) { [a, b2].forEach(function (x) { if (x && x.value !== '') { x.value = ''; try { x.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} } }); resetado = true; }
+      }
+    } catch (_) {}
+  }, 800);
 })();
