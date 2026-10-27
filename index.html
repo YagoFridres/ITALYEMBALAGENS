@@ -139,6 +139,13 @@ label.ck{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
 .pyr .r.letters span{color:var(--ink);border-bottom:1px solid var(--line)}
 .pyr .r.base span{color:#2547a8}
 .pyr .seq{background:#f9d9cf;color:#a3341a;border-radius:3px}
+.pyr .esp{background:#f6e6bd;color:#8a6a16;border-radius:3px}
+.pyr .seq.esp{background:linear-gradient(90deg,#f9d9cf 50%,#f6e6bd 50%);color:#a3341a}
+.pyrleg{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:4px 0 2px;font-size:12px;color:var(--muted)}
+.pyrleg span{display:inline-flex;align-items:center;gap:6px}
+.pyrleg .dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+.pyrleg .dot.neg{background:#f9d9cf;border:1px solid #a3341a}
+.pyrleg .dot.esp{background:#f6e6bd;border:1px solid #8a6a16}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tabs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;cursor:pointer;font-size:13px}
 .tabs button.on{background:var(--plum);color:#fff;border-color:var(--plum)}
@@ -234,6 +241,8 @@ table.t th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:va
 .rpyr{font-family:'Courier New',monospace;font-weight:700;font-size:8.6pt;line-height:1.42;text-align:center;white-space:nowrap;margin:2mm 0 4mm}
 .rpyr div span{display:inline-block;width:1.5em}
 .rpyr .seq{background:#f9d9cf;color:#a3341a}
+.rpyr .esp{background:#f6e6bd;color:#8a6a16}
+.rpyr .seq.esp{background:linear-gradient(90deg,#f9d9cf 50%,#f6e6bd 50%);color:#a3341a}
 .rpyr .letters span{color:var(--r-main)}
 .rtable{width:100%;border-collapse:collapse;font-size:9pt;margin:1mm 0 4mm}
 .rtable th,.rtable td{border-bottom:.6px solid #e3dfeb;padding:1.4mm 1.6mm;text-align:left;vertical-align:top}
@@ -667,21 +676,30 @@ function ciclos(dt, destinoFinal){
   let c3=c3disp; c3=(()=>{let x=c3; while(x>9){ if(x===11||x===22)break; x=digitsum(x);} return x;})();
   const fim1=37-destinoFinal;
   const fim2=fim1+27;
+  const ym=+dt.yyyy, mm=dt.mm;
+  const dstr=a=>mm+'/'+(ym+a);
   return [
-    {n:c1disp, de:0, ate:fim1},
-    {n:c2disp, de:fim1, ate:fim2},
-    {n:c3disp, de:fim2, ate:null}
+    {n:c1disp, de:0, ate:fim1, dDe:dstr(0), dAte:dstr(fim1)},
+    {n:c2disp, de:fim1, ate:fim2, dDe:dstr(fim1), dAte:dstr(fim2)},
+    {n:c3disp, de:fim2, ate:null, dDe:dstr(fim2), dAte:null}
   ];
 }
-/* Desafios */
-function desafios(dt){
+/* Desafios — números + os mesmos períodos dos Ciclos de Vida */
+function desafios(dt, destinoFinal){
   let a=digitsum(+dt.dd); while(a>9) a=digitsum(a);
   let b=digitsum(+dt.mm);
   let c=digitsum(+dt.yyyy); while(c>9) c=digitsum(c);
-  const D1=Math.abs(a-b), D2=Math.abs(c-a), D3=Math.abs(D2-D1);
-  return [D1,D2,D3];
+  const D=[Math.abs(a-b), Math.abs(c-a), Math.abs(Math.abs(c-a)-Math.abs(a-b))];
+  const fim1=(destinoFinal!=null)?37-destinoFinal:null, fim2=fim1!=null?fim1+27:null;
+  const ym=+dt.yyyy, mm=dt.mm, dstr=x=>mm+'/'+(ym+x);
+  if(fim1==null) return D.map((n,i)=>({n}));
+  return [
+    {n:D[0], de:0, ate:fim1, dDe:dstr(0), dAte:dstr(fim1)},
+    {n:D[1], de:fim1, ate:fim2, dDe:dstr(fim1), dAte:dstr(fim2)},
+    {n:D[2], de:fim2, ate:null, dDe:dstr(fim2), dAte:null}
+  ];
 }
-/* Momentos Decisivos: números + faixas */
+/* Momentos Decisivos: números + faixas etárias e datas */
 function momentos(dt, destinoFinal){
   const red=n=>{ while(n>9){ if(n===11||n===22) break; n=digitsum(n);} return n; };
   const M1=red(digitsum(+(dt.dd+dt.mm)));
@@ -689,11 +707,12 @@ function momentos(dt, destinoFinal){
   const M3=red(M1+M2);
   const M4=red(digitsum(+(dt.yyyy+dt.mm)));
   const fim1=37-destinoFinal;
+  const ym=+dt.yyyy, mm=dt.mm, dstr=a=>mm+'/'+(ym+a);
   return [
-    {n:M1, de:0, ate:fim1},
-    {n:M2, de:fim1, ate:fim1+9},
-    {n:M3, de:fim1+9, ate:fim1+18},
-    {n:M4, de:fim1+18, ate:null}
+    {n:M1, de:0, ate:fim1, dDe:dstr(0), dAte:dstr(fim1)},
+    {n:M2, de:fim1, ate:fim1+9, dDe:dstr(fim1), dAte:dstr(fim1+9)},
+    {n:M3, de:fim1+9, ate:fim1+18, dDe:dstr(fim1+9), dAte:dstr(fim1+18)},
+    {n:M4, de:fim1+18, ate:null, dDe:dstr(fim1+18), dAte:null}
   ];
 }
 
@@ -730,7 +749,7 @@ const SPECIAL=new Set([116,118,119,123,168,252,518,575,637,665,667,757,922,923,9
 function specialSeqs(rows){
   const hits=[];
   rows.forEach((r,ri)=>{ for(let i=0;i+2<r.length;i++){ const n=r[i]*100+r[i+1]*10+r[i+2];
-    if(SPECIAL.has(n)) hits.push({n,row:ri+1}); } });
+    if(SPECIAL.has(n)) hits.push({n,row:ri+1,rowIdx:ri,from:i,to:i+2}); } });
   return hits;
 }
 /* Arcanos por idade: Arcano k = valor Mid(digitosBasica,k,2) (letra k e k+1 concatenadas). */
@@ -783,7 +802,7 @@ function piramide(nome, nascStr, mode, hoje){
   const seqTextos=[...new Set(seqs.map(s=>s.d))].sort().map(d=>({titulo:`Sequência repetida ${String(d).repeat(3)}`,
     paras:(T&&T.sequenciaA&&T.sequenciaA[String(d)])||[]}));
   const especiais=esp.map(h=>({n:h.n,texto:((T&&T.seqEspecial&&T.seqEspecial[String(h.n)])||[]).join(' ')}));
-  return {letras:letras.filter(x=>!x.gap), linhas, seqs, base, baseTexto:base?BASE_TEXT[base]:'',
+  return {letras:letras.filter(x=>!x.gap), linhas, seqs, espSeqs:esp, base, baseTexto:base?BASE_TEXT[base]:'',
     arcanos:arc.list, arcanosUnicos:arc.unicos, arcanoAtual:arc.atual,
     idade:dt?Math.floor((+(String(hoje.getFullYear())+String(hoje.getMonth()+1).padStart(2,'0')+String(hoje.getDate()).padStart(2,'0'))-+(dt.yyyy+dt.mm+dt.dd))/10000):null,
     seqTextos, especiais};
@@ -846,8 +865,10 @@ function calcMapa(nome, nascStr, hoje){
     const ap=anoPessoal(dt,hoje); r.anoPessoal=ap.ano; r.anoRef=ap.anoRef;
     r.mesPessoal=mesPessoal(ap.ano,hoje);
     r.diaPessoal=diaPessoal(r.mesPessoal,hoje);
+    r.mesNome=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][hoje.getMonth()];
+    r.anoCal=hoje.getFullYear(); r.hojeFmt=String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
     r.ciclos=ciclos(dt,r.destino);
-    r.desafios=desafios(dt);
+    r.desafios=desafios(dt,r.destino);
     r.momentos=momentos(dt,r.destino);
     r.idade=hoje.getFullYear()-dt.y-((hoje.getMonth()+1<dt.m||(hoje.getMonth()+1===dt.m&&hoje.getDate()<dt.d))?1:0);
     r.harmonia=(()=>{ const h=harmonia(r.missao); return h?r.missao:null; })();
@@ -885,12 +906,24 @@ function secoes(r){
   if(r.relInter&&r.relInter.length){ r.relInter.forEach(d=>add(mk('relint'+d,'Relação Intervalores '+d,'Relação Intervalores',d,T.relInter,null,'Rel. Interv.'))); }
   if(r.psiquico!=null) add(mk('psiquico','Número Psíquico','Número Psíquico',r.psiquico,T.psiquico,null,'Psíquico','psiquico'));
   if(r.diaNatal!=null){ const key=r.diaNatal>=16?'diaNatal2':'diaNatal1'; add(mk('diaNatal','Dia Natalício','Dia Natalício',r.diaNatal,T[key],null,'Dia Natalício')); }
-  if(r.anoPessoal!=null) add(mk('anoPessoal','Ano Pessoal','Ano Pessoal',r.anoPessoal,T.anoPessoal,'Momento Atual','Ano Pessoal','anoPessoal'));
-  if(r.mesPessoal!=null) add(mk('mesPessoal','Mês Pessoal','Mês Pessoal',r.mesPessoal,T.mesPessoal,null,'Mês Pessoal'));
-  if(r.diaPessoal!=null) add(mk('diaPessoal','Dia Pessoal','Dia Pessoal',r.diaPessoal,T.diaPessoal,null,'Dia Pessoal'));
-  if(r.ciclos){ r.ciclos.forEach((c,i)=>{ const tx=[T.ciclo1,T.ciclo2,T.ciclo3][i]; add(mk('ciclo'+i,`Número ${c.n} no ${i+1}º Ciclo de Vida`,'Ciclos de Vida',c.n,tx, i===0?'Ciclos e Desafios':null,`Ciclo ${i+1}`,i===0?'ciclo1':null)); }); }
-  if(r.desafios){ r.desafios.forEach((d,i)=>add(mk('desafio'+i,`Desafio ${i+1} → ${d}`,'Desafios',d,T.desafio,null,`Desafio ${i+1}`))); }
-  if(r.momentos){ r.momentos.forEach((m,i)=>{ const tx=i===0?T.momentosA:T.momentosB; add(mk('momento'+i,`Momento Decisivo ${i+1} (nº ${m.n})`,'Momentos Decisivos',m.n,tx,null,`Momento ${i+1}`)); }); }
+  const fillDt=(o)=>{ if(o&&o.paras) o.paras=o.paras.map(p=>String(p)
+    .replace(/mmmm\/yyyy/g,(r.mesNome||'')+'/'+(r.anoCal||''))
+    .replace(/dd\/mm\/yyyy/g,r.hojeFmt||'')
+    .replace(/\byyyy\b/g,r.anoRef||'')
+    .replace(/\bmmmm\b/g,r.mesNome||'')); return o; };
+  if(r.anoPessoal!=null){ const o=fillDt(mk('anoPessoal','Ano Pessoal','Ano Pessoal',r.anoPessoal,T.anoPessoal,'Momento Atual','Ano Pessoal','anoPessoal')); if(o)o.intro=[...(o.intro||[]),`Ano Pessoal de referência: ${r.anoRef||''}`]; add(o); }
+  if(r.mesPessoal!=null){ const o=fillDt(mk('mesPessoal','Mês Pessoal','Mês Pessoal',r.mesPessoal,T.mesPessoal,null,'Mês Pessoal')); if(o)o.intro=[...(o.intro||[]),`Mês de referência: ${r.mesNome||''} de ${r.anoCal||''}`]; add(o); }
+  if(r.diaPessoal!=null){ const o=fillDt(mk('diaPessoal','Dia Pessoal','Dia Pessoal',r.diaPessoal,T.diaPessoal,null,'Dia Pessoal')); if(o)o.intro=[...(o.intro||[]),`Dia de referência: ${r.hojeFmt||''}`]; add(o); }
+  const periodo=x=> x.ate!=null ? `De ${x.de} a ${x.ate} anos${x.dDe?` · ${x.dDe} a ${x.dAte}`:''}` : `A partir de ${x.de} anos${x.dDe?` · ${x.dDe} em diante`:''}`;
+  const stripLbl=(o)=>{ if(o&&o.paras) o.paras=o.paras.filter(p=>{ const t=String(p).trim(); return t && !/^Idade:?\s*$/i.test(t) && !/^N[úu]mero\s+\d+\s+no\s+\d+[ºo]\s+Ciclo\s*$/i.test(t); }); return o; };
+  if(r.ciclos){ r.ciclos.forEach((c,i)=>{ const tx=[T.ciclo1,T.ciclo2,T.ciclo3][i];
+    const o=stripLbl(mk('ciclo'+i,`Número ${c.n} no ${i+1}º Ciclo de Vida`,'Ciclos de Vida',c.n,tx, i===0?'Ciclos de Vida':null,`Ciclo ${i+1}`, i===0?'ciclo1':null));
+    o.intro=[(i===0&&IN.ciclo1?IN.ciclo1.slice(1).join(' '):''), periodo(c)].filter(Boolean); add(o); }); }
+  if(r.desafios){ r.desafios.forEach((d,i)=>{ const o=stripLbl(mk('desafio'+i,`Desafio ${i+1} → ${d.n}`,'Desafios',d.n,T.desafio, i===0?'Desafios':null,`Desafio ${i+1}`));
+    o.intro=[(i===0&&IN.desafio?IN.desafio.join(' '):''), (d.de!=null?periodo(d):'')].filter(Boolean); add(o); }); }
+  if(r.momentos){ r.momentos.forEach((m,i)=>{ const tx=i===0?T.momentosA:T.momentosB;
+    const o=stripLbl(mk('momento'+i,`Momento Decisivo ${i+1} — nº ${m.n}`,'Momentos Decisivos',m.n,tx, i===0?'Momentos Decisivos':null,`Momento ${i+1}`));
+    o.intro=[(i===0&&IN.momentosA?IN.momentosA.slice(1).join(' '):''), periodo(m)].filter(Boolean); add(o); }); }
   if(r.harmonia!=null){ add({key:'harmonia',titulo:'Harmonia Conjugal '+r.harmonia,grupo:'Harmonia Conjugal',n:r.harmonia,
     secao:'Relacionamentos',curto:'Harmonia',paras:(pick(T.harmonia,r.harmonia)||[]),
     intro:r.harmoniaTab?[`Vibra com: ${r.harmoniaTab.vibra} · Atrai: ${r.harmoniaTab.atrai} · É oposto a: ${r.harmoniaTab.oposto} · É passivo em relação a: ${r.harmoniaTab.passivo}`]:[]}); }
@@ -1276,7 +1309,7 @@ const VIEWS={
     const nome=c?nomeMapa(c):state.avulso.nome, nasc=c?c.nasc:state.avulso.nasc;
     $('#main').innerHTML=`
       <div class="top"><div><h1>Mapa Cabalístico</h1><p>${c?'Cliente: <b>'+esc(c.nome)+'</b>':'Mapa rápido — salve como cliente para guardar as alterações'}</p></div>
-        <div class="row">${c?`<button class="btn" id="bEdit">Editar dados</button><button class="btn" id="bPir">△ Pirâmides</button><button class="btn gold" id="bPdf">📄 Gerar PDF</button><button class="btn wa" id="bWa">WhatsApp</button>`:'<button class="btn pri" id="bSalvar">Salvar como cliente</button>'}</div></div>
+        <div class="row">${c?`<button class="btn" id="bEdit">Editar dados</button><button class="btn" id="bPir">△ Pirâmides</button><button class="btn pri" id="bSaveAll">💾 Salvar tudo</button><button class="btn gold" id="bPdf">📄 Gerar PDF</button><button class="btn wa" id="bWa">WhatsApp</button>`:'<button class="btn pri" id="bSalvar">Salvar como cliente</button>'}</div></div>
       <div class="panel grid2">
         <label class="f">Nome completo (como no registro)<input id="nm" value="${esc(nome)}" placeholder="Ex.: Maria Aparecida da Silva" ${c?'readonly title="Use Editar dados para alterar"':''}>${c?'':'<div class="accents" id="acc"></div>'}<span class="hint">Acentos contam: ´ e ' (+2), ~ (+3), ^ e º (+7), \` e ¨ (×2).</span></label>
         <label class="f">Data de nascimento<input id="dn" value="${esc(fmtDate(nasc)!=='—'?fmtDate(nasc):'')}" placeholder="DD/MM/AAAA" inputmode="numeric" ${c?'readonly':''}></label>
@@ -1286,7 +1319,8 @@ const VIEWS={
     const upd=()=>{ if(!c){ state.avulso={nome:$('#nm').value,nasc:onlyDigits($('#dn').value)}; } renderMapa($('#out'),$('#nm').value,onlyDigits($('#dn').value),c); };
     if(!c){ $('#nm').oninput=upd; $('#dn').oninput=e=>{maskDate(e.target);upd();}; }
     upd();
-    if(c){ $('#bEdit').onclick=()=>editCliente(c); $('#bPdf').onclick=()=>openReport(c); $('#bWa').onclick=()=>whatsModal(c); $('#bPir').onclick=()=>go('piramide'); }
+    if(c){ $('#bEdit').onclick=()=>editCliente(c); $('#bPdf').onclick=()=>openReport(c); $('#bWa').onclick=()=>whatsModal(c); $('#bPir').onclick=()=>go('piramide');
+      $('#bSaveAll').onclick=()=>{ const out=$('#out'); if(out) out.querySelectorAll('.txt[contenteditable=true]').forEach(t=>t.dispatchEvent(new Event('blur'))); const ob=$('#obsPdf'); if(ob){ c.obsPdf=ob.value; } c.atualizado=Date.now(); DB.save(); toast('Tudo salvo neste cliente ✓'); }; }
     else $('#bSalvar').onclick=()=>editCliente({nome:$('#nm').value,nasc:onlyDigits($('#dn').value)});
   },
 
@@ -1484,7 +1518,7 @@ function renderMapa(out,nome,nasc,c){
       ${tile('Destino',r.destino)}${tile('Missão',r.missao)}${tile('Talento Oculto',r.talento)}
       ${tile('Dia Natalício',r.diaNatal)}${tile('Número Psíquico',r.psiquico)}${tile('Resposta Subconsciente',r.respSub)}
       ${tile('Lições Cármicas',list(r.licoes),'','sm')}${tile('Tendências Ocultas',list(r.tendencias),'','sm')}${tile('Dívidas Cármicas',list(r.dividas),'','sm')}
-      ${r.ciclos?`${tile('Ciclos de Vida',r.ciclos.map(x=>x.n).join(' · '),'','sm')}${tile('Desafios',r.desafios.join(' · '),'','sm')}${tile('Momentos Decisivos',r.momentos.map(x=>x.n).join(' · '),'','sm')}
+      ${r.ciclos?`${tile('Ciclos de Vida',r.ciclos.map(x=>x.n).join(' · '),'','sm')}${tile('Desafios',r.desafios.map(x=>x.n).join(' · '),'','sm')}${tile('Momentos Decisivos',r.momentos.map(x=>x.n).join(' · '),'','sm')}
       ${tile('Ano Pessoal',r.anoPessoal,r.anoRef)}${tile('Mês Pessoal',r.mesPessoal)}${tile('Dia Pessoal',r.diaPessoal)}`:''}
       ${tile('Harmonia Conjugal',r.harmonia)}${tile('Relação Intervalores',list(r.relInter),'','sm')}
       ${r.numHarmonicos?tile('Números Harmônicos',r.numHarmonicos,'','xs'):''}${r.diasFavoraveis?tile('Dias Favoráveis',r.diasFavoraveis,'','xs'):''}
@@ -1518,7 +1552,11 @@ function renderMapa(out,nome,nasc,c){
 
 function pyrRowsHTML(P,cls='pyr'){
   const inSeq=(ri,i)=>P.seqs.some(s=>s.row===ri&&i>=s.from&&i<=s.to);
-  return `<div class="${cls}"><div class="r letters">${P.letras.map(l=>`<span>${esc(l.disp)}</span>`).join('')}</div>${P.linhas.map((r,ri)=>`<div class="r ${ri===0?'base':''}" style="padding-left:${ri*0.725}em">${r.map((d,i)=>`<span class="${inSeq(ri,i)?'seq':''}">${d}</span>`).join('')}</div>`).join('')}</div>`;
+  const inEsp=(ri,i)=>(P.espSeqs||[]).some(s=>s.rowIdx===ri&&i>=s.from&&i<=s.to);
+  const cell=(d,ri,i)=>{ const neg=inSeq(ri,i), esp=inEsp(ri,i); return `<span class="${neg?'seq':''}${esp?(neg?' seq esp':'esp'):''}">${d}</span>`; };
+  const hasNeg=P.seqs&&P.seqs.length, hasEsp=P.espSeqs&&P.espSeqs.length;
+  const legend=(hasNeg||hasEsp)?`<div class="pyrleg">${hasNeg?'<span><i class="dot neg"></i>sequência negativa</span>':''}${hasEsp?'<span><i class="dot esp"></i>sequência especial</span>':''}</div>`:'';
+  return `<div class="${cls}"><div class="r letters">${P.letras.map(l=>`<span>${esc(l.disp)}</span>`).join('')}</div>${P.linhas.map((r,ri)=>`<div class="r ${ri===0?'base':''}" style="padding-left:${ri*0.725}em">${r.map((d,i)=>cell(d,ri,i)).join('')}</div>`).join('')}</div>${legend}`;
 }
 function pyrPanelHTML(P){
   return `<div class="panel">${pyrRowsHTML(P)}
@@ -1618,7 +1656,7 @@ function reportBlocks(c){
   B.push({html:`<div class="rgrid">${cell('Motivação',r.motivacao,1)}${cell('Impressão',r.impressao,1)}${cell('Expressão',r.expressao,1)}${cell('Destino',r.destino,1)}
     ${cell('Missão',r.missao)}${cell('Talento Oculto',r.talento)}${cell('Dia Natalício',r.diaNatal)}${cell('Nº Psíquico',r.psiquico)}
     ${cell('Resp. Subconsciente',r.respSub)}${cell('Lições Cármicas',list(r.licoes))}${cell('Tendências Ocultas',list(r.tendencias))}${cell('Dívidas Cármicas',list(r.dividas))}
-    ${r.ciclos?cell('Ciclos de Vida',r.ciclos.map(x=>x.n).join(' · '))+cell('Desafios',r.desafios.join(' · '))+cell('Mom. Decisivos',r.momentos.map(x=>x.n).join(' · '))+cell('Ano Pessoal '+(r.anoRef||''),r.anoPessoal):''}
+    ${r.ciclos?cell('Ciclos de Vida',r.ciclos.map(x=>x.n).join(' · '))+cell('Desafios',r.desafios.map(x=>x.n).join(' · '))+cell('Mom. Decisivos',r.momentos.map(x=>x.n).join(' · '))+cell('Ano Pessoal '+(r.anoRef||''),r.anoPessoal):''}
     ${cell('Harmonia Conjugal',r.harmonia)}${cell('Relação Intervalores',list(r.relInter))}${r.anjo?cell('Seu Anjo',r.anjo.nome.replace(/^\d+-/,'')):''}${r.diasFavoraveis?cell('Dias Favoráveis',r.diasFavoraveis):''}</div>`});
   if(r.numHarmonicos||r.cores) B.push({html:`<table class="rtable">${r.numHarmonicos?`<tr><th style="width:38mm">Números harmônicos</th><td>${esc(r.numHarmonicos)}</td></tr>`:''}${r.diasFavoraveis?`<tr><th>Dias favoráveis do mês</th><td>${esc(r.diasFavoraveis)}</td></tr>`:''}${r.cores?`<tr><th>Cores favoráveis</th><td>${esc(r.cores)}</td></tr>`:''}</table>`});
   if(c.obsPdf&&c.obsPdf.trim()){ B.push({html:`<div class="rblock"><h3>Observações da numeróloga</h3></div>`,keep:1}); c.obsPdf.trim().split(/\n\s*\n/).forEach(p=>B.push({html:`<p class="rp">${esc(p.trim())}</p>`})); }
@@ -1643,6 +1681,7 @@ function reportBlocks(c){
     if(P.arcanos.length) B.push({html:`<table class="rtable"><tr><th>Arcano</th><th>Carta</th><th>Período</th></tr>${P.arcanos.map(a=>`<tr><td><b>${a.n}</b></td><td>${esc(a.carta||'')}</td><td>${a.de} a ${a.ate} anos</td></tr>`).join('')}</table>`});
     P.arcanosUnicos.forEach(a=>{ B.push({html:`<div class="rblock"><h3><span class="n">${a.n}</span>${esc(a.carta||'Arcano '+a.n)}</h3></div>`,keep:1}); B.push({html:`<p class="rp">${esc(a.texto)}</p>`}); });
     if(P.seqTextos.length){ B.push({html:`<div class="rsec">Sequências negativas</div>`,keep:2}); P.seqTextos.forEach(t=>{ B.push({html:`<div class="rblock"><h3>${esc(t.titulo)}</h3></div>`,keep:1}); t.paras.forEach(p=>B.push({html:`<p class="rp">${esc(p)}</p>`})); }); }
+    if(P.especiais&&P.especiais.length){ B.push({html:`<div class="rsec">Sequências especiais</div>`,keep:2}); P.especiais.forEach(t=>{ B.push({html:`<div class="rblock"><h3><span class="n">${t.n}</span>Sequência ${t.n}</h3></div>`,keep:1}); if(t.texto) B.push({html:`<p class="rp">${esc(t.texto)}</p>`}); }); }
   }
   return {B,r};
 }
