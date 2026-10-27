@@ -67862,7 +67862,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           + '  <div class="ccustos-cards" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:0">'
           + '    <div class="ccustos-card is-blue"><div class="ccustos-card-label">Custo Total 12m</div><div class="ccustos-card-val">' + fmt1(cons12.custo_total||0) + '</div></div>'
           + '    <div class="ccustos-card"><div class="ccustos-card-label">Custo OFs</div><div class="ccustos-card-val">' + fmt1(cons12.custo_ofs||0) + '</div></div>'
-          + '    <div class="ccustos-card is-yellow"><div class="ccustos-card-label">Papelão</div><div class="ccustos-card-val">' + fmt1(cons12.papelao||0) + '</div></div>'
+          + '    <div class="ccustos-card is-yellow"><div class="ccustos-card-label">Papelão (já incluso no custo das OFs)</div><div class="ccustos-card-val">' + fmt1(cons12.papelao||0) + '</div></div>'
           + '    <div class="ccustos-card is-red"><div class="ccustos-card-label">Perdas</div><div class="ccustos-card-val">' + fmt1(cons12.perdas||0) + '</div></div>'
           + '    <div class="ccustos-card ' + ((Number(cons12.resultado_liq||0)||0)>=0?'is-green':'is-red') + '"><div class="ccustos-card-label">Resultado 12m</div><div class="ccustos-card-val" style="color:' + ((Number(cons12.resultado_liq||0)||0)>=0?'#34d399':'#f87171') + '">' + fmt1(cons12.resultado_liq||0) + '</div><div class="ccustos-card-sub">Margem média ' + fmtN(cons12.margem_pct||0,1) + '%</div></div>'
           + '  </div>'
@@ -72450,6 +72450,54 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn:hover{background:var(--s3)!important;border-color:var(--b2)!important}'
       + 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn:first-child{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
       + 'html[data-ds="3"] .estoque-main-actions .estoque-action-btn:first-child:hover{background:var(--accent2)!important}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
+
+/* ===== COMISSÕES (27/10/2026): gráfico por vendedor e detalhamento visíveis =====
+ * O quadro "Comissão por Vendedor" ficava vazio (gráfico antigo depende de uma biblioteca externa e de uma
+ * função desativada) e o "Detalhamento das OFs" antigo ficava vazio acima do detalhamento real.
+ * Agora o quadro mostra barras de vendas e comissão por vendedor, o quadro vazio sai, e o detalhamento real
+ * acompanha a rolagem da página (sem caixa com rolagem própria). */
+(function () {
+  if (window.__dsComGrafico) return; window.__dsComGrafico = true;
+  function moeda(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var ult = '';
+  function tick() {
+    try {
+      var p = document.getElementById('page-comissoes'); if (!p || !p.classList.contains('active')) return;
+      var area = p.querySelector('.com-screen-area'); if (!area) return;
+      var boxes = area.querySelectorAll(':scope > .sbox');
+      if (boxes[1] && !boxes[1].querySelector('tbody tr')) boxes[1].style.display = 'none';
+      var box = boxes[0]; if (!box) return;
+      var d = window._comissoesData, vs = (d && d.vendedores) || [];
+      var sig = JSON.stringify(vs.map(function (v) { return [v.nome, Math.round(v.total), Math.round(v.comissao_rs)]; }));
+      if (sig === ult && box.querySelector('.ds-com-graf')) return; ult = sig;
+      var tb = box.querySelector('#tabela-comissoes-vendedor'); if (tb && !tb.querySelector('tbody tr')) tb.closest('.sbox-b').style.display = 'none';
+      var host = box.querySelector('.sbox-b'); if (!host) return;
+      if (!vs.length) { host.innerHTML = '<div class="ds-com-graf ds-com-vazio">Sem vendas no período.</div>'; return; }
+      var mx = Math.max.apply(null, vs.map(function (v) { return Number(v.total) || 0; }).concat([1]));
+      var totV = vs.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+      host.style.paddingBottom = '';
+      host.innerHTML = '<div class="ds-com-graf">' + vs.map(function (v) {
+        var t = Number(v.total) || 0, pc = totV ? Math.round(t / totV * 1000) / 10 : 0;
+        return '<div class="dcg-l"><div class="dcg-n">' + esc(v.nome) + '<small>' + pc.toLocaleString('pt-BR') + '% das vendas · ' + (Array.isArray(v.ofs) && v.ofs.length ? v.ofs.length + ' OFs · ' : '') + String(v.comissao_pct || 0).replace('.', ',') + '% de comissão</small></div>'
+          + '<div class="dcg-b"><i style="width:' + Math.max(1, t / mx * 100) + '%"></i></div>'
+          + '<div class="dcg-v"><b>' + moeda(t) + '</b><span>comissão ' + moeda(v.comissao_rs) + '</span></div></div>';
+      }).join('') + '</div>';
+    } catch (_) {}
+  }
+  setInterval(tick, 1200);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-com-graf-css';
+    st.textContent = '.ds-com-graf{display:flex;flex-direction:column;gap:12px;padding:6px 2px 10px}.ds-com-vazio{color:var(--text3);padding:20px;text-align:center}'
+      + '.dcg-l{display:grid;grid-template-columns:minmax(150px,240px) 1fr minmax(150px,auto);gap:14px;align-items:center}'
+      + '.dcg-n{font-weight:700;color:var(--text);font-size:13.5px}.dcg-n small{display:block;font-weight:500;color:var(--text2);font-size:11.5px;margin-top:2px}'
+      + '.dcg-b{height:14px;border-radius:99px;background:var(--s3);overflow:hidden}.dcg-b i{display:block;height:100%;border-radius:99px;background:var(--accent)}'
+      + '.dcg-v{text-align:right;white-space:nowrap}.dcg-v b{display:block;color:var(--text);font-size:14px}.dcg-v span{font-size:12px;color:var(--green);font-weight:600}'
+      + '#_com_detalhe{max-height:none!important;overflow:visible!important}'
+      + '@media (max-width:700px){.dcg-l{grid-template-columns:1fr auto;grid-template-areas:"n v" "b b"}.dcg-n{grid-area:n}.dcg-v{grid-area:v}.dcg-b{grid-area:b}}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();

@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027095437';
-const SW_RUNTIME_VERSION = '20261027095437';
+const PATCH_RUNTIME_VERSION = '20261027095755';
+const SW_RUNTIME_VERSION = '20261027095755';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -38639,18 +38639,31 @@ async function _ccustosCalcularPerdasCompetencia(competencia, empIdAll, ofsResul
     let tabelaUsada = null;
     for (var ti = 0; ti < tabelas.length; ti++) {
       try {
-        let q = supabase.from(tabelas[ti])
-          .select(baseCols)
-          .gte('data', inicio).lt('data', fimExclusivo).limit(5000);
-        const rPerdas = _ccustosResolveEmpresaId(empIdAll, 'ALL');
-        if (rPerdas !== 'ALL') {
-          if (rPerdas === 'SEM_EMPRESA') {
-            try { q = q.or('emp_id.is.null,emp_id.eq.,empresa_id.is.null,empresa_id.eq.'); } catch (_) {}
-          } else {
-            try { q = q.or(`emp_id.eq.${rPerdas},empresa_id.eq.${rPerdas}`); } catch (_) {}
+        // colunas que não existem na tabela são retiradas e a consulta é refeita (antes a consulta falhava e as perdas davam R$ 0)
+        let colsPerdas = baseCols.split(',');
+        let r = null;
+        for (let tent = 0; tent < 8; tent++) {
+          const colData = colsPerdas.includes('data') ? 'data' : 'created_at';
+          let q = supabase.from(tabelas[ti])
+            .select(colsPerdas.join(','))
+            .gte(colData, inicio).lt(colData, fimExclusivo).limit(5000);
+          const rPerdas = _ccustosResolveEmpresaId(empIdAll, 'ALL');
+          if (rPerdas !== 'ALL') {
+            const ce = ['emp_id', 'empresa_id'].filter((c) => colsPerdas.includes(c));
+            if (ce.length) {
+              if (rPerdas === 'SEM_EMPRESA') {
+                try { q = q.or(ce.map((c) => c + '.is.null,' + c + '.eq.').join(',')); } catch (_) {}
+              } else {
+                try { q = q.or(ce.map((c) => c + '.eq.' + rPerdas).join(',')); } catch (_) {}
+              }
+            }
           }
+          r = await q;
+          if (!r?.error) break;
+          const mCol = String(r.error.message || '').match(/column [a-z_]+\.([a-z_]+) does not exist/i);
+          if (mCol && colsPerdas.includes(mCol[1])) { colsPerdas = colsPerdas.filter((c) => c !== mCol[1]); continue; }
+          break;
         }
-        const r = await q;
         if (r?.error) {
           console.error('[CCUSTOS-VISAO-PERDAS] comp=%s QUERY_ERROR tabela=%s msg=%j details=%j', compAlvo, tabelas[ti], r.error.message || null, r.error.details || null);
           continue;
@@ -39431,7 +39444,8 @@ app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
         custo_ofs: Number(cards.custo_ofs || 0),
         papelao: Number(cards.custo_papelao || 0),
         despesas_manuais: Number(d.resumo_auto_vs_manual?.custos_manuais || 0),
-        perdas: Number(cards.perdas || 0),
+        perdas: Number(cards.perdas_valor || 0), // valor em R$ (antes mostrava a quantidade de caixas como se fosse dinheiro)
+        perdas_qtd: Number(cards.perdas_qtd || 0),
         receita_ofs: receita,
         receita: receita,
         resultado_liq: resultado,
@@ -39449,6 +39463,10 @@ app.get('/api/central-custos/historico', authMiddleware, async (req, res) => {
       meses: mesesRows,
       consolidado_12m: {
         custo_total: Math.round(total12Custo * 100) / 100,
+        custo_ofs: Math.round(mesesRows.reduce((a, m) => a + Number(m.custo_ofs || 0), 0) * 100) / 100,
+        papelao: Math.round(mesesRows.reduce((a, m) => a + Number(m.papelao || 0), 0) * 100) / 100,
+        despesas_manuais: Math.round(mesesRows.reduce((a, m) => a + Number(m.despesas_manuais || 0), 0) * 100) / 100,
+        perdas: Math.round(mesesRows.reduce((a, m) => a + Number(m.perdas || 0), 0) * 100) / 100,
         receita_ofs: Math.round(total12Receita * 100) / 100,
         receita: Math.round(total12Receita * 100) / 100,
         resultado_liq: Math.round((total12Receita - total12Custo) * 100) / 100,
