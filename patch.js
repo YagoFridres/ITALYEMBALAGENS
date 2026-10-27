@@ -105,7 +105,7 @@
   try {
     var r = document.documentElement;
     r.setAttribute('data-ds-central-nova', '1'); try { localStorage.removeItem('ds_central_antiga'); } catch (_) {}
-    if (localStorage.getItem('ds_ofmaq_antiga') !== '1') r.setAttribute('data-ds-ofmaq-nova', '1');
+    r.setAttribute('data-ds-ofmaq-nova', '1');
     var st = document.createElement('style'); st.id = 'ds-sem-piscar';
     st.textContent = 'html[data-ds-ofmaq-nova] #page-ofmaq > :not(#ds-ofmaq):not(#ds-ofmaq-voltar):not(style):not(script){display:none!important}'
       + 'html[data-ds-central-nova] #page-pcp:not([data-ds-sub="amostras"]):not([data-ds-sub="recorrentes"]) > :not(#ds-central):not(.ds-abas-central):not(style):not(script){display:none!important}';
@@ -71689,7 +71689,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   if (window.__dsOfmaq2) return; window.__dsOfmaq2 = true;
   var CAP_DIA = 480; // minutos úteis por dia
   var E = { maq: '', antiga: false, ultimaLista: [], seq: {}, vel: {}, sessoes: [], maquinas: [], carregado: false, opMaq: '', opAberto: false };
-  try { E.maq = localStorage.getItem('ds_ofmaq_maq') || ''; E.antiga = localStorage.getItem('ds_ofmaq_antiga') === '1'; E.opMaq = localStorage.getItem('ds_operador_maq') || ''; } catch (_) {}
+  try { E.maq = localStorage.getItem('ds_ofmaq_maq') || ''; E.antiga = false; localStorage.removeItem('ds_ofmaq_antiga'); E.opMaq = localStorage.getItem('ds_operador_maq') || ''; } catch (_) {}
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function norm(s) { try { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); } catch (_) { return String(s || '').toLowerCase().trim(); } }
   function req(m, url, body) {
@@ -71761,9 +71761,38 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       req('GET', '/api/maquinas').then(function (l) { E.maquinas = (l || []).filter(function (m) { return m.ativa !== false; }).sort(function (a, b) { return (a.ordem || 99) - (b.ordem || 99); }).map(function (m) { return String(m.nome || m.col || '').trim(); }).filter(Boolean); }).catch(function () {}),
       req('GET', '/api/ofmaq/sequencia').then(function (l) { var s = {}; (l || []).forEach(function (x) { (s[x.maquina] = s[x.maquina] || {})[x.of_id] = Number(x.posicao) || 0; }); E.seq = s; }).catch(function () {}),
       req('GET', '/api/operador/velocidades').then(function (v) { E.vel = v || {}; }).catch(function () {}),
-      req('GET', '/api/operador/sessoes').then(function (l) { E.sessoes = l || []; }).catch(function () {})
+      req('GET', '/api/operador/sessoes').then(function (l) { E.sessoes = l || []; }).catch(function () {}),
+      carregarAmostras()
     ]);
   }
+  // amostras a fazer (aparecem só no Riscador)
+  function amostraAberta(a) { var s = norm(a && a.status); return !(a && a.deleted_at) && !/feit|conclu|finaliz|aprovad|reprovad|entreg|cancel|exclu/.test(s); }
+  function carregarAmostras() {
+    return req('GET', '/api/amostras?todas_empresas=1&limit=1000').then(function (l) { E.amostras = (Array.isArray(l) ? l : []).filter(amostraAberta).sort(function (x, y) { return String(x.data_entrega || x.prazo || '9').localeCompare(String(y.data_entrega || y.prazo || '9')); }); E.amostrasEm = Date.now(); }).catch(function () { E.amostras = E.amostras || []; });
+  }
+  function ehRiscador(m) { return /riscador/i.test(String(m || '')); }
+  function blocoAmostras() {
+    var l = E.amostras || []; if (!l.length) return '';
+    var hoje = hojeIso();
+    return '<section class="dom-bloco dom-amostras"><div class="dom-fila-head"><h2>🧪 Amostras para fazer <small>' + l.length + ' pendente' + (l.length > 1 ? 's' : '') + '</small></h2></div><div class="dom-am-lista">'
+      + l.map(function (a) {
+        var ent = String(a.data_entrega || a.prazo || '').slice(0, 10), atr = ent && ent < hoje, prod = /produ/i.test(String(a.status || ''));
+        var img = a.imagem_url || a.foto_url || '';
+        return '<div class="dom-am" data-am="' + esc(a.id) + '">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<span class="dom-am-ic">🧪</span>')
+          + '<div class="dom-am-tx"><b>' + esc(a.cliente_nome || a.cliente || '—') + '</b><span>' + esc(a.produto || a.descricao || '') + '</span>'
+          + '<span>' + (ent ? 'Entrega ' + fmtData(ent) + (atr ? ' · <em>atrasada</em>' : '') : 'Sem data') + ' · <i class="dom-am-st' + (prod ? ' pr' : '') + '">' + esc(a.status || 'Pendente') + '</i></span></div>'
+          + '<div class="dom-am-bt">' + (prod ? '' : '<button type="button" class="dom-btn" data-am-acao="producao">Em produção</button>') + '<button type="button" class="dom-btn dom-btn-ok" data-am-acao="feita">✔ Feita</button></div></div>';
+      }).join('') + '</div></section>';
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-am-acao]'); if (!b) return;
+    var card = b.closest('[data-am]'), id = card && card.getAttribute('data-am'); if (!id) return;
+    var agora = new Date().toISOString(), feita = b.getAttribute('data-am-acao') === 'feita';
+    var corpo = feita ? { status: 'Feita', data_feita: agora, data_conclusao: agora, updated_at: agora } : { status: 'Em Produção', updated_at: agora };
+    b.disabled = true; b.textContent = 'Salvando…';
+    req('PUT', '/api/amostras/' + encodeURIComponent(id), corpo).then(function () { return carregarAmostras(); }).then(function () { render(); })
+      .catch(function (e) { b.disabled = false; b.textContent = 'Tentar de novo'; toast('Erro ao salvar a amostra: ' + e.message, 'var(--red)'); });
+  });
   function salvarSeq(maq, lista) {
     var ids = lista.map(function (o) { return o.id; });
     var s = {}; ids.forEach(function (id, i) { s[id] = i + 1; }); E.seq[maq] = s;
@@ -71842,7 +71871,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<button type="button" class="dom-btn" data-a="relatorio">Gerar relatório</button><button type="button" class="dom-btn" data-a="historico">Histórico de hoje</button><button type="button" class="dom-btn" data-a="urgentes">OFs urgentes</button></div>'
         + '<div class="dom-dias"></div>'
         + '<section class="dom-fila"></section>'
-        + '<footer class="dom-rod"><span>Ocupação = tempo previsto da fila ÷ capacidade da semana (5 dias × 8 h). O tempo previsto usa a velocidade real medida no Modo Operador quando já há medições.</span><button type="button" class="dom-link" data-a="antiga">Tela anterior</button></footer>';
+        + '<footer class="dom-rod"><span>Ocupação = tempo previsto da fila ÷ capacidade da semana (5 dias × 8 h). O tempo previsto usa a velocidade real medida no Modo Operador quando já há medições.</span></footer>';
       var inp = raiz.querySelector('.dom-busca input'), tb = null;
       inp.value = E.busca || '';
       inp.addEventListener('input', function () { clearTimeout(tb); tb = setTimeout(function () { E.busca = inp.value; renderFila(grupos()); }, 180); });
@@ -71864,6 +71893,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<span class="dom-barra"><i class="t-' + tom + '" style="width:' + Math.min(100, pct) + '%"></i></span>'
         + '<span class="dom-maq-rod"><span class="t-' + tom + '">' + pct + '% ocupada</span><span>' + (dias < 0.1 ? 'livre' : (dias < 1 ? fmtMin(min) : (dias.toFixed(1).replace('.', ',').replace(',0', '') + ' dia' + (dias >= 2 ? 's' : '')))) + '</span></span>'
         + (vel ? '<span class="dom-maq-rod">' + vel + '</span>' : '')
+        + (ehRiscador(m) && (E.amostras || []).length ? '<span class="dom-maq-rod"><span class="dom-am-tag">🧪 ' + E.amostras.length + ' amostra' + (E.amostras.length > 1 ? 's' : '') + '</span></span>' : '')
         + '</button>';
     }).join('');
     raiz.querySelector('[data-a="todas"]').classList.toggle('on', !!E.todas);
@@ -71922,7 +71952,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var lm = l.filter(function (x) { return x.m === m; });
       if (E.todas && !lm.length) return '';
       var cx = lm.reduce(function (s2, x) { return s2 + qtdOf(x.o); }, 0), min = lm.reduce(function (s2, x) { return s2 + minutosPrevistos(x.o, m); }, 0);
-      return '<section class="dom-bloco"><div class="dom-fila-head"><h2>' + esc(m) + ' <small>' + (E.dia ? 'dia ' + fmtData(E.dia) : 'fila completa') + ' · sequência ajustável</small></h2>'
+      return (ehRiscador(m) && !E.busca ? blocoAmostras() : '') + '<section class="dom-bloco"><div class="dom-fila-head"><h2>' + esc(m) + ' <small>' + (E.dia ? 'dia ' + fmtData(E.dia) : 'fila completa') + ' · sequência ajustável</small></h2>'
         + '<div class="dom-pilulas"><span>OFs <b>' + lm.length + '</b></span><span>Caixas <b>' + cx.toLocaleString('pt-BR') + '</b></span><span>Tempo <b>' + fmtMin(min) + '</b></span>'
         + (podeOrdenar && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="autoordem" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button>' : '') + '</div></div>'
         + (lm.length ? tabelaMaquina(m, lm, podeOrdenar) : '<div class="dom-vazio">Nenhuma OF ' + (E.busca ? 'encontrada.' : (E.dia ? 'para este dia.' : 'na fila desta máquina.')) + '</div>')
@@ -72016,7 +72046,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (a === 'urgentes') { legado('#ofmaq-final-urgentes'); return; }
     if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(function () { b.textContent = 'Atualizar'; render(); }); return; }
     if (a === 'operador') { abrirOperador(); return; }
-    if (a === 'antiga') { E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); document.documentElement.removeAttribute('data-ds-ofmaq-nova'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
+    if (a === 'antiga') { return; E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); document.documentElement.removeAttribute('data-ds-ofmaq-nova'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
     if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA); salvarSeq(mA, l1); render(); return; }
     var tr = b.closest('tr[data-id]'); if (!tr) return;
     var mT = tr.getAttribute('data-maq') || E.maq;
@@ -72187,6 +72217,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   window.dsOperador = { abrir: abrirOperador };
 
   var css = ''
+    + '.dom-amostras{border-color:color-mix(in srgb,#a855f7 40%,var(--border))!important}.dom-am-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:12px}.dom-am{display:flex;gap:12px;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 12px}.dom-am img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex:0 0 auto}.dom-am-ic{width:52px;height:52px;display:grid;place-items:center;font-size:24px;background:var(--s3);border-radius:8px;flex:0 0 auto}.dom-am-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.dom-am-tx b{font-size:14px}.dom-am-tx span{font-size:12.5px;color:var(--text2)}.dom-am-tx em{color:var(--red);font-style:normal;font-weight:700}.dom-am-st{font-style:normal;font-weight:700;color:var(--yellow)}.dom-am-st.pr{color:var(--accent)}.dom-am-bt{display:flex;flex-direction:column;gap:6px}.dom-am-bt .dom-btn{height:32px;font-size:12.5px;padding:0 10px}.dom-btn-ok{background:var(--green)!important;border-color:var(--green)!important;color:#fff!important}.dom-am-tag{background:color-mix(in srgb,#a855f7 22%,transparent);color:#c084fc;border-radius:99px;padding:1px 8px;font-weight:700}'
+    + '@media (max-width:700px){.dom-am-lista{grid-template-columns:1fr;padding:10px}.dom-am{flex-wrap:wrap}.dom-am-bt{flex-direction:row;width:100%}.dom-am-bt .dom-btn{flex:1;height:38px}}'
     + '#page-ofmaq.ds-ofmaq-ativa > :not(#ds-ofmaq):not(style):not(script){display:none!important}'
     + '#page-ofmaq:not(.ds-ofmaq-ativa) > #ds-ofmaq{display:none!important}'
     + '#page-ofmaq.ds-ofmaq-ativa.active{overflow-y:auto!important;height:100%!important}'
