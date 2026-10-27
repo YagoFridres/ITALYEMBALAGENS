@@ -71063,7 +71063,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     { k: 'faca', t: 'Faca', c: 'dsc-c-txt', f: function (o) { return esc(hv('faca', o)); } },
     { k: 'urg', t: 'Urgente', c: 'dsc-c-flag', f: function (o) { return (sim(o.urg) || sim(o.urgente)) ? '<span class="dsc-pill dsc-pill-red">Sim</span>' : '<span class="dsc-sub">Não</span>'; } },
     { k: 'sp', t: 'Sem papelão', c: 'dsc-c-flag', f: function (o) { return (sim(o.sem_papel) || sim(o.sem_papelao)) ? '<span class="dsc-pill dsc-pill-yel">Sim</span>' : '<span class="dsc-sub">Não</span>'; } },
-    { k: 'papel', t: 'Papel / Previsão', c: 'dsc-c-papel', f: function (o) { return esc(String(hv('papelPrev', o)).replace(/^[^\wÀ-ÿ]+\s*/, '')); } },
+    { k: 'papel', t: 'Papel / Previsão', c: 'dsc-c-papel', f: function (o) { if (stNorm(o) === 'concluida' || stNorm(o) === 'cancelada') return '<span class="dsc-sub">—</span>'; return esc(String(hv('papelPrev', o)).replace(/^[^\wÀ-ÿ]+\s*/, '')); } },
     { k: 'tempo', t: 'Tempo', c: 'dsc-c-num', f: function (o) { return esc(hv('minutos', o)); } },
     { k: 'gram', t: 'Gramatura', c: 'dsc-c-txt', f: function (o) { return esc(hv('gramatura', o)); } },
     { k: 'perdas', t: 'Caixas perdidas', c: 'dsc-c-txt', f: function (o) { var v = hv('perdas', o); return v === '—' ? '<span class="dsc-sub">—</span>' : '<span class="dsc-txt-atr">' + esc(v) + '</span>'; } },
@@ -73141,6 +73141,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
     return aberto;
   }
+  // 27/10: toda vez que o sistema abre, começa travado (a liberação não sobrevive a recarregar a página)
+  try { sessionStorage.removeItem('ds_fin_ok'); } catch (_) {}
   window.dsPedirSenhaFinanceiro = pedir;
   window.dsBloquearFinanceiro = function () {
     try { sessionStorage.removeItem('ds_fin_ok'); } catch (_) {} marcar();
@@ -73208,10 +73210,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (o) { e.preventDefault(); e.stopPropagation(); pedir('Os valores de produção são protegidos por senha.'); return; }
     if (bt && /excel|imprimir|pdf|exportar|relat/i.test(bt.textContent || '')) { e.preventDefault(); e.stopImmediatePropagation(); pedir('Exportar e imprimir mostram os valores — digite a senha.').then(function (v) { if (v) bt.click(); }); }
   }, true);
-  setInterval(vigiar, 700); vigiar();
+  setInterval(vigiar, 700); vigiar(); setInterval(passagens, 150);
   try {
     var st = document.createElement('style'); st.id = 'ds-fin-css';
-    st.textContent = 'html:not([data-ds-fin-ok]) .ds-fin-oculto{color:transparent!important;text-shadow:0 0 10px color-mix(in srgb,var(--text,#fff) 75%,transparent);user-select:none;cursor:pointer}'
+    st.textContent = 'html:not([data-ds-fin-ok]) #page-historico-passagens .hist-month-table td:nth-child(3),html:not([data-ds-fin-ok]) #page-historico-passagens .hist-month-card:nth-child(3) .val{color:transparent!important;text-shadow:0 0 10px color-mix(in srgb,var(--text,#fff) 75%,transparent);user-select:none}'
+      + 'html:not([data-ds-fin-ok]) .ds-fin-oculto{color:transparent!important;text-shadow:0 0 10px color-mix(in srgb,var(--text,#fff) 75%,transparent);user-select:none;cursor:pointer}'
       + 'html:not([data-ds-fin-ok]) .hist-month-card:has(.ds-fin-oculto)::after{content:"🔒 toque para ver";position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--text3)}'
       + '.hist-month-card{position:relative}'
       + '.dfs-trava{margin-left:auto;margin-right:6px;font-size:12px;opacity:.55;cursor:pointer;padding:2px 4px}.dfs-trava:hover{opacity:1}html:not([data-ds-fin-ok]) .dfs-trava{display:none}'
@@ -74237,4 +74240,36 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#page-pcp[data-ds-sub="amostras"] > .ptoolbar{display:none!important}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
+})();
+
+
+/* ===== OFs: campos que se perdiam na lista (27/10/2026) =====
+ * A lista de OFs vinha do servidor com cores, gramatura, toneladas, perdas e papel, mas a função que prepara
+ * cada OF na tela descartava esses campos — por isso a Central mostrava "Sem Impressão" e "—" em gramatura e
+ * toneladas. Agora os campos vindos do servidor são mantidos. */
+(function () {
+  if (window.__dsNormOF) return; window.__dsNormOF = true;
+  var CAMPOS = ['cores_impressao', 'gramatura', 'gramatura_id', 'gramatura_nome', 'tonelada_vendida', 'toneladas_utilizadas', 'toneladas_perdidas', 'peso_utilizado_kg', 'caixas_perdidas', 'qtd_perdida', 'perdas_por_maquina', 'maquina_perda', 'motivo_perda', 'papel_comprado', 'papel_observacao', 'previsao_entrega_papel', 'custo_m2_venda', 'area_total_m2', 'chapa_id', 'qtd_chapas', 'consumo_chapas_estimado', 'data_conclusao', 'data_faturamento', 'tipo_caixa', 'tipo_caixa_id', 'caixa_largura', 'caixa_comprimento', 'caixa_altura', 'operador_conclusao', 'usuario_conclusao', 'passagens_maquina', 'faca', 'faca_id', 'facas', 'faca_ids'];
+  function parse(v) { if (typeof v === 'string' && /^\s*[\[{]/.test(v)) { try { return JSON.parse(v); } catch (_) {} } return v; }
+  function completar(r, o) {
+    if (!o || typeof o !== 'object' || !r || typeof r !== 'object') return o;
+    CAMPOS.forEach(function (k) { if (r[k] != null && r[k] !== '' && (o[k] == null || o[k] === '' || (Array.isArray(o[k]) && !o[k].length))) o[k] = parse(r[k]); });
+    if (o.toneladas == null) { var t = Number(o.tonelada_vendida || o.toneladas_utilizadas || 0); if (t > 0) o.toneladas = t; }
+    // cores da OF quando o item não tem cor marcada
+    try {
+      var ci = Array.isArray(o.cores_impressao) ? o.cores_impressao : [];
+      var it = typeof o.itens === 'string' ? JSON.parse(o.itens) : o.itens;
+      if (ci.length && Array.isArray(it) && it[0] && (!Array.isArray(it[0].cores_impressao) || !it[0].cores_impressao.length || (it[0].cores_impressao.length === 1 && /sem impress/i.test(String(it[0].cores_impressao[0] && it[0].cores_impressao[0].nome || it[0].cores_impressao[0]))) && !/sem impress/i.test(JSON.stringify(ci)))) {
+        it[0].cores_impressao = ci; if (typeof o.itens !== 'string') o.itens = it;
+      }
+    } catch (_) {}
+    return o;
+  }
+  function instalar() {
+    var n0 = window.normalizeOF; if (typeof n0 !== 'function' || n0.__dsNorm) return false;
+    var w = function (r) { return completar(r, n0.apply(this, arguments)); };
+    w.__dsNorm = true; window.normalizeOF = w; return true;
+  }
+  if (instalar()) { setTimeout(function () { try { if (typeof window.carregarOFsUnico === 'function') window.carregarOFsUnico(true); } catch (_) {} }, 1500); }
+  else { var t = setInterval(function () { if (instalar()) { clearInterval(t); try { window.carregarOFsUnico(true); } catch (_) {} } }, 500); }
 })();
