@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027104949';
-const SW_RUNTIME_VERSION = '20261027104949';
+const PATCH_RUNTIME_VERSION = '20261027105102';
+const SW_RUNTIME_VERSION = '20261027105102';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39898,7 +39898,7 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
 });
 
 // Assinatura leve da lista de OFs: a tela só recarrega a lista inteira quando algo mudou (27/10/2026)
-app.get('/api/ofs/assinatura', autenticar, async (req, res) => {
+app.get('/api/ofs-assinatura', autenticar, async (req, res) => {
   try {
     setNoCache(res);
     const [{ count }, ult] = await Promise.all([

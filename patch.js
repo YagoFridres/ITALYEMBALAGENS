@@ -72774,7 +72774,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (ocupado || document.hidden || typeof window.carregarOFsUnico !== 'function') return;
     var tk = ''; try { tk = localStorage.getItem('token') || ''; } catch (_) {} if (!tk) return;
     ocupado = true;
-    fetch((window.API_BASE || '') + '/api/ofs/assinatura', { headers: { Authorization: 'Bearer ' + tk }, cache: 'no-store' })
+    fetch((window.API_BASE || '') + '/api/ofs-assinatura', { headers: { Authorization: 'Bearer ' + tk }, cache: 'no-store' })
       .then(function (r) { return r.json(); }).catch(function () { return {}; })
       .then(function (j) {
         var a = j && j.ok ? (j.total + '|' + j.ultima) : '';
