@@ -72657,7 +72657,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * ou Recusada) e o nº da compra. Os dois lados veem o mesmo status. O 📌 antigo também cria a solicitação. */
 (function () {
   if (window.__dsSolPapelao) return; window.__dsSolPapelao = true;
-  var ST = ['Solicitada', 'Em cotação', 'Comprada', 'Recebida', 'Recusada'];
+  var ST = ['Solicitada', 'Aceita', 'Em cotação', 'Comprada', 'Recebida', 'Recusada'];
   var E = { lista: [], chapas: [], ult: 0, carregando: false };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function req(m, url, body) {
@@ -72666,7 +72666,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function toast(m, c) { try { window.toast(m, c || 'var(--green)'); } catch (_) {} }
   function dataHora(iso) { try { var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return '—'; } }
-  function aberta(s) { return ['Solicitada', 'Em cotação', 'Comprada'].indexOf(s.status) >= 0; }
+  function aberta(s) { return ['Solicitada', 'Aceita', 'Em cotação', 'Comprada'].indexOf(s.status) >= 0; }
   function chip(st) { return '<span class="sol-st sol-' + esc(String(st).toLowerCase().replace(/[^a-z]/g, '')) + '">' + esc(st) + '</span>'; }
   function nomeChapa(s) { return [s.fornecedor, s.nomenclatura, s.tamanho].filter(Boolean).join(' · ') + (s.descricao ? ' — ' + s.descricao : ''); }
   function carregar(forcar) {
@@ -72674,32 +72674,61 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     E.carregando = true;
     return req('GET', '/api/papelao/solicitacoes').then(function (l) { E.lista = l || []; E.ult = Date.now(); }).catch(function () {}).then(function () { E.carregando = false; desenhar(); });
   }
+  // 27/10 (2): cartões com devolutiva. A caixa de escrever fica fixa; só a lista é redesenhada (não apaga o que está sendo digitado).
   function painel(pg, modo) {
     var host = pg.querySelector('.sol-painel');
     if (!host) {
       host = document.createElement('section'); host.className = 'sol-painel'; host.setAttribute('data-modo', modo);
-      var ref = modo === 'estoque' ? (pg.querySelector('.page-body') || pg) : (pg.querySelector('.page-body') || pg);
-      ref.insertBefore(host, ref.firstChild);
+      pg.insertBefore(host, pg.firstChild);
+      host.innerHTML = '<form class="sol-nova" autocomplete="off"><label class="sol-nova-l">✍️ Nova sugestão de compra</label>'
+        + '<textarea class="sol-in sol-txt" data-f="texto" rows="2" placeholder="Escreva o que precisa comprar. Ex.: 500 chapas AB21 1200x800 da Adami, urgente para a OF 4215"></textarea>'
+        + '<div class="sol-nova-b"><input class="sol-in" data-f="qtd" inputmode="numeric" placeholder="Qtd. (opcional)"><button type="button" class="sol-btn" data-a="chapa">📌 Escolher chapa do estoque</button><button type="submit" class="sol-btn sol-pri">Enviar sugestão</button></div></form>'
+        + '<div class="sol-head"><span class="sol-cont"></span><button type="button" class="sol-btn" data-a="todas"></button></div><div class="sol-lista"></div>';
       host.addEventListener('click', clique); host.addEventListener('change', mudou);
+      host.querySelector('.sol-nova').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var f = ev.currentTarget, tx = f.querySelector('[data-f="texto"]'), q = f.querySelector('[data-f="qtd"]'), b = f.querySelector('[type="submit"]');
+        var texto = String(tx.value || '').trim();
+        if (!texto) { tx.focus(); toast('Escreva a sugestão antes de enviar', 'var(--yellow)'); return; }
+        b.disabled = true; b.textContent = 'Enviando…';
+        req('POST', '/api/papelao/solicitacoes', { descricao: texto, qtd_sugerida: q.value })
+          .then(function () { tx.value = ''; q.value = ''; return carregar(true); })
+          .catch(function (e) { toast('Erro: ' + e.message, 'var(--red)'); })
+          .then(function () { b.disabled = false; b.textContent = 'Enviar sugestão'; });
+      });
     }
-    var abertas = E.lista.filter(aberta), fechadas = E.lista.filter(function (s) { return !aberta(s); }).slice(0, 10);
+    var abertas = E.lista.filter(aberta), fechadas = E.lista.filter(function (s) { return !aberta(s); }).slice(0, 30);
     var verTodas = host.getAttribute('data-todas') === '1';
     var lista = verTodas ? abertas.concat(fechadas) : abertas;
-    var linhas = lista.map(function (s) {
-      var ult = (s.historico || []).slice(-1)[0] || {};
-      var acoes = modo === 'compra'
-        ? '<select class="sol-sel" data-id="' + esc(s.id) + '" aria-label="Andamento">' + ST.map(function (x) { return '<option' + (x === s.status ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>'
-          + '<input class="sol-ref" data-id="' + esc(s.id) + '" placeholder="Nº da compra" value="' + esc(s.compra_ref || '') + '">'
-        : (aberta(s) && s.status === 'Solicitada' ? '<button type="button" class="sol-btn" data-a="cancelar" data-id="' + esc(s.id) + '">Cancelar pedido</button>' : '');
-      return '<tr><td><b>' + esc(nomeChapa(s)) + '</b>' + (s.observacao ? '<small>' + esc(s.observacao) + '</small>' : '') + '</td>'
-        + '<td class="sol-n">' + (s.qtd_sugerida ? Number(s.qtd_sugerida).toLocaleString('pt-BR') : '—') + '</td>'
-        + '<td>' + chip(s.status) + (s.compra_ref ? '<small>Compra ' + esc(s.compra_ref) + '</small>' : '') + '</td>'
-        + '<td><small>Pedido por ' + esc(s.solicitante || '—') + ' em ' + dataHora(s.created_at) + '</small>' + (ult.por && s.historico.length > 1 ? '<small>Últ.: ' + esc(ult.status || '') + ' por ' + esc(ult.por) + ' · ' + dataHora(ult.em) + '</small>' : '') + '</td>'
-        + '<td class="sol-ac">' + acoes + '</td></tr>';
+    var cards = lista.map(function (s) {
+      var tit = nomeChapa(s).replace(/^ — /, '') || s.observacao || 'Sugestão';
+      var corpo = (s.observacao && s.observacao !== tit) ? '<p class="sol-c-txt">' + esc(s.observacao) + '</p>' : '';
+      var resp = s.resposta ? '<div class="sol-resp"><b>💬 Resposta' + (s.respondido_por ? ' de ' + esc(s.respondido_por) : '') + (s.respondido_em ? ' · ' + dataHora(s.respondido_em) : '') + '</b>' + esc(s.resposta) + '</div>' : '';
+      var acoes = '';
+      if (modo === 'compra' && aberta(s)) {
+        acoes = '<div class="sol-c-ac"><input class="sol-in sol-resp-in" data-id="' + esc(s.id) + '" placeholder="Resposta para quem pediu (ex.: chega sexta)">'
+          + '<div class="sol-c-bt">'
+          + (s.status === 'Solicitada' ? '<button type="button" class="sol-btn sol-ok" data-st="Aceita" data-id="' + esc(s.id) + '">👍 OK, vou comprar</button>' : '')
+          + (['Solicitada', 'Aceita', 'Em cotação'].indexOf(s.status) >= 0 ? '<button type="button" class="sol-btn" data-st="Comprada" data-id="' + esc(s.id) + '">🛒 Comprada</button>' : '')
+          + '<button type="button" class="sol-btn" data-st="Recebida" data-id="' + esc(s.id) + '">✅ Chegou</button>'
+          + '<button type="button" class="sol-btn sol-sec" data-st="resp" data-id="' + esc(s.id) + '">💬 Só responder</button>'
+          + '<button type="button" class="sol-btn sol-no" data-st="Recusada" data-id="' + esc(s.id) + '">✕ Recusar</button>'
+          + '<input class="sol-in sol-ref" data-id="' + esc(s.id) + '" placeholder="Nº da compra" value="' + esc(s.compra_ref || '') + '">'
+          + '</div></div>';
+      } else if (modo !== 'compra' && s.status === 'Solicitada') {
+        acoes = '<div class="sol-c-bt"><button type="button" class="sol-btn sol-no" data-a="cancelar" data-id="' + esc(s.id) + '">Cancelar pedido</button></div>';
+      }
+      return '<article class="sol-card"><div class="sol-c-top"><div class="sol-c-tit"><b>' + esc(tit) + '</b>'
+        + '<small>Pedido por ' + esc(s.solicitante || '—') + ' · ' + dataHora(s.created_at) + (s.qtd_sugerida ? ' · Qtd. ' + Number(s.qtd_sugerida).toLocaleString('pt-BR') : '') + (s.compra_ref ? ' · Compra ' + esc(s.compra_ref) : '') + '</small></div>' + chip(s.status) + '</div>'
+        + corpo + resp + acoes + '</article>';
     }).join('');
-    host.innerHTML = '<div class="sol-head"><div><h3>🛒 Solicitações de compra de papelão</h3><p>' + (modo === 'compra' ? 'Pedidos feitos pelo estoque — atualize o andamento e o nº da compra; o estoque vê na hora.' : 'O que o estoque pediu para comprar e como está cada pedido.') + '</p></div>'
-      + '<div class="sol-head-b"><span class="sol-cont">' + abertas.length + ' em aberto</span>' + (modo === 'estoque' ? '<button type="button" class="sol-btn sol-pri" data-a="nova">+ Solicitar compra</button>' : '') + '<button type="button" class="sol-btn" data-a="todas">' + (verTodas ? 'Só em aberto' : 'Ver concluídas') + '</button></div></div>'
-      + (lista.length ? '<div class="sol-wrap"><table class="sol-tab" data-no-mobile-cards="1"><thead><tr><th>Chapa</th><th class="sol-n">Qtd.</th><th>Status</th><th>Pedido</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div>' : '<div class="sol-vazio">Nenhuma solicitação em aberto.</div>');
+    var html = cards || '<div class="sol-vazio">' + (verTodas ? 'Nenhuma sugestão ainda.' : 'Nenhuma sugestão em aberto. Escreva acima para pedir uma compra.') + '</div>';
+    var cont = host.querySelector('.sol-cont'); if (cont) cont.textContent = abertas.length + ' em aberto';
+    var tg = host.querySelector('[data-a="todas"]'); if (tg) tg.textContent = verTodas ? 'Só em aberto' : 'Ver respondidas/concluídas';
+    var ls = host.querySelector('.sol-lista');
+    var foco = document.activeElement && ls.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if (ls.__html === html || (foco && !host.__forcar)) return;
+    host.__forcar = false; ls.__html = html; ls.innerHTML = html;
   }
   function seloLinhas(pg) {
     var abertas = {}; E.lista.filter(aberta).forEach(function (s) { abertas[s.chapa_id] = s; });
@@ -72735,7 +72764,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var ant = document.getElementById('sol-modal-sug'); if (ant) ant.remove();
     var ov = document.createElement('div'); ov.className = 'sol-ov'; ov.id = 'sol-modal-sug';
     ov.innerHTML = '<div class="sol-modal sol-modal-g" role="dialog" aria-modal="true"><header><h2>💡 Sugestões e solicitações de compra</h2><button type="button" class="sol-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
-      + '<p class="sol-dica">' + (modo === 'compra' ? 'O que o estoque pediu (📌 nas chapas ou “Solicitar compra”). Mude o andamento e coloque o nº da compra — o estoque vê na hora.' : 'Peça uma compra aqui ou pelo 📌 da chapa. A Compra de Papelão recebe o pedido e você acompanha o andamento.') + '</p>'
+      + '<p class="sol-dica">' + (modo === 'compra' ? 'Sugestões do estoque e da produção. Dê o OK, marque como comprada/chegou ou recuse — escreva uma resposta e quem pediu vê na hora.' : 'Escreva o que precisa comprar e envie. A Compra de Papelão dá o OK e responde aqui mesmo.') + '</p>'
       + '<div class="sol-modal-corpo" data-modo="' + modo + '"></div>'
       + '<footer><button type="button" class="sol-btn" data-x="auto">Ver sugestões automáticas (estoque baixo)</button><button type="button" class="sol-btn" data-x="fechar">Fechar</button></footer></div>';
     document.body.appendChild(ov);
@@ -72749,19 +72778,29 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     carregar(true);
   }
   function clique(ev) {
-    var b = ev.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a'), host = b.closest('.sol-painel');
-    if (a === 'todas') { host.setAttribute('data-todas', host.getAttribute('data-todas') === '1' ? '0' : '1'); return desenhar(); }
-    if (a === 'nova') return modalNova();
+    var host = ev.target.closest('.sol-painel'); if (!host) return;
+    var stb = ev.target.closest('[data-st]');
+    if (stb) {
+      var id = stb.getAttribute('data-id'), st = stb.getAttribute('data-st');
+      var inp = host.querySelector('.sol-resp-in[data-id="' + id + '"]'), resp = inp ? String(inp.value || '').trim() : '';
+      if ((st === 'Recusada' || st === 'resp') && !resp) { if (inp) inp.focus(); toast(st === 'Recusada' ? 'Escreva o motivo na resposta antes de recusar' : 'Escreva a resposta', 'var(--yellow)'); return; }
+      var corpo = st === 'resp' ? { resposta: resp } : { status: st };
+      if (resp && st !== 'resp') corpo.resposta = resp;
+      stb.disabled = true;
+      req('PATCH', '/api/papelao/solicitacoes/' + id, corpo).then(function () { host.__forcar = true; try { document.activeElement && document.activeElement.blur(); } catch (_) {} return carregar(true); }).catch(function (e) { stb.disabled = false; toast(e.message, 'var(--red)'); });
+      return;
+    }
+    var b = ev.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a');
+    if (a === 'todas') { host.setAttribute('data-todas', host.getAttribute('data-todas') === '1' ? '0' : '1'); host.__forcar = true; return painel(host.parentNode, host.getAttribute('data-modo')); }
+    if (a === 'chapa' || a === 'nova') return modalNova();
     if (a === 'cancelar') {
       if (!window.confirm('Cancelar este pedido de compra?')) return;
-      req('PATCH', '/api/papelao/solicitacoes/' + b.getAttribute('data-id'), { status: 'Recusada', nota: 'Cancelada pelo estoque' }).then(function () { toast('Pedido cancelado'); return carregar(true); }).catch(function (e) { toast(e.message, 'var(--red)'); });
+      req('PATCH', '/api/papelao/solicitacoes/' + b.getAttribute('data-id'), { status: 'Recusada', nota: 'Cancelada por quem pediu' }).then(function () { host.__forcar = true; return carregar(true); }).catch(function (e) { toast(e.message, 'var(--red)'); });
     }
   }
   function mudou(ev) {
-    var t = ev.target, id = t.getAttribute('data-id'); if (!id) return;
-    var corpo = t.classList.contains('sol-sel') ? { status: t.value } : (t.classList.contains('sol-ref') ? { compra_ref: t.value } : null);
-    if (!corpo) return;
-    req('PATCH', '/api/papelao/solicitacoes/' + id, corpo).then(function () { toast('Solicitação atualizada'); return carregar(true); }).catch(function (e) { toast(e.message, 'var(--red)'); });
+    var t = ev.target, id = t.getAttribute('data-id'); if (!id || !t.classList.contains('sol-ref')) return;
+    req('PATCH', '/api/papelao/solicitacoes/' + id, { compra_ref: t.value }).catch(function (e) { toast(e.message, 'var(--red)'); });
   }
   function modalNova() {
     var ov = document.createElement('div'); ov.className = 'sol-ov';
@@ -72814,6 +72853,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.sol-opcoes{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:6px}.sol-opcoes button{text-align:left;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.sol-opcoes button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}.sol-opcoes b{display:block;font-size:13px}.sol-opcoes span{font-size:12px;color:var(--text2)}'
     + '.sol-g{display:grid;grid-template-columns:1fr 2fr;gap:10px}.sol-modal footer{display:flex;justify-content:flex-end;gap:8px}'
     + '@media (max-width:700px){.sol-painel{margin:10px 0}.sol-tab thead{display:none}.sol-tab,.sol-tab tbody{display:block}.sol-tab tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}.sol-tab td{display:block;padding:0;border:0}.sol-tab td::before{content:none!important}.sol-ac{grid-column:1 / -1;text-align:left}.sol-g{grid-template-columns:1fr}.sol-modal footer .sol-btn{flex:1;height:42px}}';
+  css += '.sol-nova{display:grid;gap:8px;padding:12px;margin-bottom:12px;border:1px solid var(--b2);border-radius:12px;background:var(--s2)}.sol-nova-l{font-size:13px;font-weight:700;color:var(--text)}.sol-txt{height:auto!important;min-height:58px;padding:9px 10px!important;resize:vertical;line-height:1.4}'
+    + '.sol-nova-b{display:flex;gap:8px;flex-wrap:wrap}.sol-nova-b .sol-in{width:140px}.sol-nova-b .sol-pri{margin-left:auto}.sol-modal-g .sol-head{padding:0 0 8px;border:0;align-items:center}'
+    + '.sol-lista{display:grid;gap:10px}.sol-card{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);display:grid;gap:8px}.sol-c-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.sol-c-tit b{display:block;font-size:14px}.sol-c-tit small{display:block;color:var(--text3);font-size:12px;margin-top:2px}'
+    + '.sol-c-txt{margin:0;font-size:13px;color:var(--text2);white-space:pre-wrap}.sol-resp{border-left:3px solid var(--green);background:color-mix(in srgb,var(--green) 9%,transparent);padding:8px 10px;border-radius:0 8px 8px 0;font-size:13px;white-space:pre-wrap}.sol-resp b{display:block;font-size:12px;color:var(--green);margin-bottom:2px}'
+    + '.sol-c-ac{display:grid;gap:8px}.sol-c-bt{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.sol-ok{background:var(--green);border-color:var(--green);color:#fff}.sol-no{color:var(--red)}.sol-c-bt .sol-ref{width:130px;height:32px;font-size:13px;margin-left:auto}.sol-aceita{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}'
+    + '@media (max-width:700px){.sol-nova-b .sol-in{flex:1 1 100%;width:auto}.sol-nova-b .sol-btn{flex:1;height:42px}.sol-nova-b .sol-pri{margin-left:0}.sol-c-bt .sol-btn{flex:1 1 45%;height:40px}.sol-c-bt .sol-ref{flex:1 1 100%;margin-left:0;height:40px}.sol-modal-g{padding:14px!important}}';
   try { var st = document.createElement('style'); st.id = 'ds-sol-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
 
@@ -73021,6 +73066,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }
     if (rec === 'ofmaq' && id === 'sequencia') return ['Sequência das OFs salva', b.maquina || '', 'ok'];
     if (rec === 'almoxarifado') { var no = d.numero || b.numero || ''; var tot = d.valor_total != null ? d.valor_total : b.valor_total; var det = tot != null ? Number(tot).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''; if (met === 'DELETE') return ['Ordem de compra' + (no ? ' nº ' + no : '') + ' excluída', '', 'del']; return ['Ordem de compra' + (no ? ' nº ' + no : '') + (met === 'POST' ? ' criada' : ' salva'), det, 'ok']; }
+    if (rec === 'compras-chapas' && sub === 'status') { var lbS = { pedido_feito: 'Pedido feito', a_caminho: 'A caminho', concluida: 'Chegou / Concluída', cancelada: 'Cancelada' }[b.status] || b.status; var prv = b.status === 'a_caminho' && b.previsao_chegada ? 'Previsão de chegada: ' + String(b.previsao_chegada).split('-').reverse().join('/') : ''; return ['Compra ' + (d.numero_compra ? 'CMP-' + String(d.numero_compra).padStart(3, '0') + ' ' : '') + '→ ' + lbS, prv, 'ok']; }
+    if (rec === 'papelao' && id === 'solicitacoes' && seg[2]) { var chq = [d.fornecedor, d.nomenclatura, d.tamanho].filter(Boolean).join(' ') || d.descricao || ''; if (b.compra_ref != null && b.status == null) return ['Nº da compra salvo', b.compra_ref || '', 'ok']; var rS = { Aceita: 'Sugestão aceita (OK)', Comprada: 'Sugestão marcada como comprada', Recebida: 'Sugestão marcada como recebida', Recusada: 'Sugestão recusada' }[b.status] || (b.resposta ? 'Resposta enviada' : 'Sugestão atualizada'); return [rS, [chq, b.resposta ? '“' + b.resposta + '”' : ''].filter(Boolean).join(' · '), b.status === 'Recusada' ? 'del' : 'ok']; }
+    if (rec === 'papelao' && id === 'solicitacoes' && met === 'POST' && b.descricao && !b.chapa_id) return ['Sugestão de compra enviada', String(b.descricao).slice(0, 120), 'ok'];
     if (rec === 'papelao' && id === 'solicitacoes') { var chp = [d.fornecedor || b.fornecedor, d.nomenclatura || b.nomenclatura, d.tamanho || b.tamanho].filter(Boolean).join(' '); if (met === 'POST') return ['Solicitação de compra registrada', [chp, (d.qtd_sugerida || b.qtd_sugerida) ? n(d.qtd_sugerida || b.qtd_sugerida) + ' chapas' : ''].filter(Boolean).join(' · '), 'ok']; return ['Solicitação de compra: ' + (b.status || d.status || 'atualizada'), chp, 'ok']; }
     if ((rec === 'chapas_estoque' || rec === 'chapas_estoque_v2') && id) {
       if (sub === 'movimento') { var t = String(b.tipo || 'entrada'); return [(t === 'saida' ? 'Saída' : 'Entrada') + ' de ' + n(Math.abs(b.quantidade || b.qtd || 0)) + ' chapas registrada', b.nf ? 'NF ' + b.nf : '', 'ok']; }
@@ -74313,4 +74361,124 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     w.__dsCor = true; window.carregarCoresImpressao = w;
   }
   inst(); setInterval(inst, 2000);
+})();
+
+/* ===== COMPRA DE PAPELÃO: andamento da compra + itens detalhados (27/10/2026) =====
+ * Na tabela, o status vira um botão: Pedido feito → A caminho (com data prevista) → Chegou/Concluída.
+ * Quem comprou muda ali mesmo (grava só o cabeçalho, sem mexer nos itens). O botão "Itens" abre todos os itens detalhados. */
+(function () {
+  if (window.__dsCmpStatus) return; window.__dsCmpStatus = true;
+  var ST = [['pedido_feito', 'Pedido feito', '📝'], ['a_caminho', 'A caminho', '🚚'], ['concluida', 'Chegou / Concluída', '✅'], ['cancelada', 'Cancelada', '✕']];
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function req(m, url, body) {
+    var h = { 'Content-Type': 'application/json' }; try { var t = localStorage.getItem('token'); if (t) h.Authorization = 'Bearer ' + t; } catch (_) {}
+    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+  }
+  function chave(s) { s = String(s || '').toLowerCase(); if (s === 'a_caminho') return 'a_caminho'; if (s === 'concluida' || s === 'recebida' || s === 'concluída') return 'concluida'; if (/cancel/.test(s)) return 'cancelada'; return 'pedido_feito'; }
+  function info(s) { var k = chave(s); return ST.filter(function (x) { return x[0] === k; })[0]; }
+  function dBR(d) { if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(d); }
+  function compras() { try { return (window._compraPapelaoStateRef() || {}).compras || []; } catch (_) { return []; } }
+  function compraPorId(id) { return compras().filter(function (c) { return String(c.id) === String(id); })[0]; }
+  function num(c) { return 'CMP-' + String(c && c.numero_compra || '').padStart(3, '0'); }
+  function decorar() {
+    var host = document.getElementById('cmp-body'); if (!host) return;
+    host.querySelectorAll('[data-cmpx-edit]').forEach(function (b) {
+      var id = b.getAttribute('data-cmpx-edit'), tr = b.closest('tr'); if (!tr) return;
+      var c = compraPorId(id); if (!c) return;
+      var i = info(c.status), cel = tr.children[1]; if (!cel) return;
+      var txt = i[2] + ' ' + i[1] + (i[0] === 'a_caminho' && c.previsao_chegada ? ' · chega ' + dBR(c.previsao_chegada) : '') + (i[0] === 'concluida' && c.data_chegada ? ' · ' + dBR(c.data_chegada) : '');
+      var pill = cel.querySelector('.dcs-pill');
+      if (pill && pill.textContent === txt + ' ▾') return;
+      if (!pill) { var sp = cel.querySelector('.cmpx-stack > span'); pill = document.createElement('button'); pill.type = 'button'; pill.className = 'dcs-pill'; if (sp) sp.replaceWith(pill); else cel.appendChild(pill); }
+      pill.setAttribute('data-dcs', id); pill.setAttribute('data-k', i[0]); pill.textContent = txt + ' ▾'; pill.title = 'Mudar o andamento da compra';
+    });
+  }
+  function modal(html) {
+    var ov = document.createElement('div'); ov.className = 'dcs-ov'; ov.innerHTML = '<div class="dcs-m" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-fechar]')) ov.remove(); });
+    document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { ov.remove(); document.removeEventListener('keydown', k); } });
+    return ov;
+  }
+  function abrirStatus(id) {
+    var c = compraPorId(id); if (!c) return;
+    var k = chave(c.status);
+    var ov = modal('<header><h2>Andamento da compra ' + esc(num(c)) + '</h2><button type="button" class="dcs-x" data-fechar aria-label="Fechar">✕</button></header>'
+      + '<p class="dcs-sub">' + esc(c.fornecedor || '') + (c.ped_fornecedor ? ' · Pedido ' + esc(c.ped_fornecedor) : '') + '</p>'
+      + '<div class="dcs-ops">' + ST.map(function (x) { return '<button type="button" class="dcs-op' + (x[0] === k ? ' on' : '') + '" data-k="' + x[0] + '"><span>' + x[2] + '</span>' + x[1] + '</button>'; }).join('') + '</div>'
+      + '<label class="dcs-prev"' + (k === 'a_caminho' ? '' : ' hidden') + '>Previsão de chegada<input type="date" class="dcs-in" value="' + esc(String(c.previsao_chegada || '').slice(0, 10)) + '"></label>'
+      + '<label class="dcs-cheg"' + (k === 'concluida' ? '' : ' hidden') + '>Data que chegou<input type="date" class="dcs-in" value="' + esc(String(c.data_chegada || new Date().toISOString()).slice(0, 10)) + '"></label>'
+      + '<label>Observação (opcional)<input class="dcs-in dcs-nota" placeholder="Ex.: transportadora confirmou"></label>'
+      + historico(c)
+      + '<footer><button type="button" class="dcs-btn" data-fechar>Cancelar</button><button type="button" class="dcs-btn dcs-pri" data-salvar>Salvar</button></footer>');
+    var sel = k;
+    ov.addEventListener('click', function (e) {
+      var o = e.target.closest('.dcs-op');
+      if (o) { sel = o.getAttribute('data-k'); ov.querySelectorAll('.dcs-op').forEach(function (b) { b.classList.toggle('on', b === o); }); ov.querySelector('.dcs-prev').hidden = sel !== 'a_caminho'; ov.querySelector('.dcs-cheg').hidden = sel !== 'concluida'; if (sel === 'a_caminho') ov.querySelector('.dcs-prev input').focus(); return; }
+      if (!e.target.closest('[data-salvar]')) return;
+      var prev = ov.querySelector('.dcs-prev input').value, cheg = ov.querySelector('.dcs-cheg input').value;
+      if (sel === 'a_caminho' && !prev) { ov.querySelector('.dcs-prev input').focus(); try { window.toast('Coloque a data prevista de chegada', 'var(--yellow)'); } catch (_) {} return; }
+      var corpo = { status: sel, nota: ov.querySelector('.dcs-nota').value };
+      if (sel === 'a_caminho') corpo.previsao_chegada = prev;
+      if (sel === 'concluida') corpo.data_chegada = cheg;
+      var b = e.target.closest('[data-salvar]'); b.disabled = true; b.textContent = 'Salvando…';
+      req('PATCH', '/api/compras-chapas/' + encodeURIComponent(id) + '/status', corpo).then(function (d) {
+        Object.assign(c, { status: d.status, previsao_chegada: d.previsao_chegada, data_chegada: d.data_chegada, status_historico: d.status_historico });
+        ov.remove(); decorar();
+      }).catch(function (er) { b.disabled = false; b.textContent = 'Salvar'; try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} });
+    });
+  }
+  function historico(c) {
+    var h = Array.isArray(c.status_historico) ? c.status_historico : []; if (!h.length) return '';
+    return '<div class="dcs-hist"><b>Histórico</b>' + h.slice().reverse().slice(0, 8).map(function (x) { var i = info(x.status); return '<div>' + i[2] + ' ' + esc(i[1]) + (x.previsao && i[0] === 'a_caminho' ? ' (chega ' + dBR(x.previsao) + ')' : '') + ' — ' + esc(x.por || '') + ', ' + new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + (x.nota ? ' · ' + esc(x.nota) : '') + '</div>'; }).join('') + '</div>';
+  }
+  var CAMPOS = [['seq', 'Seq.'], ['ped_cliente', 'Pedido / cliente'], ['po', 'PO'], ['nomenclatura', 'Chapa (nomenclatura)'], ['largura', 'Largura (mm)'], ['comprimento', 'Comprimento (mm)'], ['vincos', 'Vincos'], ['quantidade', 'Quantidade'], ['lote_minimo', 'Lote mínimo'], ['area_m2', 'Área (m²)'], ['valor_m2', 'Valor m² (R$)'], ['vl_p_mil', 'Valor p/ mil (R$)'], ['valor_total', 'Valor total (R$)'], ['data_entrega', 'Entrega'], ['observacao', 'Observação']];
+  var IGN = { id: 1, compra_id: 1, created_at: 1, updated_at: 1, criado_em: 1, atualizado_em: 1, emp_id: 1, empresa_id: 1 };
+  function fmt(k, v) {
+    if (v == null || v === '') return '—';
+    if (/data|entrega/.test(k)) return dBR(v);
+    if (/valor|vl_/.test(k)) return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (k === 'area_m2') return Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+    if (typeof v === 'number') return v.toLocaleString('pt-BR');
+    return String(v);
+  }
+  function abrirItens(id) {
+    var ov = modal('<header><h2>Itens da compra</h2><button type="button" class="dcs-x" data-fechar aria-label="Fechar">✕</button></header><div class="dcs-vazio">Carregando…</div>');
+    ov.querySelector('.dcs-m').classList.add('dcs-g');
+    req('GET', '/api/compras-chapas/' + encodeURIComponent(id)).then(function (c) {
+      var it = Array.isArray(c.itens) ? c.itens : [];
+      var extras = [];
+      it.forEach(function (x) { Object.keys(x).forEach(function (k) { if (!IGN[k] && !CAMPOS.some(function (cc) { return cc[0] === k; }) && extras.indexOf(k) < 0 && x[k] != null && x[k] !== '') extras.push(k); }); });
+      var cols = CAMPOS.filter(function (cc) { return it.some(function (x) { return x[cc[0]] != null && x[cc[0]] !== ''; }); }).concat(extras.map(function (k) { return [k, k.replace(/_/g, ' ')]; }));
+      var tot = it.reduce(function (a, x) { a.q += Number(x.quantidade) || 0; a.a += Number(x.area_m2) || 0; a.v += Number(x.valor_total) || 0; return a; }, { q: 0, a: 0, v: 0 });
+      var i = info(c.status);
+      ov.querySelector('.dcs-m').innerHTML = '<header><h2>Itens da compra ' + esc(num(c)) + '</h2><button type="button" class="dcs-x" data-fechar aria-label="Fechar">✕</button></header>'
+        + '<div class="dcs-res"><span><b>Fornecedor</b>' + esc(c.fornecedor || '—') + '</span><span><b>Pedido do fornecedor</b>' + esc(c.ped_fornecedor || '—') + '</span><span><b>Data da compra</b>' + esc(dBR(c.data_compra || c.criado_em) || '—') + '</span><span><b>Andamento</b>' + i[2] + ' ' + esc(i[1]) + (c.previsao_chegada && i[0] === 'a_caminho' ? ' · chega ' + dBR(c.previsao_chegada) : '') + '</span>'
+        + '<span><b>Itens</b>' + it.length + '</span><span><b>Quantidade</b>' + tot.q.toLocaleString('pt-BR') + '</span><span><b>Área</b>' + tot.a.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + ' m²</span><span><b>Valor</b>' + tot.v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '</span></div>'
+        + (c.observacao ? '<p class="dcs-sub">Obs.: ' + esc(c.observacao) + '</p>' : '')
+        + (it.length ? '<div class="dcs-tw"><table class="dcs-t" data-no-mobile-cards="1"><thead><tr>' + cols.map(function (cc) { return '<th>' + esc(cc[1]) + '</th>'; }).join('') + '</tr></thead><tbody>'
+          + it.map(function (x) { return '<tr>' + cols.map(function (cc) { return '<td data-l="' + esc(cc[1]) + '">' + esc(fmt(cc[0], x[cc[0]])) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>' : '<div class="dcs-vazio">Esta compra não tem itens.</div>')
+        + '<footer><button type="button" class="dcs-btn" data-st="' + esc(id) + '">Mudar andamento</button><button type="button" class="dcs-btn dcs-pri" data-fechar>Fechar</button></footer>';
+      ov.querySelector('[data-st]').addEventListener('click', function () { ov.remove(); abrirStatus(id); });
+    }).catch(function (e) { ov.querySelector('.dcs-vazio').textContent = 'Erro ao carregar: ' + e.message; });
+  }
+  document.addEventListener('click', function (e) {
+    var p = e.target.closest('.dcs-pill'); if (p) { e.preventDefault(); e.stopPropagation(); return abrirStatus(p.getAttribute('data-dcs')); }
+    var it = e.target.closest('#cmp-body [data-cmpx-toggle-items]'); if (it) { e.preventDefault(); e.stopImmediatePropagation(); return abrirItens(it.getAttribute('data-cmpx-toggle-items')); }
+  }, true);
+  setInterval(function () { var pg = document.getElementById('page-compras'); if (pg && pg.classList.contains('active')) decorar(); }, 800);
+  var css = '.dcs-pill{margin-top:3px;display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}.dcs-pill:hover{background:var(--s3)}'
+    + '.dcs-pill[data-k="pedido_feito"]{border-color:color-mix(in srgb,var(--yellow) 45%,transparent);color:var(--yellow)}.dcs-pill[data-k="a_caminho"]{border-color:color-mix(in srgb,var(--accent) 50%,transparent);color:var(--accent)}.dcs-pill[data-k="concluida"]{border-color:color-mix(in srgb,var(--green) 50%,transparent);color:var(--green)}.dcs-pill[data-k="cancelada"]{color:var(--text3);text-decoration:line-through}'
+    + '.dcs-ov{position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.dcs-m{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}.dcs-g{width:min(1200px,100%)}'
+    + '.dcs-m header{display:flex;justify-content:space-between;align-items:center;gap:10px}.dcs-m h2{margin:0;font-size:18px}.dcs-x{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;flex:0 0 auto}.dcs-sub{margin:-4px 0 0;color:var(--text2);font-size:13px}'
+    + '.dcs-ops{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.dcs-op{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left}.dcs-op span{font-size:20px}.dcs-op.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));box-shadow:0 0 0 1px var(--accent)}'
+    + '.dcs-m label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--text2)}.dcs-m label[hidden]{display:none}.dcs-in{height:40px;border-radius:8px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:14px;padding:0 10px}'
+    + '.dcs-hist{font-size:12.5px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px;display:grid;gap:3px}.dcs-hist b{color:var(--text);font-size:13px}'
+    + '.dcs-m footer{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.dcs-btn{height:38px;padding:0 16px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}.dcs-pri{background:var(--accent);border-color:var(--accent);color:#fff}.dcs-btn:disabled{opacity:.6}'
+    + '.dcs-res{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.dcs-res span{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--s2);font-size:13.5px;font-weight:600}.dcs-res b{display:block;font-size:11.5px;font-weight:600;color:var(--text3);margin-bottom:2px}'
+    + '.dcs-tw{overflow:auto;border:1px solid var(--border);border-radius:10px}.dcs-t{width:100%;border-collapse:collapse;font-size:13px}.dcs-t th{position:sticky;top:0;background:var(--s2);color:var(--text2);font-size:12px;font-weight:600;text-align:left;padding:8px 10px;white-space:nowrap}.dcs-t td{padding:8px 10px;border-top:1px solid var(--border);white-space:nowrap}.dcs-vazio{padding:20px;text-align:center;color:var(--text3)}'
+    + '@media (max-width:760px){.dcs-res{grid-template-columns:1fr 1fr}.dcs-ops{grid-template-columns:1fr}.dcs-m{padding:14px}.dcs-m footer .dcs-btn{flex:1;height:44px}'
+    + '.dcs-t thead{display:none}.dcs-t,.dcs-t tbody{display:block}.dcs-t tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 12px;border-top:1px solid var(--border)}.dcs-t td{display:block;padding:0;border:0;white-space:normal}.dcs-t td::before{content:attr(data-l);display:block;font-size:11px;color:var(--text3)}}';
+  try { var st = document.createElement('style'); st.id = 'ds-cmp-status-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();

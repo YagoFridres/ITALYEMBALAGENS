@@ -143,3 +143,11 @@ grant all on public.papelao_solicitacoes to anon, authenticated, service_role;
 
 -- Registros apagados aqui que a sincronização incremental não deve trazer de volta (27/10/2026)
 create table if not exists public.sync_ignorar (tabela text not null, id text not null, motivo text, criado_em timestamptz default now(), primary key (tabela, id));
+
+-- Devolutiva das solicitações de compra e andamento da compra de papelão (27/10/2026)
+alter table public.papelao_solicitacoes add column if not exists resposta text;
+alter table public.papelao_solicitacoes add column if not exists respondido_por text;
+alter table public.papelao_solicitacoes add column if not exists respondido_em timestamptz;
+alter table public.papelao_solicitacoes add column if not exists legado_id text;
+alter table public.compras_chapas add column if not exists status_historico jsonb not null default '[]'::jsonb;
+alter table public.compras_chapas add column if not exists data_chegada date;

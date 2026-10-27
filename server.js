@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027174640';
-const SW_RUNTIME_VERSION = '20261027174640';
+const PATCH_RUNTIME_VERSION = '20261027175311';
+const SW_RUNTIME_VERSION = '20261027175311';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -29167,6 +29167,7 @@ app.post('/api/sugestoes-compra', authMiddleware, async (req, res) => {
     const inserted = await _comprasChapasInsertCompat('sugestoes_compra', [payload], '*');
     if (inserted?.error) throw inserted.error;
     await _sugestoesCompraMarkChapa(chapaId, 'pendente', payload.criado_por);
+    try { await _solCriar(chapaId, { observacao: texto }, req); } catch (_) {}
     const data = _sugestoesCompraNormalizeRow(inserted?.data && inserted.data[0] ? inserted.data[0] : inserted?.data || payload, chapa);
     return res.json({ ok: true, data });
   } catch (e) {
@@ -29197,6 +29198,7 @@ app.put('/api/sugestoes-compra/:id', authMiddleware, async (req, res) => {
     const updated = await _comprasChapasUpdateCompat('sugestoes_compra', id, payload, '*');
     if (updated?.error) throw updated.error;
     await _sugestoesCompraMarkChapa(atual.data?.chapa_id, status, actor);
+    try { if (atual.data?.chapa_id) await _solMudarStatusPorChapa(atual.data.chapa_id, status === 'aceita' ? 'Aceita' : 'Recusada', req, status === 'ignorada' ? motivo : 'Sugestão aceita'); } catch (_) {}
     const chapasMap = await _sugestoesCompraFetchChapasMap([atual.data?.chapa_id]);
     const data = _sugestoesCompraNormalizeRow(updated?.data || { ...atual.data, ...payload }, chapasMap.get(String(atual.data?.chapa_id || '').trim()) || null);
     return res.json({ ok: true, data });
@@ -30084,6 +30086,33 @@ app.put('/api/compras-chapas/:id/pasta', authMiddleware, async (req, res) => {
     _comprasChapasLog('PUT /api/compras-chapas/:id/pasta', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
+});
+
+// Andamento da compra (só o cabeçalho; não mexe nos itens): Pedido feito → A caminho (com previsão) → Chegou/Concluída (27/10/2026)
+const _CMP_STATUS = ['pedido_feito', 'a_caminho', 'concluida', 'cancelada'];
+app.patch('/api/compras-chapas/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    const b = req.body || {};
+    const st = String(b.status || '').trim();
+    if (!_CMP_STATUS.includes(st)) return res.status(400).json({ ok: false, error: 'Status inválido' });
+    const { data: atual, error: e0 } = await supabase.from('compras_chapas').select('id,status,status_historico,previsao_chegada').eq('id', id).maybeSingle();
+    if (e0) throw e0;
+    if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
+    const quem = _comprasChapasUser(req);
+    const agora = new Date().toISOString();
+    const up = { status: st, atualizado_em: agora, atualizado_por: quem };
+    if (b.previsao_chegada !== undefined) up.previsao_chegada = _comprasChapasDateOrNull(b.previsao_chegada);
+    if (st === 'concluida') up.data_chegada = _comprasChapasDateOrNull(b.data_chegada) || agora.slice(0, 10);
+    else up.data_chegada = null;
+    const hist = Array.isArray(atual.status_historico) ? atual.status_historico : [];
+    hist.push({ em: agora, por: quem, status: st, previsao: up.previsao_chegada !== undefined ? up.previsao_chegada : atual.previsao_chegada || null, nota: String(b.nota || '').trim() || null });
+    up.status_historico = hist;
+    const { data, error } = await supabase.from('compras_chapas').update(up).eq('id', id).select('*').maybeSingle();
+    if (error) throw error;
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
 });
 
 app.get('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
@@ -39894,10 +39923,13 @@ app.post('/api/infra/importar-estoque-chapas', requireAdmin, async (req, res) =>
 
 // ===== SOLICITAÇÕES DE COMPRA DE PAPELÃO (27/10/2026) =====
 // O estoque pede (sugere) a compra de uma chapa; a área de Compra vê e atualiza o andamento; os dois lados enxergam o mesmo status.
-const _SOL_STATUS = ['Solicitada', 'Em cotação', 'Comprada', 'Recebida', 'Recusada'];
+const _SOL_STATUS = ['Solicitada', 'Aceita', 'Em cotação', 'Comprada', 'Recebida', 'Recusada'];
+const _SOL_ABERTAS = ['Solicitada', 'Aceita', 'Em cotação', 'Comprada'];
 async function _solCriar(chapaId, extra, req) {
-  const { data: aberta } = await supabase.from('papelao_solicitacoes').select('*').eq('chapa_id', chapaId).in('status', ['Solicitada', 'Em cotação', 'Comprada']).limit(1);
-  if (aberta && aberta[0]) return aberta[0];
+  if (!String(chapaId).startsWith('manual-')) {
+    const { data: aberta } = await supabase.from('papelao_solicitacoes').select('*').eq('chapa_id', chapaId).in('status', _SOL_ABERTAS).limit(1);
+    if (aberta && aberta[0]) return aberta[0];
+  }
   let ch = null;
   try { const r = await supabase.from('chapas_estoque_v2').select('id,fornecedor,nomenclatura,tamanho,nome_uso,nome').eq('id', chapaId).maybeSingle(); ch = r.data || null; } catch (_) {}
   const quem = _opNome(req);
@@ -39912,7 +39944,7 @@ async function _solCriar(chapaId, extra, req) {
 }
 async function _solMudarStatusPorChapa(chapaId, status, req, obs) {
   try {
-    const { data: ab } = await supabase.from('papelao_solicitacoes').select('*').eq('chapa_id', String(chapaId)).in('status', ['Solicitada', 'Em cotação', 'Comprada']).limit(1);
+    const { data: ab } = await supabase.from('papelao_solicitacoes').select('*').eq('chapa_id', String(chapaId)).in('status', _SOL_ABERTAS).limit(1);
     const s = ab && ab[0]; if (!s) return;
     const hist = Array.isArray(s.historico) ? s.historico : [];
     hist.push({ em: new Date().toISOString(), por: _opNome(req), status, obs: obs || null });
@@ -39922,7 +39954,7 @@ async function _solMudarStatusPorChapa(chapaId, status, req, obs) {
 app.get('/api/papelao/solicitacoes', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('papelao_solicitacoes').select('*').order('created_at', { ascending: false }).limit(1000);
-    if (String(req.query.abertas || '') === '1') q = q.in('status', ['Solicitada', 'Em cotação', 'Comprada']);
+    if (String(req.query.abertas || '') === '1') q = q.in('status', _SOL_ABERTAS);
     const { data, error } = await q;
     if (error) throw error;
     return ok(res, data || []);
@@ -39950,8 +39982,9 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
     if (b.compra_ref != null) up.compra_ref = String(b.compra_ref).trim() || null;
     if (b.qtd_sugerida != null) up.qtd_sugerida = Math.trunc(Number(b.qtd_sugerida) || 0) || null;
     if (b.observacao != null) up.observacao = String(b.observacao).trim() || null;
+    if (b.resposta != null) { up.resposta = String(b.resposta).trim() || null; up.respondido_por = up.atualizado_por; up.respondido_em = up.updated_at; }
     const hist = Array.isArray(s.historico) ? s.historico : [];
-    hist.push({ em: up.updated_at, por: up.atualizado_por, status: up.status || s.status, obs: String(b.nota || b.observacao || '').trim() || null, compra_ref: up.compra_ref || null });
+    hist.push({ em: up.updated_at, por: up.atualizado_por, status: up.status || s.status, obs: String(b.nota || b.resposta || b.observacao || '').trim() || null, compra_ref: up.compra_ref || null });
     up.historico = hist;
     const { data, error } = await supabase.from('papelao_solicitacoes').update(up).eq('id', s.id).select('*').single();
     if (error) throw error;
