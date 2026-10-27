@@ -20388,6 +20388,24 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       try { setVal('of-r-larg', larg); } catch (_) {}
       try { setVal('of-r-maquina', maquina); } catch (_) {}
       try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
+      // 27/10/2026: o editar não carregava as cores da OF e, ao salvar, apagava as cores
+      try {
+        var itC = of.itens; if (typeof itC === 'string') { try { itC = JSON.parse(itC); } catch (_) { itC = []; } }
+        var csC = (Array.isArray(itC) && itC[0] && itC[0].cores_impressao) || of.cores_impressao || of.cores || [];
+        if (typeof csC === 'string') { try { csC = JSON.parse(csC); } catch (_) { csC = csC.split(','); } }
+        var idsC = (Array.isArray(csC) ? csC : []).map(function (c) { return String(c && typeof c === 'object' ? (c.id || c.nome || '') : (c || '')).trim(); }).filter(Boolean);
+        if (idsC.length) {
+          var aplicaC = function () {
+            try {
+              var disp = Array.isArray(window.coresDisponiveis) ? window.coresDisponiveis : (typeof coresDisponiveis !== 'undefined' ? coresDisponiveis : []);
+              var ids2 = idsC.map(function (x) { var m = (disp || []).find(function (c) { return String(c.id) === x || String(c.nome || '').toLowerCase() === x.toLowerCase(); }); return m ? String(m.id) : x; });
+              coresSelecionadasOFRapida = ids2; window.coresSelecionadasOFRapida = ids2;
+              if (typeof window.renderSeletorCores === 'function') window.renderSeletorCores('seletorCoresOFRapida', ids2);
+            } catch (_) {}
+          };
+          aplicaC(); setTimeout(aplicaC, 700); setTimeout(function () { try { if (!coresSelecionadasOFRapida || !coresSelecionadasOFRapida.length) aplicaC(); } catch (_) {} }, 1800);
+        }
+      } catch (_) {}
       try {
         var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
         if (header) header.textContent = '📋 Clonar OF Rápida';
@@ -41887,6 +41905,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { setVal('of-r-larg', larg); } catch (_) {}
       try { setVal('of-r-maquina', maquina); } catch (_) {}
       try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
+      // 27/10/2026: o editar não carregava as cores da OF e, ao salvar, apagava as cores
+      try {
+        var itC = of.itens; if (typeof itC === 'string') { try { itC = JSON.parse(itC); } catch (_) { itC = []; } }
+        var csC = (Array.isArray(itC) && itC[0] && itC[0].cores_impressao) || of.cores_impressao || of.cores || [];
+        if (typeof csC === 'string') { try { csC = JSON.parse(csC); } catch (_) { csC = csC.split(','); } }
+        var idsC = (Array.isArray(csC) ? csC : []).map(function (c) { return String(c && typeof c === 'object' ? (c.id || c.nome || '') : (c || '')).trim(); }).filter(Boolean);
+        if (idsC.length) {
+          var aplicaC = function () {
+            try {
+              var disp = Array.isArray(window.coresDisponiveis) ? window.coresDisponiveis : (typeof coresDisponiveis !== 'undefined' ? coresDisponiveis : []);
+              var ids2 = idsC.map(function (x) { var m = (disp || []).find(function (c) { return String(c.id) === x || String(c.nome || '').toLowerCase() === x.toLowerCase(); }); return m ? String(m.id) : x; });
+              coresSelecionadasOFRapida = ids2; window.coresSelecionadasOFRapida = ids2;
+              if (typeof window.renderSeletorCores === 'function') window.renderSeletorCores('seletorCoresOFRapida', ids2);
+            } catch (_) {}
+          };
+          aplicaC(); setTimeout(aplicaC, 700); setTimeout(function () { try { if (!coresSelecionadasOFRapida || !coresSelecionadasOFRapida.length) aplicaC(); } catch (_) {} }, 1800);
+        }
+      } catch (_) {}
 
       try {
         var numSpan = document.getElementById('of-r-numero');
