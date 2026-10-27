@@ -74120,12 +74120,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + (c.observacao ? '<p class="dcd-obs">📝 ' + esc(c.observacao) + '</p>' : '')
         + '<footer><button type="button" data-x="fechar">Fechar</button><button type="button" data-x="editar" class="dcd-pri">✏️ Editar chapa</button></footer></div>';
       document.body.appendChild(ov);
-      function fechar() { ov.remove(); legado.style.removeProperty('display'); var x = legado.querySelector('[data-ew-close]'); if (x) x.click(); else legado.remove(); }
+      function fechar() { ov.remove(); try { legado.remove(); } catch (_) {} try { document.body.style.overflow = ''; } catch (_) {} }
       ov.addEventListener('click', function (e) {
         if (e.target === ov) return fechar();
         var b = e.target.closest('[data-x]'); if (!b) return;
         if (b.getAttribute('data-x') === 'fechar') return fechar();
-        ov.remove(); legado.style.removeProperty('display'); var xx = legado.querySelector('[data-ew-close]'); if (xx) xx.click();
+        ov.remove(); try { legado.remove(); } catch (_) {}
         // abre o mesmo editor do botão "Alterar" da linha
         setTimeout(function () { var bt = document.querySelector('#page-estoque [data-est-edit="' + String(id).replace(/"/g, '') + '"]'); if (bt) bt.click(); }, 80);
       });
