@@ -73697,3 +73697,66 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== VENDEDORES — tela nova (27/10/2026) =====
+ * Só vendedores ativos (o VENDEDOR 03 está inativo e sai das listas). Sem valores de venda: mostra carteira de
+ * clientes, OFs em aberto, comissão e as ações (programar visita, roteiro, editar). A agenda de visitas continua abaixo. */
+(function () {
+  if (window.__dsVend) return; window.__dsVend = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var ATIVOS = null;
+  function carregar() {
+    return fetch((window.API_BASE || '') + '/api/vendedores', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } }).then(function (r) { return r.json(); })
+      .then(function (j) { var l = Array.isArray(j) ? j : (j.data || []); ATIVOS = l.filter(function (v) { return v.ativo !== false; }); limparGlobal(l); return ATIVOS; }).catch(function () { return ATIVOS || []; });
+  }
+  // tira vendedores inativos das listas de escolha do sistema
+  function limparGlobal(l) {
+    try {
+      var inativos = {}; l.forEach(function (v) { if (v.ativo === false) inativos[v.id] = 1; });
+      if (typeof VENDEDORES !== 'undefined' && Array.isArray(VENDEDORES)) { for (var i = VENDEDORES.length - 1; i >= 0; i--) if (inativos[VENDEDORES[i].id]) VENDEDORES.splice(i, 1); }
+    } catch (_) {}
+  }
+  function iniciais(n) { return String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0); }).join('').toUpperCase(); }
+  var CORES = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ec4899'];
+  function render() {
+    var p = document.getElementById('page-vendedores'); if (!p || !ATIVOS) return;
+    var body = p.querySelector('.page-body') || p;
+    var r = p.querySelector('#ds-vend');
+    if (!r) { r = document.createElement('section'); r.id = 'ds-vend'; body.insertBefore(r, body.firstChild); p.classList.add('dsv-ativa'); }
+    var clis = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : [];
+    var ofs = Array.isArray(window.OFs) ? window.OFs : [];
+    var hoje = new Date().toISOString().slice(0, 10);
+    var html = '<header class="dsv-head"><div><h1>Vendedores</h1><p>' + ATIVOS.length + ' vendedores ativos</p></div><div class="dsv-bts"><button type="button" class="dsv-b" onclick="abrirModalAgenda()">📅 Programar visita</button><button type="button" class="dsv-b dsv-pri" onclick="abrirModalVendedor()">+ Novo vendedor</button></div></header>'
+      + '<div class="dsv-grade">' + ATIVOS.map(function (v, i) {
+        var nCli = clis.filter(function (c) { return String(c.vendId || c.vendedor_id || '') === String(v.id); }).length;
+        var abertas = ofs.filter(function (o) { return String(o.vendId || o.vendedor_id || '') === String(v.id) && !/conclu|cancel/i.test(String(o.status || '')) && !o.deleted_at; });
+        var atr = abertas.filter(function (o) { var e = String(o.ent || o.data_entrega || '').slice(0, 10); return e && e < hoje; }).length;
+        var cor = CORES[i % CORES.length], id = esc(v.id);
+        return '<article class="dsv-card" style="--c:' + cor + '"><header><span class="dsv-av">' + esc(iniciais(v.nome)) + '</span><div><h3>' + esc(v.nome) + '</h3><span>' + esc(v.codigo || '') + (v.codigo ? ' · ' : '') + 'Comissão ' + String(v.comissao_pct != null ? v.comissao_pct : '—').replace('.', ',') + '%</span></div></header>'
+          + '<div class="dsv-nums"><div><b>' + nCli + '</b><span>clientes na carteira</span></div><div><b>' + abertas.length + '</b><span>OFs em aberto</span></div><div><b class="' + (atr ? 'dsv-atr' : '') + '">' + atr + '</b><span>atrasadas</span></div></div>'
+          + (v.telefone || v.email ? '<div class="dsv-cont">' + (v.telefone ? '📞 ' + esc(v.telefone) : '') + (v.email ? ' ✉️ ' + esc(v.email) : '') + '</div>' : '')
+          + '<footer><button type="button" class="dsv-b" onclick="abrirModalAgenda(\'\', \'' + id + '\')">📅 Visita</button><button type="button" class="dsv-b" onclick="abrirRoteiroVisitasVendedor(\'' + id + '\')">🗺 Roteiro</button><button type="button" class="dsv-b" onclick="editarVendedor(\'' + id + '\')">✏ Editar</button></footer></article>';
+      }).join('') + '</div>';
+    if (r.__h !== html) { r.__h = html; r.innerHTML = html; }
+  }
+  var antes = false;
+  setInterval(function () {
+    var p = document.getElementById('page-vendedores'); var on = !!(p && (p.classList.contains('active') || p.offsetParent !== null));
+    if (on && !antes) carregar().then(render);
+    if (on) render();
+    antes = on;
+  }, 800);
+  setTimeout(carregar, 4000);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-vend-css';
+    st.textContent = '#page-vendedores.dsv-ativa .page-body > .sbox:last-child{display:none!important}#page-vendedores.dsv-ativa .ptoolbar button{display:none!important}#page-vendedores.dsv-ativa{overflow-y:auto}'
+      + '#ds-vend{padding:6px 2px 16px;color:var(--text)}.dsv-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}.dsv-head h1{margin:0;font-size:22px}.dsv-head p{margin:4px 0 0;color:var(--text2);font-size:13px}.dsv-bts{display:flex;gap:8px;flex-wrap:wrap}'
+      + '.dsv-b{height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dsv-b:hover{background:var(--s3)}.dsv-pri{background:var(--accent);border-color:var(--accent);color:#fff}'
+      + '.dsv-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.dsv-card{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--c);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}'
+      + '.dsv-card header{display:flex;gap:12px;align-items:center}.dsv-av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:var(--c);flex:0 0 auto}.dsv-card h3{margin:0;font-size:16px}.dsv-card header span{font-size:12.5px;color:var(--text2)}'
+      + '.dsv-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.dsv-nums div{background:var(--s2);border-radius:10px;padding:8px}.dsv-nums b{display:block;font-size:20px}.dsv-nums span{font-size:11.5px;color:var(--text3)}.dsv-atr{color:var(--red)}.dsv-cont{font-size:12.5px;color:var(--text2)}'
+      + '.dsv-card footer{display:flex;gap:6px}.dsv-card footer .dsv-b{flex:1}'
+      + '@media (max-width:700px){#ds-vend{padding:4px 0 12px}.dsv-grade{grid-template-columns:1fr}.dsv-bts{width:100%}.dsv-bts .dsv-b{flex:1;height:40px}.dsv-card footer .dsv-b{height:40px}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
