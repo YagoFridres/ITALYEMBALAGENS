@@ -73579,7 +73579,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (E.compras) return Promise.resolve();
     return Promise.all([req('GET', '/api/compras-chapas?limit=3000').then(lista).catch(function () { return []; }), req('GET', '/api/almoxarifado/ordens').then(lista).catch(function () { return []; })])
       .then(function (r) {
-        var c = {}; r[0].forEach(function (x) { var k = norm(x.fornecedor || x.fornecedor_nome); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || x.total || 0) || 0; var d = String(x.data || x.created_at || '').slice(0, 10); if (d > o.ult) o.ult = d; });
+        var c = {}; r[0].forEach(function (x) { var k = norm(x.fornecedor || x.fornecedor_nome); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || x.total || 0) || (Array.isArray(x.itens) ? x.itens.reduce(function (s2, i) { return s2 + (Number(i.valor_total) || 0); }, 0) : 0); var d = String(x.data_compra || x.data || x.criado_em || x.created_at || '').slice(0, 10); if (d > o.ult) o.ult = d; });
         r[1].forEach(function (x) { if (/cancel/i.test(x.status || '')) return; var k = norm(x.fornecedor); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || 0) || 0; var d = String(x.data || '').slice(0, 10); if (d > o.ult) o.ult = d; });
         E.compras = c;
       });
@@ -73759,4 +73759,22 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '@media (max-width:700px){#ds-vend{padding:4px 0 12px}.dsv-grade{grid-template-columns:1fr}.dsv-bts{width:100%}.dsv-bts .dsv-b{flex:1;height:40px}.dsv-card footer .dsv-b{height:40px}}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
+})();
+
+/* ===== "compras" sempre abre a Compra de Papelão atual (27/10/2026) =====
+ * go('compras') abria a tela antiga de compras; agora vai para a tela atual (papelaoAbrirComprasChapas). */
+(function () {
+  if (window.__dsGoCompras) return; window.__dsGoCompras = true;
+  function inst() {
+    var g0 = window.go; if (typeof g0 !== 'function' || g0.__dsCompras) return;
+    var w = function (pg) {
+      if (String(pg) === 'compras' && typeof window.papelaoAbrirComprasChapas === 'function' && !window.__dsDentroCompras) {
+        window.__dsDentroCompras = true; try { return window.papelaoAbrirComprasChapas(); } finally { window.__dsDentroCompras = false; }
+      }
+      return g0.apply(this, arguments);
+    };
+    for (var k in g0) { try { w[k] = g0[k]; } catch (_) {} }
+    w.__dsCompras = true; window.go = w;
+  }
+  inst(); setInterval(inst, 1500);
 })();
