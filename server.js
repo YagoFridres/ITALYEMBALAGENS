@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027101304';
-const SW_RUNTIME_VERSION = '20261027101304';
+const PATCH_RUNTIME_VERSION = '20261027101353';
+const SW_RUNTIME_VERSION = '20261027101353';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27950,7 +27950,8 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
         nf: nfCab || canonCur.nf,
         data_entrada: dataEntrada || canonCur.data_entrada,
         emp_id: item.emp_id || canonCur.emp_id || empIdCab,
-        valor_unitario: item.valor_unitario,
+        // entrada sem valor informado não pode zerar o valor da chapa
+        valor_unitario: (Number(item.valor_unitario) > 0) ? item.valor_unitario : (Number(row?.valor_unitario) > 0 ? row.valor_unitario : (canonCur.valor_unitario != null ? canonCur.valor_unitario : item.valor_unitario)),
       }, req, true);
       delete patchMeta.quantidade;
       if (Object.keys(patchMeta).length) {
