@@ -31112,10 +31112,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3.1, 'bloco s
           var elAt = document.getElementById('bdg-at');
           var elUg = document.getElementById('bdg-ug');
           var okBadge = document.getElementById('bdg-ok');
-          var semDados = (!temDados || (at === 0 && ug === 0 && !window._concluidasHoje));
+          // 27/10: zero urgentes/atrasadas é um valor válido; só é "sem dados" quando a lista não carregou
+          var semDados = !temDados;
           var ultimoValido = window.__patchBadgesLastValid || { at:0, ug:0, ok:0 };
           if (semDados && (ultimoValido.at > 0 || ultimoValido.ug > 0 || ultimoValido.ok > 0)) {
-            try { if (typeof window.toast === 'function') window.toast('Aviso: falha temporária ao carregar contadores; exibindo último valor conhecido (S2).', 'var(--orange)'); } catch (_) {}
             at = ultimoValido.at || at;
             ug = ultimoValido.ug || ug;
           } else {
@@ -73006,4 +73006,127 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       }).catch(function () { return r; });
     });
   };
+})();
+
+/* ===== SENHA DO FINANCEIRO (27/10/2026) =====
+ * - Menu Financeiro (Orçamentos, Comissões, Central de Custos, Relatórios): só abre com a senha.
+ * - Passagens: os valores em R$ (card "Valor de Produção", coluna da tabela, detalhamento) ficam borrados
+ *   e o Excel/Imprimir pede a senha.
+ * Depois de digitar a senha certa, fica liberado até fechar a aba do navegador (botão 🔒 bloqueia de novo).
+ * Bloqueio de tela: quem tem acesso ao sistema ainda consegue os dados por outros caminhos técnicos. */
+(function () {
+  if (window.__dsFinSenha) return; window.__dsFinSenha = true;
+  var HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'; // sha-256 da senha
+  var PAGINAS = { orcamentos: 1, comissoes: 1, 'central-custos': 1, relatorios: 1 };
+  var GRUPO = 'ng-ds-gestao';
+  function liberado() { try { return sessionStorage.getItem('ds_fin_ok') === '1'; } catch (_) { return false; } }
+  function marcar() { try { document.documentElement.toggleAttribute('data-ds-fin-ok', liberado()); } catch (_) {} }
+  function sha(t) {
+    try { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+    catch (_) { return Promise.resolve(''); }
+  }
+  var aberto = null;
+  function pedir(motivo) {
+    if (liberado()) return Promise.resolve(true);
+    if (aberto) return aberto;
+    aberto = new Promise(function (ok) {
+      var fundo = document.createElement('div'); fundo.id = 'ds-fin-senha';
+      fundo.innerHTML = '<form class="dfs-caixa" autocomplete="off"><div class="dfs-ic">🔒</div><h3>Área protegida</h3><p>' + (motivo || 'Digite a senha para continuar.') + '</p>'
+        + '<input type="password" inputmode="numeric" maxlength="12" placeholder="Senha" aria-label="Senha" autocomplete="off">'
+        + '<span class="dfs-erro" role="alert"></span><div class="dfs-bts"><button type="button" class="dfs-canc">Cancelar</button><button type="submit" class="dfs-ok">Entrar</button></div></form>';
+      document.body.appendChild(fundo);
+      var inp = fundo.querySelector('input'), erro = fundo.querySelector('.dfs-erro'), cx = fundo.querySelector('.dfs-caixa');
+      setTimeout(function () { try { inp.focus(); } catch (_) {} }, 30);
+      function fim(v) { try { fundo.remove(); } catch (_) {} aberto = null; ok(v); }
+      fundo.querySelector('.dfs-canc').onclick = function () { fim(false); };
+      fundo.addEventListener('mousedown', function (e) { if (e.target === fundo) fim(false); });
+      fundo.addEventListener('keydown', function (e) { if (e.key === 'Escape') fim(false); });
+      cx.onsubmit = function (e) {
+        e.preventDefault();
+        sha(String(inp.value || '').trim()).then(function (h) {
+          if (h === HASH) { try { sessionStorage.setItem('ds_fin_ok', '1'); } catch (_) {} marcar(); fim(true); }
+          else { erro.textContent = 'Senha incorreta.'; inp.value = ''; cx.classList.remove('dfs-tremer'); void cx.offsetWidth; cx.classList.add('dfs-tremer'); inp.focus(); }
+        });
+      };
+    });
+    return aberto;
+  }
+  window.dsPedirSenhaFinanceiro = pedir;
+  window.dsBloquearFinanceiro = function () {
+    try { sessionStorage.removeItem('ds_fin_ok'); } catch (_) {} marcar();
+    try { if (PAGINAS[window._PAGE_ATUAL]) window.go('hub'); } catch (_) {}
+    try { var g = document.getElementById(GRUPO); if (g) g.classList.remove('open'); } catch (_) {}
+  };
+  marcar();
+  // ---- páginas do Financeiro ----
+  function instalarGo() {
+    var g0 = window.go; if (typeof g0 !== 'function' || g0.__dsFin) return;
+    var w = function (pg) {
+      var self = this, args = arguments;
+      if (PAGINAS[String(pg || '')] && !liberado()) { pedir('O Financeiro é protegido por senha.').then(function (v) { if (v) g0.apply(self, args); }); return; }
+      return g0.apply(this, arguments);
+    };
+    for (var k in g0) { try { w[k] = g0[k]; } catch (_) {} }
+    w.__dsFin = true; window.go = w;
+  }
+  function instalarGrupo() {
+    var t0 = window.toggleNavGroup; if (typeof t0 !== 'function' || t0.__dsFin) return;
+    var w = function (id) {
+      var self = this, args = arguments, el = document.getElementById(String(id || ''));
+      if (String(id) === GRUPO && !liberado() && !(el && el.classList.contains('open'))) { pedir('O menu Financeiro é protegido por senha.').then(function (v) { if (v) t0.apply(self, args); }); return; }
+      return t0.apply(this, arguments);
+    };
+    w.__dsFin = true; window.toggleNavGroup = w;
+  }
+  // se a página atual for do Financeiro (ex.: recarregou a página) e não tiver senha, volta para o início
+  function vigiar() {
+    instalarGo(); instalarGrupo();
+    try {
+      if (!liberado()) {
+        var g = document.getElementById(GRUPO); if (g && g.classList.contains('open')) g.classList.remove('open');
+        if (PAGINAS[window._PAGE_ATUAL]) { var pg = document.getElementById('page-' + window._PAGE_ATUAL); if (pg && pg.offsetParent !== null) { window.go('hub'); pedir('O Financeiro é protegido por senha.').then(function (v) { if (v) window.go(window.__dsFinVoltar || 'comissoes'); }); window.__dsFinVoltar = window._PAGE_ATUAL; } }
+      }
+      // botão de bloquear de novo, no título do grupo
+      var hd = document.querySelector('#' + GRUPO + ' > .nav-group-header, #' + GRUPO + ' > div:first-child');
+      if (hd && !hd.querySelector('.dfs-trava')) { var b = document.createElement('span'); b.className = 'dfs-trava'; b.title = 'Bloquear o Financeiro'; b.textContent = '🔒'; b.onclick = function (e) { e.stopPropagation(); window.dsBloquearFinanceiro(); }; hd.appendChild(b); }
+    } catch (_) {}
+    passagens();
+  }
+  // ---- valores das Passagens ----
+  function passagens() {
+    var p = document.getElementById('page-historico-passagens'); if (!p || p.offsetParent === null) return;
+    var cand = p.querySelectorAll('.hist-month-card .val, td.num, td, .hist-month-card');
+    for (var i = 0; i < cand.length; i++) {
+      var e = cand[i];
+      if (e.classList.contains('ds-fin-oculto')) continue;
+      if (e.classList.contains('hist-month-card')) { var lab = e.querySelector('.lab'); if (lab && /valor/i.test(lab.textContent)) { var v = e.querySelector('.val') || e; v.classList.add('ds-fin-oculto'); } continue; }
+      if (e.children.length > 2) continue;
+      if (/R\$\s*-?[\d.]+,\d{2}/.test(e.textContent || '')) e.classList.add('ds-fin-oculto');
+    }
+  }
+  document.addEventListener('click', function (e) {
+    if (liberado()) return;
+    var o = e.target.closest && e.target.closest('.ds-fin-oculto'); 
+    var bt = e.target.closest && e.target.closest('#page-historico-passagens button, #page-historico-passagens a');
+    if (o) { e.preventDefault(); e.stopPropagation(); pedir('Os valores de produção são protegidos por senha.'); return; }
+    if (bt && /excel|imprimir|pdf|exportar|relat/i.test(bt.textContent || '')) { e.preventDefault(); e.stopImmediatePropagation(); pedir('Exportar e imprimir mostram os valores — digite a senha.').then(function (v) { if (v) bt.click(); }); }
+  }, true);
+  setInterval(vigiar, 700); vigiar();
+  try {
+    var st = document.createElement('style'); st.id = 'ds-fin-css';
+    st.textContent = 'html:not([data-ds-fin-ok]) .ds-fin-oculto{filter:blur(7px);user-select:none;cursor:pointer;position:relative}'
+      + 'html:not([data-ds-fin-ok]) .hist-month-card:has(.ds-fin-oculto)::after{content:"🔒 toque para ver";position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--text3)}'
+      + '.hist-month-card{position:relative}'
+      + '.dfs-trava{margin-left:auto;margin-right:6px;font-size:12px;opacity:.55;cursor:pointer;padding:2px 4px}.dfs-trava:hover{opacity:1}html:not([data-ds-fin-ok]) .dfs-trava{display:none}'
+      + '#ds-fin-senha{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}'
+      + '.dfs-caixa{width:min(360px,100%);background:var(--surface,#16181d);color:var(--text,#fff);border:1px solid var(--b2,#333);border-radius:16px;padding:24px 22px 18px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5)}'
+      + '.dfs-ic{font-size:30px}.dfs-caixa h3{margin:6px 0 4px;font-size:18px}.dfs-caixa p{margin:0 0 14px;color:var(--text2,#aaa);font-size:13.5px}'
+      + '.dfs-caixa input{width:100%;box-sizing:border-box;height:46px;border-radius:10px;border:1px solid var(--b2,#333);background:var(--s2,#0f1115);color:var(--text,#fff);font-size:22px;text-align:center;letter-spacing:.35em}'
+      + '.dfs-caixa input:focus{outline:2px solid var(--accent,#3b82f6);outline-offset:1px}'
+      + '.dfs-erro{display:block;min-height:18px;margin-top:8px;color:var(--red,#ef4444);font-size:13px}'
+      + '.dfs-bts{display:flex;gap:10px;margin-top:6px}.dfs-bts button{flex:1;height:42px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--b2,#333);background:var(--s3,#222);color:var(--text,#fff)}'
+      + '.dfs-bts .dfs-ok{background:var(--accent,#3b82f6);border-color:var(--accent,#3b82f6);color:#fff}'
+      + '.dfs-tremer{animation:dfsTremer .35s}@keyframes dfsTremer{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
 })();
