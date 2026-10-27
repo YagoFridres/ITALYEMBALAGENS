@@ -74121,7 +74121,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (e.target === ov) return fechar();
         var b = e.target.closest('[data-x]'); if (!b) return;
         if (b.getAttribute('data-x') === 'fechar') return fechar();
-        ov.remove(); legado.style.removeProperty('display'); var ed = legado.querySelector('[data-ew-edit]'); if (ed) ed.click(); setTimeout(function () { var m2 = document.getElementById('estoque-wire-modal'); if (m2) m2.style.removeProperty('display'); }, 60);
+        ov.remove(); legado.style.removeProperty('display'); var xx = legado.querySelector('[data-ew-close]'); if (xx) xx.click();
+        // abre o mesmo editor do botão "Alterar" da linha
+        setTimeout(function () { var bt = document.querySelector('#page-estoque [data-est-edit="' + String(id).replace(/"/g, '') + '"]'); if (bt) bt.click(); }, 80);
       });
       document.addEventListener('keydown', function esc2(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', esc2); if (document.body.contains(ov)) fechar(); } });
     }).catch(function () { legado.style.removeProperty('display'); });
