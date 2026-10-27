@@ -98,6 +98,21 @@
   } catch (_) {}
 })();
 
+/* ===== Sem "piscar" a tela antiga (27/10/2026) =====
+ * Central de OFs e OFs por Máquina: a tela antiga fica escondida desde o início (a nova é montada por cima).
+ * Só aparece se a pessoa escolheu "Tela anterior". */
+(function () {
+  try {
+    var r = document.documentElement;
+    if (localStorage.getItem('ds_central_antiga') !== '1') r.setAttribute('data-ds-central-nova', '1');
+    if (localStorage.getItem('ds_ofmaq_antiga') !== '1') r.setAttribute('data-ds-ofmaq-nova', '1');
+    var st = document.createElement('style'); st.id = 'ds-sem-piscar';
+    st.textContent = 'html[data-ds-ofmaq-nova] #page-ofmaq > :not(#ds-ofmaq):not(#ds-ofmaq-voltar):not(style):not(script){display:none!important}'
+      + 'html[data-ds-central-nova] #page-pcp:not([data-ds-sub="amostras"]):not([data-ds-sub="recorrentes"]) > :not(#ds-central):not(.ds-abas-central):not(style):not(script){display:none!important}';
+    (document.head || r).appendChild(st);
+  } catch (_) {}
+})();
+
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
@@ -71221,7 +71236,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
   }
   function alternarAntiga(on) {
-    try { localStorage.setItem('ds_central_antiga', on ? '1' : '0'); } catch (_) {}
+    try { localStorage.setItem('ds_central_antiga', on ? '1' : '0'); if (on) document.documentElement.removeAttribute('data-ds-central-nova'); else document.documentElement.setAttribute('data-ds-central-nova', '1'); } catch (_) {}
     aplicarModo();
     if (on) toastMsg('Mostrando a tela anterior. Para voltar à nova, use o botão “Nova Central de OFs”.', 'var(--accent)');
   }
@@ -71677,7 +71692,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var m = porChave[String(maqDaOf(o)).toUpperCase().replace(/\s+/g, ' ').trim()];
       if (m) g[m].push(o);
     });
-    ord.forEach(function (m) { g[m] = ordenar(g[m], m); });
+    ord.forEach(function (m) { g[m] = ordenar(g[m], m); agendar(g[m], m); });
     return { g: g, ord: ord };
   }
   function ordenar(lista, maq) {
@@ -71725,15 +71740,31 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     p.classList.toggle('ds-ofmaq-ativa', !E.antiga);
     var vb = document.getElementById('ds-ofmaq-voltar');
     if (E.antiga) {
-      if (!vb) { vb = document.createElement('button'); vb.id = 'ds-ofmaq-voltar'; vb.type = 'button'; vb.textContent = 'Usar a tela nova'; vb.onclick = function () { E.antiga = false; try { localStorage.setItem('ds_ofmaq_antiga', '0'); } catch (_) {} montar(); render(); }; p.insertBefore(vb, p.firstChild); }
+      if (!vb) { vb = document.createElement('button'); vb.id = 'ds-ofmaq-voltar'; vb.type = 'button'; vb.textContent = 'Usar a tela nova'; vb.onclick = function () { E.antiga = false; try { localStorage.setItem('ds_ofmaq_antiga', '0'); document.documentElement.setAttribute('data-ds-ofmaq-nova', '1'); } catch (_) {} montar(); render(); }; p.insertBefore(vb, p.firstChild); }
     } else if (vb) vb.remove();
   }
   var MAQS_OFMAQ = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'RISCADOR', 'CORTE VINCO ROTATIVA'];
   function maqVisivel(m) { return MAQS_OFMAQ.indexOf(String(m || '').toUpperCase().replace(/\s+/g, ' ').trim()) >= 0; }
   function txt(h) { var d = document.createElement('div'); d.innerHTML = String(h == null ? '' : h); return (d.textContent || '').trim(); }
   function setupDe(o) { var c = '', t = ''; try { c = txt(window.__dashH.cores(o)); } catch (_) {} try { t = txt(window.__dashH.tamanho(o)); } catch (_) {} return ((c && c !== '—' ? c : 'sem cor') + ' · ' + (t && t !== '—' ? t : 'sem medida')); }
+  // Dia agendado: a fila de cada máquina é distribuída pelos dias úteis conforme a capacidade (8 h/dia),
+  // na ordem da sequência. Data marcada manualmente (dia_programacao no futuro) é respeitada.
+  E.diaAg = {};
+  function utilIso(iso) { var d = new Date(iso + 'T12:00:00'); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+  function proxUtilIso(iso) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 1); return utilIso(d.toISOString().slice(0, 10)); }
+  function agendar(lista, maq) {
+    var dia = utilIso(hojeIso()), livre = CAP_DIA;
+    lista.forEach(function (o) {
+      var man = String(o.dia_programacao || o.data_programada || '').slice(0, 10);
+      if (man && man > hojeIso()) { E.diaAg[o.id] = utilIso(man); return; }
+      E.diaAg[o.id] = dia;
+      var min = minutosPrevistos(o, maq);
+      while (min > 0) { var usa = Math.min(livre, min); livre -= usa; min -= usa; if (livre <= 0) { dia = proxUtilIso(dia); livre = CAP_DIA; } }
+    });
+  }
   function diaDe(o) {
-    var d = String(o.dia_programacao_exibicao || o.dia_programacao || o.data_programada || o.ent || o.data_entrega || '').slice(0, 10);
+    if (E.diaAg[o.id]) return E.diaAg[o.id];
+    var d = String(o.dia_programacao_exibicao || o.dia_programacao || o.data_programada || '').slice(0, 10);
     var h = hojeIso(); return (!d || d < h) ? h : d;
   }
   function segunda(iso) { var d = new Date(iso + 'T12:00:00'); var w = d.getDay(); d.setDate(d.getDate() - ((w + 6) % 7)); return d.toISOString().slice(0, 10); }
@@ -71938,7 +71969,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (a === 'urgentes') { legado('#ofmaq-final-urgentes'); return; }
     if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(function () { b.textContent = 'Atualizar'; render(); }); return; }
     if (a === 'operador') { abrirOperador(); return; }
-    if (a === 'antiga') { E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
+    if (a === 'antiga') { E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); document.documentElement.removeAttribute('data-ds-ofmaq-nova'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
     if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA); salvarSeq(mA, l1); render(); return; }
     var tr = b.closest('tr[data-id]'); if (!tr) return;
     var mT = tr.getAttribute('data-maq') || E.maq;
@@ -72088,9 +72119,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   /* ---------- ciclo ---------- */
   var assAnt = '';
   function assinatura() { var l = ofsBase(); var mx = ''; for (var i = 0; i < l.length; i++) { var u = String(l[i].updated_at || ''); if (u > mx) mx = u; } return l.length + '|' + mx + '|' + E.maq + '|' + E.sessoes.length + '|' + JSON.stringify(E.seq[E.maq] || {}).length; }
+  var ultRecargaLite = 0;
   function ciclo() {
     try {
       if (!ativa()) return;
+      // lista incompleta (carregamento rápido sem datas/medidas): pede a lista completa, no máximo a cada 60 s
+      try {
+        var lb = ofsBase().filter(aberta).slice(0, 80);
+        var semDados = lb.filter(function (o) { return !('ent' in o) && !('data_entrega' in o); }).length;
+        if (lb.length && semDados > lb.length / 2 && Date.now() - ultRecargaLite > 60000) { ultRecargaLite = Date.now(); recarregarOfs(); }
+      } catch (_) {}
       var p = page();
       if (!raiz || !p.contains(raiz)) { raiz = null; montar(); carregarApoio().then(function () { assAnt = ''; ciclo(); }); }
       else p.classList.toggle('ds-ofmaq-ativa', !E.antiga);
