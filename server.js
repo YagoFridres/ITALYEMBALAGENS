@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027142456';
-const SW_RUNTIME_VERSION = '20261027142456';
+const PATCH_RUNTIME_VERSION = '20261027142558';
+const SW_RUNTIME_VERSION = '20261027142558';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39530,8 +39530,8 @@ const PORT = process.env.PORT || 3000;
 // A OF/amostra continua; só a foto/arquivo anexado sai do armazenamento e dos campos imagem_url/imgs.
 // OF: status concluído / pedido pronto / finalizado / faturado. Amostra: status "Feita" ou concluída.
 const _IMG_LIMPEZA = { rodando: false, timer: null, ultima: null };
-function _imgStatusOfConcluida(st) { const n = String(st || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); return /conclu|pedido pronto|finaliz|faturad/.test(n); }
-function _imgStatusAmostraFeita(st) { const n = String(st || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); return /^feita|conclu|finaliz/.test(n); }
+function _imgStatusOfConcluida(st) { const n = String(st || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); return /conclu|pedido pronto|finaliz|faturad|cancel/.test(n); }
+function _imgStatusAmostraFeita(st) { const n = String(st || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); return /^feit|conclu|finaliz|aprovad|reprovad|entreg|cancel|exclu/.test(n); }
 function _imgListaUrls(row) {
   const out = [];
   const add = (v) => { const t = String(v || '').trim(); if (t && t !== 'null') out.push(t); };
@@ -39592,14 +39592,40 @@ async function _imgLimparConcluidas(motivo) {
         if (!up.error) a.limpos++;
       }
     } catch (_) {}
-    const b = await _imgLimparTabela('amostras', _imgStatusAmostraFeita, ['imagem_url']);
+    const b = { lidos: 0, limpos: 0, arquivos: 0 };
+    try {
+      const COLS = ['imagem_url', 'imgs', 'imagens', 'foto_url', 'foto', 'imagem', 'arquivo_url'];
+      for (let pg = 0; pg < 20; pg++) {
+        const { data, error } = await supabase.from('amostras').select('*').range(pg * 500, pg * 500 + 499);
+        if (error) { console.warn('[IMG LIMPEZA] amostras', error.message); break; }
+        const rows = Array.isArray(data) ? data : [];
+        b.lidos += rows.length;
+        for (const row of rows) {
+          if (!_imgStatusAmostraFeita(row.status) && !(row.data_conclusao && !/pend|produc|abert/i.test(String(row.status || '')))) continue;
+          const urls = []; const payload = {};
+          COLS.forEach((c) => {
+            if (!(c in row)) return; const v = row[c];
+            const vazio = v == null || v === '' || (Array.isArray(v) && !v.length) || v === '[]';
+            if (vazio) return;
+            _imgListaUrls({ imagem_url: typeof v === 'string' && !/^\s*\[/.test(v) ? v : null, imgs: Array.isArray(v) || /^\s*\[/.test(String(v)) ? v : null }).forEach((u) => urls.push(u));
+            payload[c] = (c === 'imgs' || c === 'imagens') ? [] : null;
+          });
+          if (!Object.keys(payload).length) continue;
+          b.arquivos += await _imgRemoverDoStorage(urls);
+          let up = await supabase.from('amostras').update(payload).eq('id', row.id);
+          if (up.error) { Object.keys(payload).forEach((k) => { if (Array.isArray(payload[k])) payload[k] = '[]'; }); up = await supabase.from('amostras').update(payload).eq('id', row.id); }
+          if (!up.error) b.limpos++;
+        }
+        if (rows.length < 500) break;
+      }
+    } catch (eA) { console.warn('[IMG LIMPEZA] amostras erro', eA.message || eA); }
     _IMG_LIMPEZA.ultima = { em: new Date().toISOString(), motivo, ofs: a, amostras: b };
     if (a.limpos || b.limpos) { console.log('[IMG LIMPEZA]', JSON.stringify(_IMG_LIMPEZA.ultima)); try { _clearOfsCaches(); } catch (_) {} }
   } catch (e) { console.warn('[IMG LIMPEZA] erro', e.message || e); }
   finally { _IMG_LIMPEZA.rodando = false; }
 }
 function _imgAgendarLimpeza(motivo, ms) { clearTimeout(_IMG_LIMPEZA.timer); _IMG_LIMPEZA.timer = setTimeout(() => _imgLimparConcluidas(motivo), ms || 5000); }
-setTimeout(() => _imgLimparConcluidas('inicio'), 90 * 1000);
+setTimeout(() => _imgLimparConcluidas('inicio'), 30 * 1000);
 setInterval(() => _imgLimparConcluidas('periodica'), 10 * 60 * 1000);
 // ===== MODO OPERADOR (26/10/2026) =====
 // O operador escolhe a máquina, inicia a OF (fica "Em produção" e o tempo começa a contar) e finaliza.
@@ -39911,6 +39937,7 @@ app.get('/api/ofs-assinatura', autenticar, async (req, res) => {
 });
 
 app.get('/api/infra/limpeza-imagens', requireAdmin, (req, res) => res.json({ ok: true, ultima: _IMG_LIMPEZA.ultima, rodando: _IMG_LIMPEZA.rodando }));
+app.post('/api/infra/limpeza-imagens', requireAdmin, async (req, res) => { try { await _imgLimparConcluidas('manual'); return res.json({ ok: true, ultima: _IMG_LIMPEZA.ultima }); } catch (e) { return res.json({ ok: false, error: String(e.message || e) }); } });
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
