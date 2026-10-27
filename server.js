@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027143949';
-const SW_RUNTIME_VERSION = '20261027143949';
+const PATCH_RUNTIME_VERSION = '20261027144116';
+const SW_RUNTIME_VERSION = '20261027144116';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -21818,7 +21818,8 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
 
     while (true) {
       let q = supabase.from('maquinas').select('*').order('nome', { ascending: true });
-      if (empCol && empresa_id) q = q.eq(empCol, empresa_id);
+      // 27/10: máquinas sem empresa (cadastro antigo) valem para todas
+      if (empCol && empresa_id) q = q.or(empCol + '.eq.' + empresa_id + ',' + empCol + '.is.null');
       if (apenasAtivas) {
         try { q = q.eq('ativa', true); } catch (_) {}
       }
@@ -21845,6 +21846,14 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
       from += pageSize;
     }
 
+    // 27/10: um cadastro por nome (havia duplicados): fica o ativo, mais completo e mais antigo
+    try {
+      const nk = (v) => String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+      const nota = (m) => (m.ativa === true ? 1000 : 0) + ['producao', 'caixas_hora', 'setup_medio', 'tempo_setup_padrao_min', 'passagem_media', 'setor'].reduce((s2, k) => s2 + (m[k] != null && m[k] !== '' && Number(m[k]) !== 0 ? 10 : 0), 0);
+      const best = new Map();
+      all.forEach((m) => { const k = nk(m.nome || m.col); const b = best.get(k); if (!b || nota(m) > nota(b) || (nota(m) === nota(b) && String(m.created_at || '') < String(b.created_at || ''))) best.set(k, m); });
+      all = Array.from(best.values());
+    } catch (_) {}
     all = _mergeCanonicalMachineRows(all);
     cacheSet(cacheKey, all, 30 * 1000);
     return res.json({ ok: true, data: all, maquinas: all });
