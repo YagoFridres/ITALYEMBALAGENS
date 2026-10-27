@@ -73778,3 +73778,122 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   inst(); setInterval(inst, 1500);
 })();
+
+/* ===== ESTOQUE DE CLICHÊS — tela nova (27/10/2026) =====
+ * Cartões com foto, cliente, medidas, cores, máquinas, quantidade e local. Busca, filtros (cliente, sem foto,
+ * estoque baixo), formulário com foto (envio direto) e visualização ampliada. */
+(function () {
+  if (window.__dsCli) return; window.__dsCli = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function tk() { try { return localStorage.getItem('token') || ''; } catch (_) { return ''; } }
+  function req(m, url, body) {
+    return fetch((window.API_BASE || '') + url, { method: m, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+  }
+  function arr(v) { if (Array.isArray(v)) return v; if (typeof v === 'string' && v.trim()) { try { var p = JSON.parse(v); if (Array.isArray(p)) return p; } catch (_) {} return v.split(',').map(function (x) { return x.trim(); }).filter(Boolean); } return []; }
+  var E = { lista: [], busca: '', filtro: '', maqs: [] };
+  function foto(c) { return c.foto_url || c.imagem_url || c.foto || ''; }
+  function qtd(c) { return Number(c.quantidade_atual != null ? c.quantidade_atual : c.quantidade) || 0; }
+  function clientesDe(c) { var l = arr(c.clientes); if (c.cliente && l.indexOf(c.cliente) < 0) l.unshift(c.cliente); return l; }
+  function carregar() {
+    return Promise.all([req('GET', '/api/cliches_estoque?limit=3000'), req('GET', '/api/maquinas').catch(function () { return []; })]).then(function (r) {
+      E.lista = (Array.isArray(r[0]) ? r[0] : []).filter(function (c) { return c.ativo !== false; });
+      E.maqs = (Array.isArray(r[1]) ? r[1] : []).filter(function (m) { return m.ativa !== false; }).map(function (m) { return m.nome || m.col; }).filter(Boolean);
+      render();
+    }).catch(function (e) { var g = document.querySelector('#ds-cli .dcl-grade'); if (g) g.innerHTML = '<div class="dcl-vazio">Erro ao carregar: ' + esc(e.message) + '</div>'; });
+  }
+  function render() {
+    var r = document.getElementById('ds-cli'); if (!r) return;
+    var q = norm(E.busca).trim();
+    var l = E.lista.filter(function (c) {
+      if (E.filtro === 'semfoto' && foto(c)) return false;
+      if (E.filtro === 'baixo' && !(qtd(c) <= (Number(c.estoque_minimo) || 0) || qtd(c) === 0)) return false;
+      if (q && norm([c.nome, c.codigo, c.descricao, c.medidas, c.observacoes || c.obs, clientesDe(c).join(' '), arr(c.maquinas).join(' '), c.localizacao || c.local_armazenamento].join(' ')).indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return String(a.nome || a.codigo).localeCompare(String(b.nome || b.codigo)); });
+    var semFoto = E.lista.filter(function (c) { return !foto(c); }).length, baixo = E.lista.filter(function (c) { return qtd(c) === 0 || qtd(c) <= (Number(c.estoque_minimo) || 0); }).length;
+    r.querySelector('.dcl-kpis').innerHTML = [['', 'Clichês', E.lista.length], ['semfoto', 'Sem foto', semFoto], ['baixo', 'Zerados / no mínimo', baixo]].map(function (k) { return '<button type="button" data-filtro="' + k[0] + '" class="' + (E.filtro === k[0] ? 'on' : '') + '"><span>' + k[1] + '</span><b>' + k[2] + '</b></button>'; }).join('');
+    r.querySelector('.dcl-grade').innerHTML = l.length ? l.map(function (c) {
+      var f = foto(c), cl = clientesDe(c), mq = arr(c.maquinas), q2 = qtd(c);
+      return '<article class="dcl-card" data-id="' + esc(c.id) + '"><div class="dcl-img" data-a="ver">' + (f ? '<img src="' + esc(f) + '" alt="" loading="lazy">' : '<span>🖋️<small>sem foto</small></span>') + '<em class="dcl-qtd' + (q2 === 0 ? ' z' : '') + '">' + q2 + ' un.</em></div>'
+        + '<div class="dcl-tx"><h3>' + esc(c.nome || c.codigo || '—') + '</h3>' + (c.codigo && c.codigo !== c.nome ? '<span class="dcl-cod">' + esc(c.codigo) + '</span>' : '')
+        + '<ul>' + (c.medidas ? '<li>📐 ' + esc(c.medidas) + ' mm</li>' : '') + (cl.length ? '<li>🏢 ' + esc(cl.join(', ')) + '</li>' : '') + (mq.length ? '<li>🖨️ ' + esc(mq.join(', ')) + '</li>' : '') + ((c.localizacao || c.local_armazenamento) ? '<li>📍 ' + esc(c.localizacao || c.local_armazenamento) + '</li>' : '') + ((c.observacoes || c.obs) ? '<li>🎨 ' + esc(c.observacoes || c.obs) + '</li>' : '') + '</ul></div>'
+        + '<footer><button type="button" data-a="editar">Editar</button><button type="button" data-a="excluir" class="dcl-del">Excluir</button></footer></article>';
+    }).join('') : '<div class="dcl-vazio">Nenhum clichê ' + (q || E.filtro ? 'neste filtro.' : 'cadastrado. Use “+ Novo clichê”.') + '</div>';
+  }
+  function form(c) {
+    var novo = !c; c = c || { quantidade_atual: 1 };
+    var cls = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : [];
+    var mq = arr(c.maquinas);
+    var ov = document.createElement('div'); ov.className = 'dcl-ov';
+    ov.innerHTML = '<form class="dcl-modal" autocomplete="off"><header><h2>' + (novo ? 'Novo clichê' : 'Editar clichê') + '</h2><button type="button" class="dcl-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<div class="dcl-g"><label class="l2">Nome / descrição *<input name="nome" required value="' + esc(c.nome || '') + '" placeholder="Ex.: Agrofer logo frente"></label>'
+      + '<label>Código<input name="codigo" value="' + esc(c.codigo && c.codigo !== c.nome ? c.codigo : '') + '"></label><label>Cliente<input name="cliente" list="dcl-clis" value="' + esc(clientesDe(c)[0] || '') + '"></label>'
+      + '<label>Medidas (mm)<input name="medidas" value="' + esc(c.medidas || '') + '" placeholder="100x175"></label><label>Quantidade<input name="quantidade_atual" type="number" min="0" value="' + qtd(c) + '"></label>'
+      + '<label>Estoque mínimo<input name="estoque_minimo" type="number" min="0" value="' + esc(c.estoque_minimo || 0) + '"></label><label>Local<input name="localizacao" value="' + esc(c.localizacao || c.local_armazenamento || '') + '" placeholder="Prateleira, gaveta…"></label>'
+      + '<label class="l2">Cores / observações<input name="observacoes" value="' + esc(c.observacoes || c.obs || '') + '" placeholder="Ex.: vermelho e preto"></label>'
+      + '<fieldset class="l2"><legend>Máquinas</legend><div class="dcl-mq">' + E.maqs.map(function (m) { return '<label><input type="checkbox" name="maq" value="' + esc(m) + '"' + (mq.indexOf(m) >= 0 ? ' checked' : '') + '> ' + esc(m) + '</label>'; }).join('') + '</div></fieldset>'
+      + '<label class="l2">Foto<input type="file" name="foto" accept="image/*" capture="environment"></label>' + (foto(c) ? '<img class="dcl-prev l2" src="' + esc(foto(c)) + '" alt="">' : '') + '</div>'
+      + '<datalist id="dcl-clis">' + cls.slice(0, 3000).map(function (x) { return '<option value="' + esc(x.nome) + '">'; }).join('') + '</datalist>'
+      + '<footer><button type="button" data-x="fechar">Cancelar</button><button type="submit" class="dcl-pri">Salvar</button></footer></form>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-x="fechar"]')) ov.remove(); });
+    ov.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fm = e.target, g = function (n) { return String((fm.elements[n] || {}).value || '').trim(); };
+      var maqs = Array.prototype.filter.call(fm.querySelectorAll('[name="maq"]'), function (i) { return i.checked; }).map(function (i) { return i.value; });
+      var body = { nome: g('nome'), codigo: g('codigo') || g('nome'), cliente: g('cliente'), clientes: g('cliente') ? [g('cliente')] : [], medidas: g('medidas'), quantidade: Number(g('quantidade_atual')) || 0, quantidade_atual: Number(g('quantidade_atual')) || 0, estoque_minimo: Number(g('estoque_minimo')) || 0, localizacao: g('localizacao'), observacoes: g('observacoes'), maquinas: maqs };
+      var bt = fm.querySelector('.dcl-pri'); bt.disabled = true; bt.textContent = 'Salvando…';
+      (novo ? req('POST', '/api/cliches_estoque', body) : req('PUT', '/api/cliches_estoque/' + encodeURIComponent(c.id), body)).then(function (salvo) {
+        var arq = fm.elements.foto && fm.elements.foto.files && fm.elements.foto.files[0], id = (salvo && salvo.id) || c.id;
+        if (!arq || !id) return;
+        var fd = new FormData(); fd.append('file', arq); fd.append('tipo', 'cliche'); fd.append('item_id', id);
+        return fetch((window.API_BASE || '') + '/api/estoque_fotos/upload', { method: 'POST', headers: { Authorization: 'Bearer ' + tk() }, body: fd }).then(function (r) { if (!r.ok) throw new Error('foto não enviada'); });
+      }).then(function () { ov.remove(); return carregar(); }).catch(function (er) { bt.disabled = false; bt.textContent = 'Salvar'; try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} });
+    });
+  }
+  function montar() {
+    var p = document.getElementById('page-cliches'); if (!p || p.querySelector('#ds-cli')) return;
+    p.classList.add('dcl-ativa');
+    var r = document.createElement('div'); r.id = 'ds-cli';
+    r.innerHTML = '<header class="dcl-head"><div><h1>Estoque de Clichês</h1><p>Toque na foto para ampliar · filtros pelos números abaixo</p></div><button type="button" class="dcl-pri" data-a="novo">+ Novo clichê</button></header>'
+      + '<div class="dcl-kpis"></div><label class="dcl-busca"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Buscar nome, cliente, medida, cor, máquina…"></label><div class="dcl-grade"><div class="dcl-vazio">Carregando…</div></div>';
+    p.insertBefore(r, p.firstChild);
+    var inp = r.querySelector('input'), tm; inp.addEventListener('input', function () { clearTimeout(tm); tm = setTimeout(function () { E.busca = inp.value; render(); }, 150); });
+    r.addEventListener('click', function (e) {
+      var k = e.target.closest('[data-filtro]'); if (k) { E.filtro = k.getAttribute('data-filtro'); return render(); }
+      var b = e.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a');
+      if (a === 'novo') return form(null);
+      var card = b.closest('[data-id]'), c = card && E.lista.find(function (x) { return String(x.id) === card.getAttribute('data-id'); }); if (!c) return;
+      if (a === 'editar') return form(c);
+      if (a === 'ver') { var f = foto(c); if (!f) return form(c); var ov = document.createElement('div'); ov.className = 'dcl-ov'; ov.innerHTML = '<img class="dcl-big" src="' + esc(f) + '" alt="">'; ov.onclick = function () { ov.remove(); }; document.body.appendChild(ov); return; }
+      if (a === 'excluir') { var ov2 = document.createElement('div'); ov2.className = 'dcl-ov'; ov2.innerHTML = '<div class="dcl-modal" style="width:min(400px,100%)"><p>Excluir o clichê <b>' + esc(c.nome) + '</b>?</p><footer><button type="button" data-r="0">Cancelar</button><button type="button" data-r="1" class="dcl-delb">Excluir</button></footer></div>'; document.body.appendChild(ov2);
+        ov2.addEventListener('click', function (ev) { var x = ev.target.closest('[data-r]'); if (!x && ev.target !== ov2) return; ov2.remove(); if (x && x.getAttribute('data-r') === '1') req('DELETE', '/api/cliches_estoque/' + encodeURIComponent(c.id)).then(carregar).catch(function (er) { try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} }); }); }
+    });
+  }
+  var antes = false;
+  setInterval(function () {
+    var p = document.getElementById('page-cliches'); var on = !!(p && (p.classList.contains('active') || p.offsetParent !== null));
+    if (on) montar(); if (on && !antes) carregar(); antes = on;
+  }, 500);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-cli-css';
+    st.textContent = '#page-cliches.dcl-ativa > :not(#ds-cli):not(style):not(script){display:none!important}#page-cliches.dcl-ativa{overflow-y:auto}'
+      + '#ds-cli{padding:18px 20px 40px;color:var(--text)}.dcl-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}.dcl-head h1{margin:0;font-size:22px}.dcl-head p{margin:4px 0 0;font-size:13px;color:var(--text2)}'
+      + '.dcl-pri{height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}'
+      + '.dcl-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0 12px}.dcl-kpis button{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font:inherit;cursor:pointer}.dcl-kpis button.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.dcl-kpis span{display:block;font-size:12.5px;color:var(--text2)}.dcl-kpis b{font-size:22px}'
+      + '.dcl-busca{display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border:1px solid var(--b2);border-radius:10px;background:var(--surface);color:var(--text2);margin-bottom:14px}.dcl-busca input{flex:1;border:0!important;background:transparent!important;color:var(--text)!important;outline:none;font-size:14px;box-shadow:none!important;padding:0!important}'
+      + '.dcl-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}.dcl-vazio{grid-column:1/-1;text-align:center;color:var(--text2);padding:30px}'
+      + '.dcl-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}.dcl-img{position:relative;aspect-ratio:4/3;background:var(--s2);display:grid;place-items:center;cursor:zoom-in}.dcl-img img{width:100%;height:100%;object-fit:cover}.dcl-img span{font-size:34px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3)}.dcl-img small{font-size:11.5px}'
+      + '.dcl-qtd{position:absolute;right:8px;top:8px;font-style:normal;font-weight:800;font-size:12px;background:rgba(0,0,0,.6);color:#fff;border-radius:99px;padding:2px 9px}.dcl-qtd.z{background:var(--red)}'
+      + '.dcl-tx{padding:10px 12px;flex:1}.dcl-tx h3{margin:0;font-size:15px}.dcl-cod{font-size:12px;color:var(--text3)}.dcl-tx ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--text2)}'
+      + '.dcl-card footer{display:flex;gap:6px;padding:0 12px 12px}.dcl-card footer button{flex:1;height:34px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:13px;cursor:pointer}.dcl-del{color:var(--red)!important}'
+      + '.dcl-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}.dcl-big{max-width:94vw;max-height:90vh;border-radius:12px}.dcl-modal{width:min(620px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--b2);border-radius:16px;padding:18px}.dcl-modal header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dcl-modal h2{margin:0;font-size:18px}.dcl-x{background:none;border:0;color:var(--text2);font-size:18px;cursor:pointer}'
+      + '.dcl-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.dcl-g label,.dcl-g fieldset{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--text2);border:0;padding:0;margin:0}.dcl-g .l2{grid-column:1/-1}.dcl-g input:not([type=checkbox]){height:38px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);padding:0 10px;font:inherit;font-size:14px}.dcl-g input[type=file]{padding:7px 10px}'
+      + '.dcl-mq{display:flex;flex-wrap:wrap;gap:6px}.dcl-mq label{flex-direction:row!important;align-items:center;gap:6px!important;border:1px solid var(--b2);border-radius:99px;padding:5px 10px;color:var(--text)!important}.dcl-prev{max-height:160px;object-fit:contain;border-radius:10px;background:var(--s2)}'
+      + '.dcl-modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.dcl-modal footer button{height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.dcl-modal footer .dcl-pri{background:var(--accent);border-color:var(--accent);color:#fff}.dcl-delb{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important}'
+      + '@media (max-width:700px){#ds-cli{padding:12px 12px 110px}.dcl-head .dcl-pri{width:100%}.dcl-grade{grid-template-columns:1fr 1fr;gap:8px}.dcl-g{grid-template-columns:1fr}.dcl-kpis b{font-size:18px}}@media (max-width:420px){.dcl-grade{grid-template-columns:1fr}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();

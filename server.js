@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027143349';
-const SW_RUNTIME_VERSION = '20261027143349';
+const PATCH_RUNTIME_VERSION = '20261027143601';
+const SW_RUNTIME_VERSION = '20261027143601';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -25413,6 +25413,9 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
       codigo: b.codigo || b.nome || '',
       descricao: b.descricao || b.nome || '',
       quantidade: Number(b.quantidade ?? b.qtd ?? 0) || 0,
+      quantidade_atual: Number(b.quantidade_atual ?? b.quantidade ?? b.qtd ?? 0) || 0,
+      estoque_minimo: b.estoque_minimo !== undefined ? (Number(b.estoque_minimo) || 0) : undefined,
+      localizacao: b.localizacao, local_armazenamento: b.local_armazenamento ?? b.localizacao, tipo_corte: b.tipo_corte, status: b.status,
       cliente: b.cliente || '',
       emp_id: empresaCtx.emp_id || b.emp_id || b.empId || 'E1',
       empresa_id: empresaCtx.empresa_id,
@@ -25460,6 +25463,9 @@ app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
       codigo: b.codigo || b.nome,
       descricao: b.descricao || b.nome,
       quantidade: b.quantidade ?? b.qtd,
+      quantidade_atual: b.quantidade_atual ?? b.quantidade ?? b.qtd,
+      estoque_minimo: b.estoque_minimo,
+      localizacao: b.localizacao, local_armazenamento: b.local_armazenamento ?? b.localizacao, tipo_corte: b.tipo_corte, status: b.status,
       cliente: b.cliente,
       emp_id: b.emp_id !== undefined || b.empId !== undefined ? (b.emp_id || b.empId) : empresaCtx.emp_id,
       empresa_id: b.empresa_id !== undefined || b.empresaId !== undefined ? (b.empresa_id || b.empresaId) : empresaCtx.empresa_id,
