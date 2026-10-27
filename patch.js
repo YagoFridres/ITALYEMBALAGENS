@@ -72987,3 +72987,23 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== INCONFORMIDADES: lista vazia (27/10/2026) =====
+ * A lista esperava {ok, data} e o servidor devolve a lista direto; mostrava "Nenhuma inconformidade" mesmo
+ * com registros. Só a chamada da lista (a que leva "&t=") recebe o formato que ela espera. */
+(function () {
+  if (window.__dsIncLista) return; window.__dsIncLista = true;
+  var f0 = window.fetch;
+  window.fetch = function (input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    var met = String((init && init.method) || 'GET').toUpperCase();
+    var p = f0.apply(this, arguments);
+    if (met !== 'GET' || !/\/api\/inconformidades\?[^#]*&t=\d/.test(url)) return p;
+    return p.then(function (r) {
+      return r.clone().json().then(function (j) {
+        if (!Array.isArray(j)) return r;
+        return new Response(JSON.stringify({ ok: true, data: j }), { status: r.status, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();
