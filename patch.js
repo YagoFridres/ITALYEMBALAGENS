@@ -72846,8 +72846,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     pilha.appendChild(el);
     while (pilha.children.length > 4) pilha.removeChild(pilha.firstChild);
     var fechar = function () { el.classList.add('ds-pop-sai'); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 250); };
-    el.querySelector('.ds-pop-x').onclick = fechar;
-    setTimeout(fechar, 6000);
+    el.onclick = fechar;
+    setTimeout(fechar, 3500);
   }
   window.dsPop = pop;
   // ---------- o que cada requisição significa ----------
@@ -72932,16 +72932,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   instalarToast(); setInterval(instalarToast, 3000);
   try {
     var st = document.createElement('style'); st.id = 'ds-pop-css';
-    st.textContent = '#ds-pop-pilha{position:fixed;right:20px;bottom:96px;z-index:100000;display:flex;flex-direction:column;gap:10px;align-items:flex-end;pointer-events:none;max-width:min(420px,calc(100vw - 32px))}'
-      + '.ds-pop{pointer-events:auto;display:flex;align-items:flex-start;gap:12px;background:var(--surface,#16181d);color:var(--text,#fff);border:1px solid var(--b2,#333);border-left:4px solid var(--green,#22c55e);border-radius:12px;padding:12px 12px 12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.35);min-width:260px;animation:dsPopIn .22s ease-out}'
-      + '.ds-pop-del{border-left-color:var(--red,#ef4444)}.ds-pop-info{border-left-color:var(--accent,#3b82f6)}'
-      + '.ds-pop-ic{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;background:color-mix(in srgb,var(--green,#22c55e) 18%,transparent);color:var(--green,#22c55e)}'
+    st.textContent = '#ds-pop-pilha{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;display:flex;flex-direction:column;gap:12px;align-items:stretch;pointer-events:none;width:min(480px,calc(100vw - 32px))}'
+      + '.ds-pop{pointer-events:auto;display:flex;align-items:center;gap:16px;background:var(--surface,#16181d);color:var(--text,#fff);border:1px solid var(--b2,#333);border-top:5px solid var(--green,#22c55e);border-radius:16px;padding:20px 18px 20px 22px;box-shadow:0 24px 64px rgba(0,0,0,.45),0 0 0 100vmax rgba(0,0,0,.18);animation:dsPopIn .2s ease-out}'
+      + '.ds-pop-del{border-top-color:var(--red,#ef4444)}.ds-pop-info{border-top-color:var(--accent,#3b82f6)}'
+      + '.ds-pop-ic{flex:0 0 44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;font-weight:800;background:color-mix(in srgb,var(--green,#22c55e) 18%,transparent);color:var(--green,#22c55e)}'
       + '.ds-pop-del .ds-pop-ic{background:color-mix(in srgb,var(--red,#ef4444) 16%,transparent);color:var(--red,#ef4444)}.ds-pop-info .ds-pop-ic{background:color-mix(in srgb,var(--accent,#3b82f6) 16%,transparent);color:var(--accent,#3b82f6)}'
-      + '.ds-pop-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.ds-pop-tx b{font-size:14px;font-weight:700;line-height:1.3}.ds-pop-tx span{font-size:12.5px;color:var(--text2,#aaa);line-height:1.35;overflow-wrap:anywhere}'
+      + '.ds-pop-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.ds-pop-tx b{font-size:17px;font-weight:700;line-height:1.3}.ds-pop-tx span{font-size:14px;color:var(--text2,#aaa);line-height:1.35;overflow-wrap:anywhere}'
       + '.ds-pop-x{flex:0 0 auto;background:none;border:0;color:var(--text3,#888);font-size:20px;line-height:1;cursor:pointer;padding:0 2px}.ds-pop-x:hover{color:var(--text,#fff)}'
       + '.ds-pop-sai{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}'
-      + '@keyframes dsPopIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}'
-      + '@media (max-width:700px){#ds-pop-pilha{left:16px;right:16px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 12px);align-items:stretch;max-width:none}.ds-pop{min-width:0}}';
+      + '@keyframes dsPopIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}'
+      + '.ds-pop:not(:last-child){box-shadow:0 12px 32px rgba(0,0,0,.35)}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
