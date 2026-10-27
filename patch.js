@@ -73137,3 +73137,66 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== CLIENTES: editar e salvar de verdade (27/10/2026) =====
+ * - A janela de editar não mostrava endereço, observações e (às vezes) razão social/estado já gravados.
+ * - Ao salvar, campos apagados não eram enviados (nunca dava para limpar um campo) e estado/razão social se perdiam.
+ * Aqui: a janela carrega todos os campos e o salvar envia todos (vazio = apaga). */
+(function () {
+  if (window.__dsCliSalvar) return; window.__dsCliSalvar = true;
+  function v(id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; }
+  function put(id, val) { var e = document.getElementById(id); if (e) e.value = val == null ? '' : String(val); }
+  function instalar() {
+    var a0 = window.abrirModalCliente;
+    if (typeof a0 === 'function' && !a0.__dsCli) {
+      var a1 = function (id) {
+        var r = a0.apply(this, arguments);
+        try {
+          var lista = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : (window.CLIENTES || []);
+          var c = (id && typeof id === 'object') ? id : (id ? lista.find(function (x) { return x.id === id; }) : null);
+          if (c) {
+            put('cl-rs', c.rs || c.razao_social || '');
+            put('cl-end', c.endereco || c.end || '');
+            put('cl-obs', c.observacoes || c.obs || '');
+            put('cl-tel', c.tel || c.telefone || '');
+            put('cl-uf', c.uf || c.estado || '');
+            put('cl-cidade', c.cidade || '');
+          }
+        } catch (_) {}
+        return r;
+      };
+      a1.__dsCli = true; window.abrirModalCliente = a1;
+    }
+    var s0 = window.salvarCliente;
+    if (typeof s0 === 'function' && !s0.__dsCli) {
+      var s1 = async function () {
+        var id = '';
+        try { id = String((typeof CLIENTE_ATUAL_ID !== 'undefined' ? CLIENTE_ATUAL_ID : '') || v('cli-id') || '').trim(); } catch (_) { id = v('cli-id'); }
+        if (!id || id === 'undefined' || id === 'null') return s0.apply(this, arguments); // cadastro novo: fluxo original
+        var nome = v('cl-nome'); if (!nome) { try { window.toast('Informe o nome', 'var(--red)'); } catch (_) {} return; }
+        var vazio = function (x) { return x === '' ? null : x; };
+        var payload = {
+          nome: nome, rs: vazio(v('cl-rs')), cnpj: vazio(v('cl-cnpj')), tel: vazio(v('cl-tel')), email: vazio(v('cl-email')),
+          cidade: vazio(v('cl-cidade')), uf: vazio(v('cl-uf')), endereco: vazio(v('cl-end')), observacoes: vazio(v('cl-obs')),
+          vendedor_id: vazio(v('cl-vend')), emp_id: v('cl-emp') || 'E1', ramo: vazio(v('cliente-ramo'))
+        };
+        try {
+          var d = String(payload.cnpj || '').replace(/\D/g, '');
+          if (d.length === 14 && typeof window._clienteCheckCnpjDuplicidade === 'function') { if (await window._clienteCheckCnpjDuplicidade(d, id, payload.emp_id)) return; }
+          if ((d.length === 14 || d.length === 11) && typeof window._cliFmtDoc === 'function') payload.cnpj = window._cliFmtDoc(d);
+        } catch (_) {}
+        var tk = ''; try { tk = localStorage.getItem('token') || ''; } catch (_) {}
+        var r = await fetch((window.API_BASE || '') + '/api/clientes/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk }, body: JSON.stringify(payload) });
+        var j = await r.json().catch(function () { return null; });
+        if (!r.ok || (j && (j.error || j.ok === false))) { try { window.toast('Erro ao salvar cliente: ' + String((j && (j.error || j.message)) || r.status), 'var(--red)'); } catch (_) {} return; }
+        try { window.fechar('modal-cli'); } catch (_) {}
+        try { CLIENTE_ATUAL_ID = ''; } catch (_) {}
+        try { await window.carregarClientes(true); } catch (_) {}
+        try { window.renderClientes(); } catch (_) {}
+      };
+      s1.__dsCli = true; window.salvarCliente = s1;
+      try { var b = document.querySelector('#modal-cli .modal-footer .btn-accent'); if (b && b.onclick === s0) b.onclick = s1; } catch (_) {}
+    }
+  }
+  instalar(); setInterval(instalar, 2000);
+})();

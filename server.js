@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027133421';
-const SW_RUNTIME_VERSION = '20261027133421';
+const PATCH_RUNTIME_VERSION = '20261027133607';
+const SW_RUNTIME_VERSION = '20261027133607';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5494,8 +5494,8 @@ function clientesPayload(p) {
   const out = {};
   const map = {
     nome: 'nome',
-    razao_social: 'razao_social',
-    rs: 'razao_social',
+    razao_social: 'rs',
+    rs: 'rs',
     cnpj_cpf: 'cnpj',
     cnpj: 'cnpj',
     cpf: 'cpf',
@@ -5504,6 +5504,7 @@ function clientesPayload(p) {
     email: 'email',
     cidade: 'cidade',
     uf: 'uf',
+    estado: 'uf',
     endereco: 'endereco',
     contato: 'contato',
     observacoes: 'observacoes',
