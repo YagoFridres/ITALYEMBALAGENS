@@ -74182,10 +74182,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     r.querySelector('.dmq-t2').hidden = !outras.length;
   }
   function form(m) {
-    var campos = [['producao', 'Produção média (cx/h)'], ['caixas_hora', 'Capacidade (cx/h)'], ['setup_medio', 'Setup médio (min)'], ['tempo_setup_padrao_min', 'Setup padrão (min)'], ['passagem_media', 'Passagem média'], ['horario_inicio', 'Início do turno', 'time'], ['horario_fim', 'Fim do turno', 'time'], ['almoco_inicio', 'Início do almoço', 'time'], ['almoco_min', 'Almoço (min)'], ['intervalo_manha_min', 'Intervalo manhã (min)'], ['intervalo_tarde_min', 'Intervalo tarde (min)'], ['setup_manha_min', 'Setups manhã (min)'], ['setup_tarde_min', 'Setups tarde (min)']];
+    var campos = [['producao', 'Produção média (cx/h)', 'number', 'producao_media'], ['caixas_hora', 'Capacidade (cx/h)'], ['setup_medio', 'Setup médio (min)', 'number', 'setup_medio_min'], ['tempo_setup_padrao_min', 'Setup padrão (min)'], ['passagem_media', 'Passagem média'], ['horario_inicio', 'Início do turno', 'time'], ['horario_fim', 'Fim do turno', 'time'], ['almoco_inicio', 'Início do almoço', 'time'], ['almoco_min', 'Almoço (min)'], ['intervalo_manha_min', 'Intervalo manhã (min)'], ['intervalo_tarde_min', 'Intervalo tarde (min)'], ['setup_manha_min', 'Setups manhã (min)'], ['setup_tarde_min', 'Setups tarde (min)']];
     var ov = document.createElement('div'); ov.className = 'dmq-ov';
     ov.innerHTML = '<form class="dmq-modal"><header><h2>' + esc(m.nome || m.col) + '</h2><button type="button" data-x="1" class="dmq-x" aria-label="Fechar">✕</button></header><div class="dmq-g">'
-      + campos.map(function (c) { return '<label>' + c[1] + '<input name="' + c[0] + '" type="' + (c[2] || 'number') + '" step="any" value="' + esc(m[c[0]] == null ? '' : m[c[0]]) + '"></label>'; }).join('') + '<label>Setor<input name="setor" value="' + esc(m.setor || '') + '"></label></div>'
+      + campos.map(function (c) { return '<label>' + c[1] + '<input name="' + (c[3] || c[0]) + '" type="' + (c[2] || 'number') + '" step="any" value="' + esc(m[c[0]] == null ? '' : m[c[0]]) + '"></label>'; }).join('') + '<label>Setor<input name="setor" value="' + esc(m.setor || '') + '"></label></div>'
       + '<footer><button type="button" data-x="1">Cancelar</button><button type="submit" class="dmq-pri">Salvar</button></footer></form>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
@@ -74194,8 +74194,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       fd.forEach(function (v, k) { v = String(v).trim(); if (v === '') return; b[k] = /horario|almoco_inicio|setor/.test(k) ? v : Number(v.replace(',', '.')); });
       var bt = ov.querySelector('.dmq-pri'); bt.disabled = true;
       // a rota de alteração grava "caixas_hora" a partir de "producao"; mando capacidade explícita
-      var ida = m._virtual ? req('POST', '/api/maquinas', Object.assign({ ativa: true }, b)) : req('PUT', '/api/maquinas/' + encodeURIComponent(m.id), Object.assign({}, b, { producao: undefined }));
-      ida.then(function () { return m._virtual ? null : req('PUT', '/api/maquinas/' + encodeURIComponent(m.id), { nome: b.nome, caixas_hora: b.caixas_hora }); })
+      var ida = m._virtual ? req('POST', '/api/maquinas', Object.assign({ ativa: true, producao: b.producao_media, setup_medio: b.setup_medio_min }, b)) : req('PUT', '/api/maquinas/' + encodeURIComponent(m.id), b);
+      ida
         .then(function () { ov.remove(); carregar(); }).catch(function (er) { bt.disabled = false; try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} });
     });
   }

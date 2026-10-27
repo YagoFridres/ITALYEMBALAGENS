@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027144233';
-const SW_RUNTIME_VERSION = '20261027144233';
+const PATCH_RUNTIME_VERSION = '20261027144251';
+const SW_RUNTIME_VERSION = '20261027144251';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -22215,6 +22215,8 @@ async function _maquinaUpdateHandler(req, res) {
       caixas_hora: (b.caixas_hora !== undefined || b.producao_hora !== undefined || b.producao !== undefined || b.phora !== undefined) ? Number(b.caixas_hora ?? b.producao_hora ?? b.producao ?? b.phora ?? 0) : undefined,
       tempo_setup_padrao_min: (b.tempo_setup_padrao_min !== undefined || b.setup_min !== undefined || b.setup_medio !== undefined || b.setup !== undefined) ? Number(b.tempo_setup_padrao_min ?? b.setup_min ?? b.setup_medio ?? b.setup ?? 0) : undefined,
       passagem_media: (b.passagem_media !== undefined || b.passagem_media_min !== undefined || b.passagem !== undefined) ? Number(b.passagem_media ?? b.passagem_media_min ?? b.passagem ?? 0) : undefined,
+      producao: b.producao_media !== undefined ? Number(b.producao_media) || 0 : undefined,
+      setup_medio: b.setup_medio_min !== undefined ? Number(b.setup_medio_min) || 0 : undefined,
       meta_perda_pct: b.meta_perda_pct !== undefined ? (b.meta_perda_pct === null ? null : Number(b.meta_perda_pct)) : undefined,
       descricao: b.descricao !== undefined || b.desc !== undefined ? (String(b.descricao ?? b.desc ?? '').trim() || null) : undefined,
       icone: b.icone !== undefined || b.ico !== undefined ? (String(b.icone ?? b.ico ?? '').trim() || null) : undefined,
