@@ -74482,3 +74482,348 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dcs-t thead{display:none}.dcs-t,.dcs-t tbody{display:block}.dcs-t tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 12px;border-top:1px solid var(--border)}.dcs-t td{display:block;padding:0;border:0;white-space:normal}.dcs-t td::before{content:attr(data-l);display:block;font-size:11px;color:var(--text3)}}';
   try { var st = document.createElement('style'); st.id = 'ds-cmp-status-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
+
+/* ===== ORÇAMENTOS: editor novo (27/10/2026) =====
+ * Substitui a calculadora antiga no "Novo orçamento", "Editar", "Itens" e "Imprimir" da lista.
+ * - Ao abrir um orçamento novo pergunta quais ondas (B, C, BC) vai usar; só elas aparecem.
+ * - Dois seletores: ondas do orçamento e ondas que vão para a impressão.
+ * - Chapa utilizada: busca no estoque digitando (ex.: "chab21" acha AB21) ou texto livre; salva os dois.
+ * - Parâmetros (custo fixo, margem, comissão, impostos, vl km frete, km) salvam no orçamento e entram no cálculo
+ *   (zero vale zero). Custo mercadoria = 100 − fixo − margem − comissão − impostos.
+ * - Vários itens por orçamento. Mesmas fórmulas de compensação (calcCompensacao) da calculadora antiga.
+ * Grava por XMLHttpRequest para que os ajustes antigos de fetch não troquem os itens. */
+(function () {
+  if (window.__dsOrcEd) return; window.__dsOrcEd = true;
+  var ONDAS = ['B', 'C', 'BC'], IDX = { B: 0, C: 1, BC: 2 };
+  var TIPOS = [['Normal', [['200', 'Meia Caixa'], ['201', 'Normal 8 Tampas'], ['202', 'Semi-Sobreposta'], ['203', 'Sobreposta Total'], ['205', 'Internas Iguais'], ['209', 'Abas Curtas']]],
+    ['Telescópica', [['300', 'Telesc. Tampo'], ['301', 'Telesc. Fundo'], ['325', 'Total Tampo'], ['326', 'Total Fundo'], ['340', 'Testeiras Tampo'], ['341', 'Testeiras Fundo'], ['360', 'Laterais Tampo'], ['361', 'Laterais Fundo']]],
+    ['Envoltório', [['402', 'Env. Fundo Int.'], ['409', 'Env. 5 Painéis'], ['415', 'Env. Abas Seg.'], ['417', 'Env. Abas Sobr.']]]];
+  var PAD = { vb: 2.47, vc: 3.29, vbc: 4.46, cf: 15, mg: 25, cvend: 1, imp: 10, vkm: 1.15, km: 50 };
+  var E = null, CHAPAS = null;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function n(v, d) { if (v === '' || v == null) return d == null ? 0 : d; var x = parseFloat(String(v).replace(/\./g, function (m, i, s) { return /,/.test(s) ? '' : m; }).replace(',', '.')); return isFinite(x) ? x : (d == null ? 0 : d); }
+  function has(v) { return v !== undefined && v !== null && v !== ''; }
+  function R(v, dec) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: dec || 2, maximumFractionDigits: dec || 2 }); }
+  function N(v, dec) { return Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: dec == null ? 2 : dec }); }
+  function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, ''); }
+  function xhr(m, url, body) {
+    return new Promise(function (ok, no) {
+      var x = new XMLHttpRequest(); x.open(m, (window.API_BASE || '') + url); x.setRequestHeader('Content-Type', 'application/json');
+      try { var t = localStorage.getItem('token'); if (t) x.setRequestHeader('Authorization', 'Bearer ' + t); } catch (_) {}
+      x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText || '{}'); } catch (_) {} if (x.status >= 400 || j.ok === false || j.error) return no(new Error(j.error || ('HTTP ' + x.status))); ok(j.data !== undefined ? j.data : j); };
+      x.onerror = function () { no(new Error('Sem conexão')); }; x.send(body ? JSON.stringify(body) : null);
+    });
+  }
+  function pop(t, d, k) { try { if (window.dsPop) return window.dsPop(t, d || '', k || 'ok'); } catch (_) {} try { window.toast(t); } catch (_) {} }
+  function aviso(m) { try { window.toast(m, 'var(--yellow)'); } catch (_) {} }
+  function clientes() { try { return (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : []; } catch (_) { return []; } }
+  function nomeCli(c) { return String(c && (c.nome || c.rs || c.razao_social || c.fantasia) || '').trim(); }
+  function nomeTipo(t) { var r = ''; TIPOS.forEach(function (g) { g[1].forEach(function (x) { if (x[0] === String(t)) r = x[0] + ' — ' + x[1]; }); }); return r || String(t || ''); }
+  function lblChapa(c) { return [c.nomenclatura, c.fornecedor, c.tamanho, c.gramatura ? c.gramatura + 'g' : ''].filter(Boolean).join(' · ') + (c.nome_uso && !/estoque/i.test(c.nome_uso) ? ' — ' + c.nome_uso : ''); }
+  function carregarChapas() {
+    if (CHAPAS) return Promise.resolve(CHAPAS);
+    return xhr('GET', '/api/chapas_estoque?limit=10000&nocache=1').then(function (r) { var l = Array.isArray(r) ? r : (r && (r.data || r.rows)) || []; CHAPAS = l.map(function (c) { return { id: c.id, lbl: lblChapa(c), k: norm([c.nomenclatura, c.fornecedor, c.tamanho, c.gramatura, c.nome_uso, c.nome, c.categoria].join(' ')), k2: norm(c.nomenclatura), q: Number(c.quantidade_atual != null ? c.quantidade_atual : c.quantidade || 0) }; }); return CHAPAS; }).catch(function () { CHAPAS = []; return CHAPAS; });
+  }
+  function buscarChapas(q) {
+    var a = norm(q); if (!a || !CHAPAS) return [];
+    var alts = [a]; if (/^chapa/.test(a) && a.length > 5) alts.push(a.slice(5)); else if (/^ch/.test(a) && a.length > 2) alts.push(a.slice(2));
+    var l = CHAPAS.filter(function (c) { return alts.some(function (x) { return c.k.indexOf(x) >= 0; }); });
+    l.sort(function (x, y) { var px = alts.some(function (z) { return x.k2.indexOf(z) === 0; }) ? 0 : 1, py = alts.some(function (z) { return y.k2.indexOf(z) === 0; }) ? 0 : 1; return px - py || y.q - x.q; });
+    return l.slice(0, 30);
+  }
+  // ---------- cálculo ----------
+  function calcItem(it, par, vals, ondas) {
+    var comps = []; try { comps = window.calcCompensacao(parseInt(it.tipo, 10), n(it.comp), n(it.larg), n(it.alt), { sob: n(it.sob), enc: n(it.enc) }) || []; } catch (_) { comps = []; }
+    var w3 = 100 - n(par.cf) - n(par.mg) - n(par.cvend) - n(par.imp);
+    var qtd = n(it.qtd);
+    var res = {};
+    ondas.forEach(function (o) {
+      var c = comps[IDX[o]]; if (!c) return;
+      var val = n(vals[o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc']);
+      var bruto = c.area * val * qtd, liquida = w3 > 0 ? bruto * 100 / w3 : 0;
+      res[o] = { onda: o, compIdx: IDX[o], compLabel: String(IDX[o] + 1), compTitle: 'Onda ' + o, largura: c.largura, comprimento: c.comprimento, area: c.area, val: val, bruto: bruto, liquida: liquida, vunit: qtd ? liquida / qtd : 0 };
+    });
+    return res;
+  }
+  function calcTudo() {
+    var frete = n(E.par.vkm) * n(E.par.km), w3 = 100 - n(E.par.cf) - n(E.par.mg) - n(E.par.cvend) - n(E.par.imp);
+    var porItem = E.itens.map(function (it) { return calcItem(it, E.par, E.vals, E.ondas); });
+    var tot = {}; E.ondas.forEach(function (o) { var s = porItem.reduce(function (a, r) { return a + (r[o] ? r[o].liquida : 0); }, 0); tot[o] = { subtotal: s, frete: frete, total: s + frete }; });
+    return { w3: w3, frete: frete, porItem: porItem, tot: tot };
+  }
+  // ---------- a partir de um orçamento salvo ----------
+  function deOrc(o) {
+    var p = (o && o.parametros && typeof o.parametros === 'object') ? o.parametros : {};
+    var blocos = Array.isArray(p.itens) && p.itens.length ? p.itens : (Array.isArray(o.itens) && o.itens.some(function (x) { return x && (x.comp || (x.parametros && x.parametros.comp)); }) ? o.itens : []);
+    function pv(k, d) { if (has(p[k])) return n(p[k]); var b = blocos[0] && blocos[0].parametros; if (b && has(b[k])) return n(b[k]); return d; }
+    var ondas = Array.isArray(p.ondas_orcamento) && p.ondas_orcamento.length ? p.ondas_orcamento : String(o.onda || '').split('/').map(function (x) { return x.trim().toUpperCase(); }).filter(function (x) { return IDX[x] != null; });
+    if (!ondas.length) ondas = ONDAS.slice();
+    var imp = Array.isArray(p.ondas_impressao) ? p.ondas_impressao.filter(function (x) { return ondas.indexOf(x) >= 0; }) : ondas.slice();
+    var itens = blocos.map(function (b, i) { var bp = b.parametros || {}; return { nome: b.nome_item || b.nome || ('Item ' + (i + 1)), tipo: String(b.tipo || bp.tipo || p.tipo || '201'), comp: b.comp != null ? b.comp : bp.comp, larg: b.larg != null ? b.larg : bp.larg, alt: b.alt != null ? b.alt : bp.alt, qtd: b.quantidade != null ? b.quantidade : bp.qtd, sob: has(b.sob) ? b.sob : (bp.sob || 0), enc: has(b.enc) ? b.enc : (bp.enc || 0) }; });
+    if (!itens.length) itens = [{ nome: 'Item 1', tipo: String(p.tipo || '201'), comp: has(p.comp) ? p.comp : (o.medidas || '').split('x')[0] || 300, larg: has(p.larg) ? p.larg : (o.medidas || '').split('x')[1] || 200, alt: has(p.alt) ? p.alt : (o.medidas || '').split('x')[2] || 100, qtd: has(p.qtd) ? p.qtd : (o.quantidade || 1000), sob: p.sob || 0, enc: p.enc || 0 }];
+    var cn = String(o.cliente_nome || '').trim(); if (/selecione/i.test(cn)) cn = '';
+    return { id: o.id || null, numero: o.numero_orcamento || '', cliente_id: o.cliente_id || '', cliente_nome: cn, nome: o.nome || o.nome_orcamento || '', pasta_id: o.pasta_id || '', status: o.status || 'Rascunho',
+      chapa: String(o.chapa_utilizada || p.chapa_utilizada || p.chapaUtilizada || '').trim(), chapa_id: p.chapa_id || '', obs: p.observacoes_orc || o.observacoes || '',
+      ondas: ONDAS.filter(function (x) { return ondas.indexOf(x) >= 0; }), imp: ONDAS.filter(function (x) { return imp.indexOf(x) >= 0; }),
+      vals: { vb: pv('vb', PAD.vb), vc: pv('vc', PAD.vc), vbc: pv('vbc', PAD.vbc) },
+      par: { cf: pv('cf', PAD.cf), mg: pv('mg', PAD.mg), cvend: has(p.cvend) ? n(p.cvend) : pv('cv', PAD.cvend), imp: pv('imp', PAD.imp), vkm: pv('vkm', PAD.vkm), km: pv('km', PAD.km) },
+      itens: itens };
+  }
+  function ultimosParametros() { try { return JSON.parse(localStorage.getItem('ds_orc_param') || 'null'); } catch (_) { return null; } }
+  function novoEstado(ondas) {
+    var u = ultimosParametros() || {};
+    return { id: null, numero: '', cliente_id: '', cliente_nome: '', nome: '', pasta_id: '', status: 'Rascunho', chapa: '', chapa_id: '', obs: '', ondas: ondas, imp: ondas.slice(),
+      vals: { vb: has(u.vb) ? u.vb : PAD.vb, vc: has(u.vc) ? u.vc : PAD.vc, vbc: has(u.vbc) ? u.vbc : PAD.vbc },
+      par: { cf: has(u.cf) ? u.cf : PAD.cf, mg: has(u.mg) ? u.mg : PAD.mg, cvend: has(u.cvend) ? u.cvend : PAD.cvend, imp: has(u.imp) ? u.imp : PAD.imp, vkm: has(u.vkm) ? u.vkm : PAD.vkm, km: has(u.km) ? u.km : PAD.km },
+      itens: [{ nome: 'Item 1', tipo: '201', comp: '', larg: '', alt: '', qtd: 1000, sob: 0, enc: 0 }] };
+  }
+  // ---------- tela ----------
+  function shell(html, cls) {
+    fechar();
+    var ov = document.createElement('div'); ov.id = 'ds-orc-ov'; ov.className = 'doe-ov';
+    ov.innerHTML = '<div class="doe-m ' + (cls || '') + '" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.appendChild(ov); document.documentElement.classList.add('doe-aberto');
+    return ov;
+  }
+  function fechar() { var o = document.getElementById('ds-orc-ov'); if (o) o.remove(); document.documentElement.classList.remove('doe-aberto'); }
+  function chips(sel, attr, so) { return ONDAS.filter(function (o) { return !so || so.indexOf(o) >= 0; }).map(function (o) { return '<button type="button" class="doe-chip' + (sel.indexOf(o) >= 0 ? ' on' : '') + '" ' + attr + '="' + o + '">' + o + '</button>'; }).join(''); }
+  function perguntarOndas(cb) {
+    var sel = [];
+    var ov = shell('<header><h2>Novo orçamento</h2><button type="button" class="doe-x" data-fechar aria-label="Fechar">✕</button></header>'
+      + '<div class="doe-pergunta"><h3>Quais ondas vai usar neste orçamento?</h3><p>Escolha uma ou mais. Só as escolhidas aparecem no cálculo (dá para mudar depois).</p>'
+      + '<div class="doe-chips doe-chips-g">' + chips(sel, 'data-po') + '</div>'
+      + '<div class="doe-acoes"><button type="button" class="doe-btn" data-fechar>Cancelar</button><button type="button" class="doe-btn doe-pri" data-ok disabled>Continuar</button></div></div>', 'doe-p');
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov || e.target.closest('[data-fechar]')) return fechar();
+      var c = e.target.closest('[data-po]');
+      if (c) { var o = c.getAttribute('data-po'), i = sel.indexOf(o); if (i >= 0) sel.splice(i, 1); else sel.push(o); c.classList.toggle('on', i < 0); ov.querySelector('[data-ok]').disabled = !sel.length; return; }
+      if (e.target.closest('[data-ok]') && sel.length) cb(ONDAS.filter(function (x) { return sel.indexOf(x) >= 0; }));
+    });
+  }
+  function campo(lbl, attr, val, extra) { return '<label class="doe-f"><span>' + lbl + '</span><input class="doe-in" ' + attr + ' value="' + esc(val) + '" ' + (extra || 'inputmode="decimal"') + '></label>'; }
+  function tipoSelect(v, i) { return '<select class="doe-in" data-it="' + i + '|tipo">' + TIPOS.map(function (g) { return '<optgroup label="' + g[0] + '">' + g[1].map(function (x) { return '<option value="' + x[0] + '"' + (String(v) === x[0] ? ' selected' : '') + '>' + x[0] + ' — ' + x[1] + '</option>'; }).join('') + '</optgroup>'; }).join('') + '</select>'; }
+  function htmlItem(it, i) {
+    var t = String(it.tipo);
+    return '<section class="doe-item" data-i="' + i + '"><div class="doe-item-h"><input class="doe-in doe-item-nome" data-it="' + i + '|nome" value="' + esc(it.nome) + '" aria-label="Nome do item">'
+      + (E.itens.length > 1 ? '<button type="button" class="doe-btn doe-mini doe-no" data-rm="' + i + '">Remover</button>' : '') + '</div>'
+      + '<div class="doe-g doe-g4"><label class="doe-f doe-f2"><span>Tipo de caixa</span>' + tipoSelect(t, i) + '</label>'
+      + campo('Quantidade', 'data-it="' + i + '|qtd"', it.qtd, 'inputmode="numeric"') + '<span></span>'
+      + campo('Comprimento (mm)', 'data-it="' + i + '|comp"', it.comp, 'inputmode="numeric"') + campo('Largura (mm)', 'data-it="' + i + '|larg"', it.larg, 'inputmode="numeric"') + campo('Altura (mm)', 'data-it="' + i + '|alt"', it.alt, 'inputmode="numeric"')
+      + (t === '202' ? campo('Sobreposição (mm)', 'data-it="' + i + '|sob"', it.sob, 'inputmode="numeric"') : t === '209' ? campo('Encurtar abas (mm)', 'data-it="' + i + '|enc"', it.enc, 'inputmode="numeric"') : '<span></span>')
+      + '</div><div class="doe-res" data-res="' + i + '"></div></section>';
+  }
+  function abrirEditor() {
+    var pastas = Array.isArray(window.__orcPastasData) ? window.__orcPastasData : [];
+    var ov = shell('<header><h2>' + (E.id ? 'Orçamento Nº ' + esc(E.numero) : 'Novo orçamento') + '</h2><button type="button" class="doe-x" data-fechar aria-label="Fechar">✕</button></header>'
+      + '<div class="doe-corpo">'
+      + '<div class="doe-bloco"><div class="doe-g doe-g2">'
+      + '<label class="doe-f doe-rel"><span>Cliente</span><input class="doe-in" data-k="cliente_nome" value="' + esc(E.cliente_nome) + '" placeholder="Digite o nome do cliente" autocomplete="off"><div class="doe-sug" data-sug="cli" hidden></div></label>'
+      + '<label class="doe-f"><span>Nome do orçamento</span><input class="doe-in" data-k="nome" value="' + esc(E.nome) + '" placeholder="Ex.: Caixa Ripke reforçada"></label>'
+      + '<label class="doe-f doe-rel"><span>Chapa utilizada <em>(digite para buscar no estoque ou escreva livre)</em></span><input class="doe-in" data-k="chapa" value="' + esc(E.chapa) + '" placeholder="Ex.: AB21, chab21, Adami 1660x2620…" autocomplete="off"><div class="doe-sug" data-sug="chapa" hidden></div><small class="doe-dica" data-chapa-dica>' + (E.chapa_id ? '✓ Chapa do estoque' : (E.chapa ? 'Texto livre' : 'Uso interno — não sai na impressão')) + '</small></label>'
+      + '<label class="doe-f"><span>Pasta</span><select class="doe-in" data-k="pasta_id"><option value="">Sem pasta</option>' + pastas.map(function (p) { return '<option value="' + esc(p.id) + '"' + (String(p.id) === String(E.pasta_id) ? ' selected' : '') + '>' + esc(p.nome) + '</option>'; }).join('') + '</select></label>'
+      + '</div></div>'
+      + '<div class="doe-bloco doe-ondas"><div><b>Ondas do orçamento</b><div class="doe-chips">' + chips(E.ondas, 'data-oo') + '</div></div><div><b>Vão para a impressão</b><div class="doe-chips" data-imp-chips>' + chips(E.imp, 'data-oi', E.ondas) + '</div></div></div>'
+      + '<div class="doe-bloco"><h3>Valores e parâmetros</h3><div class="doe-g doe-g4" data-vals>' + htmlVals() + '</div>'
+      + '<div class="doe-g doe-g4">' + campo('Custo fixo %', 'data-p="cf"', E.par.cf) + campo('Margem %', 'data-p="mg"', E.par.mg) + campo('Comissão %', 'data-p="cvend"', E.par.cvend) + campo('Impostos %', 'data-p="imp"', E.par.imp)
+      + '<label class="doe-f"><span>Custo mercadoria %</span><output class="doe-out" data-w3></output></label>' + campo('Vl. km frete (R$)', 'data-p="vkm"', E.par.vkm) + campo('Km entrega', 'data-p="km"', E.par.km) + '<label class="doe-f"><span>Frete</span><output class="doe-out" data-frete></output></label></div></div>'
+      + '<div data-itens>' + E.itens.map(htmlItem).join('') + '</div>'
+      + '<button type="button" class="doe-btn doe-add" data-add>＋ Adicionar outro item</button>'
+      + '<div class="doe-bloco"><h3>Total do orçamento</h3><div class="doe-tots" data-tots></div></div>'
+      + '<label class="doe-f doe-bloco"><span>Observações (saem na impressão)</span><textarea class="doe-in doe-ta" data-k="obs" rows="2" placeholder="Prazo, condições de pagamento, validade…">' + esc(E.obs) + '</textarea></label>'
+      + '</div><footer><button type="button" class="doe-btn" data-fechar>Fechar</button><button type="button" class="doe-btn" data-print>🖨 Imprimir</button><button type="button" class="doe-btn doe-pri" data-salvar>💾 Salvar</button></footer>', 'doe-ed');
+    ligar(ov); recalcular();
+  }
+  function htmlVals() { return E.ondas.map(function (o) { var k = o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc'; return campo('Valor onda ' + o + ' (R$/m²)', 'data-v="' + k + '"', E.vals[k]); }).join(''); }
+  function recalcular() {
+    var ov = document.getElementById('ds-orc-ov'); if (!ov || !E) return;
+    var c = calcTudo();
+    var w = ov.querySelector('[data-w3]'); if (w) { w.textContent = N(c.w3, 2) + '%'; w.classList.toggle('doe-erro', c.w3 <= 0); }
+    var f = ov.querySelector('[data-frete]'); if (f) f.textContent = R(c.frete);
+    E.itens.forEach(function (it, i) {
+      var box = ov.querySelector('[data-res="' + i + '"]'); if (!box) return;
+      var r = c.porItem[i];
+      if (!(n(it.comp) && n(it.larg) && n(it.alt))) { box.innerHTML = '<div class="doe-vazio">Preencha comprimento, largura e altura para calcular.</div>'; return; }
+      box.innerHTML = E.ondas.map(function (o) { var x = r[o]; if (!x) return '<div class="doe-card"><b>Onda ' + o + '</b><span class="doe-vazio">Sem fórmula para este tipo</span></div>';
+        return '<div class="doe-card' + (E.imp.indexOf(o) >= 0 ? ' imp' : '') + '"><div class="doe-card-h"><b>Onda ' + o + '</b>' + (E.imp.indexOf(o) >= 0 ? '<span class="doe-tag">🖨 impressão</span>' : '') + '</div>'
+          + '<dl><dt>Chapa (largura)</dt><dd>' + esc(x.largura) + '</dd><dt>Chapa (comprimento)</dt><dd>' + esc(x.comprimento) + '</dd><dt>Área</dt><dd>' + N(x.area, 6) + ' m²</dd><dt>Valor m²</dt><dd>' + R(x.val) + '</dd><dt>Total bruto</dt><dd>' + R(x.bruto) + '</dd><dt>Venda líquida</dt><dd><b>' + R(x.liquida) + '</b></dd></dl>'
+          + '<div class="doe-unit">' + R(x.vunit, 4) + ' <small>por caixa</small></div></div>'; }).join('');
+    });
+    var t = ov.querySelector('[data-tots]');
+    if (t) t.innerHTML = E.ondas.map(function (o) { var x = c.tot[o]; return '<div class="doe-tot' + (E.imp.indexOf(o) >= 0 ? ' imp' : '') + '"><b>Onda ' + o + '</b><span>Itens ' + R(x.subtotal) + '</span><span>Frete ' + R(x.frete) + '</span><strong>' + R(x.total) + '</strong></div>'; }).join('') || '<div class="doe-vazio">Escolha ao menos uma onda.</div>';
+  }
+  function redesenharOndas(ov) {
+    ov.querySelector('[data-imp-chips]').innerHTML = chips(E.imp, 'data-oi', E.ondas);
+    ov.querySelector('[data-vals]').innerHTML = htmlVals();
+    recalcular();
+  }
+  function sugestoes(box, itens, onPick) {
+    if (!itens.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.innerHTML = itens.map(function (x, i) { return '<button type="button" data-pick="' + i + '"><b>' + esc(x.t) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</button>'; }).join(''); box.hidden = false;
+    box.onmousedown = function (e) { var b = e.target.closest('[data-pick]'); if (!b) return; e.preventDefault(); box.hidden = true; onPick(itens[+b.getAttribute('data-pick')]); };
+  }
+  function ligar(ov) {
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) return;
+      if (e.target.closest('[data-fechar]')) return fechar();
+      var oo = e.target.closest('[data-oo]');
+      if (oo) { var o = oo.getAttribute('data-oo'), i = E.ondas.indexOf(o); if (i >= 0 && E.ondas.length === 1) return aviso('Deixe ao menos uma onda'); if (i >= 0) { E.ondas.splice(i, 1); E.imp = E.imp.filter(function (x) { return x !== o; }); } else { E.ondas.push(o); E.imp.push(o); } E.ondas = ONDAS.filter(function (x) { return E.ondas.indexOf(x) >= 0; }); E.imp = ONDAS.filter(function (x) { return E.imp.indexOf(x) >= 0; }); oo.classList.toggle('on', i < 0); return redesenharOndas(ov); }
+      var oi = e.target.closest('[data-oi]');
+      if (oi) { var w = oi.getAttribute('data-oi'), j = E.imp.indexOf(w); if (j >= 0) E.imp.splice(j, 1); else E.imp.push(w); E.imp = ONDAS.filter(function (x) { return E.imp.indexOf(x) >= 0; }); oi.classList.toggle('on', j < 0); return recalcular(); }
+      if (e.target.closest('[data-add]')) { var u = E.itens[E.itens.length - 1] || {}; E.itens.push({ nome: 'Item ' + (E.itens.length + 1), tipo: u.tipo || '201', comp: '', larg: '', alt: '', qtd: u.qtd || 1000, sob: 0, enc: 0 }); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); recalcular(); var ul = ov.querySelectorAll('.doe-item'); ul[ul.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      var rm = e.target.closest('[data-rm]'); if (rm) { E.itens.splice(+rm.getAttribute('data-rm'), 1); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); return recalcular(); }
+      if (e.target.closest('[data-print]')) { if (!E.imp.length) return aviso('Escolha ao menos uma onda para a impressão'); return imprimir(paraSalvar()); }
+      if (e.target.closest('[data-salvar]')) return salvar(e.target.closest('[data-salvar]'));
+    });
+    ov.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t.hasAttribute('data-p')) { E.par[t.getAttribute('data-p')] = t.value; return recalcular(); }
+      if (t.hasAttribute('data-v')) { E.vals[t.getAttribute('data-v')] = t.value; return recalcular(); }
+      if (t.hasAttribute('data-it')) { var a = t.getAttribute('data-it').split('|'); E.itens[+a[0]][a[1]] = t.value; if (a[1] === 'tipo') { var sec = t.closest('.doe-item'); var tmp = document.createElement('div'); tmp.innerHTML = htmlItem(E.itens[+a[0]], +a[0]); sec.replaceWith(tmp.firstChild); } return recalcular(); }
+      var k = t.getAttribute('data-k'); if (!k) return;
+      E[k] = t.value;
+      if (k === 'cliente_nome') {
+        E.cliente_id = '';
+        var q = norm(t.value), l = q ? clientes().filter(function (c) { return norm(nomeCli(c)).indexOf(q) >= 0; }).slice(0, 12) : [];
+        sugestoes(ov.querySelector('[data-sug="cli"]'), l.map(function (c) { return { t: nomeCli(c), s: [c.cidade, c.uf].filter(Boolean).join(' / '), c: c }; }), function (x) { E.cliente_id = x.c.id; E.cliente_nome = x.t; t.value = x.t; });
+      }
+      if (k === 'chapa') {
+        E.chapa_id = ''; var d = ov.querySelector('[data-chapa-dica]'); if (d) d.textContent = t.value ? 'Texto livre (ou escolha uma chapa da lista)' : 'Uso interno — não sai na impressão';
+        carregarChapas().then(function () { if (t.value !== E.chapa) return; sugestoes(ov.querySelector('[data-sug="chapa"]'), buscarChapas(t.value).map(function (c) { return { t: c.lbl, s: 'Estoque: ' + N(c.q, 0) + ' chapas', c: c }; }), function (x) { E.chapa = x.t; E.chapa_id = x.c.id; t.value = x.t; if (d) d.textContent = '✓ Chapa do estoque'; }); });
+      }
+    });
+    ov.addEventListener('focusout', function (e) { var s = e.target.parentNode && e.target.parentNode.querySelector && e.target.parentNode.querySelector('.doe-sug'); if (s) setTimeout(function () { s.hidden = true; }, 150); });
+    ov.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var s = ov.querySelector('.doe-sug:not([hidden])'); if (s) { s.hidden = true; e.stopPropagation(); } } });
+  }
+  function medidas(it) { return [it.comp, it.larg, it.alt].map(function (v) { return n(v); }).join('x'); }
+  function paraSalvar() {
+    var c = calcTudo(), princ = E.ondas[0];
+    var blocos = E.itens.map(function (it, i) {
+      var r = c.porItem[i], rp = r[princ] || {};
+      var par = { tipo: String(it.tipo), comp: n(it.comp), larg: n(it.larg), alt: n(it.alt), qtd: n(it.qtd), vb: n(E.vals.vb), vc: n(E.vals.vc), vbc: n(E.vals.vbc), cm: c.w3, cf: n(E.par.cf), mg: n(E.par.mg), cvend: n(E.par.cvend), imp: n(E.par.imp), vkm: n(E.par.vkm), km: n(E.par.km), sob: n(it.sob), enc: n(it.enc) };
+      return { indice: i + 1, nome: it.nome || ('Item ' + (i + 1)), nome_item: it.nome || ('Item ' + (i + 1)), descricao: it.nome, tipo: String(it.tipo), tipo_nome: nomeTipo(it.tipo), comp: par.comp, larg: par.larg, alt: par.alt, sob: par.sob, enc: par.enc, medidas: medidas(it), quantidade: par.qtd,
+        parametros: par, resultados: E.ondas.map(function (o) { return r[o]; }).filter(Boolean), onda_selecionada: princ, onda: E.ondas.join(' / '), chapa_utilizada: E.chapa || null,
+        area: rp.area || 0, bruto: rp.bruto || 0, liquida: rp.liquida || 0, comFrete: (rp.liquida || 0) + (i === 0 ? c.frete : 0), valor_unitario: rp.vunit || 0, valor_total: rp.liquida || 0, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '' };
+    });
+    var p0 = blocos[0].parametros, tp = c.tot[princ] || { subtotal: 0, frete: c.frete, total: c.frete };
+    var parametros = Object.assign({}, p0, { itens: blocos, ondas_orcamento: E.ondas.slice(), ondas_impressao: E.imp.slice(), onda_principal: princ, chapa_utilizada: E.chapa || undefined, chapaUtilizada: E.chapa || undefined, chapa_id: E.chapa_id || null, observacoes_orc: E.obs || '', totais: c.tot, editor: 'ds-2026-10' });
+    if (!E.chapa) { delete parametros.chapa_utilizada; delete parametros.chapaUtilizada; }
+    var emp = ''; try { emp = String((window.CURRENT_USER || {}).emp_id || window.EMP_FILTRO || ''); } catch (_) {}
+    return { id: E.id, numero_orcamento: E.numero, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '', nome: E.nome || '', nome_orcamento: E.nome || '', pasta_id: E.pasta_id || null,
+      chapa_utilizada: E.chapa || '', medidas: blocos.map(function (b) { return b.medidas; }).join(' | '), quantidade: p0.qtd, onda: E.ondas.join(' / '),
+      valor_unitario: blocos[0].valor_unitario, subtotal: tp.subtotal, frete: tp.frete, total: tp.total, valor_total: tp.total,
+      parametros: parametros, resultados: blocos[0].resultados, itens: blocos, emp_id: emp, criado_em: E.criado_em };
+  }
+  function validar() {
+    if (!E.ondas.length) return 'Escolha ao menos uma onda';
+    var c = calcTudo(); if (c.w3 <= 0) return 'Custo fixo + margem + comissão + impostos passa de 100%';
+    for (var i = 0; i < E.itens.length; i++) { var it = E.itens[i]; if (!(n(it.comp) && n(it.larg) && n(it.alt))) return 'Preencha as medidas do ' + (it.nome || 'item ' + (i + 1)); if (!n(it.qtd)) return 'Preencha a quantidade do ' + (it.nome || 'item ' + (i + 1)); }
+    return '';
+  }
+  function salvar(btn) {
+    var erro = validar(); if (erro) return aviso(erro);
+    var pl = paraSalvar(), id = pl.id; delete pl.id; delete pl.numero_orcamento; delete pl.criado_em;
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    xhr(id ? 'PUT' : 'POST', '/api/orcamentos' + (id ? '/' + encodeURIComponent(id) : ''), pl).then(function (d) {
+      try { localStorage.setItem('ds_orc_param', JSON.stringify(Object.assign({}, E.par, E.vals))); } catch (_) {}
+      var num = (d && d.numero_orcamento) || E.numero;
+      E.id = (d && d.id) || id; E.numero = num;
+      pop((id ? 'Orçamento Nº ' + num + ' salvo' : 'Orçamento Nº ' + num + ' criado'), [E.cliente_nome, E.nome, 'Total ' + R(pl.total) + ' (onda ' + E.ondas[0] + ')'].filter(Boolean).join(' · '));
+      var h = document.querySelector('#ds-orc-ov h2'); if (h) h.textContent = 'Orçamento Nº ' + num;
+      btn.disabled = false; btn.textContent = '💾 Salvar';
+      recarregarLista();
+    }).catch(function (e) { btn.disabled = false; btn.textContent = '💾 Salvar'; try { window.toast('Erro ao salvar: ' + e.message, 'var(--red)'); } catch (_) {} });
+  }
+  function recarregarLista() { var b = document.getElementById('orx-btn-recarregar'); if (b) { try { b.onclick && b.onclick(); return; } catch (_) {} } try { Promise.resolve(window.carregarOrcamentos && window.carregarOrcamentos()).then(function () { window.renderOrcamentos && window.renderOrcamentos(); }); } catch (_) {} }
+  function buscar(id) { return xhr('GET', '/api/orcamentos/' + encodeURIComponent(id)); }
+  function novo() { perguntarOndas(function (ondas) { E = novoEstado(ondas); abrirEditor(); setTimeout(function () { var i = document.querySelector('#ds-orc-ov [data-k="cliente_nome"]'); if (i) i.focus(); }, 60); carregarChapas(); }); }
+  function editar(id) {
+    shell('<div class="doe-vazio">Carregando orçamento…</div>', 'doe-p');
+    buscar(id).then(function (o) { E = deOrc(o); E.criado_em = o.criado_em; abrirEditor(); carregarChapas(); }).catch(function (e) { fechar(); try { window.toast('Não foi possível abrir: ' + e.message, 'var(--red)'); } catch (_) {} });
+  }
+  // ---------- ver itens ----------
+  function verItens(id) {
+    shell('<div class="doe-vazio">Carregando…</div>', 'doe-p');
+    buscar(id).then(function (o) {
+      var S = deOrc(o), salvo = E; E = S; var c = calcTudo(); E = salvo;
+      var cli = S.cliente_nome || '—';
+      var html = '<header><h2>Itens do orçamento Nº ' + esc(S.numero) + '</h2><button type="button" class="doe-x" data-fechar aria-label="Fechar">✕</button></header><div class="doe-corpo">'
+        + '<div class="doe-resumo"><span><b>Cliente</b>' + esc(cli) + '</span><span><b>Nome</b>' + esc(S.nome || '—') + '</span><span><b>Chapa utilizada</b>' + esc(S.chapa || '—') + '</span><span><b>Status</b>' + esc(S.status) + '</span>'
+        + '<span><b>Ondas do orçamento</b>' + S.ondas.join(', ') + '</span><span><b>Na impressão</b>' + (S.imp.join(', ') || '—') + '</span><span><b>Criado</b>' + esc(o.criado_em ? new Date(o.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—') + (o.criado_por ? ' por ' + esc(o.criado_por) : '') + '</span><span><b>Itens</b>' + S.itens.length + '</span></div>'
+        + '<div class="doe-bloco"><h3>Parâmetros usados</h3><div class="doe-resumo doe-resumo-p">'
+        + S.ondas.map(function (x) { var k = x === 'B' ? 'vb' : x === 'C' ? 'vc' : 'vbc'; return '<span><b>Valor onda ' + x + '</b>' + R(S.vals[k]) + '/m²</span>'; }).join('')
+        + '<span><b>Custo fixo</b>' + N(S.par.cf) + '%</span><span><b>Margem</b>' + N(S.par.mg) + '%</span><span><b>Comissão</b>' + N(S.par.cvend) + '%</span><span><b>Impostos</b>' + N(S.par.imp) + '%</span><span><b>Custo mercadoria</b>' + N(c.w3) + '%</span><span><b>Vl. km frete</b>' + R(S.par.vkm) + '</span><span><b>Km entrega</b>' + N(S.par.km) + '</span><span><b>Frete</b>' + R(c.frete) + '</span></div></div>'
+        + S.itens.map(function (it, i) { var r = c.porItem[i];
+          return '<div class="doe-bloco"><h3>' + esc(it.nome || 'Item ' + (i + 1)) + ' — ' + esc(nomeTipo(it.tipo)) + '</h3><p class="doe-sub">Medidas ' + esc(medidas(it)) + ' mm · Quantidade ' + N(n(it.qtd), 0) + (n(it.sob) ? ' · Sobreposição ' + N(n(it.sob)) : '') + (n(it.enc) ? ' · Encurtar ' + N(n(it.enc)) : '') + '</p>'
+            + '<div class="doe-tw"><table class="doe-t"><thead><tr><th>Onda</th><th>Chapa (largura)</th><th>Chapa (comprimento)</th><th>Área m²</th><th>Valor m²</th><th>Total bruto</th><th>Venda líquida</th><th>Unitário</th></tr></thead><tbody>'
+            + S.ondas.map(function (x) { var y = r[x]; if (!y) return ''; return '<tr><td data-l="Onda"><b>' + x + '</b>' + (S.imp.indexOf(x) >= 0 ? ' 🖨' : '') + '</td><td data-l="Chapa (largura)">' + esc(y.largura) + '</td><td data-l="Chapa (comprimento)">' + esc(y.comprimento) + '</td><td data-l="Área m²">' + N(y.area, 6) + '</td><td data-l="Valor m²">' + R(y.val) + '</td><td data-l="Total bruto">' + R(y.bruto) + '</td><td data-l="Venda líquida"><b>' + R(y.liquida) + '</b></td><td data-l="Unitário">' + R(y.vunit, 4) + '</td></tr>'; }).join('')
+            + '</tbody></table></div></div>'; }).join('')
+        + '<div class="doe-bloco"><h3>Totais</h3><div class="doe-tots">' + S.ondas.map(function (x) { var y = c.tot[x]; return '<div class="doe-tot' + (S.imp.indexOf(x) >= 0 ? ' imp' : '') + '"><b>Onda ' + x + '</b><span>Itens ' + R(y.subtotal) + '</span><span>Frete ' + R(y.frete) + '</span><strong>' + R(y.total) + '</strong></div>'; }).join('') + '</div></div>'
+        + (S.obs ? '<div class="doe-bloco"><h3>Observações</h3><p class="doe-sub">' + esc(S.obs) + '</p></div>' : '')
+        + '</div><footer><button type="button" class="doe-btn" data-ed>✏ Editar</button><button type="button" class="doe-btn" data-pr>🖨 Imprimir</button><button type="button" class="doe-btn doe-pri" data-fechar>Fechar</button></footer>';
+      var ov = shell(html, 'doe-ed');
+      ov.addEventListener('click', function (e) { if (e.target.closest('[data-fechar]')) return fechar(); if (e.target.closest('[data-ed]')) return editar(id); if (e.target.closest('[data-pr]')) { var sv = E; E = S; var pl = paraSalvar(); E = sv; imprimir(pl); } });
+    }).catch(function (e) { fechar(); try { window.toast('Erro: ' + e.message, 'var(--red)'); } catch (_) {} });
+  }
+  // ---------- impressão ----------
+  function imprimir(pl) {
+    var p = pl.parametros || {}, imp = (p.ondas_impressao || []).length ? p.ondas_impressao : (p.ondas_orcamento || ['B']);
+    var tot = p.totais || {};
+    var data = new Date().toLocaleDateString('pt-BR');
+    var linhas = (pl.itens || []).map(function (b) {
+      return imp.map(function (o) { var r = (b.resultados || []).filter(function (x) { return x.onda === o; })[0]; if (!r) return '';
+        return '<tr><td>' + esc(b.nome_item || '') + '<small>' + esc(b.tipo_nome || nomeTipo(b.tipo)) + '</small></td><td>' + esc(b.medidas) + ' mm</td><td class="c">' + o + '</td><td class="r">' + N(b.quantidade, 0) + '</td><td class="r">' + R(r.vunit, 4) + '</td><td class="r"><b>' + R(r.liquida) + '</b></td></tr>'; }).join('');
+    }).join('');
+    var tots = imp.map(function (o) { var t = tot[o]; if (!t) return ''; return '<tr><td>Onda ' + o + '</td><td class="r">' + R(t.subtotal) + '</td><td class="r">' + R(t.frete) + '</td><td class="r"><b>' + R(t.total) + '</b></td></tr>'; }).join('');
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>Orçamento ' + esc(pl.numero_orcamento || '') + '</title><style>@page{size:A4;margin:14mm}body{font:12px/1.45 Arial,Helvetica,sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0}header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:14px}.meta b{display:inline-block;min-width:70px;color:#555;font-weight:600}table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{border:1px solid #bbb;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee;font-size:11px}td small{display:block;color:#666;font-size:10.5px}.r{text-align:right;white-space:nowrap}.c{text-align:center}h2{font-size:13px;margin:16px 0 6px}.obs{white-space:pre-wrap;border:1px solid #bbb;padding:8px}footer{margin-top:28px;color:#666;font-size:10.5px}</style></head><body>'
+      + '<header><div><h1>Italy Embalagens</h1><div>Orçamento de caixas de papelão</div></div><div style="text-align:right"><b style="font-size:16px">Orçamento Nº ' + esc(pl.numero_orcamento || '(rascunho)') + '</b><br>' + data + '</div></header>'
+      + '<div class="meta"><div><b>Cliente:</b> ' + esc(pl.cliente_nome || '—') + '</div><div><b>Referência:</b> ' + esc(pl.nome || '—') + '</div></div>'
+      + '<table><thead><tr><th>Item</th><th>Medidas (C×L×A)</th><th class="c">Onda</th><th class="r">Quantidade</th><th class="r">Valor unitário</th><th class="r">Valor total</th></tr></thead><tbody>' + linhas + '</tbody></table>'
+      + '<h2>Totais</h2><table><thead><tr><th>Opção</th><th class="r">Itens</th><th class="r">Frete</th><th class="r">Total</th></tr></thead><tbody>' + tots + '</tbody></table>'
+      + (p.observacoes_orc ? '<h2>Observações</h2><div class="obs">' + esc(p.observacoes_orc) + '</div>' : '')
+      + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
+    var f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
+    var d = f.contentWindow.document; d.open(); d.write(html); d.close();
+    setTimeout(function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (_) {} setTimeout(function () { f.remove(); }, 60000); }, 300);
+  }
+  window.dsOrc = { novo: novo, editar: editar, itens: verItens, imprimirId: function (id) { buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; imprimir(pl); }); }, calcItem: calcItem, deOrc: deOrc, buscarChapas: buscarChapas, carregarChapas: carregarChapas, estado: function () { return E; }, paraSalvar: function () { return paraSalvar(); } };
+  // ---------- liga nos botões da lista ----------
+  document.addEventListener('click', function (e) {
+    var pg = e.target.closest('#page-orcamentos'); if (!pg) return;
+    var b = e.target.closest('#orx-btn-novo');
+    if (b) { e.preventDefault(); e.stopPropagation(); return novo(); }
+    b = e.target.closest('button[onclick]'); if (!b) return;
+    var oc = b.getAttribute('onclick') || '', m = oc.match(/'([^']+)'/), id = m && m[1];
+    if (!id) return;
+    if (/abrirCalculadoraComOrc/.test(oc)) { e.preventDefault(); e.stopPropagation(); return editar(id); }
+    if (/orcToggleItensRow/.test(oc)) { e.preventDefault(); e.stopPropagation(); return verItens(id); }
+    if (/imprimirOrcamentoId/.test(oc)) { e.preventDefault(); e.stopPropagation(); return window.dsOrc.imprimirId(id); }
+  }, true);
+  // outras partes do sistema (buscador etc.) que chamam a calculadora para editar
+  function amarrar() { if (window.abrirCalculadoraComOrc && window.abrirCalculadoraComOrc.__ds) return; var f = function (id) { if (id) return editar(id); return novo(); }; f.__ds = true; window.abrirCalculadoraComOrc = f; }
+  amarrar(); setInterval(amarrar, 3000);
+  var css = '.doe-aberto body{overflow:hidden}.doe-ov{position:fixed;inset:0;z-index:9650;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.doe-m{width:min(1100px,100%);max-height:calc(100vh - 32px);background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}.doe-p{width:min(520px,100%)}'
+    + '.doe-m>header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}.doe-m h2{margin:0;font-size:18px}.doe-x{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;flex:0 0 auto}'
+    + '.doe-corpo{overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px}.doe-m>footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border);flex-wrap:wrap}'
+    + '.doe-bloco{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--s2);display:flex;flex-direction:column;gap:10px}.doe-bloco h3{margin:0;font-size:14px}.doe-sub{margin:0;color:var(--text2);font-size:13px;white-space:pre-wrap}'
+    + '.doe-g{display:grid;gap:10px}.doe-g2{grid-template-columns:1fr 1fr}.doe-g4{grid-template-columns:repeat(4,1fr)}.doe-f2{grid-column:span 2}'
+    + '.doe-f{display:flex;flex-direction:column;gap:5px;min-width:0}.doe-f>span{font-size:12px;font-weight:600;color:var(--text2)}.doe-f em{font-style:normal;font-weight:400;color:var(--text3)}.doe-rel{position:relative}'
+    + '.doe-in{height:40px;border-radius:8px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:14px;padding:0 10px;min-width:0;width:100%;box-sizing:border-box}.doe-in:focus{outline:2px solid var(--accent);outline-offset:-1px}.doe-ta{height:auto;padding:9px 10px;resize:vertical}'
+    + '.doe-out{height:40px;display:flex;align-items:center;padding:0 10px;border-radius:8px;background:var(--s3);font-weight:700}.doe-erro{color:var(--red)}.doe-dica{color:var(--text3);font-size:11.5px}'
+    + '.doe-sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:5;max-height:260px;overflow:auto;background:var(--surface);border:1px solid var(--b2);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);display:flex;flex-direction:column}.doe-sug[hidden]{display:none}'
+    + '.doe-sug button{text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;cursor:pointer}.doe-sug button:hover{background:var(--s2)}.doe-sug b{display:block;font-size:13px}.doe-sug span{font-size:11.5px;color:var(--text3)}'
+    + '.doe-ondas{flex-direction:row;flex-wrap:wrap;gap:18px}.doe-ondas b{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}.doe-chips{display:flex;gap:6px}'
+    + '.doe-chip{min-width:52px;height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--b2);background:var(--bg);color:var(--text2);font:inherit;font-size:15px;font-weight:800;cursor:pointer}.doe-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}'
+    + '.doe-chips-g .doe-chip{flex:1;height:64px;font-size:22px}.doe-pergunta{padding:18px;display:flex;flex-direction:column;gap:12px}.doe-pergunta h3{margin:0;font-size:16px}.doe-pergunta p{margin:0;color:var(--text2);font-size:13px}.doe-acoes{display:flex;justify-content:flex-end;gap:8px}'
+    + '.doe-item{border:1px solid var(--b2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}.doe-item-h{display:flex;gap:8px}.doe-item-nome{font-weight:700;font-size:15px}'
+    + '.doe-res{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.doe-card{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--s2)}.doe-card.imp{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}.doe-card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}'
+    + '.doe-tag{font-size:11px;color:var(--accent)}.doe-card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0;font-size:12.5px}.doe-card dt{color:var(--text3)}.doe-card dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;word-break:break-word}.doe-unit{margin-top:8px;font-size:18px;font-weight:800;color:var(--green)}.doe-unit small{font-size:11px;font-weight:600;color:var(--text3)}'
+    + '.doe-tots{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}.doe-tot{border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--text2)}.doe-tot.imp{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}.doe-tot b{color:var(--text);font-size:13px}.doe-tot strong{font-size:20px;color:var(--text)}'
+    + '.doe-btn{height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}.doe-btn:hover{background:var(--s3)}.doe-pri{background:var(--accent);border-color:var(--accent);color:#fff}.doe-pri:hover{background:var(--accent2,var(--accent))}.doe-btn:disabled{opacity:.5;cursor:default}.doe-mini{height:40px;padding:0 12px}.doe-no{color:var(--red)}.doe-add{align-self:flex-start;border-style:dashed}'
+    + '.doe-vazio{padding:16px;text-align:center;color:var(--text3);font-size:13px}.doe-resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.doe-resumo span{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--s2);font-size:13.5px;font-weight:600;word-break:break-word}.doe-resumo b{display:block;font-size:11.5px;color:var(--text3);font-weight:600}.doe-resumo-p span{background:var(--surface)}'
+    + '.doe-tw{overflow:auto;border:1px solid var(--border);border-radius:10px}.doe-t{width:100%;border-collapse:collapse;font-size:13px}.doe-t th{background:var(--s3);color:var(--text2);font-size:12px;font-weight:600;text-align:left;padding:8px 10px;white-space:nowrap}.doe-t td{padding:8px 10px;border-top:1px solid var(--border);white-space:nowrap}'
+    + '@media (max-width:900px){.doe-g4{grid-template-columns:1fr 1fr}.doe-resumo{grid-template-columns:1fr 1fr}}'
+    + '@media (max-width:640px){.doe-ov{padding:0}.doe-m{max-height:100vh;height:100%;border-radius:0}.doe-p{height:auto;border-radius:14px;margin:12px}.doe-g2{grid-template-columns:1fr}.doe-f2{grid-column:span 2}.doe-corpo{padding:12px}.doe-m>footer .doe-btn{flex:1;height:46px}.doe-ondas{gap:12px}.doe-chip{min-width:56px;height:44px}'
+    + '.doe-t thead{display:none}.doe-t,.doe-t tbody{display:block}.doe-t tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 12px;border-top:1px solid var(--border)}.doe-t td{display:block;padding:0;border:0;white-space:normal}.doe-t td::before{content:attr(data-l);display:block;font-size:11px;color:var(--text3)}}';
+  try { var st = document.createElement('style'); st.id = 'ds-orc-ed-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
