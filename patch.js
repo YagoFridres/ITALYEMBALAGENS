@@ -72702,6 +72702,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function montar() {
     var p = document.getElementById('page-inconformidades'); if (!p || !p.classList.contains('active')) return;
     carregar();
+    // aba Lista carrega sozinha
+    try { var la = document.getElementById('inc-aba-lista'), lr = document.getElementById('inc-lista-resultado');
+      if (la && la.style.display !== 'none' && lr && /Clique em/.test(lr.textContent) && typeof window.carregarInconformidades === 'function') window.carregarInconformidades(); } catch (_) {}
     if (p.getAttribute('data-ds-inc')) return;
     var reg = document.getElementById('inc-aba-registrar'); var form = reg && reg.firstElementChild; if (!form) return;
     p.setAttribute('data-ds-inc', '1');
@@ -72740,12 +72743,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.inc-sec > div:has(#inc-maquinas-checkboxes),.inc-sec > div:has(#inc-operadores-of-lista),.inc-sec > div:has(#inc-descricao),.inc-sec > div:has(#inc-foto){grid-column:1 / -1}'
     + 'html[data-ds="3"] #page-inconformidades label{color:var(--text2)!important;font-size:12.5px!important;font-weight:600!important;text-transform:none!important}'
     + 'html[data-ds="3"] #page-inconformidades input:not([type=checkbox]),html[data-ds="3"] #page-inconformidades select,html[data-ds="3"] #page-inconformidades textarea{background:var(--bg)!important;color:var(--text)!important;border:1px solid var(--b2)!important;border-radius:8px!important;min-height:38px}'
-    + '.inc-pilulas{gap:6px!important;max-height:none!important}.inc-pilulas label{display:inline-flex!important;align-items:center;gap:6px;padding:6px 11px!important;border:1px solid var(--border);border-radius:99px;background:var(--s2);cursor:pointer;font-weight:500!important;color:var(--text)!important}'
+    + '.inc-pilulas{gap:6px!important;max-height:none!important}.inc-pilulas label{white-space:nowrap!important;width:auto!important;flex:0 0 auto!important;display:inline-flex!important;align-items:center;gap:6px;padding:6px 11px!important;border:1px solid var(--border);border-radius:99px;background:var(--s2);cursor:pointer;font-weight:500!important;color:var(--text)!important}'
     + '.inc-pilulas label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface))}.inc-pilulas input{accent-color:var(--accent);margin:0}'
     + 'html[data-ds="3"] #page-inconformidades .inc-salvar{background:var(--accent)!important;border-radius:10px!important;min-height:46px;font-size:15px!important}'
     + '.inc-lado{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;position:sticky;top:0}.inc-lado h4{margin:14px 0 8px;font-size:13.5px}'
     + '.inc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}.inc-kpis div{border:1px solid var(--border);border-radius:10px;padding:10px}.inc-kpis span{display:block;font-size:11.5px;color:var(--text2)}.inc-kpis b{display:block;font-size:19px;margin-top:3px}.inc-kpis .inc-k2{grid-column:1 / -1}.inc-kpis .inc-k2 b{font-size:14px}'
     + '.inc-ult{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.inc-ult li{padding:9px 10px;border:1px solid var(--border);border-radius:9px}.inc-ult b{display:block;font-size:13px}.inc-ult span{display:block;font-size:12px;color:var(--text2);margin-top:2px}.inc-ult small{font-size:11px;color:var(--text3)}.inc-vazio{color:var(--text3);font-size:13px;padding:10px 0}'
+    + 'html[data-ds="3"] #inc-aba-lista > div:first-child{display:flex!important;flex-wrap:wrap;gap:8px}html[data-ds="3"] #inc-aba-lista #inc-filtro-op{flex:1 1 260px!important;width:auto!important}html[data-ds="3"] #inc-aba-lista #inc-filtro-maq{flex:0 0 200px!important;width:auto!important}'
+    + 'html[data-ds="3"] #page-inconformidades button[onclick^="carregarInconformidades"],html[data-ds="3"] #page-inconformidades button[onclick^="gerarRelatorio"]{background:var(--accent)!important;border-radius:8px!important;min-height:38px}'
     + '@media (max-width:900px){.inc-grid{grid-template-columns:1fr}.inc-lado{position:static}.inc-sec{grid-template-columns:1fr}html[data-ds="3"] #page-inconformidades{padding:12px 12px 110px!important}}';
   try { var st = document.createElement('style'); st.id = 'ds-inc-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
