@@ -73502,3 +73502,166 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== FORNECEDORES — tela nova + tipo (27/10/2026) =====
+ * Cada fornecedor é de "Papelão" (aparece na Compra de Papelão e no estoque de chapas) ou de "Itens diversos"
+ * (aparece só no Almoxarifado). Tela com busca, filtro por tipo, cartões com contato clicável, resumo de compras
+ * e formulário simples. */
+(function () {
+  if (window.__dsForn) return; window.__dsForn = true;
+  var TIPOS = { papelao: { rot: 'Papelão', ic: '📦', onde: 'Compra de Papelão e Estoque' }, diversos: { rot: 'Itens diversos', ic: '🧰', onde: 'Almoxarifado' } };
+  function tipoDe(f) { return /divers|almox|item/i.test(String(f && f.tipo || '')) ? 'diversos' : 'papelao'; }
+  window.dsFornTipo = tipoDe;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function moeda(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function req(m, url, body) {
+    var h = { 'Content-Type': 'application/json' }; try { h.Authorization = 'Bearer ' + (localStorage.getItem('token') || ''); } catch (_) {}
+    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+  }
+  function lista(j) { return Array.isArray(j) ? j : (j && (j.data || j.rows) || []); }
+  // ---- Compra de Papelão só com fornecedores de papelão ----
+  function filtrarCompra() {
+    var g = window._compraPapelaoGetFornecedores; if (typeof g !== 'function' || g.__dsForn) return;
+    var w = function () { return Promise.resolve(g.apply(this, arguments)).then(function (l) { return (Array.isArray(l) ? l : []).filter(function (f) { return tipoDe(f) === 'papelao' && f.ativo !== false; }); }); };
+    w.__dsForn = true; window._compraPapelaoGetFornecedores = w;
+  }
+  // ---- Almoxarifado: sugestões só de "Itens diversos" ----
+  var FORN = [], carregadoEm = 0;
+  function carregar(forcar) {
+    if (!forcar && Date.now() - carregadoEm < 30000 && FORN.length) return Promise.resolve(FORN);
+    return req('GET', '/api/fornecedores').then(function (j) { FORN = lista(j); carregadoEm = Date.now(); return FORN; }).catch(function () { return FORN; });
+  }
+  function almox() {
+    var inp = document.querySelector('.alx-modal [data-f="fornecedor"]'); if (!inp || inp.getAttribute('list') === 'dsf-almox-forn') return;
+    carregar().then(function (l) {
+      var dl = document.getElementById('dsf-almox-forn'); if (!dl) { dl = document.createElement('datalist'); dl.id = 'dsf-almox-forn'; document.body.appendChild(dl); }
+      dl.innerHTML = l.filter(function (f) { return tipoDe(f) === 'diversos' && f.ativo !== false; }).map(function (f) { return '<option value="' + esc(f.nome) + '">'; }).join('');
+      inp.setAttribute('list', 'dsf-almox-forn'); inp.placeholder = 'Fornecedor de itens diversos (cadastre em Fornecedores)';
+    });
+  }
+  // ---- tela ----
+  var E = { busca: '', tipo: '', inativos: false, compras: null, almox: null };
+  function pagina() { return document.getElementById('page-fornecedores'); }
+  function resumoCompras() {
+    if (E.compras) return Promise.resolve();
+    return Promise.all([req('GET', '/api/compras-chapas?limit=3000').then(lista).catch(function () { return []; }), req('GET', '/api/almoxarifado/ordens').then(lista).catch(function () { return []; })])
+      .then(function (r) {
+        var c = {}; r[0].forEach(function (x) { var k = norm(x.fornecedor || x.fornecedor_nome); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || x.total || 0) || 0; var d = String(x.data || x.created_at || '').slice(0, 10); if (d > o.ult) o.ult = d; });
+        r[1].forEach(function (x) { if (/cancel/i.test(x.status || '')) return; var k = norm(x.fornecedor); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || 0) || 0; var d = String(x.data || '').slice(0, 10); if (d > o.ult) o.ult = d; });
+        E.compras = c;
+      });
+  }
+  function br(iso) { iso = String(iso || ''); return /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
+  function render() {
+    var p = pagina(), r = p && p.querySelector('#ds-forn'); if (!r) return;
+    var todos = FORN.slice().sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
+    var q = norm(E.busca).trim();
+    var l = todos.filter(function (f) {
+      if (!E.inativos && f.ativo === false) return false;
+      if (E.tipo && tipoDe(f) !== E.tipo) return false;
+      if (q && norm([f.nome, f.razao_social, f.cnpj, f.cidade, f.uf, f.contato, f.email, f.telefone || f.tel].join(' ')).indexOf(q) < 0) return false;
+      return true;
+    });
+    var nP = todos.filter(function (f) { return f.ativo !== false && tipoDe(f) === 'papelao'; }).length, nD = todos.filter(function (f) { return f.ativo !== false && tipoDe(f) === 'diversos'; }).length;
+    r.querySelector('.dsf-kpis').innerHTML = '<button type="button" data-tipo="" class="' + (!E.tipo ? 'on' : '') + '"><span>Todos ativos</span><b>' + (nP + nD) + '</b></button>'
+      + '<button type="button" data-tipo="papelao" class="' + (E.tipo === 'papelao' ? 'on' : '') + '"><span>📦 Papelão</span><b>' + nP + '</b><small>aparecem na Compra de Papelão</small></button>'
+      + '<button type="button" data-tipo="diversos" class="' + (E.tipo === 'diversos' ? 'on' : '') + '"><span>🧰 Itens diversos</span><b>' + nD + '</b><small>aparecem no Almoxarifado</small></button>';
+    var C = E.compras || {};
+    r.querySelector('.dsf-grade').innerHTML = l.length ? l.map(function (f) {
+      var t = TIPOS[tipoDe(f)], c = C[norm(f.nome)], tel = f.telefone || f.tel || '', zap = String(tel).replace(/\D/g, '');
+      return '<article class="dsf-card' + (f.ativo === false ? ' off' : '') + '" data-id="' + esc(f.id) + '"><header><span class="dsf-av">' + esc(String(f.nome || '?').trim().charAt(0).toUpperCase()) + '</span><div><h3>' + esc(f.nome) + '</h3>'
+        + '<span class="dsf-tipo dsf-' + tipoDe(f) + '">' + t.ic + ' ' + t.rot + '</span>' + (f.ativo === false ? '<span class="dsf-tipo dsf-inat">Inativo</span>' : '') + '</div></header>'
+        + '<ul class="dsf-info">' + (f.contato ? '<li>👤 ' + esc(f.contato) + '</li>' : '') + (tel ? '<li>📞 <a href="tel:' + esc(zap) + '">' + esc(tel) + '</a>' + (zap.length >= 10 ? ' · <a href="https://wa.me/55' + esc(zap) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') + '</li>' : '') + (f.email ? '<li>✉️ <a href="mailto:' + esc(f.email) + '">' + esc(f.email) + '</a></li>' : '')
+        + ((f.cidade || f.uf) ? '<li>📍 ' + esc([f.cidade, f.uf || f.estado].filter(Boolean).join('/')) + '</li>' : '') + (f.cnpj ? '<li>🏷️ ' + esc(f.cnpj) + '</li>' : '') + (!f.contato && !tel && !f.email && !f.cidade && !f.cnpj ? '<li class="dsf-falta">Sem contato cadastrado — clique em Editar para completar</li>' : '') + '</ul>'
+        + '<div class="dsf-stats"><div><b>' + (c ? c.n : 0) + '</b><span>compras</span></div><div><b>' + (c ? moeda(c.v) : '—') + '</b><span>total comprado</span></div><div><b>' + (c && c.ult ? br(c.ult) : '—') + '</b><span>última compra</span></div></div>'
+        + '<footer><span class="dsf-onde">Aparece em: ' + t.onde + '</span><div><button type="button" data-a="editar">Editar</button><button type="button" data-a="ativo">' + (f.ativo === false ? 'Ativar' : 'Desativar') + '</button><button type="button" data-a="excluir" class="dsf-del" aria-label="Excluir">Excluir</button></div></footer></article>';
+    }).join('') : '<div class="dsf-vazio">Nenhum fornecedor ' + (q ? 'encontrado.' : 'cadastrado neste filtro.') + '</div>';
+  }
+  function form(f) {
+    var novo = !f; f = f || { tipo: E.tipo === 'diversos' ? 'Itens diversos' : 'Papelão', ativo: true };
+    var ov = document.createElement('div'); ov.className = 'dsf-ov';
+    var t = tipoDe(f);
+    ov.innerHTML = '<form class="dsf-modal" autocomplete="off"><header><h2>' + (novo ? 'Novo fornecedor' : 'Editar fornecedor') + '</h2><button type="button" class="dsf-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<fieldset class="dsf-tipos"><legend>Tipo de fornecedor</legend>'
+      + '<label class="' + (t === 'papelao' ? 'on' : '') + '"><input type="radio" name="tipo" value="Papelão"' + (t === 'papelao' ? ' checked' : '') + '><b>📦 Papelão</b><span>Aparece na Compra de Papelão e no estoque de chapas</span></label>'
+      + '<label class="' + (t === 'diversos' ? 'on' : '') + '"><input type="radio" name="tipo" value="Itens diversos"' + (t === 'diversos' ? ' checked' : '') + '><b>🧰 Itens diversos</b><span>Aparece só no Almoxarifado (ferramentas, parafusos…)</span></label></fieldset>'
+      + '<div class="dsf-g">' + [['nome', 'Nome *', f.nome, 'Ex.: Ferragem Central'], ['razao_social', 'Razão social', f.razao_social], ['cnpj', 'CNPJ', f.cnpj], ['contato', 'Contato / vendedor', f.contato], ['telefone', 'Telefone / WhatsApp', f.telefone || f.tel], ['email', 'E-mail', f.email], ['cidade', 'Cidade', f.cidade], ['uf', 'UF', f.uf || f.estado], ['endereco', 'Endereço', f.endereco]].map(function (c) {
+        return '<label class="' + (c[0] === 'endereco' ? 'dsf-l2' : '') + '">' + c[1] + '<input name="' + c[0] + '" value="' + esc(c[2] || '') + '"' + (c[3] ? ' placeholder="' + esc(c[3]) + '"' : '') + (c[0] === 'nome' ? ' required' : '') + (c[0] === 'uf' ? ' maxlength="2"' : '') + '></label>';
+      }).join('') + '<label class="dsf-l2">Observações<textarea name="observacoes" rows="2">' + esc(f.observacoes || f.obs || '') + '</textarea></label></div>'
+      + '<footer><button type="button" data-x="fechar">Cancelar</button><button type="submit" class="dsf-pri">Salvar</button></footer></form>';
+    document.body.appendChild(ov);
+    ov.querySelectorAll('.dsf-tipos input').forEach(function (i) { i.addEventListener('change', function () { ov.querySelectorAll('.dsf-tipos label').forEach(function (l) { l.classList.toggle('on', l.contains(i) && i.checked); }); }); });
+    ov.addEventListener('click', function (e) { if (e.target === ov || (e.target.closest('[data-x="fechar"]'))) ov.remove(); });
+    ov.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fd = new FormData(e.target), b = {}; fd.forEach(function (v, k) { b[k] = String(v).trim(); });
+      if (!b.nome) return;
+      b.uf = (b.uf || '').toUpperCase(); b.ativo = f.ativo !== false;
+      var bt = ov.querySelector('.dsf-pri'); bt.disabled = true; bt.textContent = 'Salvando…';
+      (novo ? req('POST', '/api/fornecedores', b) : req('PUT', '/api/fornecedores/' + encodeURIComponent(f.id), b))
+        .then(function () { ov.remove(); E.compras = null; return carregar(true); }).then(function () { try { if (typeof window.carregarFornecedores === 'function') window.carregarFornecedores(true); } catch (_) {} resumoCompras().then(render); render(); })
+        .catch(function (er) { bt.disabled = false; bt.textContent = 'Salvar'; try { window.toast('Erro ao salvar: ' + er.message, 'var(--red)'); } catch (_) {} });
+    });
+    setTimeout(function () { try { ov.querySelector('[name="nome"]').focus(); } catch (_) {} }, 40);
+  }
+  function confirmar(msg) {
+    return new Promise(function (ok) {
+      var ov = document.createElement('div'); ov.className = 'dsf-ov';
+      ov.innerHTML = '<div class="dsf-modal dsf-conf"><p>' + esc(msg) + '</p><footer><button type="button" data-r="0">Cancelar</button><button type="button" class="dsf-del2" data-r="1">Excluir</button></footer></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-r]'); if (!b && e.target !== ov) return; ov.remove(); ok(!!(b && b.getAttribute('data-r') === '1')); });
+    });
+  }
+  function montar() {
+    var p = pagina(); if (!p || p.querySelector('#ds-forn')) return;
+    p.classList.add('dsf-ativa');
+    var r = document.createElement('div'); r.id = 'ds-forn';
+    r.innerHTML = '<header class="dsf-head"><div><h1>Fornecedores</h1><p>Papelão vai para a Compra de Papelão · Itens diversos vão para o Almoxarifado</p></div><button type="button" class="dsf-pri" data-a="novo">+ Novo fornecedor</button></header>'
+      + '<div class="dsf-kpis"></div>'
+      + '<div class="dsf-filtros"><label class="dsf-busca"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Buscar nome, CNPJ, cidade, contato…"></label><label class="dsf-chk"><input type="checkbox" data-f="inativos"> Mostrar inativos</label></div>'
+      + '<div class="dsf-grade"></div>';
+    p.insertBefore(r, p.firstChild);
+    var inp = r.querySelector('.dsf-busca input'), tm;
+    inp.addEventListener('input', function () { clearTimeout(tm); tm = setTimeout(function () { E.busca = inp.value; render(); }, 150); });
+    r.querySelector('[data-f="inativos"]').addEventListener('change', function (e) { E.inativos = e.target.checked; render(); });
+    r.addEventListener('click', function (e) {
+      var k = e.target.closest('.dsf-kpis [data-tipo]'); if (k) { E.tipo = k.getAttribute('data-tipo'); render(); return; }
+      var b = e.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a');
+      if (a === 'novo') return form(null);
+      var card = b.closest('[data-id]'), f = card && FORN.find(function (x) { return String(x.id) === card.getAttribute('data-id'); }); if (!f) return;
+      if (a === 'editar') return form(f);
+      if (a === 'ativo') { req('PUT', '/api/fornecedores/' + encodeURIComponent(f.id), { nome: f.nome, ativo: f.ativo === false }).then(function () { return carregar(true); }).then(render).catch(function (er) { try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} }); return; }
+      if (a === 'excluir') confirmar('Excluir o fornecedor ' + f.nome + '? As compras já feitas continuam registradas.').then(function (sim) { if (!sim) return; req('DELETE', '/api/fornecedores/' + encodeURIComponent(f.id)).then(function () { return carregar(true); }).then(render).catch(function (er) { try { window.toast('Erro ao excluir: ' + er.message, 'var(--red)'); } catch (_) {} }); });
+    });
+  }
+  var ativoAntes = false;
+  setInterval(function () {
+    filtrarCompra(); almox();
+    var p = pagina(); if (!p) return;
+    var ativo = p.classList.contains('active') || p.offsetParent !== null;
+    if (ativo) montar();
+    if (ativo && !ativoAntes) { carregar(true).then(render); resumoCompras().then(render); }
+    ativoAntes = ativo;
+  }, 500);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-forn-css';
+    st.textContent = '#page-fornecedores.dsf-ativa > :not(#ds-forn):not(style):not(script){display:none!important}#page-fornecedores.dsf-ativa{overflow-y:auto}'
+      + '#ds-forn{padding:18px 20px 40px;color:var(--text);font-size:14px}.dsf-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}.dsf-head h1{margin:0;font-size:22px}.dsf-head p{margin:4px 0 0;color:var(--text2);font-size:13px}'
+      + '.dsf-pri{height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}'
+      + '.dsf-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}.dsf-kpis button{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:2px}.dsf-kpis button.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.dsf-kpis span{font-size:12.5px;color:var(--text2)}.dsf-kpis b{font-size:22px}.dsf-kpis small{font-size:11.5px;color:var(--text3)}'
+      + '.dsf-filtros{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.dsf-busca{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--b2);border-radius:10px;background:var(--surface);color:var(--text2)}.dsf-busca input{flex:1;border:0!important;background:transparent!important;color:var(--text)!important;outline:none;font-size:14px;box-shadow:none!important;padding:0!important}.dsf-chk{display:flex;gap:6px;align-items:center;color:var(--text2);font-size:13px}'
+      + '.dsf-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}.dsf-vazio{color:var(--text2);padding:30px;text-align:center;grid-column:1/-1}'
+      + '.dsf-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}.dsf-card.off{opacity:.6}.dsf-card header{display:flex;gap:12px;align-items:center}.dsf-av{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);flex:0 0 auto}.dsf-card h3{margin:0 0 4px;font-size:15.5px}'
+      + '.dsf-tipo{display:inline-block;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;margin-right:4px}.dsf-papelao{background:color-mix(in srgb,#f59e0b 20%,transparent);color:#d97706}.dsf-diversos{background:color-mix(in srgb,#8b5cf6 20%,transparent);color:#8b5cf6}.dsf-inat{background:var(--s3);color:var(--text3)}'
+      + '.dsf-info{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--text2)}.dsf-info a{color:var(--accent);text-decoration:none}.dsf-falta{font-style:italic;color:var(--text3)}'
+      + '.dsf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.dsf-stats div{background:var(--s2);border-radius:9px;padding:7px 8px}.dsf-stats b{display:block;font-size:13.5px}.dsf-stats span{font-size:11px;color:var(--text3)}'
+      + '.dsf-card footer{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px}.dsf-onde{font-size:11.5px;color:var(--text3)}.dsf-card footer div{display:flex;gap:6px}.dsf-card footer button{height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}.dsf-card footer .dsf-del{color:var(--red)}'
+      + '.dsf-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dsf-modal{width:min(640px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--b2);border-radius:16px;padding:18px}.dsf-modal header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dsf-modal h2{margin:0;font-size:18px}.dsf-x{background:none;border:0;color:var(--text2);font-size:18px;cursor:pointer}'
+      + '.dsf-tipos{border:0;padding:0;margin:0 0 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.dsf-tipos legend{font-size:12.5px;color:var(--text2);margin-bottom:6px}.dsf-tipos label{border:1px solid var(--b2);border-radius:12px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px}.dsf-tipos label.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}.dsf-tipos input{display:none}.dsf-tipos span{font-size:12px;color:var(--text2)}'
+      + '.dsf-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.dsf-g label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--text2)}.dsf-g .dsf-l2{grid-column:1/-1}.dsf-g input,.dsf-g textarea{height:38px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);padding:0 10px;font:inherit;font-size:14px}.dsf-g textarea{height:auto;padding:8px 10px}'
+      + '.dsf-modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.dsf-modal footer button{height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.dsf-modal footer .dsf-pri{background:var(--accent);border-color:var(--accent);color:#fff}.dsf-conf{width:min(420px,100%)}.dsf-conf p{margin:4px 0 0}.dsf-del2{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important}'
+      + '@media (max-width:700px){#ds-forn{padding:12px 12px 110px}.dsf-kpis{grid-template-columns:1fr 1fr}.dsf-kpis button:first-child{grid-column:1/-1}.dsf-kpis small{display:none}.dsf-grade{grid-template-columns:1fr}.dsf-head .dsf-pri{width:100%}.dsf-tipos,.dsf-g{grid-template-columns:1fr}.dsf-card footer div{width:100%}.dsf-card footer button{flex:1;height:38px}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();

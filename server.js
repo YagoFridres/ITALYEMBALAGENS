@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027142649';
-const SW_RUNTIME_VERSION = '20261027142649';
+const PATCH_RUNTIME_VERSION = '20261027142952';
+const SW_RUNTIME_VERSION = '20261027142952';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5625,6 +5625,8 @@ function fornecedoresPayload(p) {
   else if (b.classificacao !== undefined) out.tipo = b.classificacao;
   else if (b.categoria !== undefined) out.tipo = b.categoria;
   if (b.cidade !== undefined) out.cidade = b.cidade;
+  if (b.ativo !== undefined) out.ativo = !(b.ativo === false || b.ativo === 'false' || b.ativo === 0);
+  if (b.cep !== undefined) out.cep = b.cep;
   if (b.uf !== undefined) out.uf = b.uf;
   if (b.estado !== undefined && out.uf === undefined) out.uf = b.estado;
   if (b.obs !== undefined) out.obs = b.obs;
