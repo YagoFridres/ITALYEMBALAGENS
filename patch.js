@@ -72798,3 +72798,150 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setInterval(dedup, 5000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(puxar, 500); });
 })();
+
+/* ===== POP-UP DE CONFIRMAÇÃO EM CADA AÇÃO (27/10/2026) =====
+ * Toda ação que grava algo no servidor e dá certo mostra um aviso dizendo o que foi feito:
+ * "OF 4384 lançada — MOVEIS RIPKE · 320 un.", "OF 4380 concluída", "Cliente X excluído" etc.
+ * Lê a própria requisição (método, endereço, corpo) e a resposta; não muda nenhuma ação.
+ * Os avisos verdes genéricos antigos que chegam junto são escondidos para não repetir. */
+(function () {
+  if (window.__dsPopAcoes) return; window.__dsPopAcoes = true;
+  var NOMES = {
+    clientes: ['Cliente', 'o'], vendedores: ['Vendedor', 'o'], amostras: ['Amostra', 'a'], orcamentos: ['Orçamento', 'o'],
+    orcamentos_pastas: ['Pasta de orçamentos', 'a'], 'compras-chapas': ['Compra de papelão', 'a'], chapas_estoque: ['Chapa', 'a'],
+    chapas_estoque_v2: ['Chapa', 'a'], chapas: ['Chapa', 'a'], inconformidades: ['Inconformidade', 'a'], inconformidades_controle: ['Controle de inconformidade', 'o'],
+    caixas_perdidas: ['Registro de caixas perdidas', 'o'], pedidos_recorrentes: ['Pedido recorrente', 'o'], operadores: ['Operador', 'o'],
+    usuarios: ['Usuário', 'o'], fornecedores: ['Fornecedor', 'o'], maquinas: ['Máquina', 'a'], facas_estoque: ['Faca', 'a'],
+    cliches_estoque: ['Clichê', 'o'], estoque_tintas: ['Tinta', 'a'], estoque_materiais: ['Material', 'o'], gramaturas: ['Gramatura', 'a'],
+    tipos_caixa: ['Tipo de caixa', 'o'], notas_fiscais: ['Nota fiscal', 'a'], fluxos: ['Fluxo', 'o'], 'cores-impressao': ['Cor de impressão', 'a'],
+    recebimento_insumos: ['Recebimento', 'o'], visitas_vendedor: ['Visita', 'a'], roteiro_entrega: ['Roteiro de entrega', 'o'], agenda: ['Compromisso', 'o'],
+    'centros-custo': ['Centro de custo', 'o'], 'central-custos': ['Lançamento de custo', 'o'], chapas_grupos: ['Grupo de chapas', 'o'],
+    chapas_categorias: ['Categoria de chapas', 'a'], ramos_atividade: ['Ramo de atividade', 'o'], cidades: ['Cidade', 'a'], estados: ['Estado', 'o'],
+    tempos_reais: ['Tempo real', 'o'], estoque: ['Estoque', 'o'], compras: ['Compra', 'a'], fornecedores_papelao: ['Fornecedor', 'o']
+  };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function n(v) { var x = Number(v); return isFinite(x) ? x.toLocaleString('pt-BR') : ''; }
+  function br(iso) { iso = String(iso || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
+  function ofPorId(id) { try { var l = window.OFs || []; for (var i = 0; i < l.length; i++) if (l[i] && String(l[i].id) === String(id)) return l[i]; } catch (_) {} return null; }
+  function un(j) { if (!j || typeof j !== 'object') return {}; var d = j.data !== undefined ? j.data : j; if (Array.isArray(d)) d = d[0]; return (d && typeof d === 'object') ? d : {}; }
+  function detOF(o) {
+    if (!o) return '';
+    var cli = o.cliNome || o.cliente_nome || o.clinome || o.cliente || '';
+    var q = o.qtd != null ? o.qtd : (o.quantidade != null ? o.quantidade : null);
+    var p = o.produto || o.prodDesc || o.descricao || '';
+    var e = br(o.ent || o.data_entrega);
+    return [cli, p, q != null && q !== '' ? n(q) + ' un.' : '', e ? 'entrega ' + e : ''].filter(Boolean).join(' · ');
+  }
+  function numOF(o, id) { return (o && (o.of || o.numero)) || ('#' + String(id || '').slice(0, 6)); }
+  function titulo(d) { return d.nome || d.razao_social || d.titulo || d.descricao || d.numero || d.of || d.nf || ''; }
+  // ---------- aviso ----------
+  var pilha = null, ultimoPop = 0, ultimoTxt = '', ultimoTs = 0;
+  function pop(tit, det, tipo) {
+    var chave = tit + '|' + det; if (chave === ultimoTxt && Date.now() - ultimoTs < 2500) return; ultimoTxt = chave; ultimoTs = Date.now();
+    ultimoPop = Date.now();
+    if (!pilha || !document.body.contains(pilha)) { pilha = document.createElement('div'); pilha.id = 'ds-pop-pilha'; pilha.setAttribute('role', 'status'); pilha.setAttribute('aria-live', 'polite'); document.body.appendChild(pilha); }
+    var el = document.createElement('div'); el.className = 'ds-pop ds-pop-' + (tipo || 'ok');
+    var ic = { ok: '✓', del: '🗑', info: 'ℹ' }[tipo || 'ok'] || '✓';
+    el.innerHTML = '<span class="ds-pop-ic">' + ic + '</span><div class="ds-pop-tx"><b>' + esc(tit) + '</b>' + (det ? '<span>' + esc(det) + '</span>' : '') + '</div><button type="button" class="ds-pop-x" aria-label="Fechar">×</button>';
+    pilha.appendChild(el);
+    while (pilha.children.length > 4) pilha.removeChild(pilha.firstChild);
+    var fechar = function () { el.classList.add('ds-pop-sai'); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 250); };
+    el.querySelector('.ds-pop-x').onclick = fechar;
+    setTimeout(fechar, 6000);
+  }
+  window.dsPop = pop;
+  // ---------- o que cada requisição significa ----------
+  function descrever(met, path, body, resp) {
+    var seg = path.replace(/^\/api\//, '').split('?')[0].split('/').filter(Boolean);
+    var rec = seg[0], id = seg[1], sub = seg[2], d = un(resp), b = body || {};
+    if (rec === 'ofs') {
+      if (id === 'reordenar') return ['Ordem das OFs salva', '', 'ok'];
+      if (id === 'upload') return null;
+      var o = ofPorId(id) || {}; var junto = Object.assign({}, o, b, d && d.id ? d : {});
+      var nOF = numOF(junto, id);
+      if (met === 'POST' && !id) return ['OF ' + nOF + ' lançada', detOF(junto), 'ok'];
+      if (met === 'DELETE') return ['OF ' + nOF + ' excluída', detOF(o), 'del'];
+      if (sub === 'concluir') return ['OF ' + nOF + ' concluída', detOF(junto), 'ok'];
+      if (sub === 'passou-maquina' || sub === 'baixa_maquina' || sub === 'baixa') { var m = b.maquina || b.maquina_nome || b.maq || o.maquina_atual || ''; return ['OF ' + nOF + ' passou pela máquina' + (m ? ' ' + m : ''), detOF(o), 'ok']; }
+      if (sub === 'avancar-etapa') return ['OF ' + nOF + ' avançou de etapa', detOF(o), 'ok'];
+      if (sub === 'urgente') { var u = b.urgente != null ? b.urgente : (b.urg != null ? b.urg : d.urg); return ['OF ' + nOF + (u === false || u === 'false' || u === 0 ? ' sem urgência' : ' marcada como urgente'), detOF(o), 'ok']; }
+      if (sub === 'restore') return ['OF ' + nOF + ' restaurada', detOF(o), 'ok'];
+      if (sub === 'imagem') return ['Imagem da OF ' + nOF + ' salva', '', 'ok'];
+      if (sub === 'ordem') return ['Ordem da OF ' + nOF + ' salva', '', 'ok'];
+      var st = String(b.status || '');
+      if (/conclu/i.test(st)) return ['OF ' + nOF + ' concluída', detOF(junto), 'ok'];
+      if (/cancel/i.test(st)) return ['OF ' + nOF + ' cancelada', detOF(junto), 'del'];
+      if (b.sem_papel != null || b.sem_papelao != null) return null; // já tem aviso próprio
+      return ['OF ' + nOF + ' alterada', detOF(junto), 'ok'];
+    }
+    if (rec === 'operador') {
+      var oo = ofPorId(b.of_id) || {}; var nn = numOF(oo, b.of_id);
+      if (id === 'iniciar') return ['Produção iniciada — OF ' + nn, [b.maquina, detOF(oo)].filter(Boolean).join(' · '), 'ok'];
+      if (id === 'finalizar') return ['Produção finalizada — OF ' + nn, [b.maquina, b.quantidade != null ? n(b.quantidade) + ' caixas' : ''].filter(Boolean).join(' · '), 'ok'];
+      if (id === 'cancelar') return ['Produção cancelada — OF ' + nn, '', 'info'];
+      return null;
+    }
+    if (rec === 'ofmaq' && id === 'sequencia') return ['Sequência das OFs salva', b.maquina || '', 'ok'];
+    if (rec === 'almoxarifado') { var no = d.numero || b.numero || ''; var tot = d.valor_total != null ? d.valor_total : b.valor_total; var det = tot != null ? Number(tot).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''; if (met === 'DELETE') return ['Ordem de compra' + (no ? ' nº ' + no : '') + ' excluída', '', 'del']; return ['Ordem de compra' + (no ? ' nº ' + no : '') + (met === 'POST' ? ' criada' : ' salva'), det, 'ok']; }
+    if (rec === 'papelao' && id === 'solicitacoes') { var chp = [d.fornecedor || b.fornecedor, d.nomenclatura || b.nomenclatura, d.tamanho || b.tamanho].filter(Boolean).join(' '); if (met === 'POST') return ['Solicitação de compra registrada', [chp, (d.qtd_sugerida || b.qtd_sugerida) ? n(d.qtd_sugerida || b.qtd_sugerida) + ' chapas' : ''].filter(Boolean).join(' · '), 'ok']; return ['Solicitação de compra: ' + (b.status || d.status || 'atualizada'), chp, 'ok']; }
+    if ((rec === 'chapas_estoque' || rec === 'chapas_estoque_v2') && id) {
+      if (sub === 'movimento') { var t = String(b.tipo || 'entrada'); return [(t === 'saida' ? 'Saída' : 'Entrada') + ' de ' + n(Math.abs(b.quantidade || b.qtd || 0)) + ' chapas registrada', b.nf ? 'NF ' + b.nf : '', 'ok']; }
+      if (sub === 'pin') return ['Compra de chapa sugerida', b.qtd_sugerida ? n(b.qtd_sugerida) + ' chapas' : '', 'ok'];
+      if (sub === 'despin') return ['Sugestão de compra removida', '', 'info'];
+      if (sub === 'cor' || sub === 'grupo' || sub === 'ignorar-sugestao' || sub === 'inline') return ['Chapa alterada', '', 'ok'];
+    }
+    if (rec === 'chapas_estoque' && /entrada|saida|lote/.test(id || '')) return [/saida/.test(id) ? 'Saída de chapas registrada' : 'Entrada de chapas registrada', '', 'ok'];
+    var nm = NOMES[rec]; if (!nm) return null;
+    if (sub && !/^(clonar|restaurar|pasta)$/.test(sub)) return null;
+    var g = nm[1], tt = titulo(Object.assign({}, b, d));
+    var verbo = sub === 'clonar' ? 'clonad' + g : sub === 'restaurar' ? 'restaurad' + g : met === 'DELETE' ? 'excluíd' + g : (met === 'POST' && (!id || id === 'pastas')) ? 'criad' + g : 'salv' + g;
+    return [nm[0] + (tt ? ' ' + tt : '') + ' ' + verbo, '', met === 'DELETE' ? 'del' : 'ok'];
+  }
+  // ---------- escuta as requisições ----------
+  var IGN = /\/api\/(auth|login|chat|notificacoes|assistente|jarvis|_debug|infra|relatorios?\b|relatorio-|dashboard|presenca|heartbeat|log|logs|audit|erros|telemetria|push|sessao)/i;
+  var of0 = window.fetch;
+  window.fetch = function (input, init) {
+    var p = of0.apply(this, arguments);
+    try {
+      var met = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      if (met === 'GET' || met === 'HEAD' || met === 'OPTIONS') return p;
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var path = url.replace(/^https?:\/\/[^/]+/, '');
+      if (path.indexOf('/api/') !== 0 || IGN.test(path)) return p;
+      var body = null; try { body = init && typeof init.body === 'string' ? JSON.parse(init.body) : null; } catch (_) {}
+      p.then(function (r) {
+        if (!r || !r.ok) return;
+        r.clone().json().catch(function () { return {}; }).then(function (j) {
+          if (j && j.ok === false) return;
+          var m = null; try { m = descrever(met, path, body, j); } catch (_) {}
+          if (m) pop(m[0], m[1], m[2]);
+        });
+      }).catch(function () {});
+    } catch (_) {}
+    return p;
+  };
+  // ---------- esconde o aviso verde genérico que chega junto ----------
+  function instalarToast() {
+    var t = window.toast; if (typeof t !== 'function' || t.__dsPop) return;
+    var w = function (msg, cor) {
+      try { var c = String(cor == null ? 'var(--green)' : cor); if (Date.now() - ultimoPop < 3000 && /green|34, ?197, ?94|#22c55e|#10b981|#16a34a/i.test(c)) return; } catch (_) {}
+      return t.apply(this, arguments);
+    };
+    w.__dsPop = true; window.toast = w;
+  }
+  instalarToast(); setInterval(instalarToast, 3000);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-pop-css';
+    st.textContent = '#ds-pop-pilha{position:fixed;right:20px;bottom:96px;z-index:100000;display:flex;flex-direction:column;gap:10px;align-items:flex-end;pointer-events:none;max-width:min(420px,calc(100vw - 32px))}'
+      + '.ds-pop{pointer-events:auto;display:flex;align-items:flex-start;gap:12px;background:var(--surface,#16181d);color:var(--text,#fff);border:1px solid var(--b2,#333);border-left:4px solid var(--green,#22c55e);border-radius:12px;padding:12px 12px 12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.35);min-width:260px;animation:dsPopIn .22s ease-out}'
+      + '.ds-pop-del{border-left-color:var(--red,#ef4444)}.ds-pop-info{border-left-color:var(--accent,#3b82f6)}'
+      + '.ds-pop-ic{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;background:color-mix(in srgb,var(--green,#22c55e) 18%,transparent);color:var(--green,#22c55e)}'
+      + '.ds-pop-del .ds-pop-ic{background:color-mix(in srgb,var(--red,#ef4444) 16%,transparent);color:var(--red,#ef4444)}.ds-pop-info .ds-pop-ic{background:color-mix(in srgb,var(--accent,#3b82f6) 16%,transparent);color:var(--accent,#3b82f6)}'
+      + '.ds-pop-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.ds-pop-tx b{font-size:14px;font-weight:700;line-height:1.3}.ds-pop-tx span{font-size:12.5px;color:var(--text2,#aaa);line-height:1.35;overflow-wrap:anywhere}'
+      + '.ds-pop-x{flex:0 0 auto;background:none;border:0;color:var(--text3,#888);font-size:20px;line-height:1;cursor:pointer;padding:0 2px}.ds-pop-x:hover{color:var(--text,#fff)}'
+      + '.ds-pop-sai{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}'
+      + '@keyframes dsPopIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}'
+      + '@media (max-width:700px){#ds-pop-pilha{left:16px;right:16px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 12px);align-items:stretch;max-width:none}.ds-pop{min-width:0}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
