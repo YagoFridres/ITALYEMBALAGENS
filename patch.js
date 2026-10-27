@@ -72539,3 +72539,137 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== SOLICITAÇÕES DE COMPRA DE PAPELÃO (27/10/2026) =====
+ * Estoque de Chapas: botão "Solicitar compra", lista das solicitações e selo na linha da chapa.
+ * Compra de Papelão: as mesmas solicitações com o andamento (Solicitada → Em cotação → Comprada → Recebida
+ * ou Recusada) e o nº da compra. Os dois lados veem o mesmo status. O 📌 antigo também cria a solicitação. */
+(function () {
+  if (window.__dsSolPapelao) return; window.__dsSolPapelao = true;
+  var ST = ['Solicitada', 'Em cotação', 'Comprada', 'Recebida', 'Recusada'];
+  var E = { lista: [], chapas: [], ult: 0, carregando: false };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function req(m, url, body) {
+    var h = { 'Content-Type': 'application/json' }; try { var t = localStorage.getItem('token'); if (t) h.Authorization = 'Bearer ' + t; } catch (_) {}
+    return fetch((window.API_BASE || '') + url, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); });
+  }
+  function toast(m, c) { try { window.toast(m, c || 'var(--green)'); } catch (_) {} }
+  function dataHora(iso) { try { var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return '—'; } }
+  function aberta(s) { return ['Solicitada', 'Em cotação', 'Comprada'].indexOf(s.status) >= 0; }
+  function chip(st) { return '<span class="sol-st sol-' + esc(String(st).toLowerCase().replace(/[^a-z]/g, '')) + '">' + esc(st) + '</span>'; }
+  function nomeChapa(s) { return [s.fornecedor, s.nomenclatura, s.tamanho].filter(Boolean).join(' · ') + (s.descricao ? ' — ' + s.descricao : ''); }
+  function carregar(forcar) {
+    if (E.carregando || (!forcar && Date.now() - E.ult < 20000)) return Promise.resolve();
+    E.carregando = true;
+    return req('GET', '/api/papelao/solicitacoes').then(function (l) { E.lista = l || []; E.ult = Date.now(); }).catch(function () {}).then(function () { E.carregando = false; desenhar(); });
+  }
+  function painel(pg, modo) {
+    var host = pg.querySelector('.sol-painel');
+    if (!host) {
+      host = document.createElement('section'); host.className = 'sol-painel'; host.setAttribute('data-modo', modo);
+      var ref = modo === 'estoque' ? (pg.querySelector('.page-body') || pg) : (pg.querySelector('.page-body') || pg);
+      ref.insertBefore(host, ref.firstChild);
+      host.addEventListener('click', clique); host.addEventListener('change', mudou);
+    }
+    var abertas = E.lista.filter(aberta), fechadas = E.lista.filter(function (s) { return !aberta(s); }).slice(0, 10);
+    var verTodas = host.getAttribute('data-todas') === '1';
+    var lista = verTodas ? abertas.concat(fechadas) : abertas;
+    var linhas = lista.map(function (s) {
+      var ult = (s.historico || []).slice(-1)[0] || {};
+      var acoes = modo === 'compra'
+        ? '<select class="sol-sel" data-id="' + esc(s.id) + '" aria-label="Andamento">' + ST.map(function (x) { return '<option' + (x === s.status ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>'
+          + '<input class="sol-ref" data-id="' + esc(s.id) + '" placeholder="Nº da compra" value="' + esc(s.compra_ref || '') + '">'
+        : (aberta(s) && s.status === 'Solicitada' ? '<button type="button" class="sol-btn" data-a="cancelar" data-id="' + esc(s.id) + '">Cancelar pedido</button>' : '');
+      return '<tr><td><b>' + esc(nomeChapa(s)) + '</b>' + (s.observacao ? '<small>' + esc(s.observacao) + '</small>' : '') + '</td>'
+        + '<td class="sol-n">' + (s.qtd_sugerida ? Number(s.qtd_sugerida).toLocaleString('pt-BR') : '—') + '</td>'
+        + '<td>' + chip(s.status) + (s.compra_ref ? '<small>Compra ' + esc(s.compra_ref) + '</small>' : '') + '</td>'
+        + '<td><small>Pedido por ' + esc(s.solicitante || '—') + ' em ' + dataHora(s.created_at) + '</small>' + (ult.por && s.historico.length > 1 ? '<small>Últ.: ' + esc(ult.status || '') + ' por ' + esc(ult.por) + ' · ' + dataHora(ult.em) + '</small>' : '') + '</td>'
+        + '<td class="sol-ac">' + acoes + '</td></tr>';
+    }).join('');
+    host.innerHTML = '<div class="sol-head"><div><h3>🛒 Solicitações de compra de papelão</h3><p>' + (modo === 'compra' ? 'Pedidos feitos pelo estoque — atualize o andamento e o nº da compra; o estoque vê na hora.' : 'O que o estoque pediu para comprar e como está cada pedido.') + '</p></div>'
+      + '<div class="sol-head-b"><span class="sol-cont">' + abertas.length + ' em aberto</span>' + (modo === 'estoque' ? '<button type="button" class="sol-btn sol-pri" data-a="nova">+ Solicitar compra</button>' : '') + '<button type="button" class="sol-btn" data-a="todas">' + (verTodas ? 'Só em aberto' : 'Ver concluídas') + '</button></div></div>'
+      + (lista.length ? '<div class="sol-wrap"><table class="sol-tab" data-no-mobile-cards="1"><thead><tr><th>Chapa</th><th class="sol-n">Qtd.</th><th>Status</th><th>Pedido</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div>' : '<div class="sol-vazio">Nenhuma solicitação em aberto.</div>');
+  }
+  function seloLinhas(pg) {
+    var abertas = {}; E.lista.filter(aberta).forEach(function (s) { abertas[s.chapa_id] = s; });
+    pg.querySelectorAll('tr[data-chapa-id]').forEach(function (tr) {
+      var s = abertas[tr.getAttribute('data-chapa-id')], sel = tr.querySelector('.sol-selo');
+      if (!s) { if (sel) sel.remove(); return; }
+      var txt = '🛒 ' + s.status + (s.compra_ref ? ' · ' + s.compra_ref : '');
+      if (sel && sel.textContent === txt) return;
+      if (!sel) { sel = document.createElement('span'); sel.className = 'sol-selo'; var td = tr.children[4] || tr.children[0]; td.appendChild(sel); }
+      sel.textContent = txt; sel.title = 'Solicitação de compra: ' + s.status;
+    });
+  }
+  function desenhar() {
+    var pe = document.getElementById('page-estoque'), pc = document.getElementById('page-compras');
+    if (pe && pe.classList.contains('active') && String(window._PAGE_ATUAL || 'estoque') === 'estoque') { painel(pe, 'estoque'); seloLinhas(pe); }
+    if (pc && pc.classList.contains('active')) painel(pc, 'compra');
+  }
+  function clique(ev) {
+    var b = ev.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a'), host = b.closest('.sol-painel');
+    if (a === 'todas') { host.setAttribute('data-todas', host.getAttribute('data-todas') === '1' ? '0' : '1'); return desenhar(); }
+    if (a === 'nova') return modalNova();
+    if (a === 'cancelar') {
+      if (!window.confirm('Cancelar este pedido de compra?')) return;
+      req('PATCH', '/api/papelao/solicitacoes/' + b.getAttribute('data-id'), { status: 'Recusada', nota: 'Cancelada pelo estoque' }).then(function () { toast('Pedido cancelado'); return carregar(true); }).catch(function (e) { toast(e.message, 'var(--red)'); });
+    }
+  }
+  function mudou(ev) {
+    var t = ev.target, id = t.getAttribute('data-id'); if (!id) return;
+    var corpo = t.classList.contains('sol-sel') ? { status: t.value } : (t.classList.contains('sol-ref') ? { compra_ref: t.value } : null);
+    if (!corpo) return;
+    req('PATCH', '/api/papelao/solicitacoes/' + id, corpo).then(function () { toast('Solicitação atualizada'); return carregar(true); }).catch(function (e) { toast(e.message, 'var(--red)'); });
+  }
+  function modalNova() {
+    var ov = document.createElement('div'); ov.className = 'sol-ov';
+    ov.innerHTML = '<div class="sol-modal" role="dialog" aria-modal="true"><header><h2>Solicitar compra de papelão</h2><button type="button" class="sol-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<label>Chapa<input class="sol-in" data-f="busca" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome…" autocomplete="off"></label><div class="sol-opcoes"></div>'
+      + '<div class="sol-g"><label>Quantidade sugerida<input class="sol-in" data-f="qtd" inputmode="numeric" placeholder="Ex.: 500"></label><label>Observação<input class="sol-in" data-f="obs" placeholder="Opcional (ex.: urgente para OF 4215)"></label></div>'
+      + '<footer><button type="button" class="sol-btn" data-x="fechar">Cancelar</button><button type="button" class="sol-btn sol-pri" data-x="salvar" disabled>Solicitar</button></footer></div>';
+    document.body.appendChild(ov);
+    var escolhida = null, inp = ov.querySelector('[data-f="busca"]'), op = ov.querySelector('.sol-opcoes'), btn = ov.querySelector('[data-x="salvar"]');
+    function listar() {
+      var q = String(inp.value || '').toLowerCase().trim();
+      var l = E.chapas.filter(function (c) { return !q || [c.fornecedor, c.nomenclatura, c.tamanho, c.nome_uso || c.nome].join(' ').toLowerCase().indexOf(q) >= 0; }).slice(0, 40);
+      op.innerHTML = l.map(function (c) { return '<button type="button" data-c="' + esc(c.id) + '"' + (escolhida === c.id ? ' class="on"' : '') + '><b>' + esc([c.fornecedor, c.nomenclatura, c.tamanho].join(' · ')) + '</b><span>' + esc(c.nome_uso || c.nome || '') + ' · estoque ' + Number(c.quantidade_atual != null ? c.quantidade_atual : c.quantidade || 0).toLocaleString('pt-BR') + '</span></button>'; }).join('') || '<div class="sol-vazio">Nenhuma chapa encontrada.</div>';
+    }
+    if (!E.chapas.length) { op.innerHTML = '<div class="sol-vazio">Carregando chapas…</div>'; req('GET', '/api/chapas').then(function (l) { E.chapas = l || []; listar(); }).catch(function () { op.innerHTML = '<div class="sol-vazio">Não foi possível carregar as chapas.</div>'; }); } else listar();
+    inp.addEventListener('input', listar);
+    setTimeout(function () { inp.focus(); }, 50);
+    ov.addEventListener('click', function (ev) {
+      if (ev.target === ov) return ov.remove();
+      var c = ev.target.closest('[data-c]'); if (c) { escolhida = c.getAttribute('data-c'); btn.disabled = false; return listar(); }
+      var x = ev.target.closest('[data-x]'); if (!x) return;
+      if (x.getAttribute('data-x') === 'fechar') return ov.remove();
+      btn.disabled = true; btn.textContent = 'Enviando…';
+      req('POST', '/api/papelao/solicitacoes', { chapa_id: escolhida, qtd_sugerida: ov.querySelector('[data-f="qtd"]').value, observacao: ov.querySelector('[data-f="obs"]').value })
+        .then(function (s) { ov.remove(); toast(s.status === 'Solicitada' ? 'Compra solicitada — a área de Compra já vê o pedido' : 'Já existia um pedido em aberto para esta chapa (' + s.status + ')'); return carregar(true); })
+        .catch(function (e) { btn.disabled = false; btn.textContent = 'Solicitar'; toast('Erro: ' + e.message, 'var(--red)'); });
+    });
+  }
+  setInterval(function () {
+    var pe = document.getElementById('page-estoque'), pc = document.getElementById('page-compras');
+    var on = (pe && pe.classList.contains('active')) || (pc && pc.classList.contains('active'));
+    if (!on) return;
+    carregar(false); desenhar();
+  }, 1500);
+  var css = '.sol-painel{margin:12px 16px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);overflow:hidden}'
+    + '.sol-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border)}.sol-head h3{margin:0;font-size:15px;font-weight:700}.sol-head p{margin:2px 0 0;color:var(--text2);font-size:12.5px}'
+    + '.sol-head-b{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sol-cont{font-size:12px;color:var(--text2);padding:3px 9px;border:1px solid var(--border);border-radius:99px}'
+    + '.sol-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}.sol-btn:hover{background:var(--s3)}.sol-pri{background:var(--accent);border-color:var(--accent);color:#fff}.sol-pri:hover{background:var(--accent2)}.sol-btn:disabled{opacity:.55}'
+    + '.sol-wrap{overflow:auto;max-height:340px}.sol-tab{width:100%;border-collapse:collapse}.sol-tab th{text-align:left;font-size:12px;font-weight:600;color:var(--text2);padding:8px 12px;background:var(--s2);text-transform:none;position:sticky;top:0}'
+    + '.sol-tab td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px}.sol-tab small{display:block;color:var(--text3);font-size:11.5px;margin-top:2px}.sol-n{text-align:right!important;white-space:nowrap}'
+    + '.sol-ac{white-space:nowrap;text-align:right}.sol-ac .sol-sel,.sol-ac .sol-ref{height:32px;border-radius:7px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:12.5px;padding:0 8px;width:auto!important}.sol-ac .sol-ref{width:120px!important;margin-left:6px}'
+    + '.sol-st{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;background:var(--s3);color:var(--text2)}.sol-solicitada{background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow)}.sol-emcotao{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}.sol-comprada{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent)}.sol-recebida{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}.sol-recusada{text-decoration:line-through}'
+    + '.sol-vazio{padding:16px;text-align:center;color:var(--text3);font-size:13px}'
+    + '.sol-selo{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;font-size:11px;font-weight:600;background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow);white-space:nowrap}'
+    + '.sol-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.sol-modal{width:min(620px,100%);max-height:calc(100% - 16px);overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}'
+    + '.sol-modal header{display:flex;justify-content:space-between;align-items:center}.sol-modal h2{margin:0;font-size:18px}.sol-x{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer}'
+    + '.sol-modal label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--text2)}.sol-in{height:38px;border-radius:8px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:14px;padding:0 10px}'
+    + '.sol-opcoes{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:6px}.sol-opcoes button{text-align:left;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.sol-opcoes button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}.sol-opcoes b{display:block;font-size:13px}.sol-opcoes span{font-size:12px;color:var(--text2)}'
+    + '.sol-g{display:grid;grid-template-columns:1fr 2fr;gap:10px}.sol-modal footer{display:flex;justify-content:flex-end;gap:8px}'
+    + '@media (max-width:700px){.sol-painel{margin:10px 0}.sol-tab thead{display:none}.sol-tab,.sol-tab tbody{display:block}.sol-tab tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}.sol-tab td{display:block;padding:0;border:0}.sol-tab td::before{content:none!important}.sol-ac{grid-column:1 / -1;text-align:left}.sol-g{grid-template-columns:1fr}.sol-modal footer .sol-btn{flex:1;height:42px}}';
+  try { var st = document.createElement('style'); st.id = 'ds-sol-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();

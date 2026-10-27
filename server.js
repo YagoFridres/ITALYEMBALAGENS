@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027095848';
-const SW_RUNTIME_VERSION = '20261027095848';
+const PATCH_RUNTIME_VERSION = '20261027100232';
+const SW_RUNTIME_VERSION = '20261027100232';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -28953,6 +28953,7 @@ app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => 
     };
     const updChapa = await _chapasUpdateCompatV2(chapaId, payloadChapa);
     if (updChapa?.error) return res.status(500).json({ ok: false, error: String(updChapa.error.message || updChapa.error) });
+    try { await _solCriar(chapaId, { qtd_sugerida: qtdSugerida, observacao }, req); } catch (eSol) { console.warn('[SOLICITACAO] pin', eSol?.message || eSol); }
 
     const existente = await supabase
       .from('chapas_pins')
@@ -29039,6 +29040,7 @@ app.patch('/api/chapas_estoque_v2/:id/despin', authMiddleware, async (req, res) 
     const schemaOk = await _ensureChapasPinSchemaCols();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const chapaId = String(req.params.id || '').trim();
+    try { if (chapaId) await _solMudarStatusPorChapa(chapaId, 'Recusada', req, 'Sugestão retirada do estoque'); } catch (_) {}
     if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
     if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
@@ -30240,7 +30242,8 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
       };
     }
     if (String(atual.status || '').trim().toLowerCase() === 'comprado') {
-      return res.json({ ok: true, data: atual, movimento: null });
+      try { if (atual && (atual.chapa_id || atual.id)) await _solMudarStatusPorChapa(atual.chapa_id || atual.id, 'Comprada', req, 'Compra registrada'); } catch (_) {}
+    return res.json({ ok: true, data: atual, movimento: null });
     }
     const payload = {
       status: 'comprado',
@@ -30322,6 +30325,7 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
     });
     if (updChapa?.error) return res.status(500).json({ ok: false, error: String(updChapa.error.message || updChapa.error) });
 
+    try { await _solMudarStatusPorChapa(atual.chapa_id || atual.id, 'Comprada', req, 'Compra registrada'); } catch (_) {}
     return res.json({ ok: true, data: upd.data || null, movimento });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -39790,6 +39794,77 @@ app.post('/api/infra/importar-estoque-chapas', requireAdmin, async (req, res) =>
     }
     try { cacheClearPrefix('chapas_'); cacheClearPrefix('chapas_estoque:'); } catch (_) {}
     return ok(res, { atualizadas, criadas, removidas, zeradas, erros: erros.slice(0, 20) });
+  } catch (e) { return err(res, e); }
+});
+
+// ===== SOLICITAÇÕES DE COMPRA DE PAPELÃO (27/10/2026) =====
+// O estoque pede (sugere) a compra de uma chapa; a área de Compra vê e atualiza o andamento; os dois lados enxergam o mesmo status.
+const _SOL_STATUS = ['Solicitada', 'Em cotação', 'Comprada', 'Recebida', 'Recusada'];
+async function _solCriar(chapaId, extra, req) {
+  const { data: aberta } = await supabase.from('papelao_solicitacoes').select('*').eq('chapa_id', chapaId).in('status', ['Solicitada', 'Em cotação', 'Comprada']).limit(1);
+  if (aberta && aberta[0]) return aberta[0];
+  let ch = null;
+  try { const r = await supabase.from('chapas_estoque_v2').select('id,fornecedor,nomenclatura,tamanho,nome_uso,nome').eq('id', chapaId).maybeSingle(); ch = r.data || null; } catch (_) {}
+  const quem = _opNome(req);
+  const row = { chapa_id: chapaId, fornecedor: ch && ch.fornecedor || extra.fornecedor || null, nomenclatura: ch && ch.nomenclatura || extra.nomenclatura || null,
+    tamanho: ch && ch.tamanho || extra.tamanho || null, descricao: ch && (ch.nome_uso || ch.nome) || extra.descricao || null,
+    qtd_sugerida: extra.qtd_sugerida != null && extra.qtd_sugerida !== '' ? Math.trunc(Number(extra.qtd_sugerida) || 0) : null,
+    observacao: String(extra.observacao || '').trim() || null, status: 'Solicitada', solicitante: quem, atualizado_por: quem,
+    historico: [{ em: new Date().toISOString(), por: quem, status: 'Solicitada', obs: String(extra.observacao || '').trim() || null }] };
+  const { data, error } = await supabase.from('papelao_solicitacoes').insert([row]).select('*').single();
+  if (error) throw error;
+  return data;
+}
+async function _solMudarStatusPorChapa(chapaId, status, req, obs) {
+  try {
+    const { data: ab } = await supabase.from('papelao_solicitacoes').select('*').eq('chapa_id', String(chapaId)).in('status', ['Solicitada', 'Em cotação', 'Comprada']).limit(1);
+    const s = ab && ab[0]; if (!s) return;
+    const hist = Array.isArray(s.historico) ? s.historico : [];
+    hist.push({ em: new Date().toISOString(), por: _opNome(req), status, obs: obs || null });
+    await supabase.from('papelao_solicitacoes').update({ status, historico: hist, atualizado_por: _opNome(req), updated_at: new Date().toISOString() }).eq('id', s.id);
+  } catch (_) {}
+}
+app.get('/api/papelao/solicitacoes', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('papelao_solicitacoes').select('*').order('created_at', { ascending: false }).limit(1000);
+    if (String(req.query.abertas || '') === '1') q = q.in('status', ['Solicitada', 'Em cotação', 'Comprada']);
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/papelao/solicitacoes', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const chapaId = String(b.chapa_id || '').trim();
+    if (!chapaId && !b.descricao) return res.status(400).json({ ok: false, error: 'Informe a chapa' });
+    const s = await _solCriar(chapaId || ('manual-' + Date.now()), b, req);
+    // mantém o "pin" antigo da chapa em sincronia (aparece também nas Sugestões de Compra)
+    if (chapaId) { try { await supabase.from('chapas_estoque_v2').update({ pinned_compra: true, pinned_status: 'pendente', pinned_em: new Date().toISOString(), pin_qtd_sugerida: s.qtd_sugerida }).eq('id', chapaId); } catch (_) {} }
+    return ok(res, s);
+  } catch (e) { return err(res, e); }
+});
+app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const { data: s, error: e0 } = await supabase.from('papelao_solicitacoes').select('*').eq('id', String(req.params.id)).maybeSingle();
+    if (e0) throw e0;
+    if (!s) return res.status(404).json({ ok: false, error: 'Solicitação não encontrada' });
+    const up = { updated_at: new Date().toISOString(), atualizado_por: _opNome(req) };
+    if (b.status != null) { if (!_SOL_STATUS.includes(String(b.status))) return res.status(400).json({ ok: false, error: 'Status inválido' }); up.status = String(b.status); }
+    if (b.compra_ref != null) up.compra_ref = String(b.compra_ref).trim() || null;
+    if (b.qtd_sugerida != null) up.qtd_sugerida = Math.trunc(Number(b.qtd_sugerida) || 0) || null;
+    if (b.observacao != null) up.observacao = String(b.observacao).trim() || null;
+    const hist = Array.isArray(s.historico) ? s.historico : [];
+    hist.push({ em: up.updated_at, por: up.atualizado_por, status: up.status || s.status, obs: String(b.nota || b.observacao || '').trim() || null, compra_ref: up.compra_ref || null });
+    up.historico = hist;
+    const { data, error } = await supabase.from('papelao_solicitacoes').update(up).eq('id', s.id).select('*').single();
+    if (error) throw error;
+    // pin antigo acompanha: concluída/recusada tira a sugestão pendente
+    if (s.chapa_id && up.status && ['Comprada', 'Recebida', 'Recusada'].includes(up.status)) {
+      try { await supabase.from('chapas_estoque_v2').update({ pinned_compra: false, pinned_status: up.status === 'Recusada' ? 'ignorado' : 'comprado' }).eq('id', s.chapa_id); } catch (_) {}
+    }
+    return ok(res, data);
   } catch (e) { return err(res, e); }
 });
 

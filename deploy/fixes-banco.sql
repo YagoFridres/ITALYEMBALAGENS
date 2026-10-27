@@ -120,3 +120,23 @@ create table if not exists public.almox_ordens (
 );
 create index if not exists almox_ordens_data_idx on public.almox_ordens (data);
 grant all on public.almox_ordens to anon, authenticated, service_role;
+-- Solicitações de compra de papelão (sugestão do estoque visível no Estoque e na Compra) (27/10/2026)
+create table if not exists public.papelao_solicitacoes (
+  id uuid primary key default gen_random_uuid(),
+  chapa_id text,
+  fornecedor text,
+  nomenclatura text,
+  tamanho text,
+  descricao text,
+  qtd_sugerida integer,
+  observacao text,
+  status text not null default 'Solicitada',
+  compra_ref text,
+  solicitante text,
+  atualizado_por text,
+  historico jsonb not null default '[]'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists papelao_solicitacoes_status_idx on public.papelao_solicitacoes (status);
+grant all on public.papelao_solicitacoes to anon, authenticated, service_role;
