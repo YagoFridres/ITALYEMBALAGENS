@@ -57059,7 +57059,7 @@ function _ocultarGraficoComissoes() {
       try { window._maquinasConclusaoCache = null; } catch (_) {}
       try { window._operadoresConclusaoCache = null; } catch (_) {}
 
-      var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '—').trim();
+      var numero = String(of && (of.numero || of.of || of.of_num || of.of_numero || '') || '—').trim();
       var cliIdAtual = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId || '') || '').trim();
       var cliente = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || '').trim();
       if (!cliente && cliIdAtual) {
@@ -57153,7 +57153,7 @@ function _ocultarGraficoComissoes() {
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">💲 Valor Unitário (R$)</label>'
-        + '      <input id="conclusao-valor-unitario" class="com-conc-input" type="number" min="0" step="0.0001" value="' + String(Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0) + '"/>'
+        + '      <input id="conclusao-valor-unitario" class="com-conc-input" type="number" min="0" step="0.0001" value="' + String(Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? of.vunit ?? of.valorUnitario ?? 0) || 0) || 0) + '"/>'
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">📅 Data de Faturamento *</label>'
@@ -72929,6 +72929,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (rec === 'chapas_estoque' && /entrada|saida|lote/.test(id || '')) return [/saida/.test(id) ? 'Saída de chapas registrada' : 'Entrada de chapas registrada', '', 'ok'];
     var nm = NOMES[rec]; if (!nm) return null;
     if (sub && !/^(clonar|restaurar|pasta)$/.test(sub)) return null;
+    if (id && id !== 'pastas' && !/^[0-9a-f-]{8,}$|^\d+$/i.test(id)) return null; // ações internas (init, sync, busca...) não são gravações do usuário
     var g = nm[1], tt = titulo(Object.assign({}, b, d));
     var verbo = sub === 'clonar' ? 'clonad' + g : sub === 'restaurar' ? 'restaurad' + g : met === 'DELETE' ? 'excluíd' + g : (met === 'POST' && (!id || id === 'pastas')) ? 'criad' + g : 'salv' + g;
     return [nm[0] + (tt ? ' ' + tt : '') + ' ' + verbo, '', met === 'DELETE' ? 'del' : 'ok'];
