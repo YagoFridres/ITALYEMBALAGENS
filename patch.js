@@ -72395,7 +72395,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         var it = o.itens || [], resumo = it.slice(0, 3).map(function (i) { return esc(i.descricao); }).join(', ') + (it.length > 3 ? ' +' + (it.length - 3) : '');
         return '<tr data-id="' + esc(o.id) + '"><td class="alx-num">#' + esc(o.numero || '—') + '</td><td>' + dataBr(o.data) + '</td><td class="alx-forn">' + esc(o.fornecedor || '—') + (o.solicitante ? '<small>Pedido por ' + esc(o.solicitante) + '</small>' : '') + '</td>'
           + '<td class="alx-itens">' + resumo + '<small>' + it.length + ' ' + (it.length === 1 ? 'item' : 'itens') + '</small></td><td><span class="alx-st st-' + esc(String(o.status).toLowerCase()) + '">' + esc(o.status) + '</span></td>'
-          + '<td class="alx-n"><b>' + moeda(o.valor_total) + '</b></td><td class="alx-ac"><button type="button" data-a="editar">Editar</button><button type="button" data-a="imprimir">Imprimir</button><button type="button" class="alx-del" data-a="excluir" aria-label="Excluir">Excluir</button></td></tr>';
+          + '<td class="alx-n"><b>' + moeda(o.valor_total) + '</b></td><td class="alx-ac"><button type="button" data-a="editar">Editar</button><button type="button" data-a="imprimir">🖨 Imprimir</button><button type="button" class="alx-del" data-a="excluir" aria-label="Excluir">Excluir</button></td></tr>';
       }).join('') + '</tbody></table>'
       : '<div class="alx-vazio">Nenhuma ordem de compra em ' + esc(periodo.toLowerCase()) + '. Use “+ Nova ordem de compra”.</div>';
     if (foco) { var inp2 = r.querySelector('.alx-busca-in'); if (inp2 && document.activeElement !== inp2) inp2.focus(); }
@@ -72437,7 +72437,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<button type="button" class="alx-btn" data-x="add">+ Adicionar item</button>'
       + '<label class="alx-obs">Observações<textarea class="alx-in" data-f="observacoes" rows="2" placeholder="Opcional">' + esc(o.observacoes || '') + '</textarea></label>'
       + '<div class="alx-tot"><span>Soma dos itens: <b class="alx-soma">R$ 0,00</b></span><label>Valor total da compra<input class="alx-in alx-total" data-f="valor_total" inputmode="decimal" value="' + (totalManual ? numBr(o.valor_total) : '') + '" placeholder="igual à soma"></label></div>'
-      + '<footer><button type="button" class="alx-btn" data-x="fechar">Cancelar</button><button type="button" class="alx-btn alx-pri" data-x="salvar">Salvar</button></footer></div>';
+      + '<footer><button type="button" class="alx-btn" data-x="fechar">Cancelar</button>' + (novo ? '' : '<button type="button" class="alx-btn" data-x="imprimir">🖨 Imprimir</button>') + '<button type="button" class="alx-btn" data-x="salvarimp">Salvar e imprimir</button><button type="button" class="alx-btn alx-pri" data-x="salvar">Salvar</button></footer></div>';
     document.body.appendChild(ov);
     function itens() { return Array.prototype.map.call(ov.querySelectorAll('.alx-it'), function (row) { var g = function (k) { return row.querySelector('[data-k="' + k + '"]').value; }; return { descricao: g('descricao').trim(), quantidade: num(g('quantidade')), unidade: g('unidade').trim() || 'un', valor_unitario: num(g('valor_unitario')) }; }); }
     function recalc() {
@@ -72454,7 +72454,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (k === 'fechar') return ov.remove();
       if (k === 'add') { ov.querySelector('.alx-its').insertAdjacentHTML('beforeend', linhaItem()); var ins = ov.querySelectorAll('.alx-it [data-k="descricao"]'); ins[ins.length - 1].focus(); return recalc(); }
       if (k === 'rm') { var rows = ov.querySelectorAll('.alx-it'); if (rows.length > 1) x.closest('.alx-it').remove(); else x.closest('.alx-it').querySelectorAll('input').forEach(function (i) { i.value = ''; }); return recalc(); }
-      if (k === 'salvar') {
+      if (k === 'imprimir') { return imprimir(o); }
+      if (k === 'salvar' || k === 'salvarimp') {
         var f = function (n) { return ov.querySelector('[data-f="' + n + '"]').value; };
         var lista = itens().filter(function (i) { return i.descricao; });
         if (!lista.length) { toast('Inclua pelo menos um item', 'var(--red)'); return; }
@@ -72462,21 +72463,42 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         var corpo = { data: f('data'), status: f('status'), fornecedor: f('fornecedor'), solicitante: f('solicitante'), observacoes: f('observacoes'), itens: lista, valor_total: vt === '' ? '' : num(vt) };
         x.disabled = true; x.textContent = 'Salvando…';
         (novo ? req('POST', '/api/almoxarifado/ordens', corpo) : req('PUT', '/api/almoxarifado/ordens/' + encodeURIComponent(o.id), corpo))
-          .then(function (salva) { ov.remove(); toast(novo ? 'Ordem de compra #' + salva.numero + ' criada' : 'Ordem atualizada'); var d = String(salva.data || ''); E.ano = Number(d.slice(0, 4)) || E.ano; if (E.mes >= 0) E.mes = Number(d.slice(5, 7)) - 1; return carregar(); })
+          .then(function (salva) { ov.remove(); if (k === 'salvarimp') { try { imprimir(Object.assign({}, corpo, salva)); } catch (_) {} } toast(novo ? 'Ordem de compra #' + salva.numero + ' criada' : 'Ordem atualizada'); var d = String(salva.data || ''); E.ano = Number(d.slice(0, 4)) || E.ano; if (E.mes >= 0) E.mes = Number(d.slice(5, 7)) - 1; return carregar(); })
           .catch(function (e) { x.disabled = false; x.textContent = 'Salvar'; toast('Erro ao salvar: ' + e.message, 'var(--red)'); });
       }
     });
     setTimeout(function () { var i0 = ov.querySelector('[data-f="fornecedor"]'); if (i0 && novo) i0.focus(); }, 50);
   }
   function imprimir(o) {
-    var w = window.open('', '_blank'); if (!w) return;
-    var it = (o.itens || []).map(function (i) { return '<tr><td>' + esc(i.descricao) + '</td><td style="text-align:right">' + esc(String(i.quantidade).replace('.', ',')) + ' ' + esc(i.unidade || '') + '</td><td style="text-align:right">' + moeda(i.valor_unitario) + '</td><td style="text-align:right">' + moeda(i.quantidade * i.valor_unitario) + '</td></tr>'; }).join('');
-    w.document.write('<!doctype html><meta charset="utf-8"><title>Ordem de compra #' + esc(o.numero) + '</title><style>body{font:14px Inter,Arial,sans-serif;margin:32px;color:#111}h1{font-size:20px;margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f4f5}.t{text-align:right;font-size:16px;margin-top:12px}</style>'
-      + '<h1>Italy Embalagens — Ordem de compra #' + esc(o.numero) + '</h1><div>Data: ' + dataBr(o.data) + ' · Status: ' + esc(o.status) + '</div><div>Fornecedor: ' + esc(o.fornecedor || '—') + (o.solicitante ? ' · Solicitante: ' + esc(o.solicitante) : '') + '</div>'
-      + '<table><thead><tr><th>Item</th><th style="text-align:right">Qtd.</th><th style="text-align:right">Valor unit.</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>' + it + '</tbody></table>'
-      + '<div class="t">Total: <b>' + moeda(o.valor_total) + '</b></div>' + (o.observacoes ? '<p>Obs.: ' + esc(o.observacoes) + '</p>' : '') + '<script>setTimeout(function(){print()},300)<\/script>');
-    w.document.close();
+    // impressão por um quadro escondido (não depende de janela pop-up, que o navegador costuma bloquear)
+    var it = (o.itens || []).map(function (i, k) { return '<tr><td class="c">' + (k + 1) + '</td><td>' + esc(i.descricao) + '</td><td class="r">' + esc(String(i.quantidade).replace('.', ',')) + '</td><td class="c">' + esc(i.unidade || '') + '</td><td class="r">' + moeda(i.valor_unitario) + '</td><td class="r">' + moeda((Number(i.quantidade) || 0) * (Number(i.valor_unitario) || 0)) + '</td></tr>'; }).join('');
+    var logo = location.origin + '/favicon-48.png';
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>Ordem de compra ' + esc(o.numero) + '</title><style>'
+      + '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font:12.5px Arial,Helvetica,sans-serif;color:#111;margin:0}'
+      + '.top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:10px}.emp{display:flex;align-items:center;gap:10px}.emp img{width:40px;height:40px}.emp b{font-size:18px;display:block}.emp span{color:#555;font-size:11px}'
+      + '.num{text-align:right}.num b{font-size:20px;display:block}.num span{font-size:11px;color:#555}'
+      + '.info{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:14px 0}.info div{border:1px solid #ccc;border-radius:6px;padding:7px 10px}.info small{display:block;color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.04em}'
+      + 'table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #bbb;padding:7px 8px}th{background:#eee;font-size:11px;text-transform:uppercase;text-align:left}.r{text-align:right}.c{text-align:center}'
+      + '.tot{display:flex;justify-content:flex-end;margin-top:10px}.tot div{border:2px solid #111;border-radius:6px;padding:8px 14px;font-size:15px}'
+      + '.obs{margin-top:14px;border:1px solid #ccc;border-radius:6px;padding:8px 10px;min-height:40px}.ass{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:56px}.ass div{border-top:1px solid #111;text-align:center;padding-top:6px;font-size:11px}'
+      + '</style></head><body>'
+      + '<div class="top"><div class="emp"><img src="' + logo + '" alt=""><div><b>Italy Embalagens</b><span>Almoxarifado — ordem de compra de itens</span></div></div><div class="num"><span>ORDEM DE COMPRA</span><b>Nº ' + esc(o.numero || '—') + '</b><span>Emitida em ' + dataBr(o.data) + '</span></div></div>'
+      + '<div class="info"><div><small>Fornecedor</small>' + esc(o.fornecedor || '—') + '</div><div><small>Solicitante</small>' + esc(o.solicitante || '—') + '</div><div><small>Status</small>' + esc(o.status || '—') + '</div><div><small>Quantidade de itens</small>' + (o.itens || []).length + '</div></div>'
+      + '<table><thead><tr><th class="c" style="width:34px">#</th><th>Item</th><th class="r" style="width:70px">Qtd.</th><th class="c" style="width:50px">Un.</th><th class="r" style="width:100px">Valor unit.</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + it + '</tbody></table>'
+      + '<div class="tot"><div>Total da compra: <b>' + moeda(o.valor_total) + '</b></div></div>'
+      + '<div class="obs"><small style="color:#666;font-size:10px;text-transform:uppercase">Observações</small><br>' + esc(o.observacoes || '') + '</div>'
+      + '<div class="ass"><div>Solicitante</div><div>Aprovação / compras</div></div>'
+      + '</body></html>';
+    var fr = document.getElementById('alx-print-frame'); if (fr) fr.remove();
+    fr = document.createElement('iframe'); fr.id = 'alx-print-frame'; fr.setAttribute('aria-hidden', 'true');
+    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(fr);
+    var d = fr.contentWindow.document; d.open(); d.write(html); d.close();
+    var imprimiu = false;
+    var vai = function () { if (imprimiu) return; imprimiu = true; try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} };
+    var img = d.querySelector('img'); if (img && !img.complete) { img.onload = img.onerror = function () { setTimeout(vai, 50); }; setTimeout(vai, 1500); } else setTimeout(vai, 150);
   }
+  window.dsAlmoxImprimir = imprimir;
   var ativoAntes = false;
   setInterval(function () {
     var p = pagina(); if (!p) return;
@@ -72519,7 +72541,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.alx-its-head,.alx-it{display:grid;grid-template-columns:minmax(0,1fr) 80px 64px 110px 110px 34px;gap:8px;align-items:center}.alx-its-head{font-size:12px;color:var(--text2);margin-bottom:6px}.alx-its-head b{color:var(--text)}'
     + '.alx-it{margin-bottom:8px}.alx-q,.alx-v{text-align:right}.alx-sub{text-align:right;font-weight:600;font-size:13px;white-space:nowrap}.alx-rm{height:34px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer}.alx-rm:hover{color:var(--red);border-color:var(--red)}'
     + '.alx-obs{margin-top:12px}.alx-tot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}.alx-tot > span{font-size:14px}.alx-tot label{width:220px}.alx-total{text-align:right;font-weight:700}'
-    + '.alx-modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'
+    + '.alx-modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap}@media (max-width:600px){.alx-modal footer .alx-btn{flex:1 1 calc(50% - 8px)}}'
     + '@media (max-width:768px){#ds-almox{padding:12px 12px 110px}.alx-head .alx-btn{width:100%;height:42px}.alx-kpis{grid-template-columns:1fr 1fr}.alx-kpis div:first-child{grid-column:1 / -1}.alx-barras{height:110px;gap:3px}.alx-bar-v{display:none}'
     + '.alx-tab thead{display:none}.alx-tab,.alx-tab tbody{display:block}.alx-tab tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px;border-bottom:1px solid var(--border)}.alx-tab td{display:block;padding:0;border:0}.alx-tab td::before{content:none!important}.alx-ac{grid-column:1 / -1;text-align:left}.alx-ac button{margin:4px 6px 0 0}.alx-n{text-align:right}'
     + '.alx-grid{grid-template-columns:1fr}.alx-its-head{display:none}.alx-it{grid-template-columns:1fr 1fr 34px;grid-template-areas:"d d d" "q u rm" "v s s";padding:10px;border:1px solid var(--border);border-radius:10px}.alx-it [data-k=descricao]{grid-area:d}.alx-q{grid-area:q}.alx-u{grid-area:u}.alx-v{grid-area:v}.alx-sub{grid-area:s}.alx-rm{grid-area:rm}.alx-tot label{width:100%}.alx-modal{padding:14px}.alx-modal footer .alx-btn{flex:1;height:44px}}';
