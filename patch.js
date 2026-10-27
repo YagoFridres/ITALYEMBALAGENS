@@ -16970,6 +16970,12 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   }
 
   async function _histFetchResumoMensalBackend(rangeAtual, rangeAnterior, filtros, ref) {
+    // se acabou de falhar, espera 30 s antes de tentar de novo (antes repetia centenas de vezes seguidas)
+    if (window.__histResumoFalhaTs && Date.now() - window.__histResumoFalhaTs < 30000) throw new Error('Falha ao carregar resumo mensal');
+    try { return await _histFetchResumoMensalBackend0(rangeAtual, rangeAnterior, filtros, ref); }
+    catch (e) { window.__histResumoFalhaTs = Date.now(); throw e; }
+  }
+  async function _histFetchResumoMensalBackend0(rangeAtual, rangeAnterior, filtros, ref) {
     var qs = new URLSearchParams();
     if (filtros && filtros.cliente) qs.set('cliente', filtros.cliente);
     if (filtros && filtros.maquina) qs.set('maquina', filtros.maquina);
@@ -71079,30 +71085,30 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     page.insertBefore(raiz, abas ? abas.nextSibling : page.firstChild);
     ligar();
   }
-  function H(el, h) { if (!el) return; if (el.__dsH === h && el.childNodes.length) return; el.__dsH = h; el.innerHTML = h; }
+  function Hs(el, h) { if (!el) return; if (el.__dsH === h && el.childNodes.length) return; el.__dsH = h; el.innerHTML = h; }
   function render() {
     if (!raiz) return;
     var r = filtrar(), c = r.cont, linhas = r.linhas;
     var resumo = c.abertas + ' em aberto · <span class="' + (c.atrasadas ? 'dsc-txt-atr' : '') + '">' + c.atrasadas + ' atrasadas</span> · ' + c.urgentes + ' urgentes · ' + c.producao + ' em produção';
-    H(raiz.querySelector('.dsc-resumo'), resumo);
+    Hs(raiz.querySelector('.dsc-resumo'), resumo);
     var vs = [['abertas', 'Em aberto', c.abertas], ['atrasadas', 'Atrasadas', c.atrasadas], ['urgentes', 'Urgentes', c.urgentes], ['producao', 'Em produção', c.producao], ['concluidas', 'Concluídas', c.concluidas], ['todas', 'Todas', c.todas]];
-    H(raiz.querySelector('.dsc-vistas'), vs.map(function (v) { return '<button type="button" role="tab" data-v="' + v[0] + '" aria-selected="' + (E.vista === v[0]) + '" class="' + (E.vista === v[0] ? 'on' : '') + '">' + v[1] + '<span>' + v[2] + '</span></button>'; }).join(''));
+    Hs(raiz.querySelector('.dsc-vistas'), vs.map(function (v) { return '<button type="button" role="tab" data-v="' + v[0] + '" aria-selected="' + (E.vista === v[0]) + '" class="' + (E.vista === v[0] ? 'on' : '') + '">' + v[1] + '<span>' + v[2] + '</span></button>'; }).join(''));
     var lf = listasFiltro();
-    var sp = raiz.querySelector('[data-f="periodo"]'); if (document.activeElement !== sp) H(sp, opcoes([['hoje', 'Entrega hoje'], ['amanha', 'Entrega amanhã'], ['semana', 'Entrega nesta semana'], ['7d', 'Próximos 7 dias'], ['mes', 'Entrega neste mês']], E.periodo, 'Qualquer entrega'));
-    var sm = raiz.querySelector('[data-f="maquina"]'); if (document.activeElement !== sm) H(sm, opcoes(lf.maq.map(function (m) { return [m, m]; }), E.maquina, 'Todas as máquinas'));
-    var sv = raiz.querySelector('[data-f="vendedor"]'); if (document.activeElement !== sv) H(sv, opcoes(lf.vend.map(function (m) { return [m, m]; }), E.vendedor, 'Todos'));
-    var se = raiz.querySelector('[data-f="empresa"]'); if (document.activeElement !== se) H(se, opcoes([['E1', 'Italy'], ['E2', 'Cartoeste'], ['E3', 'Oestepack']], E.empresa, 'Todas'));
+    var sp = raiz.querySelector('[data-f="periodo"]'); if (document.activeElement !== sp) Hs(sp, opcoes([['hoje', 'Entrega hoje'], ['amanha', 'Entrega amanhã'], ['semana', 'Entrega nesta semana'], ['7d', 'Próximos 7 dias'], ['mes', 'Entrega neste mês']], E.periodo, 'Qualquer entrega'));
+    var sm = raiz.querySelector('[data-f="maquina"]'); if (document.activeElement !== sm) Hs(sm, opcoes(lf.maq.map(function (m) { return [m, m]; }), E.maquina, 'Todas as máquinas'));
+    var sv = raiz.querySelector('[data-f="vendedor"]'); if (document.activeElement !== sv) Hs(sv, opcoes(lf.vend.map(function (m) { return [m, m]; }), E.vendedor, 'Todos'));
+    var se = raiz.querySelector('[data-f="empresa"]'); if (document.activeElement !== se) Hs(se, opcoes([['E1', 'Italy'], ['E2', 'Cartoeste'], ['E3', 'Oestepack']], E.empresa, 'Todas'));
     var nAv = (E.vendedor ? 1 : 0) + (E.empresa ? 1 : 0) + (E.pedDe ? 1 : 0) + (E.pedAte ? 1 : 0) + (E.semPapel ? 1 : 0);
     raiz.querySelector('.dsc-nf').textContent = nAv ? nAv : '';
-    H(raiz.querySelector('thead'), '<tr><th class="dsc-c-chk"><input type="checkbox" class="dsc-chk-todos" aria-label="Selecionar página"></th>' + colsVisiveis().map(function (c) { return th(c.ord || '', c.t, c.c + '" data-col="' + c.k); }).join('') + '<th class="dsc-c-acao">Ações</th></tr>');
+    Hs(raiz.querySelector('thead'), '<tr><th class="dsc-c-chk"><input type="checkbox" class="dsc-chk-todos" aria-label="Selecionar página"></th>' + colsVisiveis().map(function (c) { return th(c.ord || '', c.t, c.c + '" data-col="' + c.k); }).join('') + '<th class="dsc-c-acao">Ações</th></tr>');
     var total = linhas.length, pags = Math.max(1, Math.ceil(total / E.porPagina));
     if (E.pagina > pags) E.pagina = pags;
     var ini = (E.pagina - 1) * E.porPagina, pagina = linhas.slice(ini, ini + E.porPagina);
-    H(raiz.querySelector('tbody'), pagina.map(linhaHtml).join(''));
+    Hs(raiz.querySelector('tbody'), pagina.map(linhaHtml).join(''));
     var vazio = raiz.querySelector('.dsc-vazio');
     var carregando = !lista().length;
     vazio.hidden = total > 0;
-    H(vazio, carregando ? '<div class="dsc-skel"></div><div class="dsc-skel"></div><div class="dsc-skel"></div>' : svg(IC.vazio, 28) + '<b>Nenhuma OF encontrada</b><span>Ajuste a busca ou os filtros.</span>' + (E.busca || nAv || E.periodo || E.maquina ? '<button type="button" class="dsc-btn dsc-btn-sec" data-a="limpar">Limpar filtros</button>' : ''));
+    Hs(vazio, carregando ? '<div class="dsc-skel"></div><div class="dsc-skel"></div><div class="dsc-skel"></div>' : svg(IC.vazio, 28) + '<b>Nenhuma OF encontrada</b><span>Ajuste a busca ou os filtros.</span>' + (E.busca || nAv || E.periodo || E.maquina ? '<button type="button" class="dsc-btn dsc-btn-sec" data-a="limpar">Limpar filtros</button>' : ''));
     raiz.querySelector('.dsc-pag-info').textContent = total ? ('Mostrando ' + (ini + 1) + '–' + Math.min(ini + E.porPagina, total) + ' de ' + total.toLocaleString('pt-BR')) : '';
     var pg = '';
     if (pags > 1) {
@@ -71111,7 +71117,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       for (var i = a; i <= b; i++) pg += '<button type="button" class="dsc-ib' + (i === E.pagina ? ' on' : '') + '" data-p="' + i + '">' + i + '</button>';
       pg += '<button type="button" class="dsc-ib" data-p="' + (E.pagina + 1) + '"' + (E.pagina >= pags ? ' disabled' : '') + ' aria-label="Próxima página">›</button>';
     }
-    H(raiz.querySelector('.dsc-pag'), pg);
+    Hs(raiz.querySelector('.dsc-pag'), pg);
     var nSel = Object.keys(E.sel).length;
     var lote = raiz.querySelector('.dsc-lote'); lote.hidden = !nSel;
     lote.querySelector('.dsc-lote-n').textContent = nSel + (nSel === 1 ? ' OF selecionada' : ' OFs selecionadas');
