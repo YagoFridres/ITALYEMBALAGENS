@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027100232';
-const SW_RUNTIME_VERSION = '20261027100232';
+const PATCH_RUNTIME_VERSION = '20261027100547';
+const SW_RUNTIME_VERSION = '20261027100547';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30411,7 +30411,32 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
       const r = await q;
       movs = r?.data || [];
       movErr = r?.error || null;
-      if (!movErr && Array.isArray(movs) && movs.length > 0) return ok(res, movs);
+      if (!movErr && Array.isArray(movs) && movs.length > 0) {
+        // completa cada movimento com a chapa (fornecedor, nomenclatura, tamanho), a quantidade e o valor — os relatórios usam esses campos
+        try {
+          const ids = Array.from(new Set(movs.map((m) => String(m.chapa_id || '')).filter(Boolean)));
+          const mapa = new Map();
+          for (let i = 0; i < ids.length; i += 200) {
+            const { data: chs } = await supabase.from('chapas_estoque_v2').select('id,fornecedor,nomenclatura,tamanho,nome_uso,nome,valor_unitario').in('id', ids.slice(i, i + 200));
+            (chs || []).forEach((c) => mapa.set(String(c.id), c));
+          }
+          movs = movs.map((m) => {
+            const c = mapa.get(String(m.chapa_id || '')) || {};
+            const qtd = Math.abs(Number(m.delta || 0)) || Number(m.quantidade || 0) || 0;
+            const vu = Number(m.valor_unitario || c.valor_unitario || 0) || 0;
+            return Object.assign({}, m, {
+              fornecedor: m.fornecedor || c.fornecedor || null,
+              chapa_label: m.chapa_label || [c.nomenclatura, c.tamanho, c.nome_uso || c.nome].filter(Boolean).join(' · ') || null,
+              quantidade: m.quantidade != null && Number(m.quantidade) ? m.quantidade : qtd,
+              valor_unitario: m.valor_unitario != null ? m.valor_unitario : (vu || null),
+              valor_total: m.valor_total != null ? m.valor_total : (vu ? Math.round(vu * qtd * 100) / 100 : null),
+              motivo: m.motivo || m.obs || null,
+              data: m.data || m.created_at,
+            });
+          });
+        } catch (eEnr) { console.warn('[MOVIMENTOS] enriquecer', eEnr?.message || eEnr); }
+        return ok(res, movs);
+      }
     } catch (e) {
       movErr = e;
     }

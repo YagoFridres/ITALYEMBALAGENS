@@ -72634,7 +72634,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var l = E.chapas.filter(function (c) { return !q || [c.fornecedor, c.nomenclatura, c.tamanho, c.nome_uso || c.nome].join(' ').toLowerCase().indexOf(q) >= 0; }).slice(0, 40);
       op.innerHTML = l.map(function (c) { return '<button type="button" data-c="' + esc(c.id) + '"' + (escolhida === c.id ? ' class="on"' : '') + '><b>' + esc([c.fornecedor, c.nomenclatura, c.tamanho].join(' · ')) + '</b><span>' + esc(c.nome_uso || c.nome || '') + ' · estoque ' + Number(c.quantidade_atual != null ? c.quantidade_atual : c.quantidade || 0).toLocaleString('pt-BR') + '</span></button>'; }).join('') || '<div class="sol-vazio">Nenhuma chapa encontrada.</div>';
     }
-    if (!E.chapas.length) { op.innerHTML = '<div class="sol-vazio">Carregando chapas…</div>'; req('GET', '/api/chapas').then(function (l) { E.chapas = l || []; listar(); }).catch(function () { op.innerHTML = '<div class="sol-vazio">Não foi possível carregar as chapas.</div>'; }); } else listar();
+    if (!E.chapas.length) { op.innerHTML = '<div class="sol-vazio">Carregando chapas…</div>'; req('GET', '/api/chapas_estoque?limit=5000').then(function (l) { E.chapas = Array.isArray(l) ? l : ((l && (l.data || l.rows)) || []); listar(); }).catch(function () { op.innerHTML = '<div class="sol-vazio">Não foi possível carregar as chapas.</div>'; }); } else listar();
     inp.addEventListener('input', listar);
     setTimeout(function () { inp.focus(); }, 50);
     ov.addEventListener('click', function (ev) {
