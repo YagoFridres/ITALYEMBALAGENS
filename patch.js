@@ -74073,7 +74073,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var st = document.createElement('style'); st.id = 'ds-tr-css';
     st.textContent = '#page-tempos-reais.dtr-ativa > :not(#ds-tr):not(style):not(script){display:none!important}#page-tempos-reais.dtr-ativa{overflow-y:auto}'
       + '#ds-tr{padding:18px 20px 40px;color:var(--text)}.dtr-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-end}.dtr-head h1{margin:0;font-size:22px}.dtr-head p{margin:4px 0 0;font-size:13px;color:var(--text2);max-width:640px}'
-      + '.dtr-f{display:flex;gap:8px;flex-wrap:wrap}.dtr-f select,.dtr-f button{height:38px;border-radius:9px;border:1px solid var(--b2);background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;padding:0 10px;cursor:pointer}.dtr-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+      + '.dtr-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dtr-f select{width:auto!important;min-width:170px}.dtr-f select,.dtr-f button{height:38px;border-radius:9px;border:1px solid var(--b2);background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;padding:0 10px;cursor:pointer}.dtr-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
       + '.dtr-agora h2{font-size:14px;margin:18px 0 8px}.dtr-ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.dtr-ag-c{background:color-mix(in srgb,var(--green) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--green) 40%,var(--border));border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.dtr-ag-c span{font-size:12.5px;color:var(--text2)}.dtr-ag-c em{font-style:normal;font-size:20px;font-weight:800;color:var(--green)}'
       + '.dtr-maqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:16px 0}.dtr-mc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:3px}.dtr-v{font-size:24px;font-weight:800;color:var(--accent)}.dtr-v small{font-size:13px;color:var(--text2);font-weight:600}.dtr-mc span{font-size:12px;color:var(--text2)}'
       + '.dtr-lista{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto}.dtr-tab{width:100%;border-collapse:collapse;font-size:13px}.dtr-tab th{text-align:left;font-size:11.5px;text-transform:uppercase;color:var(--text3);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}.dtr-tab td{padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}.dtr-tab .r{text-align:right}'
@@ -74116,12 +74116,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + (c.observacao ? '<p class="dcd-obs">📝 ' + esc(c.observacao) + '</p>' : '')
         + '<footer><button type="button" data-x="fechar">Fechar</button><button type="button" data-x="editar" class="dcd-pri">✏️ Editar chapa</button></footer></div>';
       document.body.appendChild(ov);
-      function fechar() { ov.remove(); var x = legado.querySelector('[data-ew-close]'); if (x) x.click(); else legado.remove(); }
+      function fechar() { ov.remove(); legado.style.removeProperty('display'); var x = legado.querySelector('[data-ew-close]'); if (x) x.click(); else legado.remove(); }
       ov.addEventListener('click', function (e) {
         if (e.target === ov) return fechar();
         var b = e.target.closest('[data-x]'); if (!b) return;
         if (b.getAttribute('data-x') === 'fechar') return fechar();
-        ov.remove(); var ed = legado.querySelector('[data-ew-edit]'); if (ed) ed.click();
+        ov.remove(); legado.style.removeProperty('display'); var ed = legado.querySelector('[data-ew-edit]'); if (ed) ed.click(); setTimeout(function () { var m2 = document.getElementById('estoque-wire-modal'); if (m2) m2.style.removeProperty('display'); }, 60);
       });
       document.addEventListener('keydown', function esc2(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', esc2); if (document.body.contains(ov)) fechar(); } });
     }).catch(function () { legado.style.removeProperty('display'); });
