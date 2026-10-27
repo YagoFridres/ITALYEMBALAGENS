@@ -73372,7 +73372,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var num = /^\d+$/.test(termo) ? termo : '';
       grupos.forEach(function (g) {
         if (g[0][0] === 'ofs') g[1].sort(function (a, b) {
-          var na = String(a.of || a.numero || ''), nb = String(b.of || b.numero || '');
+          var na = String(a.of || a.numero || '').replace(/\D/g, ''), nb = String(b.of || b.numero || '').replace(/\D/g, '');
           if (num) { var pa = na === num ? 0 : na.indexOf(num) === 0 ? 1 : 2, pb = nb === num ? 0 : nb.indexOf(num) === 0 ? 1 : 2; if (pa !== pb) return pa - pb; }
           var sa = stOF(a) === 'aberta' || stOF(a) === 'producao' ? 0 : 1, sb = stOF(b) === 'aberta' || stOF(b) === 'producao' ? 0 : 1; if (sa !== sb) return sa - sb;
           return (Number(nb) || 0) - (Number(na) || 0);
