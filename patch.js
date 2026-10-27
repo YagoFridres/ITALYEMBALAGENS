@@ -73897,3 +73897,103 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== AMOSTRAS — tela nova (27/10/2026) =====
+ * Quadro por etapa: A fazer → Em produção → Feitas (aguardando aprovação) → Aprovadas (viram OF). Canceladas
+ * ficam escondidas num botão. Cada cartão mostra só as ações que fazem sentido naquela etapa. Usa as mesmas
+ * funções do sistema (Nova Amostra, Produção, Feito, Editar, Cancelar, Gerar OF). No celular vira abas. */
+(function () {
+  if (window.__dsAmo) return; window.__dsAmo = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function br(iso) { iso = String(iso || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(2, 4) : ''; }
+  function hoje() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  var COLS = [['fazer', 'A fazer', '🕓'], ['producao', 'Em produção', '🏭'], ['feita', 'Feitas · aguardando aprovação', '✅'], ['aprovada', 'Aprovadas', '👍']];
+  function etapa(a) { var s = norm(a.status); if (/cancel|exclu/.test(s)) return 'cancelada'; if (/aprov/.test(s)) return 'aprovada'; if (/reprov/.test(s)) return 'reprovada'; if (/feit|conclu|finaliz|entreg/.test(s)) return 'feita'; if (/produ/.test(s)) return 'producao'; return 'fazer'; }
+  var E = { lista: [], busca: '', aba: 'fazer', canc: false, carregando: false };
+  function carregar() {
+    if (E.carregando) return; E.carregando = true;
+    fetch((window.API_BASE || '') + '/api/amostras?todas_empresas=1&todas=1', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } }).then(function (r) { return r.json(); })
+      .then(function (j) { E.lista = Array.isArray(j) ? j : (j.data || []); }).catch(function () {}).then(function () { E.carregando = false; render(); });
+  }
+  function acao(fn, id) { try { if (typeof window[fn] === 'function') window[fn](id); } catch (e) { console.warn(e); } [1200, 3000, 6000].forEach(function (t) { setTimeout(carregar, t); }); }
+  function card(a) {
+    var et = etapa(a), ent = String(a.data_entrega || '').slice(0, 10), atr = (et === 'fazer' || et === 'producao') && ent && ent < hoje(), id = esc(a.id), img = a.imagem_url || a.foto_url || '';
+    var bt = [];
+    if (et === 'fazer') bt.push('<button type="button" data-f="marcarAmostraEmProducao">🏭 Produção</button>');
+    if (et === 'fazer' || et === 'producao') bt.push('<button type="button" class="dam-ok" data-f="marcarAmostraFeita">✅ Feita</button>');
+    if (et === 'feita') bt.push('<button type="button" class="dam-ok" data-st="Aprovada">👍 Aprovar</button>', '<button type="button" data-st="Reprovada">👎 Reprovar</button>');
+    if (et === 'aprovada' || et === 'feita') bt.push('<button type="button" class="dam-pri" data-f="criarOFdeAmostra">📄 Gerar OF</button>');
+    bt.push('<button type="button" data-f="editarAmostra">✏️ Editar</button>');
+    if (et !== 'cancelada' && et !== 'aprovada') bt.push('<button type="button" class="dam-del" data-f="cancelarAmostra" aria-label="Cancelar amostra">Cancelar</button>');
+    return '<article class="dam-card' + (atr ? ' atr' : '') + '" data-id="' + id + '">'
+      + '<div class="dam-top">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<span class="dam-ic">🧪</span>') + '<div><span class="dam-num">' + (a.numero_amostra ? 'Amostra #' + esc(a.numero_amostra) : 'Amostra') + '</span><h3>' + esc(a.cliente_nome || a.cliente || '—') + '</h3><p>' + esc(a.produto || a.descricao || '') + '</p></div></div>'
+      + (a.observacoes ? '<p class="dam-obs">' + esc(a.observacoes) + '</p>' : '')
+      + '<div class="dam-datas"><span>Pedido <b>' + (br(a.data_pedido || a.created_at) || '—') + '</b></span><span>Entrega <b class="' + (atr ? 'dam-atr' : '') + '">' + (br(ent) || '—') + (atr ? ' · atrasada' : '') + '</b></span>' + (a.data_conclusao ? '<span>Feita <b>' + br(a.data_conclusao) + '</b></span>' : '') + '</div>'
+      + '<footer>' + bt.join('') + '</footer></article>';
+  }
+  function render() {
+    var r = document.getElementById('ds-amo'); if (!r) return;
+    var q = norm(E.busca).trim();
+    var l = E.lista.filter(function (a) { return !a.deleted_at && (!q || norm([a.numero_amostra, a.cliente_nome, a.produto, a.observacoes, a.status].join(' ')).indexOf(q) >= 0); });
+    var por = { fazer: [], producao: [], feita: [], aprovada: [], cancelada: [], reprovada: [] };
+    l.forEach(function (a) { por[etapa(a)].push(a); });
+    Object.keys(por).forEach(function (k) { por[k].sort(function (x, y) { return k === 'aprovada' || k === 'feita' || k === 'cancelada' ? String(y.data_conclusao || y.updated_at || '').localeCompare(String(x.data_conclusao || x.updated_at || '')) : String(x.data_entrega || '9').localeCompare(String(y.data_entrega || '9')); }); });
+    por.feita = por.feita.concat(por.reprovada);
+    var atr = por.fazer.concat(por.producao).filter(function (a) { var e = String(a.data_entrega || '').slice(0, 10); return e && e < hoje(); }).length;
+    r.querySelector('.dam-resumo').textContent = (por.fazer.length + por.producao.length) + ' para fazer · ' + atr + ' atrasada' + (atr === 1 ? '' : 's') + ' · ' + por.feita.length + ' aguardando aprovação';
+    r.querySelector('.dam-abas').innerHTML = COLS.map(function (c) { return '<button type="button" data-aba="' + c[0] + '" class="' + (E.aba === c[0] ? 'on' : '') + '">' + c[2] + ' ' + c[1].split(' ·')[0] + ' <span>' + por[c[0]].length + '</span></button>'; }).join('');
+    r.querySelector('.dam-quadro').innerHTML = COLS.map(function (c) {
+      return '<section class="dam-col' + (E.aba === c[0] ? ' on' : '') + '" data-col="' + c[0] + '"><h2>' + c[2] + ' ' + c[1] + ' <span>' + por[c[0]].length + '</span></h2>' + (por[c[0]].length ? por[c[0]].map(card).join('') : '<div class="dam-vazio">Nada aqui.</div>') + '</section>';
+    }).join('');
+    var cb = r.querySelector('.dam-canc'); cb.textContent = (E.canc ? 'Esconder' : 'Ver') + ' canceladas (' + por.cancelada.length + ')';
+    r.querySelector('.dam-canc-lista').innerHTML = E.canc ? (por.cancelada.map(card).join('') || '<div class="dam-vazio">Nenhuma.</div>') : '';
+  }
+  function montar(host) {
+    var r = document.createElement('div'); r.id = 'ds-amo';
+    r.innerHTML = '<header class="dam-head"><div><h1>Amostras</h1><p class="dam-resumo"></p></div><div class="dam-hb"><label class="dam-busca"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Buscar cliente, produto, nº…"></label><button type="button" class="dam-novo" data-f="abrirModalAmostra">+ Nova amostra</button></div></header>'
+      + '<nav class="dam-abas" role="tablist"></nav><div class="dam-quadro"></div><button type="button" class="dam-canc"></button><div class="dam-canc-lista"></div>';
+    host.insertBefore(r, host.firstChild);
+    var inp = r.querySelector('input'), tm; inp.addEventListener('input', function () { clearTimeout(tm); tm = setTimeout(function () { E.busca = inp.value; render(); }, 150); });
+    r.addEventListener('click', function (e) {
+      var ab = e.target.closest('[data-aba]'); if (ab) { E.aba = ab.getAttribute('data-aba'); return render(); }
+      if (e.target.closest('.dam-canc')) { E.canc = !E.canc; return render(); }
+      var b = e.target.closest('[data-f],[data-st]'); if (!b) return;
+      var cardEl = b.closest('[data-id]'), id = cardEl ? cardEl.getAttribute('data-id') : '';
+      if (b.getAttribute('data-f') === 'abrirModalAmostra') return acao('abrirModalAmostra');
+      if (b.hasAttribute('data-st')) {
+        var st = b.getAttribute('data-st'), agora = new Date().toISOString(); b.disabled = true;
+        fetch((window.API_BASE || '') + '/api/amostras/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }, body: JSON.stringify(st === 'Aprovada' ? { status: st, data_aprovacao: agora, updated_at: agora } : { status: st, updated_at: agora }) })
+          .then(function () { carregar(); }).catch(function () { b.disabled = false; });
+        return;
+      }
+      acao(b.getAttribute('data-f'), id);
+    });
+  }
+  var antes = false;
+  setInterval(function () {
+    var host = document.getElementById('pcp-aba-conteudo-amostras') || document.getElementById('page-amostras'); if (!host) return;
+    var on = host.offsetParent !== null || (document.getElementById('page-pcp') || {}).getAttribute && document.getElementById('page-pcp').getAttribute('data-ds-sub') === 'amostras' && document.getElementById('page-pcp').offsetParent !== null;
+    if (on && !document.getElementById('ds-amo')) { montar(host); host.classList.add('dam-ativa'); }
+    if (on && !antes) carregar();
+    antes = on;
+  }, 500);
+  setInterval(function () { if (antes && !document.hidden) carregar(); }, 30000);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-amo-css';
+    st.textContent = '.dam-ativa > :not(#ds-amo):not(style):not(script){display:none!important}.dam-ativa #page-amostras > :not(#ds-amo){display:none!important}'
+      + '#ds-amo{padding:14px 18px 40px;color:var(--text)}.dam-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}.dam-head h1{margin:0;font-size:22px}.dam-resumo{margin:4px 0 0;color:var(--text2);font-size:13px}.dam-hb{display:flex;gap:8px;flex-wrap:wrap}'
+      + '.dam-busca{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border:1px solid var(--b2);border-radius:10px;background:var(--surface);color:var(--text2);min-width:240px}.dam-busca input{flex:1;border:0!important;background:transparent!important;color:var(--text)!important;outline:none;font-size:14px;box-shadow:none!important;padding:0!important}'
+      + '.dam-novo{height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}'
+      + '.dam-abas{display:none;gap:6px;overflow-x:auto;margin:12px 0}.dam-abas button{flex:0 0 auto;border:1px solid var(--b2);background:var(--surface);color:var(--text2);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}.dam-abas button.on{background:var(--accent);border-color:var(--accent);color:#fff}.dam-abas span{font-weight:800;margin-left:2px}'
+      + '.dam-quadro{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px;align-items:start}.dam-col{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:10px;min-height:120px}.dam-col h2{margin:2px 4px 2px;font-size:13.5px;color:var(--text2);display:flex;justify-content:space-between;gap:6px}.dam-col h2 span{background:var(--s3);color:var(--text);border-radius:99px;padding:0 8px}'
+      + '.dam-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}.dam-card.atr{border-left:4px solid var(--red)}.dam-top{display:flex;gap:10px}.dam-top img{width:54px;height:54px;object-fit:cover;border-radius:8px;flex:0 0 auto}.dam-ic{width:54px;height:54px;display:grid;place-items:center;background:var(--s2);border-radius:8px;font-size:24px;flex:0 0 auto}'
+      + '.dam-num{font-size:11.5px;color:var(--text3);font-weight:700}.dam-card h3{margin:1px 0;font-size:14.5px}.dam-card p{margin:0;font-size:12.5px;color:var(--text2)}.dam-obs{background:var(--s2);border-radius:8px;padding:6px 8px}'
+      + '.dam-datas{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--text3)}.dam-datas b{color:var(--text);font-weight:600}.dam-atr{color:var(--red)!important}'
+      + '.dam-card footer{display:flex;flex-wrap:wrap;gap:6px}.dam-card footer button{flex:1 1 auto;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}.dam-card footer .dam-ok{background:var(--green);border-color:var(--green);color:#fff}.dam-card footer .dam-pri{background:var(--accent);border-color:var(--accent);color:#fff}.dam-card footer .dam-del{color:var(--red)}'
+      + '.dam-vazio{color:var(--text3);font-size:13px;text-align:center;padding:16px 4px}.dam-canc{margin-top:14px;background:none;border:1px dashed var(--b2);color:var(--text2);border-radius:10px;padding:8px 14px;cursor:pointer;font:inherit}.dam-canc-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:10px;opacity:.75}'
+      + '@media (max-width:1100px){.dam-quadro{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+      + '@media (max-width:700px){#ds-amo{padding:10px 10px 110px}.dam-hb,.dam-busca{width:100%;min-width:0}.dam-novo{width:100%;height:42px}.dam-abas{display:flex}.dam-quadro{grid-template-columns:1fr}.dam-col{display:none;background:transparent;border:0;padding:0}.dam-col.on{display:flex}.dam-col h2{display:none}.dam-card footer button{height:38px}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
