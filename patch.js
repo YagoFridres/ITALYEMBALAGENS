@@ -73184,6 +73184,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             put('cl-uf', c.uf || c.estado || '');
             put('cl-cidade', c.cidade || '');
           }
+          // a lista não traz todos os campos (ex.: observações): busca o cadastro completo e completa o que estiver vazio
+          var cid = c ? c.id : (typeof id === 'string' ? id : '');
+          if (cid) fetch((window.API_BASE || '') + '/api/clientes/' + encodeURIComponent(cid), { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } })
+            .then(function (x) { return x.json(); }).then(function (j) {
+              var d = j && (j.data || j); if (!d || !d.id) return;
+              [['cl-rs', d.rs || d.razao_social], ['cl-end', d.endereco], ['cl-obs', d.observacoes || d.obs], ['cl-tel', d.tel || d.telefone], ['cl-email', d.email], ['cl-uf', d.uf || d.estado], ['cl-cidade', d.cidade]].forEach(function (p2) {
+                var e = document.getElementById(p2[0]); if (e && !e.value && document.activeElement !== e && p2[1]) e.value = p2[1];
+              });
+            }).catch(function () {});
         } catch (_) {}
         return r;
       };
