@@ -72654,7 +72654,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!on) return;
     carregar(false); desenhar();
   }, 1500);
-  var css = '.sol-painel{margin:12px 16px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);overflow:hidden}'
+  var css = '.sol-painel{flex-shrink:0!important;min-height:min-content;margin:12px 16px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);overflow:hidden}'
     + '.sol-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border)}.sol-head h3{margin:0;font-size:15px;font-weight:700}.sol-head p{margin:2px 0 0;color:var(--text2);font-size:12.5px}'
     + '.sol-head-b{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sol-cont{font-size:12px;color:var(--text2);padding:3px 9px;border:1px solid var(--border);border-radius:99px}'
     + '.sol-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}.sol-btn:hover{background:var(--s3)}.sol-pri{background:var(--accent);border-color:var(--accent);color:#fff}.sol-pri:hover{background:var(--accent2)}.sol-btn:disabled{opacity:.55}'
