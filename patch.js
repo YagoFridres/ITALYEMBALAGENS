@@ -71928,7 +71928,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         : '<span class="dom-chip st-' + ut + '">' + (ut === 'urgente' ? 'Urgente' : (ut === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span>';
       var cores = h('cores', o), tam = h('tamanho', o), faca = h('faca', o), papel = h('papelPrev', o);
       return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '" data-maq="' + esc(m) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
-        + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span><input class="dom-seq" type="number" min="1" value="' + (i + 1) + '" aria-label="Posição na fila">' : (i + 1)) + '</td>'
+        + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span><input class="dom-seq" type="number" min="1" value="' + (i + 1) + '" aria-label="Posição na fila"><span class="dom-setas"><button type="button" data-mv="-1" aria-label="Subir">▲</button><button type="button" data-mv="1" aria-label="Descer">▼</button></span>' : (i + 1)) + '</td>'
         + '<td class="dom-c-img">' + (img ? '<button type="button" class="dom-img" data-a="img" title="Ver imagem"><img src="' + esc(img) + '" alt="" loading="lazy"></button>' : '<span class="dom-img vazio" title="Sem imagem">—</span>') + '</td>'
         + '<td class="dom-c-of"><b>' + esc(numOf(o)) + '</b></td>'
         + '<td class="dom-c-dt">' + fmtData(diaDe(o)) + '</td>'
@@ -72090,6 +72090,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var n = Math.max(1, Math.min(l.length, Math.round(Number(inp.value) || 1)));
       l = l.filter(function (x) { return x.id !== id; }); l.splice(n - 1, 0, o); salvarSeq(mS, l); render();
     });
+    raiz.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-mv]'); if (!b) return; ev.stopPropagation();
+      var tr = b.closest('tr[data-id]'), mS = tr.getAttribute('data-maq') || E.maq, id = tr.getAttribute('data-id');
+      var l = filaAtual(mS), i = l.findIndex(function (x) { return x.id === id; }), k = i + Number(b.getAttribute('data-mv'));
+      if (i < 0 || k < 0 || k >= l.length) return; var o = l.splice(i, 1)[0]; l.splice(k, 0, o); salvarSeq(mS, l); render();
+    }, true);
     raiz.addEventListener('dragstart', function (ev) { var tr = ev.target.closest('tr[data-id]'); if (!tr) return; arrastando = tr.getAttribute('data-id'); tr.classList.add('dom-arrastando'); try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', arrastando); } catch (_) {} });
     raiz.addEventListener('dragover', function (ev) { if (!arrastando) return; var tr = ev.target.closest('tr[data-id]'); if (!tr) return; ev.preventDefault(); raiz.querySelectorAll('.dom-alvo').forEach(function (x) { x.classList.remove('dom-alvo'); }); tr.classList.add('dom-alvo'); });
     raiz.addEventListener('dragend', function () { arrastando = null; raiz.querySelectorAll('.dom-alvo,.dom-arrastando').forEach(function (x) { x.classList.remove('dom-alvo'); x.classList.remove('dom-arrastando'); }); });
@@ -72097,8 +72103,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var tr = ev.target.closest('tr[data-id]'); if (!tr || !arrastando) return; ev.preventDefault();
       var alvo = tr.getAttribute('data-id'); if (alvo === arrastando) return;
       var mD = tr.getAttribute('data-maq') || E.maq;
-      var l = filaAtual(mD), o = l.find(function (x) { return x.id === arrastando; }); if (!o) { arrastando = null; return; } l = l.filter(function (x) { return x.id !== arrastando; });
-      var j = l.findIndex(function (x) { return x.id === alvo; }); l.splice(j, 0, o); arrastando = null; salvarSeq(mD, l); render();
+      var l = filaAtual(mD), o = l.find(function (x) { return x.id === arrastando; }); if (!o) { arrastando = null; return; }
+      // arrastando para baixo a OF entra DEPOIS da linha onde soltou; para cima, ANTES (antes sempre entrava antes e "descer 1" não mudava nada)
+      var de = l.findIndex(function (x) { return x.id === arrastando; }), para = l.findIndex(function (x) { return x.id === alvo; });
+      l = l.filter(function (x) { return x.id !== arrastando; });
+      var j = l.findIndex(function (x) { return x.id === alvo; }); l.splice(de < para ? j + 1 : j, 0, o); arrastando = null; salvarSeq(mD, l); render();
     });
   }
 
@@ -72232,6 +72241,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dom-btn-p{height:30px;font-size:12.5px}'
     + '.dom-tabela th small{display:block;font-size:10.5px;font-weight:500;color:var(--text3)}'
     + '#ds-ofmaq input.dom-seq{width:46px!important;min-width:0!important;max-width:46px!important;flex:none!important;}'
+    + '.dom-setas{display:none;flex-direction:column;gap:2px;margin-left:4px}.dom-setas button{width:28px;height:20px;border-radius:5px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font-size:10px;line-height:1;cursor:pointer;padding:0}@media (hover:none),(max-width:1024px){.dom-setas{display:inline-flex;vertical-align:middle}.dom-alca{display:none}}'
     + '.dom-seq{width:46px;height:30px;border-radius:7px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-weight:700;text-align:center;padding:0}'
     + '.dom-img{width:34px;height:34px;border-radius:7px;border:1px solid var(--border);background:var(--s2);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;padding:0;cursor:pointer;color:var(--text3)}.dom-img img{width:100%;height:100%;object-fit:cover}.dom-img.vazio{cursor:default}'
     + '.dom-c-prod{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dom-c-txt{white-space:nowrap;color:var(--text2);font-size:12.5px}.dom-c-papel{max-width:180px;color:var(--text2);font-size:12.5px}.dom-c-dt{white-space:nowrap;color:var(--text2)}'
