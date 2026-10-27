@@ -73114,7 +73114,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setInterval(vigiar, 700); vigiar();
   try {
     var st = document.createElement('style'); st.id = 'ds-fin-css';
-    st.textContent = 'html:not([data-ds-fin-ok]) .ds-fin-oculto{filter:blur(7px);user-select:none;cursor:pointer;position:relative}'
+    st.textContent = 'html:not([data-ds-fin-ok]) .ds-fin-oculto{color:transparent!important;text-shadow:0 0 10px color-mix(in srgb,var(--text,#fff) 75%,transparent);user-select:none;cursor:pointer}'
       + 'html:not([data-ds-fin-ok]) .hist-month-card:has(.ds-fin-oculto)::after{content:"🔒 toque para ver";position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--text3)}'
       + '.hist-month-card{position:relative}'
       + '.dfs-trava{margin-left:auto;margin-right:6px;font-size:12px;opacity:.55;cursor:pointer;padding:2px 4px}.dfs-trava:hover{opacity:1}html:not([data-ds-fin-ok]) .dfs-trava{display:none}'
