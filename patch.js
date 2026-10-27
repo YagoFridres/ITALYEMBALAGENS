@@ -74127,8 +74127,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }).catch(function () { legado.style.removeProperty('display'); });
   }
   setInterval(function () {
-    var m = document.getElementById('estoque-wire-modal'); if (!m || m.__dcd) return;
-    var ed = m.querySelector('[data-ew-edit]'); if (!ed || !/Visualiza/.test(m.textContent || '')) return;
+    var m = document.getElementById('estoque-wire-modal'); if (!m) return;
+    var ed = m.querySelector('[data-ew-edit]'), det = !!ed && /Visualiza/.test(m.textContent || '');
+    if (!det) { m.__dcd = false; return; }
+    if (m.__dcd || document.querySelector('.dcd-ov')) return;
     m.__dcd = true; abrir(m, ed.getAttribute('data-ew-edit'));
   }, 120);
   try {
