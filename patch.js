@@ -72698,10 +72698,41 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       sel.textContent = txt; sel.title = 'Solicitação de compra: ' + s.status;
     });
   }
+  // 27/10: as solicitações ficam dentro do botão "Sugestões" (com contador), não mais num quadro no topo da página
   function desenhar() {
     var pe = document.getElementById('page-estoque'), pc = document.getElementById('page-compras');
-    if (pe && pe.classList.contains('active') && String(window._PAGE_ATUAL || 'estoque') === 'estoque') { painel(pe, 'estoque'); seloLinhas(pe); }
-    if (pc && pc.classList.contains('active')) painel(pc, 'compra');
+    if (pe && pe.classList.contains('active') && String(window._PAGE_ATUAL || 'estoque') === 'estoque') { seloLinhas(pe); botaoSugestoes(pe, 'estoque'); }
+    if (pc && pc.classList.contains('active')) botaoSugestoes(pc, 'compra');
+    var mb = document.querySelector('#sol-modal-sug .sol-modal-corpo'); if (mb) painel(mb, mb.getAttribute('data-modo'));
+    document.querySelectorAll('#page-estoque > .page-body > .sol-painel, #page-compras > .page-body > .sol-painel, #page-estoque > .sol-painel, #page-compras > .sol-painel').forEach(function (x) { x.remove(); });
+  }
+  function acharSugestoes(pg) { return Array.prototype.find.call(pg.querySelectorAll('button'), function (b) { return b.offsetParent !== null && /sugest/i.test(b.textContent || '') && !b.closest('.sol-painel') && !b.closest('#sol-modal-sug'); }); }
+  function botaoSugestoes(pg, modo) {
+    var b = acharSugestoes(pg); if (!b) return;
+    var n = E.lista.filter(aberta).length, tag = b.querySelector('.sol-badge');
+    if (n) { if (!tag) { tag = document.createElement('span'); tag.className = 'sol-badge'; b.appendChild(tag); } if (tag.textContent !== String(n)) tag.textContent = String(n); } else if (tag) tag.remove();
+    if (b.__solLigado) return; b.__solLigado = true;
+    b.addEventListener('click', function (ev) {
+      if (b.__solDeixar) { b.__solDeixar = false; return; }
+      ev.preventDefault(); ev.stopImmediatePropagation(); abrirModalSug(modo, b);
+    }, true);
+  }
+  function abrirModalSug(modo, origem) {
+    var ant = document.getElementById('sol-modal-sug'); if (ant) ant.remove();
+    var ov = document.createElement('div'); ov.className = 'sol-ov'; ov.id = 'sol-modal-sug';
+    ov.innerHTML = '<div class="sol-modal sol-modal-g" role="dialog" aria-modal="true"><header><h2>💡 Sugestões e solicitações de compra</h2><button type="button" class="sol-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<p class="sol-dica">' + (modo === 'compra' ? 'O que o estoque pediu (📌 nas chapas ou “Solicitar compra”). Mude o andamento e coloque o nº da compra — o estoque vê na hora.' : 'Peça uma compra aqui ou pelo 📌 da chapa. A Compra de Papelão recebe o pedido e você acompanha o andamento.') + '</p>'
+      + '<div class="sol-modal-corpo" data-modo="' + modo + '"></div>'
+      + '<footer><button type="button" class="sol-btn" data-x="auto">Ver sugestões automáticas (estoque baixo)</button><button type="button" class="sol-btn" data-x="fechar">Fechar</button></footer></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) return ov.remove();
+      var x = e.target.closest('[data-x]'); if (!x || x.closest('.sol-painel')) return;
+      if (x.getAttribute('data-x') === 'fechar') return ov.remove();
+      if (x.getAttribute('data-x') === 'auto') { ov.remove(); origem.__solDeixar = true; origem.click(); }
+    });
+    painel(ov.querySelector('.sol-modal-corpo'), modo);
+    carregar(true);
   }
   function clique(ev) {
     var b = ev.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a'), host = b.closest('.sol-painel');
@@ -72751,7 +72782,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!on) return;
     carregar(false); desenhar();
   }, 1500);
-  var css = '.sol-painel{flex-shrink:0!important;min-height:min-content;margin:12px 16px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);overflow:hidden}'
+  var css = '.sol-badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:99px;background:var(--red);color:#fff;font-size:11px;font-weight:800}.sol-modal-g{width:min(1000px,100%)!important;max-height:90vh;overflow:auto}.sol-modal-g .sol-painel{margin:0!important;border:0!important;background:transparent!important}.sol-dica{margin:0 0 10px;color:var(--text2);font-size:13px}.sol-modal-g footer{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}'
+    + '.sol-painel{flex-shrink:0!important;min-height:min-content;margin:12px 16px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);overflow:hidden}'
     + '.sol-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border)}.sol-head h3{margin:0;font-size:15px;font-weight:700}.sol-head p{margin:2px 0 0;color:var(--text2);font-size:12.5px}'
     + '.sol-head-b{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sol-cont{font-size:12px;color:var(--text2);padding:3px 9px;border:1px solid var(--border);border-radius:99px}'
     + '.sol-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}.sol-btn:hover{background:var(--s3)}.sol-pri{background:var(--accent);border-color:var(--accent);color:#fff}.sol-pri:hover{background:var(--accent2)}.sol-btn:disabled{opacity:.55}'
