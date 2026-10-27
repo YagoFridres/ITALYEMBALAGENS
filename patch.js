@@ -73222,3 +73222,73 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   instalar(); setInterval(instalar, 2000);
 })();
+
+/* ===== SIMULADOR DE DESPERDÍCIO: desenho da chapa ao lado (27/10/2026) =====
+ * Clicou numa chapa do ranking → aparece ao lado o desenho bem simples:
+ * AZUL = parte da chapa que vira peça (aproveitada) · LARANJA = sobra que vai ser perdida.
+ * No celular/tablet o desenho fica acima da tabela. */
+(function () {
+  if (window.__dsSimdLado) return; window.__dsSimdLado = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function n(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function chave(r) { return String(r && (r.__row_key || r.id) || ''); }
+  function svg(r) {
+    var W = Number(r.chapa_width_mm) || 0, H = Number(r.chapa_height_mm) || 0, pw = Number(r.piece_width_mm) || 0, ph = Number(r.piece_height_mm) || 0, cols = Number(r.cols) || 0, rows = Number(r.rows) || 0;
+    if (!(W > 0 && H > 0 && pw > 0 && ph > 0)) return '';
+    var MAX = 420, esc_ = Math.min(MAX / W, MAX / H), w = W * esc_, h = H * esc_, m = 30, gap = Math.max(1, Math.min(3, Math.min(pw, ph) * esc_ * 0.04));
+    var pecas = '';
+    for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) {
+      var px = m + x * pw * esc_, py = m + y * ph * esc_, ww = pw * esc_, hh = ph * esc_;
+      pecas += '<rect x="' + (px + gap / 2).toFixed(1) + '" y="' + (py + gap / 2).toFixed(1) + '" width="' + Math.max(1, ww - gap).toFixed(1) + '" height="' + Math.max(1, hh - gap).toFixed(1) + '" rx="2" fill="#2563eb"/>';
+      if (ww > 46 && hh > 26) pecas += '<text x="' + (px + ww / 2).toFixed(1) + '" y="' + (py + hh / 2 + 4).toFixed(1) + '" text-anchor="middle" font-size="' + Math.min(14, Math.max(9, ww / 7)).toFixed(0) + '" font-weight="700" fill="#fff">' + (y * cols + x + 1) + '</text>';
+    }
+    return '<svg viewBox="0 0 ' + (w + m * 2).toFixed(0) + ' ' + (h + m * 2).toFixed(0) + '" role="img" aria-label="Desenho da chapa: azul aproveitado, laranja perdido">'
+      + '<rect x="' + m + '" y="' + m + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="#f97316" rx="3"/>' + pecas
+      + '<text x="' + (m + w / 2).toFixed(1) + '" y="' + (m - 10) + '" text-anchor="middle" font-size="13" fill="currentColor">' + n(W) + ' mm</text>'
+      + '<text x="' + (m - 10) + '" y="' + (m + h / 2).toFixed(1) + '" text-anchor="middle" font-size="13" fill="currentColor" transform="rotate(-90 ' + (m - 10) + ' ' + (m + h / 2).toFixed(1) + ')">' + n(H) + ' mm</text>'
+      + '</svg>';
+  }
+  var ult = '';
+  function tick() {
+    var res = document.getElementById('simd-resultado'); if (!res || res.offsetParent === null) return;
+    var wrap = document.getElementById('simd-tabela-wrap'); if (!wrap) return;
+    var linhas = window.__simdLastRows || [], sel = String(window.__simdSelectedRowId || '');
+    // monta as duas colunas: tabela + painel
+    var cols = res.querySelector('.dss-cols');
+    if (!cols) {
+      cols = document.createElement('div'); cols.className = 'dss-cols';
+      var esq = document.createElement('div'); esq.className = 'dss-esq';
+      var lado = document.createElement('aside'); lado.className = 'dss-lado'; lado.id = 'ds-simd-lado';
+      wrap.parentNode.insertBefore(cols, wrap); esq.appendChild(wrap); cols.appendChild(lado); cols.appendChild(esq);
+    }
+    var lado2 = document.getElementById('ds-simd-lado');
+    var r = linhas.find(function (x) { return chave(x) === sel; }) || null;
+    var sig = sel + '|' + linhas.length + '|' + (r ? [r.cols, r.rows, r.chapa_width_mm, r.chapa_height_mm, r.piece_width_mm].join(',') : '');
+    if (sig === ult) return; ult = sig;
+    if (!r) { lado2.innerHTML = '<div class="dss-vazio">Clique numa chapa da lista para ver o desenho do corte.</div>'; return; }
+    var ap = Number(r.aproveitamento_pct) || Math.max(0, 100 - (Number(r.desperdicio_pct) || 0)), pe = Number(r.desperdicio_pct) || 0;
+    lado2.innerHTML = '<div class="dss-tit"><b>' + esc(r.nome || 'Chapa') + '</b><span>' + esc([r.fornecedor, r.tamanho].filter(Boolean).join(' · ')) + '</span></div>'
+      + '<div class="dss-leg"><span class="dss-az"><i></i>Azul = aproveitado <b>' + n(ap, 1) + '%</b></span><span class="dss-la"><i></i>Laranja = perdido <b>' + n(pe, 1) + '%</b></span></div>'
+      + '<div class="dss-svg">' + svg(r) + '</div>'
+      + '<div class="dss-num"><div><b>' + n(r.pecas_por_chapa) + '</b><span>peças por chapa</span></div><div><b>' + n(r.cols) + ' × ' + n(r.rows) + '</b><span>colunas × linhas</span></div>'
+      + '<div><b>' + n(r.piece_width_mm) + ' × ' + n(r.piece_height_mm) + '</b><span>peça (mm)' + (/rot/i.test(r.orientacao_label || '') ? ' · girada 90°' : '') + '</span></div>'
+      + (r.chapas_necessarias != null ? '<div><b>' + n(r.chapas_necessarias) + '</b><span>chapas para o pedido</span></div>' : '<div><b>' + n(r.estoque) + '</b><span>em estoque</span></div>') + '</div>';
+    try { var old = document.getElementById('simd-visual'); if (old) old.style.setProperty('display', 'none', 'important'); } catch (_) {}
+    if (window.innerWidth < 1100 && window.__dssClicou) { window.__dssClicou = false; try { lado2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} }
+  }
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#simd-tabela-wrap [data-simd-row]')) window.__dssClicou = true; }, true);
+  setInterval(tick, 400);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-simd-lado-css';
+    st.textContent = '.dss-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:16px;align-items:start}.dss-esq{min-width:0;order:1}.dss-lado{order:2;position:sticky;top:12px}'
+      + '#simd-tabela-wrap [data-simd-row]{cursor:pointer}#simd-tabela-wrap [data-simd-row].is-selected td{background:color-mix(in srgb,#2563eb 16%,transparent)!important}'
+      + '.dss-lado{background:var(--surface,#16181d);border:1px solid var(--b2,#333);border-radius:14px;padding:14px;color:var(--text,#fff)}'
+      + '.dss-vazio{color:var(--text2,#aaa);text-align:center;padding:40px 10px;font-size:14px}'
+      + '.dss-tit b{display:block;font-size:15px}.dss-tit span{font-size:12.5px;color:var(--text2,#aaa)}'
+      + '.dss-leg{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 8px;font-size:13.5px}.dss-leg span{display:flex;align-items:center;gap:7px}.dss-leg i{width:16px;height:16px;border-radius:4px;display:inline-block}.dss-az i{background:#2563eb}.dss-la i{background:#f97316}.dss-leg b{margin-left:2px}'
+      + '.dss-svg{color:var(--text2,#aaa)}.dss-svg svg{width:100%;height:auto;max-height:440px;display:block}'
+      + '.dss-num{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.dss-num div{background:var(--s2,#0f1115);border:1px solid var(--border,#2a2a2a);border-radius:10px;padding:8px 10px}.dss-num b{display:block;font-size:16px}.dss-num span{font-size:11.5px;color:var(--text2,#aaa)}'
+      + '@media (max-width:1099px){.dss-cols{grid-template-columns:1fr}.dss-lado{order:0;position:static}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
