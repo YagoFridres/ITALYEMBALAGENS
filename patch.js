@@ -72673,3 +72673,79 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '@media (max-width:700px){.sol-painel{margin:10px 0}.sol-tab thead{display:none}.sol-tab,.sol-tab tbody{display:block}.sol-tab tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}.sol-tab td{display:block;padding:0;border:0}.sol-tab td::before{content:none!important}.sol-ac{grid-column:1 / -1;text-align:left}.sol-g{grid-template-columns:1fr}.sol-modal footer .sol-btn{flex:1;height:42px}}';
   try { var st = document.createElement('style'); st.id = 'ds-sol-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
+
+/* ===== INCONFORMIDADES no visual novo (27/10/2026) =====
+ * Cabeçalho com resumo do mês, abas no padrão do sistema, formulário em cartão com seções
+ * (OF e máquinas · pessoas · ocorrência), operadores e máquinas como botões marcáveis, e ao lado as
+ * últimas ocorrências. Os campos e o "Registrar" continuam os mesmos (mesma gravação). A lista carrega sozinha. */
+(function () {
+  if (window.__dsInc) return; window.__dsInc = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var ult = 0, dados = [];
+  function carregar() {
+    if (Date.now() - ult < 30000) return; ult = Date.now();
+    var h = {}; try { h.Authorization = 'Bearer ' + localStorage.getItem('token'); } catch (_) {}
+    fetch('/api/inconformidades', { headers: h }).then(function (r) { return r.json(); }).then(function (j) { dados = Array.isArray(j) ? j : (j.data || []); lado(); }).catch(function () {});
+  }
+  function lado() {
+    var side = document.getElementById('ds-inc-lado'); if (!side) return;
+    var mes = new Date().toISOString().slice(0, 7);
+    var doMes = dados.filter(function (d) { return String(d.created_at || '').slice(0, 7) === mes; });
+    var cx = doMes.reduce(function (s, d) { return s + (Number(d.caixas_perdidas || d.qtd_perdida) || 0); }, 0);
+    var cont = {}; doMes.forEach(function (d) { var m = d.motivo || '—'; cont[m] = (cont[m] || 0) + 1; });
+    var top = Object.keys(cont).sort(function (a, b) { return cont[b] - cont[a]; })[0] || '—';
+    side.innerHTML = '<div class="inc-kpis"><div><span>Ocorrências no mês</span><b>' + doMes.length + '</b></div><div><span>Caixas perdidas no mês</span><b>' + cx.toLocaleString('pt-BR') + '</b></div><div class="inc-k2"><span>Motivo mais comum</span><b>' + esc(top) + '</b></div></div>'
+      + '<h4>Últimas ocorrências</h4>' + (dados.length ? '<ul class="inc-ult">' + dados.slice(0, 8).map(function (d) {
+        return '<li><b>' + (d.of_numero ? 'OF ' + esc(d.of_numero) + ' · ' : '') + esc(d.motivo || d.obs || 'Inconformidade') + '</b><span>' + esc(d.maquina || (Array.isArray(d.maquinas) ? d.maquinas.join(', ') : '') || '—') + ' · ' + esc(d.operador_display || d.operador || '—') + ' · ' + (Number(d.caixas_perdidas || d.qtd_perdida) || 0).toLocaleString('pt-BR') + ' cx</span><small>' + new Date(d.created_at).toLocaleDateString('pt-BR') + ' · ' + esc(d.status || '') + '</small></li>';
+      }).join('') + '</ul>' : '<div class="inc-vazio">Nenhuma ocorrência registrada.</div>');
+  }
+  function montar() {
+    var p = document.getElementById('page-inconformidades'); if (!p || !p.classList.contains('active')) return;
+    carregar();
+    if (p.getAttribute('data-ds-inc')) return;
+    var reg = document.getElementById('inc-aba-registrar'); var form = reg && reg.firstElementChild; if (!form) return;
+    p.setAttribute('data-ds-inc', '1');
+    var head = document.createElement('header'); head.className = 'inc-head';
+    head.innerHTML = '<div><h1>Inconformidades</h1><p>Registre problemas de produção com OF, máquina, operadores, motivo e caixas perdidas.</p></div>';
+    p.insertBefore(head, p.firstChild);
+    var abas = head.nextElementSibling; if (abas) abas.classList.add('inc-abas');
+    form.classList.add('inc-form');
+    var grid = document.createElement('div'); grid.className = 'inc-grid';
+    reg.insertBefore(grid, form); grid.appendChild(form);
+    var side = document.createElement('aside'); side.id = 'ds-inc-lado'; side.className = 'inc-lado'; grid.appendChild(side);
+    // seções
+    var blocos = Array.prototype.slice.call(form.children);
+    var secoes = [['OF e máquinas', ['inc-of-numero', 'inc-maquina', 'inc-maquinas-checkboxes']], ['Pessoas', ['inc-operador', 'inc-operadores-of-lista']], ['Ocorrência', ['inc-motivo', 'inc-caixas', 'inc-descricao', 'inc-foto']]];
+    var botao = blocos.filter(function (b) { return b.tagName === 'BUTTON'; })[0];
+    secoes.forEach(function (sx) {
+      var sec = document.createElement('section'); sec.className = 'inc-sec'; sec.innerHTML = '<h3>' + sx[0] + '</h3>';
+      sx[1].forEach(function (id) { var el = document.getElementById(id); var bloco = el && el.closest('.inc-form > div'); if (bloco && bloco.parentNode === form) sec.appendChild(bloco); });
+      form.insertBefore(sec, botao || null);
+    });
+    if (botao) botao.classList.add('inc-salvar');
+    var chk = document.getElementById('inc-maquinas-checkboxes'); if (chk) chk.classList.add('inc-pilulas');
+    var ops = document.getElementById('inc-operadores-of-lista'); if (ops) ops.classList.add('inc-pilulas');
+    lado();
+  }
+  setInterval(montar, 800);
+  var css = ''
+    + 'html[data-ds="3"] #page-inconformidades{padding:18px 20px 40px!important;color:var(--text)}'
+    + '.inc-head h1{margin:0;font-size:20px;font-weight:700}.inc-head p{margin:3px 0 12px;color:var(--text2);font-size:13px}'
+    + 'html[data-ds="3"] #page-inconformidades .inc-abas{border-bottom:1px solid var(--border)!important;gap:4px!important;padding-bottom:0!important;margin-bottom:16px!important}'
+    + 'html[data-ds="3"] #page-inconformidades .inc-abas button{background:transparent!important;color:var(--text2)!important;border-radius:0!important;border-bottom:2px solid transparent!important;padding:9px 14px!important;font-weight:600!important}'
+    + 'html[data-ds="3"] #page-inconformidades .inc-abas button[style*="#4A90D9"],html[data-ds="3"] #page-inconformidades .inc-abas button[style*="rgb(74, 144, 217)"]{color:var(--accent)!important;border-bottom-color:var(--accent)!important}'
+    + '.inc-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}'
+    + 'html[data-ds="3"] #page-inconformidades .inc-form{max-width:none!important;gap:14px!important}'
+    + '.inc-sec{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}.inc-sec h3{grid-column:1 / -1;margin:0;font-size:14px;font-weight:700}'
+    + '.inc-sec > div:has(#inc-maquinas-checkboxes),.inc-sec > div:has(#inc-operadores-of-lista),.inc-sec > div:has(#inc-descricao),.inc-sec > div:has(#inc-foto){grid-column:1 / -1}'
+    + 'html[data-ds="3"] #page-inconformidades label{color:var(--text2)!important;font-size:12.5px!important;font-weight:600!important;text-transform:none!important}'
+    + 'html[data-ds="3"] #page-inconformidades input:not([type=checkbox]),html[data-ds="3"] #page-inconformidades select,html[data-ds="3"] #page-inconformidades textarea{background:var(--bg)!important;color:var(--text)!important;border:1px solid var(--b2)!important;border-radius:8px!important;min-height:38px}'
+    + '.inc-pilulas{gap:6px!important;max-height:none!important}.inc-pilulas label{display:inline-flex!important;align-items:center;gap:6px;padding:6px 11px!important;border:1px solid var(--border);border-radius:99px;background:var(--s2);cursor:pointer;font-weight:500!important;color:var(--text)!important}'
+    + '.inc-pilulas label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface))}.inc-pilulas input{accent-color:var(--accent);margin:0}'
+    + 'html[data-ds="3"] #page-inconformidades .inc-salvar{background:var(--accent)!important;border-radius:10px!important;min-height:46px;font-size:15px!important}'
+    + '.inc-lado{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;position:sticky;top:0}.inc-lado h4{margin:14px 0 8px;font-size:13.5px}'
+    + '.inc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}.inc-kpis div{border:1px solid var(--border);border-radius:10px;padding:10px}.inc-kpis span{display:block;font-size:11.5px;color:var(--text2)}.inc-kpis b{display:block;font-size:19px;margin-top:3px}.inc-kpis .inc-k2{grid-column:1 / -1}.inc-kpis .inc-k2 b{font-size:14px}'
+    + '.inc-ult{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.inc-ult li{padding:9px 10px;border:1px solid var(--border);border-radius:9px}.inc-ult b{display:block;font-size:13px}.inc-ult span{display:block;font-size:12px;color:var(--text2);margin-top:2px}.inc-ult small{font-size:11px;color:var(--text3)}.inc-vazio{color:var(--text3);font-size:13px;padding:10px 0}'
+    + '@media (max-width:900px){.inc-grid{grid-template-columns:1fr}.inc-lado{position:static}.inc-sec{grid-template-columns:1fr}html[data-ds="3"] #page-inconformidades{padding:12px 12px 110px!important}}';
+  try { var st = document.createElement('style'); st.id = 'ds-inc-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
