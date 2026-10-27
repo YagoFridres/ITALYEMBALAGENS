@@ -73297,7 +73297,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dss-leg{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 8px;font-size:13.5px}.dss-leg span{display:flex;align-items:center;gap:7px}.dss-leg i{width:16px;height:16px;border-radius:4px;display:inline-block}.dss-az i{background:#2563eb}.dss-la i{background:#f97316}.dss-leg b{margin-left:2px}'
       + '.dss-svg{color:var(--text2,#aaa)}.dss-svg svg{width:100%;height:auto;max-height:440px;display:block}'
       + '.dss-num{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.dss-num div{background:var(--s2,#0f1115);border:1px solid var(--border,#2a2a2a);border-radius:10px;padding:8px 10px}.dss-num b{display:block;font-size:16px}.dss-num span{font-size:11.5px;color:var(--text2,#aaa)}'
-      + '@media (max-width:1099px){.dss-cols{grid-template-columns:1fr}.dss-lado{order:0;position:static}}';
+      + '@media (max-width:1099px){.dss-cols{grid-template-columns:1fr}.dss-lado{order:0;position:static}}'
+      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}#tela-simulador-desperdicio .simd-grid>.simd-field{grid-column:auto!important;min-width:0}#tela-simulador-desperdicio .simd-grid>.simd-field:nth-child(n+4){grid-column:1 / -1!important}#tela-simulador-desperdicio .simd-field input{width:100%!important;min-width:0}#tela-simulador-desperdicio .simd-field label{white-space:normal}}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
