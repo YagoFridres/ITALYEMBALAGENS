@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027100857';
-const SW_RUNTIME_VERSION = '20261027100857';
+const PATCH_RUNTIME_VERSION = '20261027101304';
+const SW_RUNTIME_VERSION = '20261027101304';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2629,6 +2629,9 @@ async function _comissoesEnriquecerLista(baseRows) {
       const vAtual = vendPorCli.get(cliDe(of));
       if (!vAtual) return;
       const vOf = String(_pickOfVendedorIdCompat(of) || '').trim();
+      // 27/10/2026: igual ao sistema antigo — vale o vendedor gravado na OF;
+      // o vendedor do cliente só entra quando a OF não tem vendedor.
+      if (vOf && process.env.COMISSAO_VENDEDOR_CLIENTE !== '1') return;
       if (vOf && vOf !== vAtual) {
         of.__vendedor_id_na_of = vOf;
         // % gravado na OF era do vendedor antigo: deixa o % padrão do vendedor atual valer.

@@ -72502,28 +72502,24 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function moeda(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var ult = '';
+  var CORES = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ec4899', '#14b8a6'];
   function tick() {
     try {
       var p = document.getElementById('page-comissoes'); if (!p || !p.classList.contains('active')) return;
-      var area = p.querySelector('.com-screen-area'); if (!area) return;
-      var boxes = area.querySelectorAll(':scope > .sbox');
-      if (boxes[1] && !boxes[1].querySelector('tbody tr')) boxes[1].style.display = 'none';
-      var box = boxes[0]; if (!box) return;
-      var d = window._comissoesData, vs = (d && d.vendedores) || [];
-      var sig = JSON.stringify(vs.map(function (v) { return [v.nome, Math.round(v.total), Math.round(v.comissao_rs)]; }));
-      if (sig === ult && box.querySelector('.ds-com-graf')) return; ult = sig;
-      var tb = box.querySelector('#tabela-comissoes-vendedor'); if (tb && !tb.querySelector('tbody tr')) tb.closest('.sbox-b').style.display = 'none';
-      var host = box.querySelector('.sbox-b'); if (!host) return;
-      if (!vs.length) { host.innerHTML = '<div class="ds-com-graf ds-com-vazio">Sem vendas no período.</div>'; return; }
-      var mx = Math.max.apply(null, vs.map(function (v) { return Number(v.total) || 0; }).concat([1]));
-      var totV = vs.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
-      host.style.paddingBottom = '';
-      host.innerHTML = '<div class="ds-com-graf">' + vs.map(function (v) {
-        var t = Number(v.total) || 0, pc = totV ? Math.round(t / totV * 1000) / 10 : 0;
-        return '<div class="dcg-l"><div class="dcg-n">' + esc(v.nome) + '<small>' + pc.toLocaleString('pt-BR') + '% das vendas · ' + (Array.isArray(v.ofs) && v.ofs.length ? v.ofs.length + ' OFs · ' : '') + String(v.comissao_pct || 0).replace('.', ',') + '% de comissão</small></div>'
-          + '<div class="dcg-b"><i style="width:' + Math.max(1, t / mx * 100) + '%"></i></div>'
-          + '<div class="dcg-v"><b>' + moeda(t) + '</b><span>comissão ' + moeda(v.comissao_rs) + '</span></div></div>';
-      }).join('') + '</div>';
+      // Igual ao sistema antigo: sem o quadro de gráfico e sem o detalhamento antigo vazio.
+      p.querySelectorAll('.sbox').forEach(function (b) {
+        if (b.closest('#_com_topo_conteudo') || b.closest('#_com_detalhe')) return;
+        var t = String(b.textContent || '');
+        if ((t.indexOf('Comissão por Vendedor') >= 0 || t.indexOf('Detalhamento das OFs') >= 0) && !b.querySelector('tbody tr')) b.style.display = 'none';
+      });
+      // Tabela por vendedor com uma cor por vendedor (como no sistema antigo).
+      var topo = document.getElementById('_com_topo_conteudo'); if (!topo) return;
+      var tb = Array.prototype.find.call(topo.querySelectorAll('table'), function (t) { return t.tBodies[0] && t.tBodies[0].rows.length && /VENDEDOR/i.test(t.tHead ? t.tHead.textContent : ''); });
+      if (!tb || tb.classList.contains('ds-com-vend')) return;
+      tb.classList.add('ds-com-vend');
+      Array.prototype.forEach.call(tb.tBodies[0].rows, function (r, i) {
+        r.style.background = 'color-mix(in srgb, ' + CORES[i % CORES.length] + ' 24%, var(--surface))';
+      });
     } catch (_) {}
   }
   setInterval(tick, 1200);
@@ -72534,7 +72530,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dcg-n{font-weight:700;color:var(--text);font-size:13.5px}.dcg-n small{display:block;font-weight:500;color:var(--text2);font-size:11.5px;margin-top:2px}'
       + '.dcg-b{height:14px;border-radius:99px;background:var(--s3);overflow:hidden}.dcg-b i{display:block;height:100%;border-radius:99px;background:var(--accent)}'
       + '.dcg-v{text-align:right;white-space:nowrap}.dcg-v b{display:block;color:var(--text);font-size:14px}.dcg-v span{font-size:12px;color:var(--green);font-weight:600}'
-      + '#_com_detalhe{max-height:none!important;overflow:visible!important}'
+      + '#_com_detalhe{max-height:none!important;overflow:visible!important}.ds-com-vend tbody td{text-align:center;font-weight:600}.ds-com-vend tbody td:not(:last-child){color:var(--text)!important}.ds-com-vend tbody td:last-child{color:var(--green)!important;font-weight:800}.ds-com-vend tbody td:first-child{font-weight:800}.ds-com-vend thead th{text-align:center}'
       + '@media (max-width:700px){.dcg-l{grid-template-columns:1fr auto;grid-template-areas:"n v" "b b"}.dcg-n{grid-area:n}.dcg-v{grid-area:v}.dcg-b{grid-area:b}}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
