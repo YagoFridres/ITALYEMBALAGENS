@@ -66442,6 +66442,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
 (function __mapaClientesFechaModaisAoNavegar(){
   try { if (window.__mapaClientesModalLeakGuardInstalled) return; window.__mapaClientesModalLeakGuardInstalled = true; } catch (_) {}
+  var FIXOS = {}; try { document.querySelectorAll('body > [id]').forEach(function (e) { FIXOS[e.id] = 1; }); FIXOS['modal-nova-chapa'] = 1; } catch (_) {}
   function fecharTodosModaisAbertos(){
     try {
       // Antes removia TODO .modal da página (inclusive os modais fixos do index.html, como o de Fornecedor),
@@ -66451,7 +66452,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         try { if (o.id === 'jarvis-modal') return; o.classList.remove('open'); } catch (_c) {}
       });
       document.querySelectorAll('[data-modal-padrao],.modal-backdrop,[id*="modal-"][id*="estado"],[id*="modal-"][id*="cidade"],[id*="modal-"][id*="ramo"],[id*="novo-estado"]').forEach(function(m){
-        try { if (m.closest && m.closest('.modal-overlay:not([data-modal-padrao])') && !m.classList.contains('modal-backdrop')) return; m.remove(); } catch (_rm) {}
+        try { if (m.closest && m.closest('.modal-overlay:not([data-modal-padrao])') && !m.classList.contains('modal-backdrop')) return;
+          // 27/10: modais fixos do index.html (ex.: editar chapa) não podem ser removidos — só fechados
+          if (m.id && FIXOS[m.id]) { if (m.style) m.style.display = 'none'; m.classList.remove('open'); return; }
+          m.remove(); } catch (_rm) {}
       });
       document.querySelectorAll('.modal-open,.overflow-hidden').forEach(function(b){
         try { b.classList && b.classList.remove('modal-open','overflow-hidden'); } catch (_cl) {}
