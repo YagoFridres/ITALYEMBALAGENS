@@ -74283,3 +74283,24 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   if (instalar()) { setTimeout(function () { try { if (typeof window.carregarOFsUnico === 'function') window.carregarOFsUnico(true); } catch (_) {} }, 1500); }
   else { var t = setInterval(function () { if (instalar()) { clearInterval(t); try { window.carregarOFsUnico(true); } catch (_) {} } }, 500); }
 })();
+
+/* ===== CORES DE IMPRESSÃO: cor nova aparece na hora (27/10/2026) =====
+ * A cor era gravada, mas a lista vinha de uma cópia antiga guardada pelo navegador e a cor nova não aparecia
+ * (por isso o OCRE foi cadastrado mais de uma vez). Agora a lista sempre busca a versão atual. */
+(function () {
+  if (window.__dsCoresNovas) return; window.__dsCoresNovas = true;
+  function inst() {
+    var c0 = window.carregarCoresImpressao; if (typeof c0 !== 'function' || c0.__dsCor) return;
+    var w = async function (empIdOverride) {
+      try {
+        var r = await fetch((window.API_BASE || '') + '/api/cores-impressao?t=' + Date.now(), { cache: 'no-store', headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } });
+        var j = await r.json(); var rows = Array.isArray(j) ? j : (j && j.data) || [];
+        var vistos = {}; rows = rows.filter(function (c) { var k = String(c.nome || '').trim().toLowerCase(); if (!k || vistos[k]) return false; vistos[k] = 1; return c.ativo !== false; });
+        try { coresDisponiveis = rows; } catch (_) {} window.coresDisponiveis = rows;
+        return rows;
+      } catch (e) { return c0.apply(this, arguments); }
+    };
+    w.__dsCor = true; window.carregarCoresImpressao = w;
+  }
+  inst(); setInterval(inst, 2000);
+})();
