@@ -71067,7 +71067,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     { k: 'tempo', t: 'Tempo', c: 'dsc-c-num', f: function (o) { return esc(hv('minutos', o)); } },
     { k: 'gram', t: 'Gramatura', c: 'dsc-c-txt', f: function (o) { return esc(hv('gramatura', o)); } },
     { k: 'perdas', t: 'Caixas perdidas', c: 'dsc-c-txt', f: function (o) { var v = hv('perdas', o); return v === '—' ? '<span class="dsc-sub">—</span>' : '<span class="dsc-txt-atr">' + esc(v) + '</span>'; } },
-    { k: 'ton', t: 'Toneladas', c: 'dsc-c-num', f: function (o) { return esc(hv('toneladas', o)); } },
+    { k: 'ton', t: 'Toneladas', c: 'dsc-c-num', f: function (o) { return esc(String(hv('toneladas', o)).replace(/(\d)\.(\d)/, '$1,$2')); } },
     { k: 'st', t: 'Status', c: 'dsc-c-st', f: function (o) { return statusHtml(o); } },
     { k: 'vunit', t: 'Vl. unitário', c: 'dsc-c-num', f: function (o) { return brl(o.vunit || o.valorUnitario || o.valor_unitario); } },
     { k: 'valor', t: 'Valor', c: 'dsc-c-num dsc-c-tot', ord: 'total', f: function (o) { return brl(o.val || o.valor_total); } },
@@ -74255,6 +74255,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!o || typeof o !== 'object' || !r || typeof r !== 'object') return o;
     CAMPOS.forEach(function (k) { if (r[k] != null && r[k] !== '' && (o[k] == null || o[k] === '' || (Array.isArray(o[k]) && !o[k].length))) o[k] = parse(r[k]); });
     if (o.toneladas == null) { var t = Number(o.tonelada_vendida || o.toneladas_utilizadas || 0); if (t > 0) o.toneladas = t; }
+    // vendedor: quando só veio o id (OF nova), mostra o nome
+    try {
+      var vid = String(o.vendId || o.vendedor_id || r.vendedor_id || '').trim();
+      var nomeV = String(o.vendNome || o.vendedor || '').trim();
+      if (vid && (!nomeV || /^sem vendedor$/i.test(nomeV) || nomeV === vid)) {
+        var lv = (typeof VENDEDORES !== 'undefined' && Array.isArray(VENDEDORES)) ? VENDEDORES : [];
+        var v = lv.find(function (x) { return String(x.id) === vid; });
+        if (v && v.nome) { o.vendNome = v.nome; o.vendedor = v.nome; o.vendedor_nome = v.nome; }
+      }
+    } catch (_) {}
     // cores da OF quando o item não tem cor marcada
     try {
       var ci = Array.isArray(o.cores_impressao) ? o.cores_impressao : [];
