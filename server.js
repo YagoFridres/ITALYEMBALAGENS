@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027175311';
-const SW_RUNTIME_VERSION = '20261027175311';
+const PATCH_RUNTIME_VERSION = '20261027175541';
+const SW_RUNTIME_VERSION = '20261027175541';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30108,8 +30108,9 @@ app.patch('/api/compras-chapas/:id/status', authMiddleware, async (req, res) => 
     const hist = Array.isArray(atual.status_historico) ? atual.status_historico : [];
     hist.push({ em: agora, por: quem, status: st, previsao: up.previsao_chegada !== undefined ? up.previsao_chegada : atual.previsao_chegada || null, nota: String(b.nota || '').trim() || null });
     up.status_historico = hist;
-    const { data, error } = await supabase.from('compras_chapas').update(up).eq('id', id).select('*').maybeSingle();
-    if (error) throw error;
+    const r = await _comprasChapasUpdateCompat('compras_chapas', id, up, '*');
+    if (r.error) throw r.error;
+    const data = r.data;
     try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     return ok(res, data);
   } catch (e) { return err(res, e); }
