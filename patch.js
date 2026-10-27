@@ -74083,3 +74083,62 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== DETALHE DA CHAPA (Estoque) — simples e bonito (27/10/2026) =====
+ * Ao clicar numa chapa abria uma janela com texto corrido difícil de ler. Agora: cabeçalho com a chapa, quatro
+ * números grandes (quantidade, valor unitário, total, toneladas) e os dados em lista curta. "Editar" usa o
+ * editor de sempre. */
+(function () {
+  if (window.__dsChapaDet) return; window.__dsChapaDet = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function moeda(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function n(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function br(iso) { iso = String(iso || ''); return /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
+  var CACHE = { t: 0, l: [] };
+  function chapas() {
+    if (Date.now() - CACHE.t < 20000 && CACHE.l.length) return Promise.resolve(CACHE.l);
+    return fetch((window.API_BASE || '') + '/api/chapas_estoque?limit=5000', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } }).then(function (r) { return r.json(); })
+      .then(function (j) { CACHE = { t: Date.now(), l: Array.isArray(j) ? j : (j.data || []) }; return CACHE.l; });
+  }
+  function abrir(legado, id) {
+    legado.style.setProperty('display', 'none', 'important');
+    chapas().then(function (l) {
+      var c = l.find(function (x) { return String(x.id) === String(id); });
+      if (!c) { legado.style.removeProperty('display'); return; }
+      var q = Number(c.quantidade_atual != null ? c.quantidade_atual : c.quantidade) || 0, vu = Number(c.valor_unitario != null ? c.valor_unitario : c.val) || 0;
+      var ton = c.peso_kg_unidade ? q * Number(c.peso_kg_unidade) / 1000 : null, min = Number(c.estoque_minimo) || 0;
+      var info = [['Gramatura', c.gramatura ? c.gramatura + ' g/m²' : ''], ['Empresa (CNPJ)', c.qual_cnpj || c.empresa_vinculada], ['Nota fiscal', c.nf || c.numero_nf], ['Categoria', c.categoria], ['Entrada', br(c.data_entrada)], ['Estoque mínimo', min ? n(min) : ''], ['Vincos', c.vincos], ['Riscada', c.riscada ? 'Sim' + (c.risca_desc ? ' — ' + c.risca_desc : '') : ''], ['Lote', c.lote], ['Atualizado', br(c.atualizado_em || c.updated_at) + (c.atualizado_por ? ' por ' + c.atualizado_por : '')]]
+        .filter(function (x) { return x[1] != null && String(x[1]).trim() !== ''; });
+      var ov = document.createElement('div'); ov.className = 'dcd-ov';
+      ov.innerHTML = '<div class="dcd" role="dialog" aria-modal="true"><header><div class="dcd-ic">▦</div><div class="dcd-t"><h2>' + esc([c.fornecedor, c.nomenclatura, c.tamanho].filter(Boolean).join(' · ')) + '</h2><p>' + esc(c.nome_uso || c.nome || '') + '</p></div><button type="button" class="dcd-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+        + '<div class="dcd-nums"><div class="' + (q <= min || q === 0 ? 'dcd-alerta' : '') + '"><span>Quantidade</span><b>' + n(q) + '</b><small>' + (q === 0 ? 'zerada' : (q <= min ? 'no mínimo — pedir compra' : 'chapas em estoque')) + '</small></div><div><span>Valor unitário</span><b>' + (vu ? moeda(vu) : '—') + '</b></div><div><span>Valor total</span><b>' + moeda(q * vu) + '</b></div><div><span>Toneladas</span><b>' + (ton != null ? n(ton, 3) + ' t' : '—') + '</b></div></div>'
+        + (info.length ? '<dl class="dcd-info">' + info.map(function (x) { return '<div><dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl>' : '')
+        + (c.observacao ? '<p class="dcd-obs">📝 ' + esc(c.observacao) + '</p>' : '')
+        + '<footer><button type="button" data-x="fechar">Fechar</button><button type="button" data-x="editar" class="dcd-pri">✏️ Editar chapa</button></footer></div>';
+      document.body.appendChild(ov);
+      function fechar() { ov.remove(); var x = legado.querySelector('[data-ew-close]'); if (x) x.click(); else legado.remove(); }
+      ov.addEventListener('click', function (e) {
+        if (e.target === ov) return fechar();
+        var b = e.target.closest('[data-x]'); if (!b) return;
+        if (b.getAttribute('data-x') === 'fechar') return fechar();
+        ov.remove(); var ed = legado.querySelector('[data-ew-edit]'); if (ed) ed.click();
+      });
+      document.addEventListener('keydown', function esc2(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', esc2); if (document.body.contains(ov)) fechar(); } });
+    }).catch(function () { legado.style.removeProperty('display'); });
+  }
+  setInterval(function () {
+    var m = document.getElementById('estoque-wire-modal'); if (!m || m.__dcd) return;
+    var ed = m.querySelector('[data-ew-edit]'); if (!ed || !/Visualiza/.test(m.textContent || '')) return;
+    m.__dcd = true; abrir(m, ed.getAttribute('data-ew-edit'));
+  }, 120);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-chapa-det-css';
+    st.textContent = '.dcd-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dcd{width:min(640px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--b2);border-radius:16px;padding:18px;box-shadow:0 24px 64px rgba(0,0,0,.45)}'
+      + '.dcd header{display:flex;gap:12px;align-items:flex-start}.dcd-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,#f59e0b 20%,transparent);color:#d97706;flex:0 0 auto}.dcd-t{flex:1;min-width:0}.dcd-t h2{margin:0;font-size:18px;overflow-wrap:anywhere}.dcd-t p{margin:3px 0 0;color:var(--text2);font-size:13px}.dcd-x{background:none;border:0;color:var(--text2);font-size:18px;cursor:pointer}'
+      + '.dcd-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:16px 0}.dcd-nums div{background:var(--s2);border-radius:12px;padding:10px 12px}.dcd-nums span{display:block;font-size:11.5px;color:var(--text3)}.dcd-nums b{display:block;font-size:19px;margin-top:2px}.dcd-nums small{font-size:11px;color:var(--text3)}.dcd-alerta{background:color-mix(in srgb,var(--red) 14%,var(--s2))!important}.dcd-alerta b,.dcd-alerta small{color:var(--red)}'
+      + '.dcd-info{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin:0}.dcd-info div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.dcd-info dt{color:var(--text2);font-size:13px}.dcd-info dd{margin:0;font-weight:600;font-size:13.5px;text-align:right}'
+      + '.dcd-obs{margin:12px 0 0;background:var(--s2);border-radius:10px;padding:8px 10px;font-size:13px}.dcd footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.dcd footer button{height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.dcd-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+      + '@media (max-width:600px){.dcd{padding:14px}.dcd-nums{grid-template-columns:1fr 1fr}.dcd-info{grid-template-columns:1fr}.dcd footer button{flex:1}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
