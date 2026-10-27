@@ -70514,13 +70514,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
     { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'toneladas-vendidas', 'simd'] },
     { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
-    { id: 'ng-ds-fabrica', nome: 'Máquinas', ico: 'maquina', itens: ['maquinas', 'fluxos', 'tempos-reais'] },
+    { id: 'ng-ds-fabrica', nome: 'Máquinas', ico: 'maquina', itens: ['maquinas', 'tempos-reais'] },
     { id: 'ng-ds-gestao', nome: 'Financeiro', ico: 'carteira', itens: ['orcamentos', 'comissoes', 'central-custos', 'relatorios'] },
     { id: 'ng-ds-comunicacao', nome: 'Comunicação', ico: 'chat', itens: ['@chat', 'agenda'] },
     { id: 'ng-ds-sistema', nome: 'Sistema', ico: 'ajustes', itens: ['usuarios', 'configuracoes'] }
   ];
   var CENTRAL = ['pcp'];
-  var ESCONDER = ['dashboard', 'lancamento', '@jarvis'];
+  var ESCONDER = ['dashboard', 'lancamento', '@jarvis', 'fluxos'];
 
   // um emoji por área — o mesmo no computador, tablet e celular
   var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
@@ -73430,7 +73430,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       function (a) { return { t: [a.numero, a.cliente_nome || a.cliente].filter(Boolean).join(' · '), s: [a.produto || a.descricao, a.status].filter(Boolean).join(' · '), a: function () { window.go('pcp'); } }; }]
   ];
   var PAGINAS = function () {
-    return Array.prototype.map.call(document.querySelectorAll('.sidebar .nav-item[data-ds-key]'), function (e) { return { k: e.getAttribute('data-ds-key'), t: e.textContent.trim(), el: e }; }).filter(function (p) { return p.t; });
+    return Array.prototype.map.call(document.querySelectorAll('.sidebar .nav-item[data-ds-key]:not(.ds-oculto)'), function (e) { return { k: e.getAttribute('data-ds-key'), t: e.textContent.trim(), el: e }; }).filter(function (p) { return p.t; });
   };
   var E = { termo: '', cat: 'todos', abertos: {}, res: null, seq: 0 };
   function casa(txt, palavras) { var t = norm(txt); for (var i = 0; i < palavras.length; i++) if (t.indexOf(palavras[i]) < 0) return false; return true; }
@@ -74139,6 +74139,94 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dcd-info{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin:0}.dcd-info div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.dcd-info dt{color:var(--text2);font-size:13px}.dcd-info dd{margin:0;font-weight:600;font-size:13.5px;text-align:right}'
       + '.dcd-obs{margin:12px 0 0;background:var(--s2);border-radius:10px;padding:8px 10px;font-size:13px}.dcd footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.dcd footer button{height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.dcd-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
       + '@media (max-width:600px){.dcd{padding:14px}.dcd-nums{grid-template-columns:1fr 1fr}.dcd-info{grid-template-columns:1fr}.dcd footer button{flex:1}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
+
+/* ===== MÁQUINAS — tela nova (27/10/2026) =====
+ * Cada máquina com os dados do cadastro (Supabase): produção média, capacidade, setup, passagem média, horário,
+ * almoço e intervalos — mais a velocidade real medida no Modo Operador e a fila atual. Editar abre um formulário
+ * simples que grava no próprio cadastro. Máquinas de produção primeiro; acabamento depois. */
+(function () {
+  if (window.__dsMaq) return; window.__dsMaq = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function tk() { try { return localStorage.getItem('token') || ''; } catch (_) { return ''; } }
+  function req(m, url, body) { return fetch((window.API_BASE || '') + url, { method: m, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() }, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status)); return j.data !== undefined ? j.data : j; }); }); }
+  function n(v) { var x = Number(v); return isFinite(x) && x ? x.toLocaleString('pt-BR') : '—'; }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  var PROD = ['imp 01', 'imp 02', 'imp 03', 'imp 04', 'imp 05', 'riscador', 'corte vinco rotativa'];
+  var E = { l: [], vel: {} };
+  function carregar() {
+    Promise.all([req('GET', '/api/maquinas'), req('GET', '/api/operador/velocidades').catch(function () { return {}; })]).then(function (r) {
+      E.l = (Array.isArray(r[0]) ? r[0] : []).filter(function (m) { var k = norm(m.nome || m.col); return !/^riscador 0\d$/.test(k); });
+      E.vel = r[1] || {}; render();
+    }).catch(function (e) { var g = document.querySelector('#ds-maq .dmq-grade'); if (g) g.innerHTML = '<div class="dmq-vazio">Erro: ' + esc(e.message) + '</div>'; });
+  }
+  function fila(nome) { var k = norm(nome); return (window.OFs || []).filter(function (o) { if (o.deleted_at || /conclu|cancel/i.test(String(o.status || ''))) return false; return norm(o.maquina_atual || (Array.isArray(o.maq) ? o.maq[0] : '') || o.maquina) === k; }).length; }
+  function card(m) {
+    var nome = m.nome || m.col, v = E.vel[nome] || E.vel[String(nome).toUpperCase()] || null, f = fila(nome), prod = PROD.indexOf(norm(nome)) >= 0;
+    var setor = m.setor || (/^imp/i.test(nome) ? 'IMPRESSÃO' : (prod ? 'CORTE' : 'ACABAMENTO'));
+    return '<article class="dmq-card' + (m._virtual ? ' sem' : '') + '" data-id="' + esc(m.id) + '"><header><div><h3>' + esc(nome) + '</h3><span class="dmq-setor">' + esc(setor) + '</span></div>' + (prod ? '<span class="dmq-fila" title="OFs na fila">' + f + ' OF' + (f === 1 ? '' : 's') + ' na fila</span>' : '') + '</header>'
+      + '<div class="dmq-big"><div><b>' + n(m.producao) + '</b><span>produção média (cx/h)</span></div><div><b>' + (v && v.cx_hora ? n(v.cx_hora) : '—') + '</b><span>velocidade real' + (v && v.amostras ? ' · ' + v.amostras + ' medições' : '') + '</span></div></div>'
+      + '<dl><div><dt>Capacidade</dt><dd>' + n(m.caixas_hora) + ' cx/h</dd></div><div><dt>Setup médio</dt><dd>' + n(m.setup_medio) + ' min</dd></div><div><dt>Setup padrão</dt><dd>' + n(m.tempo_setup_padrao_min) + ' min</dd></div><div><dt>Passagem média</dt><dd>' + n(m.passagem_media) + '</dd></div>'
+      + '<div><dt>Horário</dt><dd>' + esc((m.horario_inicio || '—') + ' às ' + (m.horario_fim || '—')) + '</dd></div><div><dt>Almoço</dt><dd>' + esc((m.almoco_inicio || '—') + (m.almoco_min ? ' · ' + m.almoco_min + ' min' : '')) + '</dd></div>'
+      + '<div><dt>Intervalos</dt><dd>' + n(m.intervalo_manha_min) + ' + ' + n(m.intervalo_tarde_min) + ' min</dd></div><div><dt>Setups manhã/tarde</dt><dd>' + n(m.setup_manha_min) + ' / ' + n(m.setup_tarde_min) + ' min</dd></div></dl>'
+      + (m._virtual ? '<p class="dmq-aviso">Sem cadastro — clique em Editar para criar.</p>' : '') + '<footer><button type="button" data-a="editar">✏️ Editar dados</button></footer></article>';
+  }
+  function render() {
+    var r = document.getElementById('ds-maq'); if (!r) return;
+    var prod = E.l.filter(function (m) { return PROD.indexOf(norm(m.nome || m.col)) >= 0; }).sort(function (a, b) { return PROD.indexOf(norm(a.nome || a.col)) - PROD.indexOf(norm(b.nome || b.col)); });
+    var outras = E.l.filter(function (m) { return PROD.indexOf(norm(m.nome || m.col)) < 0; });
+    r.querySelector('.dmq-grade').innerHTML = prod.map(card).join('') || '<div class="dmq-vazio">Carregando…</div>';
+    r.querySelector('.dmq-grade2').innerHTML = outras.map(card).join('');
+    r.querySelector('.dmq-t2').hidden = !outras.length;
+  }
+  function form(m) {
+    var campos = [['producao', 'Produção média (cx/h)'], ['caixas_hora', 'Capacidade (cx/h)'], ['setup_medio', 'Setup médio (min)'], ['tempo_setup_padrao_min', 'Setup padrão (min)'], ['passagem_media', 'Passagem média'], ['horario_inicio', 'Início do turno', 'time'], ['horario_fim', 'Fim do turno', 'time'], ['almoco_inicio', 'Início do almoço', 'time'], ['almoco_min', 'Almoço (min)'], ['intervalo_manha_min', 'Intervalo manhã (min)'], ['intervalo_tarde_min', 'Intervalo tarde (min)'], ['setup_manha_min', 'Setups manhã (min)'], ['setup_tarde_min', 'Setups tarde (min)']];
+    var ov = document.createElement('div'); ov.className = 'dmq-ov';
+    ov.innerHTML = '<form class="dmq-modal"><header><h2>' + esc(m.nome || m.col) + '</h2><button type="button" data-x="1" class="dmq-x" aria-label="Fechar">✕</button></header><div class="dmq-g">'
+      + campos.map(function (c) { return '<label>' + c[1] + '<input name="' + c[0] + '" type="' + (c[2] || 'number') + '" step="any" value="' + esc(m[c[0]] == null ? '' : m[c[0]]) + '"></label>'; }).join('') + '<label>Setor<input name="setor" value="' + esc(m.setor || '') + '"></label></div>'
+      + '<footer><button type="button" data-x="1">Cancelar</button><button type="submit" class="dmq-pri">Salvar</button></footer></form>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
+    ov.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault(); var fd = new FormData(e.target), b = { nome: m.nome || m.col };
+      fd.forEach(function (v, k) { v = String(v).trim(); if (v === '') return; b[k] = /horario|almoco_inicio|setor/.test(k) ? v : Number(v.replace(',', '.')); });
+      var bt = ov.querySelector('.dmq-pri'); bt.disabled = true;
+      // a rota de alteração grava "caixas_hora" a partir de "producao"; mando capacidade explícita
+      var ida = m._virtual ? req('POST', '/api/maquinas', Object.assign({ ativa: true }, b)) : req('PUT', '/api/maquinas/' + encodeURIComponent(m.id), Object.assign({}, b, { producao: undefined }));
+      ida.then(function () { return m._virtual ? null : req('PUT', '/api/maquinas/' + encodeURIComponent(m.id), { nome: b.nome, caixas_hora: b.caixas_hora }); })
+        .then(function () { ov.remove(); carregar(); }).catch(function (er) { bt.disabled = false; try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} });
+    });
+  }
+  function montar(p) {
+    p.classList.add('dmq-ativa');
+    var r = document.createElement('div'); r.id = 'ds-maq';
+    r.innerHTML = '<header class="dmq-head"><div><h1>Máquinas</h1><p>Dados do cadastro + velocidade real medida no Modo Operador</p></div><button type="button" class="dmq-b" data-a="tempos">⏱️ Ver tempos reais</button></header><div class="dmq-grade"><div class="dmq-vazio">Carregando…</div></div><h2 class="dmq-t2">Acabamento e outras</h2><div class="dmq-grade dmq-grade2"></div>';
+    p.insertBefore(r, p.firstChild);
+    r.addEventListener('click', function (e) { var b = e.target.closest('[data-a]'); if (!b) return; if (b.getAttribute('data-a') === 'tempos') { window.go('tempos-reais'); return; } var c = b.closest('[data-id]'), m = c && E.l.find(function (x) { return String(x.id) === c.getAttribute('data-id'); }); if (m) form(m); });
+  }
+  var antes = false;
+  setInterval(function () {
+    var p = document.getElementById('page-maquinas'); if (!p) return;
+    var on = p.classList.contains('active') || p.offsetParent !== null;
+    if (on && !p.querySelector('#ds-maq')) montar(p);
+    if (on && !antes) carregar(); antes = on;
+  }, 600);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-maq-css';
+    st.textContent = '#page-maquinas.dmq-ativa > :not(#ds-maq):not(style):not(script){display:none!important}#page-maquinas.dmq-ativa{overflow-y:auto}'
+      + '#ds-maq{padding:18px 20px 40px;color:var(--text)}.dmq-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}.dmq-head h1{margin:0;font-size:22px}.dmq-head p{margin:4px 0 0;font-size:13px;color:var(--text2)}.dmq-b{height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--b2);background:var(--surface);color:var(--text);font:inherit;cursor:pointer}'
+      + '.dmq-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.dmq-t2{font-size:14px;color:var(--text2);margin:22px 0 10px}.dmq-vazio{color:var(--text2);padding:20px}'
+      + '.dmq-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}.dmq-card.sem{border-style:dashed}.dmq-card header{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.dmq-card h3{margin:0;font-size:17px}.dmq-setor{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--accent)}.dmq-fila{font-size:12px;background:var(--s2);border-radius:99px;padding:3px 10px;color:var(--text2);white-space:nowrap}'
+      + '.dmq-big{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dmq-big div{background:var(--s2);border-radius:12px;padding:10px 12px}.dmq-big b{display:block;font-size:22px}.dmq-big span{font-size:11.5px;color:var(--text3)}'
+      + '.dmq-card dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.dmq-card dl div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px}.dmq-card dt{color:var(--text2)}.dmq-card dd{margin:0;font-weight:600}.dmq-aviso{margin:0;font-size:12.5px;color:var(--yellow)}'
+      + '.dmq-card footer button{width:100%;height:36px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}'
+      + '.dmq-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dmq-modal{width:min(620px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--b2);border-radius:16px;padding:18px}.dmq-modal header{display:flex;justify-content:space-between;margin-bottom:12px}.dmq-modal h2{margin:0;font-size:18px}.dmq-x{background:none;border:0;color:var(--text2);font-size:18px;cursor:pointer}'
+      + '.dmq-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.dmq-g label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--text2)}.dmq-g input{height:38px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);padding:0 10px;font:inherit}'
+      + '.dmq-modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.dmq-modal footer button{height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;cursor:pointer}.dmq-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+      + '@media (max-width:700px){#ds-maq{padding:12px 12px 110px}.dmq-grade{grid-template-columns:1fr}.dmq-card dl{grid-template-columns:1fr}.dmq-g{grid-template-columns:1fr}.dmq-head .dmq-b{width:100%}}'
+      + '#page-pcp[data-ds-sub="amostras"] > .ptoolbar{display:none!important}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
