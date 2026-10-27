@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027143724';
-const SW_RUNTIME_VERSION = '20261027143724';
+const PATCH_RUNTIME_VERSION = '20261027143830';
+const SW_RUNTIME_VERSION = '20261027143830';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39705,6 +39705,26 @@ app.post('/api/operador/finalizar', authMiddleware, async (req, res) => {
       if (r.error) console.warn('[OPERADOR] tempos_reais:', r.error.message);
     } catch (eT) { console.warn('[OPERADOR] tempos_reais erro', eT.message); }
     return ok(res, fechada);
+  } catch (e) { return err(res, e); }
+});
+// Histórico do Modo Operador para a área Tempos Reais (27/10/2026)
+app.get('/api/operador/historico', authMiddleware, async (req, res) => {
+  try {
+    const de = String(req.query.de || '').slice(0, 10), ate = String(req.query.ate || '').slice(0, 10);
+    let q = supabase.from('producao_sessoes').select('*').order('inicio', { ascending: false }).limit(2000);
+    if (de) q = q.gte('inicio', de + 'T00:00:00');
+    if (ate) q = q.lte('inicio', ate + 'T23:59:59');
+    if (req.query.maquina) q = q.eq('maquina', String(req.query.maquina));
+    const { data, error } = await q;
+    if (error) throw error;
+    let manuais = [];
+    try {
+      let q2 = supabase.from('tempos_reais').select('*').order('created_at', { ascending: false }).limit(1000);
+      if (de) q2 = q2.gte('created_at', de + 'T00:00:00');
+      if (ate) q2 = q2.lte('created_at', ate + 'T23:59:59');
+      const r2 = await q2; manuais = (r2.data || []).filter((t) => !/^Modo operador/i.test(String(t.obs || '')));
+    } catch (_) {}
+    return ok(res, { sessoes: data || [], manuais });
   } catch (e) { return err(res, e); }
 });
 // depois do "passou pela máquina": tira a OF de "Em produção" e, se o fluxo tiver próxima máquina, coloca a OF na fila dela

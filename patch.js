@@ -73997,3 +73997,89 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
+
+/* ===== TEMPOS REAIS — tela nova (27/10/2026) =====
+ * Mostra os tempos que chegam sozinhos do Modo Operador (início → fim de cada OF em cada máquina) e os registros
+ * manuais. Resumo por máquina (velocidade real em caixas/hora, tempo médio por OF), produção acontecendo agora
+ * e a lista detalhada com exportação. */
+(function () {
+  if (window.__dsTR) return; window.__dsTR = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function tk() { try { return localStorage.getItem('token') || ''; } catch (_) { return ''; } }
+  function get(url) { return fetch((window.API_BASE || '') + url, { headers: { Authorization: 'Bearer ' + tk() } }).then(function (r) { return r.json(); }).then(function (j) { return j && j.data !== undefined ? j.data : j; }); }
+  function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function hm(min) { min = Math.round(Number(min) || 0); var h = Math.floor(min / 60), m = min % 60; return h ? h + 'h' + String(m).padStart(2, '0') : m + ' min'; }
+  function dh(s) { try { var d = new Date(s); return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return '—'; } }
+  function n(v) { return (Number(v) || 0).toLocaleString('pt-BR'); }
+  var E = { dias: 30, maq: '', ses: [], man: [], abertas: [], tm: null };
+  function ofDe(id) { var l = window.OFs || []; for (var i = 0; i < l.length; i++) if (String(l[i].id) === String(id)) return l[i]; return null; }
+  function carregar() {
+    var ate = new Date(), de = new Date(); de.setDate(de.getDate() - E.dias + 1);
+    Promise.all([get('/api/operador/historico?de=' + iso(de) + '&ate=' + iso(ate)).catch(function () { return {}; }), get('/api/operador/sessoes').catch(function () { return []; })]).then(function (r) {
+      E.ses = ((r[0] && r[0].sessoes) || []).filter(function (s) { return s.status === 'finalizada'; });
+      E.man = (r[0] && r[0].manuais) || [];
+      E.abertas = Array.isArray(r[1]) ? r[1] : [];
+      render();
+    });
+  }
+  function linhas() {
+    var l = E.ses.map(function (s) { var o = ofDe(s.of_id); var min = Number(s.minutos) || 0, q = Number(s.quantidade) || 0; return { fonte: 'Modo operador', maq: s.maquina, of: s.of_numero || (o && o.of) || '—', cli: o ? (o.cliNome || o.cliente || '') : '', op: s.operador_fim || s.operador || '', ini: s.inicio, fim: s.fim, min: min, qtd: q, cxh: q && min ? Math.round(q / (min / 60)) : null }; });
+    E.man.forEach(function (t) { var min = Number(t.tempo_minutos || t.total_min || t.producao_min) || ((Number(t.setup_min) || 0) + (Number(t.producao_min) || 0)); var q = Number(t.quantidade || t.qtd) || 0; l.push({ fonte: 'Manual', maq: t.maquina_nome || t.maquina || '—', of: t.of_numero || '—', cli: '', op: '', ini: t.data || t.created_at, fim: null, min: min, qtd: q, cxh: Number(t.velocidade_cxh) || (q && min ? Math.round(q / (min / 60)) : null) }); });
+    if (E.maq) l = l.filter(function (x) { return x.maq === E.maq; });
+    return l.sort(function (a, b) { return String(b.ini).localeCompare(String(a.ini)); });
+  }
+  function render() {
+    var r = document.getElementById('ds-tr'); if (!r) return;
+    var l = linhas(), maqs = {};
+    E.ses.concat([]).forEach(function (s) { maqs[s.maquina] = 1; }); E.man.forEach(function (t) { if (t.maquina_nome) maqs[t.maquina_nome] = 1; }); E.abertas.forEach(function (s) { maqs[s.maquina] = 1; });
+    var sel = r.querySelector('[data-f="maq"]'); var opts = '<option value="">Todas as máquinas</option>' + Object.keys(maqs).sort().map(function (m) { return '<option' + (m === E.maq ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join(''); if (sel.__o !== opts) { sel.__o = opts; sel.innerHTML = opts; }
+    // agora
+    r.querySelector('.dtr-agora').innerHTML = E.abertas.length ? '<h2>🟢 Produzindo agora</h2><div class="dtr-ag">' + E.abertas.map(function (s) { var o = ofDe(s.of_id); return '<div class="dtr-ag-c"><b>' + esc(s.maquina) + '</b><span>OF ' + esc(s.of_numero || (o && o.of) || '') + (o ? ' · ' + esc(o.cliNome || o.cliente || '') : '') + '</span><span>' + esc(s.operador || '') + '</span><em data-ini="' + esc(s.inicio) + '">' + hm((Date.now() - new Date(s.inicio)) / 60000) + '</em></div>'; }).join('') + '</div>' : '';
+    // resumo por máquina
+    var por = {}; l.forEach(function (x) { var p = por[x.maq] = por[x.maq] || { n: 0, min: 0, qtd: 0, vel: [] }; p.n++; p.min += x.min; p.qtd += x.qtd; if (x.cxh) p.vel.push(x.cxh); });
+    var ks = Object.keys(por).sort();
+    r.querySelector('.dtr-maqs').innerHTML = ks.length ? ks.map(function (m) { var p = por[m], v = p.vel.length ? Math.round(p.vel.reduce(function (a, b) { return a + b; }, 0) / p.vel.length) : null; return '<div class="dtr-mc"><b>' + esc(m) + '</b><div class="dtr-v">' + (v ? n(v) + '<small> cx/h</small>' : '—') + '</div><span>' + p.n + ' OF' + (p.n > 1 ? 's' : '') + ' medida' + (p.n > 1 ? 's' : '') + ' · média ' + hm(p.min / p.n) + ' por OF</span><span>' + n(p.qtd) + ' caixas em ' + hm(p.min) + '</span></div>'; }).join('') : '';
+    r.querySelector('.dtr-lista').innerHTML = l.length ? '<table class="dtr-tab" data-no-mobile-cards="1"><thead><tr><th>Início</th><th>Máquina</th><th>OF</th><th>Cliente</th><th>Operador</th><th class="r">Tempo</th><th class="r">Caixas</th><th class="r">cx/h</th><th>Origem</th></tr></thead><tbody>'
+      + l.map(function (x) { return '<tr><td>' + dh(x.ini) + '</td><td><b>' + esc(x.maq) + '</b></td><td>' + esc(x.of) + '</td><td>' + esc(x.cli || '—') + '</td><td>' + esc(x.op || '—') + '</td><td class="r">' + hm(x.min) + '</td><td class="r">' + (x.qtd ? n(x.qtd) : '—') + '</td><td class="r"><b>' + (x.cxh ? n(x.cxh) : '—') + '</b></td><td><span class="dtr-src' + (x.fonte === 'Manual' ? ' m' : '') + '">' + x.fonte + '</span></td></tr>'; }).join('') + '</tbody></table>'
+      : '<div class="dtr-vazio"><b>Ainda não há tempos neste período.</b><span>Eles chegam sozinhos: no OFs por Máquina, abra o <b>Modo Operador</b>, escolha a máquina, toque em <b>Iniciar</b> na OF e depois em <b>Finalizar</b> com a quantidade feita.</span></div>';
+    r.__l = l;
+  }
+  function excel() {
+    var l = (document.getElementById('ds-tr') || {}).__l || []; if (!l.length) return;
+    var csv = 'Início;Fim;Máquina;OF;Cliente;Operador;Minutos;Caixas;Caixas por hora;Origem\n' + l.map(function (x) { return [dh(x.ini), x.fim ? dh(x.fim) : '', x.maq, x.of, x.cli, x.op, Math.round(x.min), x.qtd || '', x.cxh || '', x.fonte].map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); a.download = 'tempos-reais.csv'; document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 500);
+  }
+  function montar(p) {
+    p.classList.add('dtr-ativa');
+    var r = document.createElement('div'); r.id = 'ds-tr';
+    r.innerHTML = '<header class="dtr-head"><div><h1>Tempos Reais</h1><p>Medidos automaticamente pelo Modo Operador (início → fim de cada OF). A velocidade real ajusta a previsão das OFs por Máquina.</p></div>'
+      + '<div class="dtr-f"><select data-f="dias"><option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="365">Último ano</option></select><select data-f="maq"></select><button type="button" data-a="excel">📥 Excel</button><button type="button" class="dtr-pri" data-a="operador">⏱️ Abrir Modo Operador</button></div></header>'
+      + '<section class="dtr-agora"></section><section class="dtr-maqs"></section><section class="dtr-lista"></section>';
+    p.insertBefore(r, p.firstChild);
+    r.addEventListener('change', function (e) { var f = e.target.getAttribute('data-f'); if (f === 'dias') { E.dias = Number(e.target.value) || 30; carregar(); } if (f === 'maq') { E.maq = e.target.value; render(); } });
+    r.addEventListener('click', function (e) { var b = e.target.closest('[data-a]'); if (!b) return; if (b.getAttribute('data-a') === 'excel') excel(); else { try { window.go('ofmaq'); setTimeout(function () { var x = document.querySelector('#ds-ofmaq [data-a="operador"]'); if (x) x.click(); }, 900); } catch (_) {} } });
+  }
+  var antes = false;
+  setInterval(function () {
+    var p = document.getElementById('page-tempos-reais'); if (!p) return;
+    var on = p.classList.contains('active') || p.offsetParent !== null;
+    if (on && !p.querySelector('#ds-tr')) montar(p);
+    if (on && !antes) carregar();
+    if (on) document.querySelectorAll('#ds-tr [data-ini]').forEach(function (e) { e.textContent = hm((Date.now() - new Date(e.getAttribute('data-ini'))) / 60000); });
+    antes = on;
+  }, 1000);
+  setInterval(function () { if (antes && !document.hidden) carregar(); }, 30000);
+  try {
+    var st = document.createElement('style'); st.id = 'ds-tr-css';
+    st.textContent = '#page-tempos-reais.dtr-ativa > :not(#ds-tr):not(style):not(script){display:none!important}#page-tempos-reais.dtr-ativa{overflow-y:auto}'
+      + '#ds-tr{padding:18px 20px 40px;color:var(--text)}.dtr-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-end}.dtr-head h1{margin:0;font-size:22px}.dtr-head p{margin:4px 0 0;font-size:13px;color:var(--text2);max-width:640px}'
+      + '.dtr-f{display:flex;gap:8px;flex-wrap:wrap}.dtr-f select,.dtr-f button{height:38px;border-radius:9px;border:1px solid var(--b2);background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;padding:0 10px;cursor:pointer}.dtr-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+      + '.dtr-agora h2{font-size:14px;margin:18px 0 8px}.dtr-ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.dtr-ag-c{background:color-mix(in srgb,var(--green) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--green) 40%,var(--border));border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.dtr-ag-c span{font-size:12.5px;color:var(--text2)}.dtr-ag-c em{font-style:normal;font-size:20px;font-weight:800;color:var(--green)}'
+      + '.dtr-maqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:16px 0}.dtr-mc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:3px}.dtr-v{font-size:24px;font-weight:800;color:var(--accent)}.dtr-v small{font-size:13px;color:var(--text2);font-weight:600}.dtr-mc span{font-size:12px;color:var(--text2)}'
+      + '.dtr-lista{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto}.dtr-tab{width:100%;border-collapse:collapse;font-size:13px}.dtr-tab th{text-align:left;font-size:11.5px;text-transform:uppercase;color:var(--text3);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}.dtr-tab td{padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}.dtr-tab .r{text-align:right}'
+      + '.dtr-src{font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}.dtr-src.m{background:var(--s3);color:var(--text2)}'
+      + '.dtr-vazio{padding:30px 20px;text-align:center;display:flex;flex-direction:column;gap:6px;color:var(--text2)}.dtr-vazio b{color:var(--text)}'
+      + '@media (max-width:700px){#ds-tr{padding:12px 12px 110px}.dtr-f{width:100%}.dtr-f select,.dtr-f button{flex:1 1 45%}.dtr-tab thead{display:none}.dtr-tab,.dtr-tab tbody{display:block}.dtr-tab tr{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}.dtr-tab td{border:0;padding:0;white-space:normal}.dtr-tab .r{text-align:left}}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+})();
