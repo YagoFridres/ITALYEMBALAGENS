@@ -73012,7 +73012,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * - Menu Financeiro (Orçamentos, Comissões, Central de Custos, Relatórios): só abre com a senha.
  * - Passagens: os valores em R$ (card "Valor de Produção", coluna da tabela, detalhamento) ficam borrados
  *   e o Excel/Imprimir pede a senha.
- * Depois de digitar a senha certa, fica liberado até fechar a aba do navegador (botão 🔒 bloqueia de novo).
+ * Depois da senha certa, fica liberado enquanto a pessoa estiver no Financeiro ou nas Passagens; ao sair, trava de novo.
  * Bloqueio de tela: quem tem acesso ao sistema ainda consegue os dados por outros caminhos técnicos. */
 (function () {
   if (window.__dsFinSenha) return; window.__dsFinSenha = true;
@@ -73081,6 +73081,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // se a página atual for do Financeiro (ex.: recarregou a página) e não tiver senha, volta para o início
   function vigiar() {
     instalarGo(); instalarGrupo();
+    // 27/10: a liberação vale só enquanto a pessoa está no Financeiro ou nas Passagens; saiu, trava de novo
+    try {
+      var pa = String(window._PAGE_ATUAL || '');
+      var protegida = !!PAGINAS[pa] || pa === 'historico-passagens';
+      if (liberado() && protegida) window.__dsFinEsteve = true;
+      if (liberado() && pa && !protegida && window.__dsFinEsteve) { window.__dsFinEsteve = false; sessionStorage.removeItem('ds_fin_ok'); marcar(); try { var gg = document.getElementById(GRUPO); if (gg) gg.classList.remove('open'); } catch (_) {} }
+    } catch (_) {}
     try {
       if (!liberado()) {
         var g = document.getElementById(GRUPO); if (g && g.classList.contains('open')) g.classList.remove('open');
