@@ -72951,7 +72951,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         r.clone().json().catch(function () { return {}; }).then(function (j) {
           if (j && j.ok === false) return;
           var m = null; try { m = descrever(met, path, body, j); } catch (_) {}
+          try { (window.__dsPopLog = window.__dsPopLog || []).push([new Date().toLocaleTimeString(), met, path, m && m[0]]); if (window.__dsPopLog.length > 50) window.__dsPopLog.shift(); } catch (_) {}
           if (m) pop(m[0], m[1], m[2]);
+          // OF gravada: atualiza a lista na hora (sem esperar a próxima conferência)
+          if (/^\/api\/(ofs|operador)\b/.test(path)) { clearTimeout(window.__dsRecargaOFs); window.__dsRecargaOFs = setTimeout(function () { try { if (typeof window.carregarOFsUnico === 'function') Promise.resolve(window.carregarOFsUnico(true)).then(function () { try { window.dsCentral && window.dsCentral.render(); } catch (_) {} }); } catch (_) {} }, 900); }
         });
       }).catch(function () {});
     } catch (_) {}
