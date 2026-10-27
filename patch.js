@@ -71032,7 +71032,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     { k: 'vunit', t: 'Vl. unitário', c: 'dsc-c-num', f: function (o) { return brl(o.vunit || o.valorUnitario || o.valor_unitario); } },
     { k: 'valor', t: 'Valor', c: 'dsc-c-num dsc-c-tot', ord: 'total', f: function (o) { return brl(o.val || o.valor_total); } },
     { k: 'maq', t: 'Máquina', c: 'dsc-c-maq', f: function (o) { var ms = maqs(o); return ms.length ? ms.map(function (m) { return '<span class="dsc-maq">' + esc(m) + '</span>'; }).join('') : '<span class="dsc-sub">—</span>'; } },
-    { k: 'emp', t: 'Empresa', c: 'dsc-c-txt', f: function (o) { return esc(hv('empresa', o, empNome(o.empId || o.emp_id))); } }
+    { k: 'emp', t: 'Empresa', c: 'dsc-c-txt', f: function (o) { var v = null; try { v = H().empresa ? H().empresa(o) : null; } catch (_) {} if (v && typeof v === 'object') v = v.nome || v.label || v.sigla || ''; if (typeof v === 'string' && /object/i.test(v)) v = ''; return esc(v && typeof v === 'string' ? v : (empNome(o.empId || o.emp_id) || '—')); } }
   ];
   var ocultas = {};
   try { ocultas = JSON.parse(localStorage.getItem('ds_central_cols_ocultas') || '{}') || {}; } catch (_) {}
