@@ -71250,8 +71250,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (a === 'nova') { if (typeof window.dsAbrirOfRapida === 'function') window.dsAbrirOfRapida(); else if (typeof window.abrirNovaOfRapida === 'function') window.abrirNovaOfRapida(); return; }
         if (a === 'editar' && n) { editar(n); return; }
         if (a === 'menu' && n) {
-          var of = acharOF(n), urg = of && (sim(of.urg) || sim(of.urgente));
-          abrirMenu(b, [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:concluir', 'Concluir', IC.avancar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir],
+          var of = acharOF(n), urg = of && (sim(of.urg) || sim(of.urgente)), fech = of && /concluida|cancelada/.test(stNorm(of));
+          // OF concluída ou cancelada: só o que faz sentido (alterar, clonar, imprimir)
+          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]]
+            : [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:concluir', 'Concluir', IC.avancar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir],
             ['#Produção / máquina'], ['d:passoumaq', 'Passou pela máquina', IC.avancar], ['urgente', urg ? 'Remover urgência' : 'Marcar como urgente', IC.fogo], ['d:papelcompra', 'Papel/chapa comprado', IC.vazio], ['d:movermaq', 'Mover de máquina', IC.avancar], ['d:alterardata', 'Alterar data', IC.editar], ['d:movermaqdata', 'Mover máquina + data', IC.avancar],
             ['#Ordem / prioridade'], ['d:priorizar', 'Mover para cima (priorizar)', IC.cima], ['d:adiar', 'Mover para baixo (adiar)', IC.baixo],
             '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { acao(k, n); });
