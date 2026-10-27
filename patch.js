@@ -20393,12 +20393,12 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
         var itC = of.itens; if (typeof itC === 'string') { try { itC = JSON.parse(itC); } catch (_) { itC = []; } }
         var csC = (Array.isArray(itC) && itC[0] && itC[0].cores_impressao) || of.cores_impressao || of.cores || [];
         if (typeof csC === 'string') { try { csC = JSON.parse(csC); } catch (_) { csC = csC.split(','); } }
-        var idsC = (Array.isArray(csC) ? csC : []).map(function (c) { return String(c && typeof c === 'object' ? (c.id || c.nome || '') : (c || '')).trim(); }).filter(Boolean);
+        var idsC = (Array.isArray(csC) ? csC : []).map(function (c) { return c && typeof c === 'object' ? { id: String(c.id || '').trim(), nome: String(c.nome || '').trim() } : { id: String(c || '').trim(), nome: String(c || '').trim() }; }).filter(function (c) { return c.id || c.nome; });
         if (idsC.length) {
           var aplicaC = function () {
             try {
               var disp = Array.isArray(window.coresDisponiveis) ? window.coresDisponiveis : (typeof coresDisponiveis !== 'undefined' ? coresDisponiveis : []);
-              var ids2 = idsC.map(function (x) { var m = (disp || []).find(function (c) { return String(c.id) === x || String(c.nome || '').toLowerCase() === x.toLowerCase(); }); return m ? String(m.id) : x; });
+              var ids2 = idsC.map(function (x) { var m = (disp || []).find(function (c) { return String(c.id) === x.id; }) || (disp || []).find(function (c) { return String(c.nome || '').trim().toLowerCase() === x.nome.toLowerCase(); }); return m ? String(m.id) : (x.id || x.nome); });
               coresSelecionadasOFRapida = ids2; window.coresSelecionadasOFRapida = ids2;
               if (typeof window.renderSeletorCores === 'function') window.renderSeletorCores('seletorCoresOFRapida', ids2);
             } catch (_) {}
@@ -41910,12 +41910,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var itC = of.itens; if (typeof itC === 'string') { try { itC = JSON.parse(itC); } catch (_) { itC = []; } }
         var csC = (Array.isArray(itC) && itC[0] && itC[0].cores_impressao) || of.cores_impressao || of.cores || [];
         if (typeof csC === 'string') { try { csC = JSON.parse(csC); } catch (_) { csC = csC.split(','); } }
-        var idsC = (Array.isArray(csC) ? csC : []).map(function (c) { return String(c && typeof c === 'object' ? (c.id || c.nome || '') : (c || '')).trim(); }).filter(Boolean);
+        var idsC = (Array.isArray(csC) ? csC : []).map(function (c) { return c && typeof c === 'object' ? { id: String(c.id || '').trim(), nome: String(c.nome || '').trim() } : { id: String(c || '').trim(), nome: String(c || '').trim() }; }).filter(function (c) { return c.id || c.nome; });
         if (idsC.length) {
           var aplicaC = function () {
             try {
               var disp = Array.isArray(window.coresDisponiveis) ? window.coresDisponiveis : (typeof coresDisponiveis !== 'undefined' ? coresDisponiveis : []);
-              var ids2 = idsC.map(function (x) { var m = (disp || []).find(function (c) { return String(c.id) === x || String(c.nome || '').toLowerCase() === x.toLowerCase(); }); return m ? String(m.id) : x; });
+              var ids2 = idsC.map(function (x) { var m = (disp || []).find(function (c) { return String(c.id) === x.id; }) || (disp || []).find(function (c) { return String(c.nome || '').trim().toLowerCase() === x.nome.toLowerCase(); }); return m ? String(m.id) : (x.id || x.nome); });
               coresSelecionadasOFRapida = ids2; window.coresSelecionadasOFRapida = ids2;
               if (typeof window.renderSeletorCores === 'function') window.renderSeletorCores('seletorCoresOFRapida', ids2);
             } catch (_) {}
