@@ -73267,7 +73267,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!cols) {
       cols = document.createElement('div'); cols.className = 'dss-cols';
       var esq = document.createElement('div'); esq.className = 'dss-esq';
-      var lado = document.createElement('aside'); lado.className = 'dss-lado'; lado.id = 'ds-simd-lado';
+      var lado = document.createElement('div'); lado.className = 'dss-lado'; lado.id = 'ds-simd-lado';
       wrap.parentNode.insertBefore(cols, wrap); esq.appendChild(wrap); cols.appendChild(lado); cols.appendChild(esq);
     }
     var lado2 = document.getElementById('ds-simd-lado');
@@ -73289,7 +73289,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setInterval(tick, 400);
   try {
     var st = document.createElement('style'); st.id = 'ds-simd-lado-css';
-    st.textContent = '.dss-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:16px;align-items:start}.dss-esq{min-width:0;order:1}.dss-lado{order:2;position:sticky;top:12px}'
+    st.textContent = '.dss-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:16px;align-items:start}.dss-esq{min-width:0;order:1}.dss-lado{order:2;position:sticky;top:12px;display:block!important}'
       + '#simd-tabela-wrap [data-simd-row]{cursor:pointer}#simd-tabela-wrap [data-simd-row].is-selected td{background:color-mix(in srgb,#2563eb 16%,transparent)!important}'
       + '.dss-lado{background:var(--surface,#16181d);border:1px solid var(--b2,#333);border-radius:14px;padding:14px;color:var(--text,#fff)}'
       + '.dss-vazio{color:var(--text2,#aaa);text-align:center;padding:40px 10px;font-size:14px}'
