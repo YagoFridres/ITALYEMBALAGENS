@@ -104,7 +104,7 @@
 (function () {
   try {
     var r = document.documentElement;
-    if (localStorage.getItem('ds_central_antiga') !== '1') r.setAttribute('data-ds-central-nova', '1');
+    r.setAttribute('data-ds-central-nova', '1'); try { localStorage.removeItem('ds_central_antiga'); } catch (_) {}
     if (localStorage.getItem('ds_ofmaq_antiga') !== '1') r.setAttribute('data-ds-ofmaq-nova', '1');
     var st = document.createElement('style'); st.id = 'ds-sem-piscar';
     st.textContent = 'html[data-ds-ofmaq-nova] #page-ofmaq > :not(#ds-ofmaq):not(#ds-ofmaq-voltar):not(style):not(script){display:none!important}'
@@ -70897,8 +70897,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
   var E = { vista: 'abertas', busca: '', periodo: '', maquina: '', vendedor: '', empresa: '', semPapel: false, pedDe: '', pedAte: '', ordem: 'entrega', dir: 1, pagina: 1, porPagina: 50, avancado: false, sel: {} };
   try { var sv = JSON.parse(localStorage.getItem('ds_central_estado') || 'null'); if (sv) ['vista', 'periodo', 'maquina', 'vendedor', 'empresa', 'ordem', 'dir', 'porPagina'].forEach(function (k) { if (sv[k] !== undefined) E[k] = sv[k]; }); } catch (_) {}
+  try { if (localStorage.getItem('ds_central_ordem_v2') !== '1') { E.ordem = 'of'; E.dir = -1; salvarEstado(); localStorage.setItem('ds_central_ordem_v2', '1'); } } catch (_) {}
   function salvarEstado() { try { localStorage.setItem('ds_central_estado', JSON.stringify({ vista: E.vista, periodo: E.periodo, maquina: E.maquina, vendedor: E.vendedor, empresa: E.empresa, ordem: E.ordem, dir: E.dir, porPagina: E.porPagina })); } catch (_) {} }
-  function antiga() { try { return localStorage.getItem('ds_central_antiga') === '1'; } catch (_) { return false; } }
+  // 27/10: só existe a tela nova (a antiga continua por baixo, só como motor das ações)
+  try { localStorage.removeItem('ds_central_antiga'); document.documentElement.setAttribute('data-ds-central-nova', '1'); } catch (_) {}
+  function antiga() { return false; }
 
   function svg(d, s) { return '<svg viewBox="0 0 24 24" width="' + (s || 16) + '" height="' + (s || 16) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>'; }
   var IC = {
@@ -70952,7 +70955,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (E.vendedor && (o.vendNome || o.vendedor || '') !== E.vendedor) return;
       if (E.empresa && (o.empId || o.emp_id || '') !== E.empresa) return;
       if (E.semPapel && !(sim(o.sem_papel) || sim(o.sem_papelao))) return;
-      var dp = String(o.dia || o.dia_pedido || '').slice(0, 10);
+      var dp = String(o.data_pedido || o.created_at || o.dia || '').slice(0, 10);
       if (E.pedDe && (!dp || dp < E.pedDe)) return;
       if (E.pedAte && (!dp || dp > E.pedAte)) return;
       var aberta = st === 'aberta' || st === 'producao', urg = sim(o.urg) || sim(o.urgente), atr = atrasada(o);
@@ -71002,8 +71005,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var COLS = [
     { k: 'of', t: 'Nº OF', c: 'dsc-c-of', ord: 'of', fixa: 1, f: function (o) { var urg = sim(o.urg) || sim(o.urgente); return '<div class="dsc-of">' + esc(o.of) + (urg ? '<span class="dsc-urg-tag" title="Urgente">' + svg(IC.fogo, 12) + '</span>' : '') + '</div>'; } },
     { k: 'img', t: 'Imagem', c: 'dsc-c-img', f: function (o) { var u = imgDe(o); return u ? '<img src="' + esc(u) + '" alt="" loading="lazy" class="dsc-img" data-a="img">' : '<span class="dsc-img dsc-img-v"></span>'; } },
-    { k: 'dtped', t: 'Dt. Pedido', c: 'dsc-c-dt', f: function (o) { return esc(hv('dataPedido', o, br(o.dia_pedido || o.dia))); } },
-    { k: 'dtcri', t: 'Dt. Criação', c: 'dsc-c-dt', f: function (o) { return br(o.dia || o.created_at); } },
+    { k: 'dtped', t: 'Dt. Pedido', c: 'dsc-c-dt', f: function (o) { return br(o.data_pedido || o.created_at || o.dia); } },
+    { k: 'dtcri', t: 'Dt. Criação', c: 'dsc-c-dt', f: function (o) { var c = String(o.created_at || ''); var h = ''; try { if (c.length > 10) h = new Date(c).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) {} return br(c || o.dia) + (h ? '<div class="dsc-sub">' + h + '</div>' : ''); } },
     { k: 'ent', t: 'Entrega', c: 'dsc-c-ent', ord: 'entrega', f: function (o) { return '<div>' + br(o.ent || o.data_entrega) + '</div><div>' + chipEntrega(o) + '</div>'; } },
     { k: 'cli', t: 'Cliente', c: 'dsc-c-cli', ord: 'cliente', f: function (o) { return '<div class="dsc-cli" title="' + esc(o.cliNome || o.cliente || '') + '">' + esc(o.cliNome || o.cliente || '—') + '</div>'; } },
     { k: 'vend', t: 'Vendedor', c: 'dsc-c-txt', f: function (o) { return esc(hv('vendedor', o, o.vendNome || o.vendedor || '—')); } },
@@ -71071,7 +71074,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<button type="button" class="dsc-link" data-a="limpar">Limpar filtros</button></div>'
       + '<div class="dsc-lote" hidden><span class="dsc-lote-n"></span><button type="button" class="dsc-btn dsc-btn-sec" data-a="loteEditar">' + svg(IC.editar) + 'Editar</button><button type="button" class="dsc-btn dsc-btn-sec" data-a="loteFluxo">Aplicar fluxo</button><button type="button" class="dsc-btn dsc-btn-perigo" data-a="loteCancelar">' + svg(IC.cancelar) + 'Cancelar OFs</button><button type="button" class="dsc-link" data-a="loteLimpar">Limpar seleção</button></div>'
       + '<div class="dsc-tabela-wrap"><table class="dsc-tabela"><thead></thead><tbody></tbody></table><div class="dsc-vazio" hidden></div></div>'
-      + '<footer class="dsc-rodape"><span class="dsc-pag-info"></span><div class="dsc-pag"></div><button type="button" class="dsc-link" data-a="antiga">Tela anterior</button></footer>';
+      + '<footer class="dsc-rodape"><span class="dsc-pag-info"></span><div class="dsc-pag"></div></footer>';
     var abas = page.querySelector(':scope > .ds-abas-central');
     page.insertBefore(raiz, abas ? abas.nextSibling : page.firstChild);
     ligar();
@@ -71213,7 +71216,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           return;
         }
         if (a === 'maisHead') {
-          abrirMenu(b, [['excel', 'Exportar para Excel', IC.baixo], ['sergio', 'Relatório Sérgio', IC.imprimir], '-', ['antiga', 'Tela anterior', IC.seta]], function (k) {
+          abrirMenu(b, [['excel', 'Exportar para Excel', IC.baixo], ['sergio', 'Relatório Sérgio', IC.imprimir]], function (k) {
             if (k === 'excel') cliqueAntigo('#pcp-aba-conteudo-ofs .excel-export-bar button', /Excel/);
             else if (k === 'sergio') cliqueAntigo('#pcp-btn-relatorio-sergio', /Relat[óo]rio S[ée]rgio/);
             else if (k === 'antiga') alternarAntiga(true);
@@ -72749,4 +72752,43 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + 'html[data-ds="3"] #page-inconformidades button[onclick^="carregarInconformidades"],html[data-ds="3"] #page-inconformidades button[onclick^="gerarRelatorio"]{background:var(--accent)!important;border-radius:8px!important;min-height:38px}'
     + '@media (max-width:900px){.inc-grid{grid-template-columns:1fr}.inc-lado{position:static}.inc-sec{grid-template-columns:1fr}html[data-ds="3"] #page-inconformidades{padding:12px 12px 110px!important}}';
   try { var st = document.createElement('style'); st.id = 'ds-inc-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
+
+
+/* ===== OFs NOVAS APARECEM SOZINHAS (27/10/2026) =====
+ * A cada 60 s (com a aba visível) recarrega a lista de OFs do servidor; a Central de OFs e as OFs por
+ * Máquina percebem a mudança e redesenham. As OFs repetidas na lista (mesmo id) são removidas. */
+(function () {
+  if (window.__dsOfsAuto) return; window.__dsOfsAuto = true;
+  function dedup() {
+    try {
+      var l = window.OFs; if (!Array.isArray(l)) return;
+      var vistos = {}, out = [], rep = 0;
+      for (var i = 0; i < l.length; i++) { var o = l[i]; var k = o && o.id; if (k && vistos[k]) { rep++; continue; } if (k) vistos[k] = 1; out.push(o); }
+      if (rep) { l.length = 0; Array.prototype.push.apply(l, out); }
+    } catch (_) {}
+  }
+  var ocupado = false;
+  var ultAss = '';
+  function puxar() {
+    if (ocupado || document.hidden || typeof window.carregarOFsUnico !== 'function') return;
+    var tk = ''; try { tk = localStorage.getItem('token') || ''; } catch (_) {} if (!tk) return;
+    ocupado = true;
+    fetch((window.API_BASE || '') + '/api/ofs/assinatura', { headers: { Authorization: 'Bearer ' + tk }, cache: 'no-store' })
+      .then(function (r) { return r.json(); }).catch(function () { return {}; })
+      .then(function (j) {
+        var a = j && j.ok ? (j.total + '|' + j.ultima) : '';
+        if (!a || a === ultAss) { ocupado = false; return; }
+        var primeira = !ultAss; ultAss = a;
+        if (primeira) { ocupado = false; return; }
+        return Promise.resolve(window.carregarOFsUnico(true)).catch(function () {}).then(function () {
+      ocupado = false; dedup();
+      try { if (window.dsCentral && typeof window.dsCentral.render === 'function') window.dsCentral.render(); } catch (_) {}
+        });
+      });
+  }
+  setTimeout(puxar, 8000);
+  setInterval(puxar, 30000);
+  setInterval(dedup, 5000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(puxar, 500); });
 })();

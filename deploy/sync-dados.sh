@@ -10,6 +10,7 @@ docker compose exec -T db pg_dump -U postgres -d postgres --schema=public -Fc </
 pm2 stop pcp-pro >/dev/null 2>&1 || true
 echo "==> Limpando schema public do banco de TESTE"
 docker compose exec -T db psql -U postgres -c 'drop schema public cascade; create schema public;' </dev/null
+mkdir -p /opt/pcp-pro/sync-estado; for t in vendedores clientes ofs; do date -u "+%F %T+00" > /opt/pcp-pro/sync-estado/$t.wm; done
 echo "==> Copiando banco"
 bash $B/02-copiar-banco.sh "$ORIGEM" </dev/null || echo "!! cópia do banco teve erro"
 echo "==> Copiando fotos/arquivos"

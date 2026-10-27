@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261027104514';
-const SW_RUNTIME_VERSION = '20261027104514';
+const PATCH_RUNTIME_VERSION = '20261027104813';
+const SW_RUNTIME_VERSION = '20261027104813';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39895,6 +39895,18 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
     }
     return ok(res, data);
   } catch (e) { return err(res, e); }
+});
+
+// Assinatura leve da lista de OFs: a tela só recarrega a lista inteira quando algo mudou (27/10/2026)
+app.get('/api/ofs/assinatura', autenticar, async (req, res) => {
+  try {
+    setNoCache(res);
+    const [{ count }, ult] = await Promise.all([
+      supabase.from('ofs').select('id', { count: 'exact', head: true }),
+      supabase.from('ofs').select('updated_at').order('updated_at', { ascending: false, nullsFirst: false }).limit(1),
+    ]);
+    return res.json({ ok: true, total: count || 0, ultima: (ult?.data && ult.data[0] && ult.data[0].updated_at) || null });
+  } catch (e) { return res.json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.get('/api/infra/limpeza-imagens', requireAdmin, (req, res) => res.json({ ok: true, ultima: _IMG_LIMPEZA.ultima, rodando: _IMG_LIMPEZA.rodando }));
