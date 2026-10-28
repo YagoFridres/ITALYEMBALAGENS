@@ -75356,7 +75356,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var sem = !!(o && (sim(o.sem_papel) || sim(o.sem_papelao))), comp = !!(o && sim(o.papel_comprado)), prev = String(o && o.previsao_entrega_papel || '').slice(0, 10);
     var d = document.createElement('div'); d.id = 'dsop-papel';
     d.innerHTML = '<label class="dsop-sw"><input type="checkbox" id="dsop-sem"' + (sem ? ' checked' : '') + '><span class="dsop-tr"></span><span><b>Sem papelão</b><small>marque se esta OF ainda não tem papelão em estoque</small></span></label>'
-      + '<div class="dsop-det"' + (sem ? '' : ' hidden') + '><label class="dsop-ck"><input type="checkbox" id="dsop-comprado"' + (comp || !o ? ' checked' : '') + '> Papelão já foi comprado</label>'
+      + '<div class="dsop-det"' + (sem ? '' : ' hidden') + '><label class="dsop-ck"><input type="checkbox" id="dsop-comprado"' + (sem ? (comp ? ' checked' : '') : ' checked') + '> Papelão já foi comprado</label>'
       + '<label class="dsop-dt"><span>Previsão de chegada</span><input type="date" id="dsop-prev" value="' + prev + '"></label></div>';
     grade.parentNode.insertBefore(d, grade.nextSibling);
     d.querySelector('#dsop-sem').addEventListener('change', function (e) { d.querySelector('.dsop-det').hidden = !e.target.checked; if (e.target.checked) setTimeout(function () { d.querySelector('#dsop-prev').focus(); }, 30); });
@@ -75395,7 +75395,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try {
       var url = typeof input === 'string' ? input : (input && input.url) || '', met = String((init && init.method) || '').toUpperCase();
       if (met === 'PATCH' && /\/api\/ofs\/[0-9a-f-]{36}(\?|$)/i.test(url) && init && typeof init.body === 'string' && document.getElementById('dsop-sem') && editId() && url.indexOf(editId()) >= 0) {
-        var b = JSON.parse(init.body); if (b && b._allow_partial && !('sem_papel' in b)) { var d = dados(); if (d) { if (!d.sem_papel) { d.papel_comprado = false; } init = Object.assign({}, init, { body: JSON.stringify(Object.assign(b, d)) }); return f1.call(this, input, init); } }
+        var b = JSON.parse(init.body); if (b && b._allow_partial && !('sem_papel' in b)) { var d = dados(); if (d) { if (!d.sem_papel) { d.papel_comprado = false; d.previsao_entrega_papel = null; } init = Object.assign({}, init, { body: JSON.stringify(Object.assign(b, d)) }); return f1.call(this, input, init); } }
       }
     } catch (_) {}
     return f1.apply(this, arguments);
