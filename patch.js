@@ -73292,6 +73292,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var g0 = window.go; if (typeof g0 !== 'function' || g0.__dsFin) return;
     var w = function (pg) {
       var self = this, args = arguments;
+      if (PAGINAS[String(pg || '')] && String(window._PAGE_ATUAL || '') === 'historico-passagens' && liberado()) { try { sessionStorage.removeItem('ds_fin_ok'); marcar(); } catch (_) {} }
       if (PAGINAS[String(pg || '')] && !liberado()) { pedir('O Financeiro é protegido por senha.').then(function (v) { if (v) g0.apply(self, args); }); return; }
       return g0.apply(this, arguments);
     };
@@ -73314,6 +73315,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try {
       var pa = String(window._PAGE_ATUAL || '');
       var protegida = !!PAGINAS[pa] || pa === 'historico-passagens';
+      // 28/10: Passagens tem senha própria — ao entrar nela (ou sair dela) bloqueia de novo, mesmo que o Financeiro já estivesse aberto
+      var ult = window.__dsFinUltPag; window.__dsFinUltPag = pa;
+      if (ult !== undefined && ult !== pa && (pa === 'historico-passagens' || ult === 'historico-passagens') && liberado()) { sessionStorage.removeItem('ds_fin_ok'); marcar(); window.__dsFinEsteve = false; try { var g2 = document.getElementById(GRUPO); if (g2 && pa !== 'historico-passagens' && !PAGINAS[pa]) g2.classList.remove('open'); } catch (_) {} }
       if (liberado() && protegida) window.__dsFinEsteve = true;
       if (liberado() && pa && !protegida && window.__dsFinEsteve) { window.__dsFinEsteve = false; sessionStorage.removeItem('ds_fin_ok'); marcar(); try { var gg = document.getElementById(GRUPO); if (gg) gg.classList.remove('open'); } catch (_) {} }
     } catch (_) {}
