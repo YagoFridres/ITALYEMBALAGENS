@@ -70500,7 +70500,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var ITENS = {
     'hub': ['home', 'Início'], 'pcp': ['central', 'Central de OFs'], 'ofmaq': ['fabrica', 'OFs por Máquina'],
     'tempos-reais': ['timer', 'Tempos Reais'], 'operadores': ['pessoas', 'Operadores'],
-    'orcamentos': ['doc', 'Orçamentos'], 'clientes': ['pessoas', 'Clientes'], 'mapa-clientes': ['mapa', 'Mapa de Clientes'],
+    'produtos': ['doc', 'Produtos'], 'orcamentos': ['doc', 'Orçamentos'], 'clientes': ['pessoas', 'Clientes'], 'mapa-clientes': ['mapa', 'Mapa de Clientes'],
     'vendedores': ['maleta', 'Vendedores'], 'comissoes': ['pct', 'Comissões'],
     '@papelao': ['carrinho', 'Compra de Papelão'], 'fornecedores': ['caminhao', 'Fornecedores'], 'estoque': ['camadas', 'Estoque de Chapas'],
     'entradas-estoque': ['entrada', 'Entradas'], 'saidas-estoque': ['saida', 'Saídas'], 'checklist-recebimento': ['check', 'Checklist de Recebimento'],
@@ -75236,12 +75236,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function mostrarSug(inp, l) {
     fecharSug(); if (!l.length) return;
     sugBox = document.createElement('div'); sugBox.className = 'dsp-sug';
-    var r = inp.getBoundingClientRect();
-    sugBox.style.left = r.left + 'px'; sugBox.style.top = (r.bottom + 4) + 'px'; sugBox.style.width = r.width + 'px';
+    // dentro do próprio campo (o modal da OF usa zoom, então posição fixa na tela sairia deslocada)
+    var pai = inp.parentNode; if (getComputedStyle(pai).position === 'static') pai.style.position = 'relative';
+    sugBox.style.left = inp.offsetLeft + 'px'; sugBox.style.top = (inp.offsetTop + inp.offsetHeight + 4) + 'px'; sugBox.style.width = inp.offsetWidth + 'px';
     sugBox.innerHTML = l.map(function (p, i) { return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : '') + '><b>' + esc(p.nome) + '</b><span>' + esc([medida(p), p.cliente_nome].filter(Boolean).join(' · ')) + '</span></button>'; }).join('');
     sugBox.addEventListener('mousedown', function (e) { var b = e.target.closest('[data-i]'); if (!b) return; e.preventDefault(); escolher(inp, l[+b.getAttribute('data-i')]); });
     sugBox.__l = l;
-    document.body.appendChild(sugBox);
+    pai.appendChild(sugBox);
   }
   document.addEventListener('input', function (e) {
     var inp = e.target; if (!inp || inp.id !== 'of-r-produto') return;
@@ -75267,7 +75268,6 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (e.key === 'Escape') { fecharSug(); try { inp.setSelectionRange(inp.selectionStart, inp.selectionStart); } catch (_) {} }
   }, true);
   document.addEventListener('focusout', function (e) { if (e.target && e.target.id === 'of-r-produto') setTimeout(fecharSug, 150); }, true);
-  window.addEventListener('scroll', fecharSug, true);
   // ---------- ligar ----------
   function vigiar() {
     montarMenu();
@@ -75288,7 +75288,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsp-m header{display:flex;justify-content:space-between;align-items:center}.dsp-m h2{margin:0;font-size:18px}.dsp-x{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer}.dsp-sub{margin:0;color:var(--text2);font-size:13px}'
     + '.dsp-f{display:flex;flex-direction:column;gap:5px}.dsp-f>span{font-size:12px;font-weight:600;color:var(--text2)}.dsp-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.dsp-m footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}.dsp-sel{margin-right:auto;font-size:12.5px;color:var(--text2)}'
     + '.dsp-imp{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px}.dsp-imp label{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}.dsp-imp label:hover{background:var(--s2)}.dsp-imp label[hidden]{display:none}.dsp-imp input{width:18px;height:18px;margin-top:2px}.dsp-imp b{display:block;font-size:13.5px}.dsp-imp small{color:var(--text3);font-size:12px}'
-    + '.dsp-sug{position:fixed;z-index:100001;max-height:280px;overflow:auto;background:var(--surface);border:1px solid var(--b2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.35);display:flex;flex-direction:column}.dsp-sug button{text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;cursor:pointer}.dsp-sug button.on,.dsp-sug button:hover{background:color-mix(in srgb,var(--accent) 14%,var(--surface))}.dsp-sug b{display:block;font-size:13.5px}.dsp-sug span{font-size:11.5px;color:var(--text3)}'
+    + '.dsp-sug{position:absolute;z-index:100001;max-height:280px;overflow:auto;background:var(--surface);border:1px solid var(--b2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.35);display:flex;flex-direction:column}.dsp-sug button{text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;cursor:pointer}.dsp-sug button.on,.dsp-sug button:hover{background:color-mix(in srgb,var(--accent) 14%,var(--surface))}.dsp-sug b{display:block;font-size:13.5px}.dsp-sug span{font-size:11.5px;color:var(--text3)}'
     + '@media (max-width:640px){.dsp-head .dsp-acoes{width:100%}.dsp-head .dsp-btn{flex:1;height:44px}.dsp-g3{grid-template-columns:1fr 1fr 1fr}#dsp-ov{padding:0;align-items:flex-end}.dsp-m{border-radius:16px 16px 0 0;max-height:92vh}.dsp-m footer .dsp-btn{flex:1;height:44px}'
     + '.dsp-t thead{display:none}.dsp-t,.dsp-t tbody{display:block}.dsp-t tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 12px;border-top:1px solid var(--border)}.dsp-t td{display:block;padding:0;border:0}.dsp-t td::before{content:attr(data-l);display:block;font-size:11px;color:var(--text3)}.dsp-t td.dsp-ac{grid-column:1 / -1;text-align:left}.dsp-t td.dsp-ac::before{content:none}.dsp-ac .dsp-btn{margin:4px 6px 0 0;height:38px}}';
   try { var st = document.createElement('style'); st.id = 'ds-produtos-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
