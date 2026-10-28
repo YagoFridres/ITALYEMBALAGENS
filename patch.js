@@ -74966,5 +74966,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     };
     w.__dsCompleta = true; window.salvarEdicaoOf = w;
   }
+  // ao abrir a edição, a Referência (guardada no item da OF) não era carregada no campo
+  setInterval(function () {
+    var el = document.getElementById('of-r-ref'); if (!el || !el.offsetParent) return;
+    var id = ''; try { id = typeof window.__getOfRapidaEditingId === 'function' ? window.__getOfRapidaEditingId() : String(window._ofRapidaEditandoId || ''); } catch (_) {}
+    id = String(id || '').trim(); if (!id) { el.__dsRefDe = ''; return; }
+    if (el.__dsRefDe === id) return; el.__dsRefDe = id;
+    var o = ofsMem().find(function (x) { return String(x && x.id) === id; });
+    var r = o && Array.isArray(o.itens) && o.itens[0] ? String(o.itens[0].ref || '').trim() : '';
+    if (r && !el.value) el.value = r;
+  }, 400);
   inst(); setInterval(inst, 2000);
 })();
