@@ -167,3 +167,4 @@ create table if not exists public.produtos_cadastro (
 );
 create index if not exists produtos_cadastro_nome_idx on public.produtos_cadastro (lower(nome));
 grant all on public.produtos_cadastro to anon, authenticated, service_role;
+alter table public.produtos_cadastro add column if not exists cores jsonb not null default '[]'::jsonb;
