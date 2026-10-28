@@ -73522,6 +73522,26 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       render(grupos, pgs, termo);
     });
   }
+  // 28/10: cancelar a OF pelo buscador, com confirmação no meio da tela (mesma gravação do botão "Cancelar OF" antigo)
+  function confirmarCancelar(n) {
+    var g = (E.res || []).find(function (x) { return x[0][0] === 'ofs'; }), of = g && g[1].find(function (x) { return String(x.of || x.numero) === String(n); });
+    if (!of) { try { of = (typeof OFs !== 'undefined' ? OFs : []).find(function (x) { return String(x.of) === String(n); }); } catch (_) {} }
+    if (!of || !of.id) { try { window.toast('OF não encontrada', 'var(--red)'); } catch (_) {} return; }
+    var ov = document.createElement('div'); ov.className = 'dsb-ov';
+    ov.innerHTML = '<div class="dsb-mod" role="dialog" aria-modal="true"><h3>Cancelar a OF ' + esc(n) + '?</h3><p>' + esc([of.cliNome || of.cliente, of.produto || of.prodDesc, (of.qtd || of.quantidade) ? Number(of.qtd || of.quantidade).toLocaleString('pt-BR') + ' un.' : ''].filter(Boolean).join(' · ')) + '</p><p class="dsb-av">Ela sai da fila de produção e fica como Cancelada.</p>'
+      + '<div class="dsb-mod-b"><button type="button" data-x="voltar">Voltar</button><button type="button" class="dsb-cancel-pri" data-x="ok">✕ Cancelar OF</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov || e.target.closest('[data-x="voltar"]')) return ov.remove();
+      var b = e.target.closest('[data-x="ok"]'); if (!b) return;
+      b.disabled = true; b.textContent = 'Cancelando…';
+      var c0 = window.confirm; window.confirm = function () { return true; };
+      Promise.resolve().then(function () { return window.cancelarOF(of.id, of.of || n); }).catch(function (er) { try { window.toast('Erro ao cancelar: ' + (er && er.message || er), 'var(--red)'); } catch (_) {} })
+        .then(function () { window.confirm = c0; ov.remove(); CACHE = {}; buscar(); setTimeout(function () { CACHE = {}; buscar(); }, 2500); });
+      setTimeout(function () { if (window.confirm !== c0) window.confirm = c0; }, 100);
+    });
+  }
+  (function () { var st = document.createElement('style'); st.textContent = '.dsb-acoes .dsb-cancel{color:var(--red)!important;border-color:color-mix(in srgb,var(--red) 40%,var(--b2))!important}.dsb-ov{position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}.dsb-mod{width:min(440px,100%);background:var(--surface);color:var(--text);border:1px solid var(--border);border-top:4px solid var(--red);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:8px}.dsb-mod h3{margin:0;font-size:18px}.dsb-mod p{margin:0;color:var(--text2);font-size:13.5px}.dsb-mod .dsb-av{color:var(--text3);font-size:12.5px}.dsb-mod-b{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}.dsb-mod-b button{height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-weight:600;cursor:pointer}.dsb-mod-b .dsb-cancel-pri{background:var(--red);border-color:var(--red);color:#fff}@media (max-width:600px){.dsb-mod-b button{flex:1;height:46px}}'; (document.head || document.documentElement).appendChild(st); })();
   function cardOF(o) {
     var st = stOF(o), aberta = st === 'aberta' || st === 'producao';
     var chip = { aberta: ['Em aberto', 'ab'], producao: ['Em produção', 'pr'], concluida: ['Concluída', 'ok'], cancelada: ['Cancelada', 'cn'] }[st];
@@ -73530,7 +73550,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<div class="dsb-cli">' + esc(o.cliNome || o.cliente || '—') + '</div>'
       + '<div class="dsb-sub">' + esc([o.produto || o.prodDesc, (o.qtd || o.quantidade) ? Number(o.qtd || o.quantidade).toLocaleString('pt-BR') + ' un.' : '', o.maquina_atual || ''].filter(Boolean).join(' · ')) + '</div>'
       + '<div class="dsb-sub">' + (ent ? 'Entrega ' + ent + (atr ? ' <b class="dsb-atr">atrasada</b>' : '') : 'Sem entrega') + (o.vendNome || o.vendedor ? ' · ' + esc(o.vendNome || o.vendedor) : '') + '</div>'
-      + '<div class="dsb-acoes"><button type="button" data-o="alterar">Alterar</button>' + (aberta ? '<button type="button" class="dsb-pri" data-o="concluir">✓ Concluir</button><button type="button" data-o="passou">Passou pela máquina</button>' : '') + '<button type="button" data-o="imprimir">Imprimir</button></div></div>';
+      + '<div class="dsb-acoes"><button type="button" data-o="alterar">Alterar</button>' + (aberta ? '<button type="button" class="dsb-pri" data-o="concluir">✓ Concluir</button><button type="button" data-o="passou">Passou pela máquina</button><button type="button" class="dsb-cancel" data-o="cancelar">✕ Cancelar OF</button>' : '') + '</div></div>';
   }
   function render(grupos, pgs, termo) {
     var box = document.getElementById('ds-busca-res'); if (!box) return;
@@ -73562,7 +73582,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var ob = e.target.closest('[data-o]'); if (ob) {
         var n = ob.closest('[data-of]').getAttribute('data-of'), o = ob.getAttribute('data-o');
         var D = window.dsCentral; if (!D || !D.acao) return;
-        if (o === 'alterar') D.editar(n); else if (o === 'concluir') D.acao('d:concluir', n); else if (o === 'passou') D.acao('d:passoumaq', n); else if (o === 'imprimir') D.acao('imprimir', n);
+        if (o === 'alterar') D.editar(n); else if (o === 'concluir') D.acao('d:concluir', n); else if (o === 'passou') D.acao('d:passoumaq', n); else if (o === 'cancelar') { confirmarCancelar(n); return; }
         // quando a OF mudar (ex.: concluída), refaz a busca
         setTimeout(function () { CACHE = {}; buscar(); }, 2500); setTimeout(buscar, 6000);
         return;
