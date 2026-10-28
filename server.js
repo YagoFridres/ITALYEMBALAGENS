@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261028154558';
-const SW_RUNTIME_VERSION = '20261028154558';
+const PATCH_RUNTIME_VERSION = '20261028154636';
+const SW_RUNTIME_VERSION = '20261028154636';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40002,7 +40002,7 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
 });
 
 // ===== PRODUTOS (cadastro para autocompletar "Produto / Descrição" na OF) (28/10/2026) =====
-const _PROD_CAMPOS = ['nome', 'largura', 'comprimento', 'altura', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
+const _PROD_CAMPOS = ['nome', 'cores', 'largura', 'comprimento', 'altura', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
 function _prodPayload(b) {
   const o = {};
   _PROD_CAMPOS.forEach((k) => { if (Object.prototype.hasOwnProperty.call(b || {}, k)) o[k] = b[k]; });
@@ -40010,6 +40010,7 @@ function _prodPayload(b) {
   ['largura', 'comprimento', 'altura'].forEach((k) => { if (k in o) { const n = Number(String(o[k] ?? '').replace(',', '.')); o[k] = Number.isFinite(n) && n > 0 ? n : null; } });
   ['cliente_id', 'cliente_nome', 'observacao'].forEach((k) => { if (k in o) o[k] = String(o[k] ?? '').trim() || null; });
   if ('ativo' in o) o.ativo = o.ativo !== false && o.ativo !== 'false';
+  if ('cores' in o) o.cores = (Array.isArray(o.cores) ? o.cores : String(o.cores || '').split(/\s*\+\s*|,\s*/)).map((x) => String(x && x.nome || x || '').trim()).filter(Boolean);
   return o;
 }
 app.get('/api/produtos-cadastro', authMiddleware, async (req, res) => {
