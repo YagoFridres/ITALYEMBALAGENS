@@ -70960,6 +70960,23 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function lista() { try { if (typeof OFs !== 'undefined' && Array.isArray(OFs) && OFs.length) return OFs; } catch (_) {} return Array.isArray(window.OFS) ? window.OFS : []; }
+  // 28/10: aba "Canceladas" — as canceladas ficam fora da lista principal (deleted_at), então vêm numa busca própria
+  var CANC = { lista: [], t: 0, carregando: false };
+  function carregarCanc(forcar) {
+    if (CANC.carregando || (!forcar && Date.now() - CANC.t < 60000)) return;
+    CANC.carregando = true;
+    var h = {}; try { h.Authorization = 'Bearer ' + localStorage.getItem('token'); } catch (_) {}
+    fetch((window.API_BASE || '') + '/api/ofs?status=Cancelada&incluir_excluidas=1&limit=5000&refresh=' + Date.now(), { headers: h, cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var a = Array.isArray(j) ? j : (j && j.data) || [];
+        a = a.filter(function (o) { return /cancel/i.test(String(o && o.status || '')); });
+        CANC.lista = a.map(function (o) { try { return typeof window.normalizeOF === 'function' ? Object.assign({}, o, window.normalizeOF(o) || {}) : o; } catch (_) { return o; } });
+        CANC.t = Date.now();
+      }).catch(function () {}).then(function () { CANC.carregando = false; try { render(); } catch (_) {} });
+  }
+  setTimeout(function () { carregarCanc(true); }, 4000);
+  setInterval(function () { carregarCanc(E.vista === 'canceladas'); }, 30000);
   function hojeIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function addDias(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
   function br(iso) { iso = String(iso || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(2, 4) : '—'; }
@@ -70987,12 +71004,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     else if (E.periodo === 'semana') { var d = new Date(hoje + 'T12:00:00'); var dow = (d.getDay() + 6) % 7; ini = addDias(hoje, -dow); fim = addDias(ini, 6); }
     else if (E.periodo === '7d') { ini = hoje; fim = addDias(hoje, 7); }
     else if (E.periodo === 'mes') { ini = hoje.slice(0, 8) + '01'; fim = hoje.slice(0, 8) + '31'; }
-    var cont = { abertas: 0, atrasadas: 0, urgentes: 0, producao: 0, concluidas: 0, todas: 0 };
-    var out = [];
-    lista().forEach(function (o) {
-      if (!o || o.deleted_at && o.deleted_at !== 'null') return;
+    var cont = { abertas: 0, atrasadas: 0, urgentes: 0, producao: 0, concluidas: 0, todas: 0, canceladas: CANC.lista.length };
+    var out = [], vCanc = E.vista === 'canceladas';
+    (vCanc ? CANC.lista : lista()).forEach(function (o) {
+      if (!o || (!vCanc && o.deleted_at && o.deleted_at !== 'null')) return;
       var st = stNorm(o);
-      if (st === 'cancelada' && E.vista !== 'todas') { cont.todas++; return; }
+      if (vCanc) st = 'cancelada';
+      if (st === 'cancelada' && E.vista !== 'todas' && !vCanc) { cont.todas++; return; }
       // filtros comuns
       if (q) { var alvo = norm([o.of, o.produto || o.prodDesc, o.cliNome || o.cliente, o.vendNome || o.vendedor, o.ref || o.referencia].join(' ')); if (alvo.indexOf(q) < 0) return; }
       var ent = String(o.ent || o.data_entrega || '').slice(0, 10);
@@ -71011,6 +71029,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (urg && aberta) cont.urgentes++;
       if (st === 'producao') cont.producao++;
       if (st === 'concluida') cont.concluidas++;
+      if (vCanc) { out.push(o); return; }
       var ok = E.vista === 'todas' || (E.vista === 'abertas' && aberta) || (E.vista === 'atrasadas' && atr) || (E.vista === 'urgentes' && urg && aberta) || (E.vista === 'producao' && st === 'producao') || (E.vista === 'concluidas' && st === 'concluida');
       if (ok) out.push(o);
     });
@@ -71026,6 +71045,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       else { va = String(a.ent || a.data_entrega || '9999'); vb = String(b.ent || b.data_entrega || '9999'); if (va === vb) { va = num(a.seq); vb = num(b.seq); } }
       return va < vb ? -d : va > vb ? d : 0;
     });
+    if (vCanc) { var sv = E.vista; E.vista = 'abertas'; try { cont = filtrar().cont; } finally { E.vista = sv; } }
     return { linhas: out, cont: cont };
   }
 
@@ -71131,7 +71151,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var r = filtrar(), c = r.cont, linhas = r.linhas;
     var resumo = c.abertas + ' em aberto · <span class="' + (c.atrasadas ? 'dsc-txt-atr' : '') + '">' + c.atrasadas + ' atrasadas</span> · ' + c.urgentes + ' urgentes · ' + c.producao + ' em produção';
     Hs(raiz.querySelector('.dsc-resumo'), resumo);
-    var vs = [['abertas', 'Em aberto', c.abertas], ['atrasadas', 'Atrasadas', c.atrasadas], ['urgentes', 'Urgentes', c.urgentes], ['producao', 'Em produção', c.producao], ['concluidas', 'Concluídas', c.concluidas], ['todas', 'Todas', c.todas]];
+    var vs = [['abertas', 'Em aberto', c.abertas], ['atrasadas', 'Atrasadas', c.atrasadas], ['urgentes', 'Urgentes', c.urgentes], ['producao', 'Em produção', c.producao], ['concluidas', 'Concluídas', c.concluidas], ['canceladas', 'Canceladas', c.canceladas], ['todas', 'Todas', c.todas]];
     Hs(raiz.querySelector('.dsc-vistas'), vs.map(function (v) { return '<button type="button" role="tab" data-v="' + v[0] + '" aria-selected="' + (E.vista === v[0]) + '" class="' + (E.vista === v[0] ? 'on' : '') + '">' + v[1] + '<span>' + v[2] + '</span></button>'; }).join(''));
     var lf = listasFiltro();
     var sp = raiz.querySelector('[data-f="periodo"]'); if (document.activeElement !== sp) Hs(sp, opcoes([['hoje', 'Entrega hoje'], ['amanha', 'Entrega amanhã'], ['semana', 'Entrega nesta semana'], ['7d', 'Próximos 7 dias'], ['mes', 'Entrega neste mês']], E.periodo, 'Qualquer entrega'));
@@ -71166,7 +71186,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
 
   // ---------- ações (todas usando as funções existentes) ----------
-  function acharOF(n) { return lista().find(function (o) { return String(o.of) === String(n); }); }
+  function acharOF(n) { return lista().find(function (o) { return String(o.of) === String(n); }) || CANC.lista.find(function (o) { return String(o.of) === String(n); }); }
   function setSel(nums) {
     try { window.OF_MULTI_SEL = nums.slice(); } catch (_) {}
     try { ofSel = nums.length ? nums[nums.length - 1] : null; } catch (_) {}
@@ -71245,7 +71265,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (ev.target.classList.contains('dsc-chk-todos')) { var on = ev.target.checked; raiz.querySelectorAll('tbody tr').forEach(function (tr) { var n2 = tr.getAttribute('data-of'); if (on) E.sel[n2] = 1; else delete E.sel[n2]; }); setSel(Object.keys(E.sel)); render(); }
     });
     raiz.addEventListener('click', function (ev) {
-      var v = ev.target.closest('[data-v]'); if (v) { E.vista = v.getAttribute('data-v'); E.pagina = 1; salvarEstado(); render(); return; }
+      var v = ev.target.closest('[data-v]'); if (v) { E.vista = v.getAttribute('data-v'); E.pagina = 1; salvarEstado(); if (E.vista === 'canceladas') carregarCanc(true); render(); return; }
       var p = ev.target.closest('[data-p]'); if (p && !p.disabled) { E.pagina = +p.getAttribute('data-p'); render(); raiz.querySelector('.dsc-tabela-wrap').scrollTop = 0; return; }
       var o = ev.target.closest('th[data-ord]'); if (o) { var k = o.getAttribute('data-ord'); if (E.ordem === k) E.dir = -E.dir; else { E.ordem = k; E.dir = 1; } salvarEstado(); render(); return; }
       var b = ev.target.closest('[data-a]');
