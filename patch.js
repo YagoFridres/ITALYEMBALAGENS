@@ -73469,39 +73469,51 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<text x="' + (m - 10) + '" y="' + (m + h / 2).toFixed(1) + '" text-anchor="middle" font-size="13" fill="currentColor" transform="rotate(-90 ' + (m - 10) + ' ' + (m + h / 2).toFixed(1) + ')">' + n(H) + ' mm</text>'
       + '</svg>';
   }
-  var ult = '';
+  // 28/10: um lugar só — clicou na chapa, o desenho e as informações abrem logo abaixo dela (clicar de novo fecha)
+  var ult = '', aberto = '';
+  function painel(r) {
+    var ap = Number(r.aproveitamento_pct) || Math.max(0, 100 - (Number(r.desperdicio_pct) || 0)), pe = Number(r.desperdicio_pct) || 0;
+    var aPeca = (Number(r.piece_width_mm) || 0) * (Number(r.piece_height_mm) || 0) / 1e6, aCh = (Number(r.chapa_width_mm) || 0) * (Number(r.chapa_height_mm) || 0) / 1e6;
+    var info = [['Peças por chapa', n(r.pecas_por_chapa)], ['Grade', n(r.cols) + ' × ' + n(r.rows) + (/rot/i.test(r.orientacao_label || '') ? ' (peça girada 90°)' : '')], ['Peça', n(r.piece_width_mm) + ' × ' + n(r.piece_height_mm) + ' mm'], ['Chapa', n(r.chapa_width_mm) + ' × ' + n(r.chapa_height_mm) + ' mm'],
+      ['Área da peça', n(aPeca, 4) + ' m²'], ['Área da chapa', n(aCh, 4) + ' m²'], ['Estoque', n(r.estoque) + ' chapas'], ['Valor da chapa', r.valor_unitario != null ? 'R$ ' + n(r.valor_unitario, 2) : '—']];
+    if (r.chapas_necessarias != null) info.push(['Chapas para o pedido', n(r.chapas_necessarias)]);
+    if (r.custo_total != null || r.custo != null) info.push(['Custo estimado', 'R$ ' + n(r.custo_total != null ? r.custo_total : r.custo, 2)]);
+    return '<div class="dss-det-in"><div class="dss-det-svg"><div class="dss-leg"><span class="dss-az"><i></i>Azul = aproveitado <b>' + n(ap, 1) + '%</b></span><span class="dss-la"><i></i>Laranja = perdido <b>' + n(pe, 1) + '%</b></span></div><div class="dss-svg">' + svg(r) + '</div></div>'
+      + '<div class="dss-det-info"><div class="dss-tit"><b>' + esc(r.nome || 'Chapa') + '</b><span>' + esc([r.fornecedor, r.empresa || r.emp_nome, r.tamanho].filter(Boolean).join(' · ')) + '</span></div><dl>' + info.map(function (x) { return '<div><dt>' + x[0] + '</dt><dd>' + x[1] + '</dd></div>'; }).join('') + '</dl></div></div>';
+  }
   function tick() {
     var res = document.getElementById('simd-resultado'); if (!res || res.offsetParent === null) return;
     var wrap = document.getElementById('simd-tabela-wrap'); if (!wrap) return;
-    var linhas = window.__simdLastRows || [], sel = String(window.__simdSelectedRowId || '');
-    // monta as duas colunas: tabela + painel
-    var cols = res.querySelector('.dss-cols');
-    if (!cols) {
-      cols = document.createElement('div'); cols.className = 'dss-cols';
-      var esq = document.createElement('div'); esq.className = 'dss-esq';
-      var lado = document.createElement('div'); lado.className = 'dss-lado'; lado.id = 'ds-simd-lado';
-      wrap.parentNode.insertBefore(cols, wrap); esq.appendChild(wrap); cols.appendChild(lado); cols.appendChild(esq);
-    }
-    var lado2 = document.getElementById('ds-simd-lado');
-    var r = linhas.find(function (x) { return chave(x) === sel; }) || null;
-    var sig = sel + '|' + linhas.length + '|' + (r ? [r.cols, r.rows, r.chapa_width_mm, r.chapa_height_mm, r.piece_width_mm].join(',') : '');
-    if (sig === ult) return; ult = sig;
-    if (!r) { lado2.innerHTML = '<div class="dss-vazio">Clique numa chapa da lista para ver o desenho do corte.</div>'; return; }
-    var ap = Number(r.aproveitamento_pct) || Math.max(0, 100 - (Number(r.desperdicio_pct) || 0)), pe = Number(r.desperdicio_pct) || 0;
-    lado2.innerHTML = '<div class="dss-tit"><b>' + esc(r.nome || 'Chapa') + '</b><span>' + esc([r.fornecedor, r.tamanho].filter(Boolean).join(' · ')) + '</span></div>'
-      + '<div class="dss-leg"><span class="dss-az"><i></i>Azul = aproveitado <b>' + n(ap, 1) + '%</b></span><span class="dss-la"><i></i>Laranja = perdido <b>' + n(pe, 1) + '%</b></span></div>'
-      + '<div class="dss-svg">' + svg(r) + '</div>'
-      + '<div class="dss-num"><div><b>' + n(r.pecas_por_chapa) + '</b><span>peças por chapa</span></div><div><b>' + n(r.cols) + ' × ' + n(r.rows) + '</b><span>colunas × linhas</span></div>'
-      + '<div><b>' + n(r.piece_width_mm) + ' × ' + n(r.piece_height_mm) + '</b><span>peça (mm)' + (/rot/i.test(r.orientacao_label || '') ? ' · girada 90°' : '') + '</span></div>'
-      + (r.chapas_necessarias != null ? '<div><b>' + n(r.chapas_necessarias) + '</b><span>chapas para o pedido</span></div>' : '<div><b>' + n(r.estoque) + '</b><span>em estoque</span></div>') + '</div>';
+    // desfaz o layout antigo de duas colunas, se ainda estiver na tela
+    var cols = res.querySelector('.dss-cols'); if (cols) { cols.parentNode.insertBefore(wrap, cols); cols.remove(); }
     try { var old = document.getElementById('simd-visual'); if (old) old.style.setProperty('display', 'none', 'important'); } catch (_) {}
-    if (window.innerWidth < 1100 && window.__dssClicou) { window.__dssClicou = false; try { lado2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} }
+    var linhas = window.__simdLastRows || [];
+    var tr = aberto ? wrap.querySelector('tr[data-simd-row="' + (window.CSS && CSS.escape ? CSS.escape(aberto) : aberto) + '"]') : null;
+    var r = aberto ? linhas.find(function (x) { return chave(x) === aberto; }) : null;
+    var det = wrap.querySelector('tr.dss-det');
+    var sig = aberto + '|' + linhas.length + '|' + (r ? [r.cols, r.rows, r.chapa_width_mm, r.chapa_height_mm, r.piece_width_mm].join(',') : '');
+    if (!tr || !r) { if (det) det.remove(); ult = ''; return; }
+    if (det && det.previousElementSibling === tr && sig === ult) return;
+    ult = sig; if (det) det.remove();
+    det = document.createElement('tr'); det.className = 'dss-det';
+    var td = document.createElement('td'); td.colSpan = tr.children.length || 8; td.innerHTML = painel(r); det.appendChild(td);
+    tr.parentNode.insertBefore(det, tr.nextSibling);
+    if (window.__dssClicou) { window.__dssClicou = false; setTimeout(function () { try { det.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {} }, 60); }
   }
-  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#simd-tabela-wrap [data-simd-row]')) window.__dssClicou = true; }, true);
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest && e.target.closest('#simd-tabela-wrap tr[data-simd-row]'); if (!row) return;
+    var k = row.getAttribute('data-simd-row');
+    aberto = aberto === k ? '' : k; window.__dssClicou = !!aberto; ult = '';
+    setTimeout(tick, 30); setTimeout(tick, 250);
+  }, true);
   setInterval(tick, 400);
   try {
     var st = document.createElement('style'); st.id = 'ds-simd-lado-css';
-    st.textContent = '.dss-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:16px;align-items:start}.dss-esq{min-width:0;order:1}.dss-lado{order:2;position:sticky;top:12px;display:block!important}'
+    st.textContent = '#simd-visual{display:none!important}body > #page-simulador-desperdicio,body > .page-wrapper:empty{display:none!important}'
+      + 'tr.dss-det > td{padding:0!important;background:color-mix(in srgb,#2563eb 6%,var(--surface,#16181d))!important;border-top:0!important}tr.dss-det:hover > td{background:color-mix(in srgb,#2563eb 6%,var(--surface,#16181d))!important}'
+      + '.dss-det-in{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr);gap:18px;padding:16px 18px 18px;border-left:3px solid #2563eb;white-space:normal;cursor:default}'
+      + '.dss-det-info dl{margin:10px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:8px}.dss-det-info dl div{background:var(--s2,#0f1115);border:1px solid var(--border,#2a2a2a);border-radius:10px;padding:8px 10px}.dss-det-info dt{font-size:11.5px;color:var(--text2,#aaa)}.dss-det-info dd{margin:2px 0 0;font-size:15px;font-weight:700}'
+      + '@media (max-width:860px){.dss-det-in{grid-template-columns:1fr;padding:12px}}'
       + '#simd-tabela-wrap [data-simd-row]{cursor:pointer}#simd-tabela-wrap [data-simd-row].is-selected td{background:color-mix(in srgb,#2563eb 16%,transparent)!important}'
       + '.dss-lado{background:var(--surface,#16181d);border:1px solid var(--b2,#333);border-radius:14px;padding:14px;color:var(--text,#fff)}'
       + '.dss-vazio{color:var(--text2,#aaa);text-align:center;padding:40px 10px;font-size:14px}'
@@ -73871,6 +73883,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * clientes, OFs em aberto, comissão e as ações (programar visita, roteiro, editar). A agenda de visitas continua abaixo. */
 (function () {
   if (window.__dsVend) return; window.__dsVend = true;
+  // 28/10: sem agenda de visitas nesta área (filtros do topo e quadro da agenda escondidos)
+  try { var stV = document.createElement('style'); stV.textContent = '#page-vendedores > .ptoolbar{display:none!important}#page-vendedores .page-body > #ag-avisos,#page-vendedores .page-body > #ag-avisos ~ .sbox{display:none!important}'; (document.head || document.documentElement).appendChild(stV); } catch (_) {}
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var ATIVOS = null;
   function carregar() {
@@ -73894,7 +73908,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var clis = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : [];
     var ofs = Array.isArray(window.OFs) ? window.OFs : [];
     var hoje = new Date().toISOString().slice(0, 10);
-    var html = '<header class="dsv-head"><div><h1>Vendedores</h1><p>' + ATIVOS.length + ' vendedores ativos</p></div><div class="dsv-bts"><button type="button" class="dsv-b" onclick="abrirModalAgenda()">📅 Programar visita</button><button type="button" class="dsv-b dsv-pri" onclick="abrirModalVendedor()">+ Novo vendedor</button></div></header>'
+    var html = '<header class="dsv-head"><div><h1>Vendedores</h1><p>' + ATIVOS.length + ' vendedores ativos</p></div><div class="dsv-bts"><button type="button" class="dsv-b dsv-pri" onclick="abrirModalVendedor()">+ Novo vendedor</button></div></header>'
       + '<div class="dsv-grade">' + ATIVOS.map(function (v, i) {
         var nCli = clis.filter(function (c) { return String(c.vendId || c.vendedor_id || '') === String(v.id); }).length;
         var abertas = ofs.filter(function (o) { return String(o.vendId || o.vendedor_id || '') === String(v.id) && !/conclu|cancel/i.test(String(o.status || '')) && !o.deleted_at; });
@@ -73903,7 +73917,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         return '<article class="dsv-card" style="--c:' + cor + '"><header><span class="dsv-av">' + esc(iniciais(v.nome)) + '</span><div><h3>' + esc(v.nome) + '</h3><span>' + esc(v.codigo || '') + (v.codigo ? ' · ' : '') + 'Comissão ' + String(v.comissao_pct != null ? v.comissao_pct : '—').replace('.', ',') + '%</span></div></header>'
           + '<div class="dsv-nums"><div><b>' + nCli + '</b><span>clientes na carteira</span></div><div><b>' + abertas.length + '</b><span>OFs em aberto</span></div><div><b class="' + (atr ? 'dsv-atr' : '') + '">' + atr + '</b><span>atrasadas</span></div></div>'
           + (v.telefone || v.email ? '<div class="dsv-cont">' + (v.telefone ? '📞 ' + esc(v.telefone) : '') + (v.email ? ' ✉️ ' + esc(v.email) : '') + '</div>' : '')
-          + '<footer><button type="button" class="dsv-b" onclick="abrirModalAgenda(\'\', \'' + id + '\')">📅 Visita</button><button type="button" class="dsv-b" onclick="abrirRoteiroVisitasVendedor(\'' + id + '\')">🗺 Roteiro</button><button type="button" class="dsv-b" onclick="editarVendedor(\'' + id + '\')">✏ Editar</button></footer></article>';
+          + '<footer><button type="button" class="dsv-b" onclick="editarVendedor(\'' + id + '\')">✏ Editar</button></footer></article>';
       }).join('') + '</div>';
     if (r.__h !== html) { r.__h = html; r.innerHTML = html; }
   }
