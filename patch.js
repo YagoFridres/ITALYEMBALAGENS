@@ -75100,6 +75100,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function coresDe(p) { var c = p && p.cores; if (typeof c === 'string') { try { c = JSON.parse(c); } catch (_) { c = c.split(/\s*\+\s*|,\s*/); } } return (Array.isArray(c) ? c : []).map(function (x) { return String(x && x.nome || x || '').trim(); }).filter(Boolean); }
   function medida(p) { return coresDe(p).join(' + '); }
+  // 28/10: um produto pode servir para vários clientes
+  function clientesDe(p) {
+    var c = p && p.clientes; if (typeof c === 'string') { try { c = JSON.parse(c); } catch (_) { c = []; } }
+    var l = (Array.isArray(c) ? c : []).map(function (x) { return { id: String(x && x.id || '') || null, nome: String(x && x.nome || x || '').trim() }; }).filter(function (x) { return x.nome; });
+    if (!l.length && p && p.cliente_nome) l = [{ id: p.cliente_id || null, nome: p.cliente_nome }];
+    return l;
+  }
+  function doCliente(p, cliNorm) { return !!cliNorm && clientesDe(p).some(function (c) { return norm(c.nome) === cliNorm; }); }
   function coresDisp() { var l = []; try { l = typeof coresDisponiveis !== 'undefined' && Array.isArray(coresDisponiveis) && coresDisponiveis.length ? coresDisponiveis : (window.coresDisponiveis || []); } catch (_) { l = window.coresDisponiveis || []; } var v = {}; return l.filter(function (c) { var k = norm(c && c.nome); if (!k || v[k]) return false; v[k] = 1; return true; }); }
   function clientes() { try { return typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []; } catch (_) { return []; } }
   function ofsMem() { try { return typeof OFs !== 'undefined' && Array.isArray(OFs) ? OFs : []; } catch (_) { return []; } }
@@ -75135,10 +75143,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function desenharLista() {
     var box = document.querySelector('#dsp-raiz .dsp-lista'); if (!box) return;
-    var q = norm(E.busca), l = P.lista.filter(function (p) { return !q || norm([p.nome, medida(p), p.cliente_nome, p.observacao].join(' ')).indexOf(q) >= 0; });
+    var q = norm(E.busca), l = P.lista.filter(function (p) { return !q || norm([p.nome, medida(p), clientesDe(p).map(function (c) { return c.nome; }).join(' ')].join(' ')).indexOf(q) >= 0; });
     var c = document.querySelector('#dsp-raiz .dsp-cont'); if (c) c.textContent = l.length + ' de ' + P.lista.length;
-    box.innerHTML = l.length ? '<div class="dsp-tw"><table class="dsp-t" data-no-mobile-cards="1"><thead><tr><th>Produto</th><th>Cores</th><th>Cliente</th><th></th></tr></thead><tbody>'
-      + l.map(function (p) { return '<tr data-id="' + esc(p.id) + '"><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Cliente">' + (esc(p.cliente_nome) || '—') + '</td><td class="dsp-ac"><button type="button" class="dsp-btn" data-a="editar">Editar</button><button type="button" class="dsp-btn dsp-no" data-a="excluir">Excluir</button></td></tr>'; }).join('') + '</tbody></table></div>'
+    box.innerHTML = l.length ? '<div class="dsp-tw"><table class="dsp-t" data-no-mobile-cards="1"><thead><tr><th>Produto</th><th>Cores</th><th>Clientes</th><th></th></tr></thead><tbody>'
+      + l.map(function (p) { return '<tr data-id="' + esc(p.id) + '"><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Clientes">' + (esc(clientesDe(p).map(function (c) { return c.nome; }).join(', ')) || '<span class="dsp-mut">Qualquer cliente</span>') + '</td><td class="dsp-ac"><button type="button" class="dsp-btn" data-a="editar">Editar</button><button type="button" class="dsp-btn dsp-no" data-a="excluir">Excluir</button></td></tr>'; }).join('') + '</tbody></table></div>'
       : '<div class="dsp-vazio">' + (P.lista.length ? 'Nenhum produto encontrado.' : 'Nenhum produto cadastrado ainda. Use “Novo produto” ou “Trazer produtos das OFs”.') + '</div>';
   }
   function formulario(p) {
@@ -75148,19 +75156,33 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ov.innerHTML = '<form class="dsp-m" autocomplete="off"><header><h2>' + (p && p.id ? 'Editar produto' : 'Novo produto') + '</h2><button type="button" class="dsp-x" data-x="1" aria-label="Fechar">✕</button></header>'
       + '<label class="dsp-f"><span>Nome do produto *</span><input class="dsp-in" name="nome" required value="' + esc(p && p.nome || '') + '" placeholder="Ex.: PIZZA 40X40"></label>'
       + '<div class="dsp-f"><span>Cores (opcional)</span><div class="dsp-cores">' + coresDisp().map(function (c) { var on = coresDe(p).some(function (x) { return norm(x) === norm(c.nome); }); return '<button type="button" class="dsp-cor' + (on ? ' on' : '') + '" data-cor="' + esc(c.nome) + '"><i style="background:' + esc(c.hex || 'transparent') + '"></i>' + esc(c.nome) + '</button>'; }).join('') + '</div></div>'
-      + '<label class="dsp-f"><span>Cliente (opcional)</span><input class="dsp-in" name="cliente_nome" list="dsp-cli-list" value="' + esc(p && p.cliente_nome || '') + '" placeholder="Deixe vazio se serve para qualquer cliente"><datalist id="dsp-cli-list">' + clientes().slice(0, 3000).map(function (c) { return '<option value="' + esc(c.nome || c.rs || '') + '">'; }).join('') + '</datalist></label>'
+      + '<div class="dsp-f"><span>Clientes (opcional — vazio serve para qualquer cliente)</span><div class="dsp-clis"></div><input class="dsp-in" name="cli_add" list="dsp-cli-list" placeholder="Digite o cliente e tecle Enter para adicionar" autocomplete="off"><datalist id="dsp-cli-list">' + clientes().slice(0, 3000).map(function (c) { return '<option value="' + esc(c.nome || c.rs || '') + '">'; }).join('') + '</datalist></div>'
       + '<footer><button type="button" class="dsp-btn" data-x="1">Cancelar</button><button type="submit" class="dsp-btn dsp-pri">Salvar</button></footer></form>';
     document.body.appendChild(ov);
-    ov.addEventListener('click', function (e) { var cb = e.target.closest('.dsp-cor'); if (cb) { cb.classList.toggle('on'); return; } if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
+    E.clis = clientesDe(p || {}).slice();
+    function desenharClis() { ov.querySelector('.dsp-clis').innerHTML = E.clis.map(function (c, i) { return '<span class="dsp-chip">' + esc(c.nome) + '<button type="button" data-rmcli="' + i + '" aria-label="Remover">×</button></span>'; }).join(''); }
+    function addCli(inp) {
+      var v = String(inp.value || '').trim(); if (!v) return;
+      var c = clientes().find(function (x) { return norm(x.nome || x.rs) === norm(v); });
+      var nome = c ? (c.nome || c.rs) : v;
+      if (!E.clis.some(function (x) { return norm(x.nome) === norm(nome); })) E.clis.push({ id: c ? String(c.id) : null, nome: nome });
+      inp.value = ''; desenharClis();
+    }
+    desenharClis();
+    var ci = ov.querySelector('[name="cli_add"]');
+    ci.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addCli(ci); } });
+    ci.addEventListener('change', function () { if (clientes().some(function (x) { return norm(x.nome || x.rs) === norm(ci.value); })) addCli(ci); });
+    ov.addEventListener('click', function (e) { var rc = e.target.closest('[data-rmcli]'); if (rc) { E.clis.splice(+rc.getAttribute('data-rmcli'), 1); desenharClis(); return; } var cb = e.target.closest('.dsp-cor'); if (cb) { cb.classList.toggle('on'); return; } if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
     ov.querySelector('form').addEventListener('submit', salvar);
     setTimeout(function () { var i = ov.querySelector('[name="nome"]'); if (i) i.focus(); }, 40);
   }
   function salvar(e) {
     var f = e.target.closest('form'); if (!f || !f.closest('#dsp-ov')) return; e.preventDefault();
-    var d = {}; ['nome', 'cliente_nome'].forEach(function (k) { d[k] = f.querySelector('[name="' + k + '"]').value; });
+    var d = { nome: f.querySelector('[name="nome"]').value };
+    var pend = f.querySelector('[name="cli_add"]'); if (pend && String(pend.value || '').trim()) { var cp = clientes().find(function (x) { return norm(x.nome || x.rs) === norm(pend.value); }); var nm = cp ? (cp.nome || cp.rs) : String(pend.value).trim(); if (!E.clis.some(function (x) { return norm(x.nome) === norm(nm); })) E.clis.push({ id: cp ? String(cp.id) : null, nome: nm }); }
+    d.clientes = (E.clis || []).slice(); d.cliente_nome = d.clientes.length === 1 ? d.clientes[0].nome : null; d.cliente_id = d.clientes.length === 1 ? d.clientes[0].id : null;
     d.cores = Array.prototype.map.call(f.querySelectorAll('.dsp-cor.on'), function (b) { return b.getAttribute('data-cor'); });
     d.nome = String(d.nome || '').trim(); if (!d.nome) return;
-    var c = clientes().find(function (x) { return norm(x.nome || x.rs) === norm(d.cliente_nome); }); d.cliente_id = c ? String(c.id) : null;
     var dup = P.lista.find(function (x) { return norm(x.nome) === norm(d.nome) && (!E.ed || x.id !== E.ed.id); });
     if (dup) { try { window.toast('Já existe um produto com esse nome', 'var(--yellow)'); } catch (_) {} return; }
     var b = f.querySelector('[type="submit"]'); b.disabled = true; b.textContent = 'Salvando…';
@@ -75195,7 +75217,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (k === 'todos') { ov.querySelectorAll('.dsp-imp label:not([hidden]) input').forEach(function (c) { c.checked = true; }); return contar(); }
       if (k === 'nenhum') { ov.querySelectorAll('.dsp-imp input').forEach(function (c) { c.checked = false; }); return contar(); }
       if (k === 'gravar') {
-        var lote = Array.prototype.map.call(ov.querySelectorAll('.dsp-imp input:checked'), function (c) { var x = l[+c.value]; return { nome: x.nome, cores: x.cores, cliente_nome: x.cli || null, cliente_id: x.cid || null }; });
+        var lote = Array.prototype.map.call(ov.querySelectorAll('.dsp-imp input:checked'), function (c) { var x = l[+c.value]; return { nome: x.nome, cores: x.cores, cliente_nome: x.cli || null, cliente_id: x.cid || null, clientes: x.cli ? [{ id: x.cid ? String(x.cid) : null, nome: x.cli }] : [] }; });
         if (!lote.length) return;
         a.disabled = true; a.textContent = 'Cadastrando…';
         req('POST', '/api/produtos-cadastro', { lote: lote }).then(function () { ov.remove(); try { window.dsPop && window.dsPop(lote.length + ' produto' + (lote.length > 1 ? 's' : '') + ' cadastrado' + (lote.length > 1 ? 's' : ''), '', 'ok'); } catch (_) {} return carregar(true); }).then(desenharLista)
@@ -75219,13 +75241,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var sugBox = null;
   function fecharSug() { if (sugBox) { sugBox.remove(); sugBox = null; } }
   function achar(txt) {
-    var q = norm(txt); if (!q) return [];
+    var q = norm(txt);
     var cli = norm((document.getElementById('of-r-cliente') || {}).value || '');
+    if (!q) return cli ? P.lista.filter(function (p) { return doCliente(p, cli); }).sort(function (a, b) { return a.nome.localeCompare(b.nome); }).slice(0, 30) : [];
     var l = P.lista.filter(function (p) { return norm(p.nome).indexOf(q) >= 0; });
     l.sort(function (a, b) {
       var pa = norm(a.nome).indexOf(q) === 0 ? 0 : 1, pb = norm(b.nome).indexOf(q) === 0 ? 0 : 1;
-      var ca = cli && norm(a.cliente_nome) === cli ? 0 : 1, cb = cli && norm(b.cliente_nome) === cli ? 0 : 1;
-      return pa - pb || ca - cb || a.nome.length - b.nome.length || a.nome.localeCompare(b.nome);
+      var ca = doCliente(a, cli) ? 0 : 1, cb = doCliente(b, cli) ? 0 : 1;
+      return ca - cb || pa - pb || a.nome.length - b.nome.length || a.nome.localeCompare(b.nome);
     });
     return l.slice(0, 12);
   }
@@ -75234,9 +75257,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     inp.__dsProdSet = true; try { inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} inp.__dsProdSet = false; fecharSug();
     // cliente do produto (se o campo estiver vazio)
     var ci = document.getElementById('of-r-cliente');
-    if (ci && p.cliente_nome && !String(ci.value || '').trim()) {
-      ci.value = p.cliente_nome;
-      try { var hid = document.getElementById('of-r-cliente-id'); if (hid && p.cliente_id) hid.value = p.cliente_id; } catch (_) {}
+    var cl1 = clientesDe(p);
+    if (ci && cl1.length === 1 && !String(ci.value || '').trim()) {
+      ci.value = cl1[0].nome;
+      try { var hid = document.getElementById('of-r-cliente-id'); if (hid && cl1[0].id) hid.value = cl1[0].id; } catch (_) {}
       try { ci.dispatchEvent(new Event('input', { bubbles: true })); ci.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
     }
     // cores do produto (se ainda não escolheu nenhuma)
@@ -75258,7 +75282,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     // dentro do próprio campo (o modal da OF usa zoom, então posição fixa na tela sairia deslocada)
     var pai = inp.parentNode; if (getComputedStyle(pai).position === 'static') pai.style.position = 'relative';
     sugBox.style.left = inp.offsetLeft + 'px'; sugBox.style.top = (inp.offsetTop + inp.offsetHeight + 4) + 'px'; sugBox.style.width = inp.offsetWidth + 'px';
-    sugBox.innerHTML = l.map(function (p, i) { return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : '') + '><b>' + esc(p.nome) + '</b><span>' + esc([medida(p), p.cliente_nome].filter(Boolean).join(' · ')) + '</span></button>'; }).join('');
+    sugBox.innerHTML = (!String(inp.value || '').trim() ? '<div class="dsp-sug-h">Produtos deste cliente</div>' : '') + l.map(function (p, i) { return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : '') + '><b>' + esc(p.nome) + '</b><span>' + esc([medida(p), clientesDe(p).map(function (c) { return c.nome; }).join(', ')].filter(Boolean).join(' · ')) + '</span></button>'; }).join('');
     sugBox.addEventListener('mousedown', function (e) { var b = e.target.closest('[data-i]'); if (!b) return; e.preventDefault(); escolher(inp, l[+b.getAttribute('data-i')]); });
     sugBox.__l = l;
     pai.appendChild(sugBox);
@@ -75286,6 +75310,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (e.key === 'Enter' || e.key === 'Tab') { var sel = inp.selectionStart !== inp.selectionEnd; if (at >= 0 && (sel || e.key === 'Enter')) { if (e.key === 'Enter') e.preventDefault(); escolher(inp, sugBox.__l[at]); } else fecharSug(); return; }
     if (e.key === 'Escape') { fecharSug(); try { inp.setSelectionRange(inp.selectionStart, inp.selectionStart); } catch (_) {} }
   }, true);
+  document.addEventListener('focusin', function (e) {
+    var inp = e.target; if (!inp || inp.id !== 'of-r-produto' || String(inp.value || '').trim()) return;
+    carregar().then(function () { if (document.activeElement === inp && !String(inp.value || '').trim()) mostrarSug(inp, achar('')); });
+  }, true);
   document.addEventListener('focusout', function (e) { if (e.target && e.target.id === 'of-r-produto') setTimeout(fecharSug, 150); }, true);
   // ---------- ligar ----------
   function vigiar() {
@@ -75307,8 +75335,77 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsp-m header{display:flex;justify-content:space-between;align-items:center}.dsp-m h2{margin:0;font-size:18px}.dsp-x{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer}.dsp-sub{margin:0;color:var(--text2);font-size:13px}'
     + '.dsp-f{display:flex;flex-direction:column;gap:5px}.dsp-f>span{font-size:12px;font-weight:600;color:var(--text2)}.dsp-cores{display:flex;flex-wrap:wrap;gap:6px}.dsp-cor{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--b2);background:var(--bg);color:var(--text2);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dsp-cor i{width:12px;height:12px;border-radius:50%;border:1px solid var(--b2)}.dsp-cor.on{background:var(--accent);border-color:var(--accent);color:#fff}.dsp-m footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}.dsp-sel{margin-right:auto;font-size:12.5px;color:var(--text2)}'
     + '.dsp-imp{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px}.dsp-imp label{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}.dsp-imp label:hover{background:var(--s2)}.dsp-imp label[hidden]{display:none}.dsp-imp input{width:18px;height:18px;margin-top:2px}.dsp-imp b{display:block;font-size:13.5px}.dsp-imp small{color:var(--text3);font-size:12px}'
-    + '.dsp-sug{position:absolute;z-index:100001;max-height:280px;overflow:auto;background:var(--surface);border:1px solid var(--b2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.35);display:flex;flex-direction:column}.dsp-sug button{text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;cursor:pointer}.dsp-sug button.on,.dsp-sug button:hover{background:color-mix(in srgb,var(--accent) 14%,var(--surface))}.dsp-sug b{display:block;font-size:13.5px}.dsp-sug span{font-size:11.5px;color:var(--text3)}'
+    + '.dsp-sug{position:absolute;z-index:100001;max-height:280px;overflow:auto;background:var(--surface);border:1px solid var(--b2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.35);display:flex;flex-direction:column}.dsp-sug button{text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;cursor:pointer}.dsp-sug button.on,.dsp-sug button:hover{background:color-mix(in srgb,var(--accent) 14%,var(--surface))}.dsp-sug b{display:block;font-size:13.5px}.dsp-sug span{font-size:11.5px;color:var(--text3)}.dsp-sug-h{padding:6px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}.dsp-clis{display:flex;flex-wrap:wrap;gap:6px}.dsp-clis:empty{display:none}.dsp-chip{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 4px 0 12px;border-radius:99px;background:color-mix(in srgb,var(--accent) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);font-size:13px;font-weight:600}.dsp-chip button{width:24px;height:24px;border-radius:50%;border:0;background:transparent;color:var(--text2);cursor:pointer;font-size:16px}.dsp-mut{color:var(--text3)}'
     + '@media (max-width:640px){.dsp-head .dsp-acoes{width:100%}.dsp-head .dsp-btn{flex:1;height:44px}.dsp-g3{grid-template-columns:1fr 1fr 1fr}#dsp-ov{padding:0;align-items:flex-end}.dsp-m{border-radius:16px 16px 0 0;max-height:92vh}.dsp-m footer .dsp-btn{flex:1;height:44px}'
     + '.dsp-t thead{display:none}.dsp-t,.dsp-t tbody{display:block}.dsp-t tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 12px;border-top:1px solid var(--border)}.dsp-t td{display:block;padding:0;border:0}.dsp-t td::before{content:attr(data-l);display:block;font-size:11px;color:var(--text3)}.dsp-t td.dsp-ac{grid-column:1 / -1;text-align:left}.dsp-t td.dsp-ac::before{content:none}.dsp-ac .dsp-btn{margin:4px 6px 0 0;height:38px}}';
   try { var st = document.createElement('style'); st.id = 'ds-produtos-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
+
+/* ===== OF RÁPIDA: "Sem papelão" já na criação (28/10/2026) =====
+ * Abaixo das datas: liga "Sem papelão" → marca se o papelão já foi comprado e a previsão de chegada.
+ * Grava nos mesmos campos usados em OFs por Máquina (sem_papel, papel_comprado, previsao_entrega_papel). */
+(function () {
+  if (window.__dsOfPapel) return; window.__dsOfPapel = true;
+  function editId() { try { return String(typeof window.__getOfRapidaEditingId === 'function' ? window.__getOfRapidaEditingId() : (window._ofRapidaEditandoId || '')).trim(); } catch (_) { return ''; } }
+  function ofsMem() { try { return typeof OFs !== 'undefined' && Array.isArray(OFs) ? OFs : []; } catch (_) { return []; } }
+  function sim(v) { return v === true || v === 1 || String(v || '').toLowerCase() === 'true' || String(v || '') === '1'; }
+  function montar() {
+    var ped = document.getElementById('of-r-pedido'); if (!ped) return;
+    var grade = ped.parentNode && ped.parentNode.parentNode; if (!grade || document.getElementById('dsop-papel')) return;
+    var id = editId(), o = id ? ofsMem().find(function (x) { return String(x.id) === id; }) : null;
+    var sem = !!(o && (sim(o.sem_papel) || sim(o.sem_papelao))), comp = !!(o && sim(o.papel_comprado)), prev = String(o && o.previsao_entrega_papel || '').slice(0, 10);
+    var d = document.createElement('div'); d.id = 'dsop-papel';
+    d.innerHTML = '<label class="dsop-sw"><input type="checkbox" id="dsop-sem"' + (sem ? ' checked' : '') + '><span class="dsop-tr"></span><span><b>Sem papelão</b><small>marque se esta OF ainda não tem papelão em estoque</small></span></label>'
+      + '<div class="dsop-det"' + (sem ? '' : ' hidden') + '><label class="dsop-ck"><input type="checkbox" id="dsop-comprado"' + (comp || !o ? ' checked' : '') + '> Papelão já foi comprado</label>'
+      + '<label class="dsop-dt"><span>Previsão de chegada</span><input type="date" id="dsop-prev" value="' + prev + '"></label></div>';
+    grade.parentNode.insertBefore(d, grade.nextSibling);
+    d.querySelector('#dsop-sem').addEventListener('change', function (e) { d.querySelector('.dsop-det').hidden = !e.target.checked; if (e.target.checked) setTimeout(function () { d.querySelector('#dsop-prev').focus(); }, 30); });
+  }
+  function dados() {
+    var sem = document.getElementById('dsop-sem'); if (!sem) return null;
+    if (!sem.checked) return { sem_papel: false };
+    var prev = String((document.getElementById('dsop-prev') || {}).value || '').slice(0, 10);
+    var r = { sem_papel: true, papel_comprado: !!(document.getElementById('dsop-comprado') || {}).checked };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(prev)) r.previsao_entrega_papel = prev;
+    return r;
+  }
+  // criação: depois que a OF é criada, grava os dados do papelão nela; edição: vai junto no mesmo salvamento
+  var f0 = window.fetch;
+  window.fetch = function (input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '', met = String((init && init.method) || 'GET').toUpperCase();
+    var p = f0.apply(this, arguments);
+    try {
+      var path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+      if (met === 'POST' && path === '/api/ofs' && document.getElementById('dsop-sem')) {
+        var d = dados();
+        if (d && d.sem_papel) p.then(function (r) { if (!r || !r.ok) return; r.clone().json().then(function (j) {
+          var o = j && (j.data || j.of || j); var id = o && o.id; if (!id) return;
+          var h = { 'Content-Type': 'application/json' }; try { h.Authorization = 'Bearer ' + localStorage.getItem('token'); } catch (_) {}
+          f0((window.API_BASE || '') + '/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', headers: h, body: JSON.stringify(Object.assign({ _allow_partial: '1' }, d)) }).then(function () {
+            try { if (typeof window.carregarOFsUnico === 'function') window.carregarOFsUnico(true); } catch (_) {}
+          });
+        }).catch(function () {}); });
+      }
+    } catch (_) {}
+    return p;
+  };
+  // na edição, entra no corpo do PATCH (antes do completar da edição)
+  var f1 = window.fetch;
+  window.fetch = function (input, init) {
+    try {
+      var url = typeof input === 'string' ? input : (input && input.url) || '', met = String((init && init.method) || '').toUpperCase();
+      if (met === 'PATCH' && /\/api\/ofs\/[0-9a-f-]{36}(\?|$)/i.test(url) && init && typeof init.body === 'string' && document.getElementById('dsop-sem') && editId() && url.indexOf(editId()) >= 0) {
+        var b = JSON.parse(init.body); if (b && b._allow_partial && !('sem_papel' in b)) { var d = dados(); if (d) { if (!d.sem_papel) { d.papel_comprado = false; } init = Object.assign({}, init, { body: JSON.stringify(Object.assign(b, d)) }); return f1.call(this, input, init); } }
+      }
+    } catch (_) {}
+    return f1.apply(this, arguments);
+  };
+  setInterval(montar, 400);
+  var css = '#dsop-papel{margin-top:10px;display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.02)}'
+    + '.dsop-sw{display:flex;align-items:center;gap:10px;cursor:pointer}.dsop-sw input{position:absolute;opacity:0;width:0;height:0}.dsop-tr{flex:0 0 38px;height:22px;border-radius:99px;background:rgba(255,255,255,.15);position:relative;transition:.15s}.dsop-tr::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}'
+    + '.dsop-sw input:checked+.dsop-tr{background:#f59e0b}.dsop-sw input:checked+.dsop-tr::after{left:19px}.dsop-sw b{display:block;font-size:13px;color:#e8f0fe}.dsop-sw small{display:block;font-size:11px;color:rgba(255,255,255,.45)}'
+    + '.dsop-det{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.dsop-det[hidden]{display:none}.dsop-ck{display:flex;align-items:center;gap:6px;font-size:13px;color:#e8f0fe;cursor:pointer;height:40px}.dsop-ck input{width:17px;height:17px}'
+    + '.dsop-dt{display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px}.dsop-dt span{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em}.dsop-dt input{background:#080c14;border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:10px;color:#e8f0fe;font-size:13px;font-family:inherit}'
+    + 'html[data-theme="light"] #dsop-papel{border-color:var(--border);background:var(--s2)}html[data-theme="light"] .dsop-sw b,html[data-theme="light"] .dsop-ck{color:var(--text)}html[data-theme="light"] .dsop-dt input{background:var(--bg);color:var(--text);border-color:var(--b2)}';
+  try { var st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
