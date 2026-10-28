@@ -74589,7 +74589,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.isComposing) return;
     var t = e.target, root = t && t.closest && t.closest('.ccpx-fs-shell'); if (!root) return;
-    if (!/^(INPUT|SELECT)$/.test(t.tagName) || /^(button|submit|checkbox|radio|file)$/i.test(t.type || '')) return;
+    if (!/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) || /^(button|submit|checkbox|radio|file)$/i.test(t.type || '')) return; // nas observações, Shift+Enter quebra a linha
     if (t.getAttribute('aria-expanded') === 'true') return;
     var campos = Array.prototype.filter.call(root.querySelectorAll('input, select, textarea'), function (x) {
       return !x.disabled && !x.readOnly && x.type !== 'hidden' && x.type !== 'file' && x.type !== 'checkbox' && x.offsetParent !== null && x.tabIndex !== -1;
