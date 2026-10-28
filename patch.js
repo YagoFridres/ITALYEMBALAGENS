@@ -74908,3 +74908,64 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.doe-des summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:600}.doe-des img{display:block;max-width:100%;margin-top:8px;background:#fff;border-radius:8px;padding:8px;box-sizing:border-box}.doe-tit-cx{font-size:11.5px;color:var(--text3);letter-spacing:.03em}';
   try { var st = document.createElement('style'); st.id = 'ds-orc-ed-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
+
+/* ===== EDITAR OF (OF Rápida em modo edição): grava tudo o que está na tela (28/10/2026) =====
+ * O salvar da edição mandava só parte dos campos: Referência, Dia do Pedido, Urgente, Total digitado e troca de
+ * cliente pelo nome não iam; e os itens da OF (de onde a lista lê a quantidade) ficavam com o valor antigo, então
+ * a OF parecia "não alterada". Aqui completamos a mesma gravação (PATCH /api/ofs/:id) com esses campos. */
+(function () {
+  if (window.__dsOfEditCompleta) return; window.__dsOfEditCompleta = true;
+  function val(id) { var e = document.getElementById(id); return e ? String(e.value == null ? '' : e.value).trim() : null; }
+  function num(v) { var x = parseFloat(String(v || '').replace(',', '.')); return isFinite(x) ? x : 0; }
+  function ofsMem() { try { return typeof OFs !== 'undefined' && Array.isArray(OFs) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
+  function completar(id, b) {
+    var o = ofsMem().find(function (x) { return String(x && x.id) === String(id); }) || {};
+    var cliNome = val('of-r-cliente');
+    if (cliNome) {
+      var lista = []; try { lista = typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []; } catch (_) {}
+      var c = lista.find(function (x) { return String(x && (x.nome || x.razao_social || x.razao || x.rs) || '').trim().toLowerCase() === cliNome.toLowerCase(); });
+      if (c && c.id) { b.cli_id = b.cliId = b.cliente_id = String(c.id); }
+    }
+    var ped = val('of-r-pedido'); if (ped) { b.data_pedido = ped.slice(0, 10); b.dia = ped.slice(0, 10); }
+    var u = document.getElementById('of-r-urgente'); if (u) { b.urg = !!u.checked; b.urgente = !!u.checked; }
+    var qtd = b.qtd != null ? Number(b.qtd) : num(val('of-r-qtd')), vu = b.valor_unitario != null ? Number(b.valor_unitario) : num(val('of-r-vlunit'));
+    var tot = num(val('of-r-total')); if (!(tot > 0)) tot = qtd * vu;
+    if (tot > 0) { b.valor_total = tot; b.valor_venda = tot; }
+    var ref = val('of-r-ref');
+    var itens = []; try { itens = JSON.parse(JSON.stringify(Array.isArray(o.itens) ? o.itens : [])); } catch (_) { itens = []; }
+    var i0 = itens[0] && typeof itens[0] === 'object' ? itens[0] : {};
+    var prod = b.produto || val('of-r-produto') || i0.desc || i0.descricao || '';
+    Object.assign(i0, { desc: prod, descricao: prod, ref: ref != null ? ref : (i0.ref || ''), qtd: qtd, quantidade: qtd, vunit: vu, valor_unitario: vu, valor_total: tot });
+    if (b.maquina) i0.maquina = b.maquina;
+    if (Array.isArray(b.cores_impressao) && b.cores_impressao.length) i0.cores_impressao = b.cores_impressao;
+    if (b.comprimento != null) { i0.comp = b.comprimento; i0.comprimento = b.comprimento; }
+    if (b.largura != null) { i0.larg = b.largura; i0.largura = b.largura; }
+    itens[0] = i0;
+    try { if (typeof window.coletarItensAdicionais === 'function') { var ad = window.coletarItensAdicionais(); if (Array.isArray(ad) && ad.length) itens = [i0].concat(ad); } } catch (_) {}
+    b.itens = itens;
+    return b;
+  }
+  var f0 = window.fetch;
+  window.fetch = function (input, init) {
+    try {
+      var met = String((init && init.method) || '').toUpperCase(), url = typeof input === 'string' ? input : (input && input.url) || '';
+      var m = url.match(/\/api\/ofs\/([0-9a-f-]{36})(?:\?|$)/i);
+      var ctx = window.__dsOfEditCtx;
+      if (met === 'PATCH' && m && ctx && ctx.id === m[1] && Date.now() - ctx.t < 15000 && init && typeof init.body === 'string') {
+        var b = JSON.parse(init.body);
+        if (b && b._allow_partial) { window.__dsOfEditCtx = null; init = Object.assign({}, init, { body: JSON.stringify(completar(m[1], b)) }); return f0.call(this, input, init); }
+      }
+    } catch (e) { try { console.warn('[OF-EDIT-COMPLETA]', e); } catch (_) {} }
+    return f0.apply(this, arguments);
+  };
+  function inst() {
+    var s0 = window.salvarEdicaoOf; if (typeof s0 !== 'function' || s0.__dsCompleta) return;
+    var w = function () {
+      var id = ''; try { id = typeof window.__getOfRapidaEditingId === 'function' ? window.__getOfRapidaEditingId() : String(window._ofRapidaEditandoId || ''); } catch (_) {}
+      window.__dsOfEditCtx = { id: String(id || '').trim(), t: Date.now() };
+      return s0.apply(this, arguments);
+    };
+    w.__dsCompleta = true; window.salvarEdicaoOf = w;
+  }
+  inst(); setInterval(inst, 2000);
+})();
