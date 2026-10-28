@@ -74347,19 +74347,35 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * (por isso o OCRE foi cadastrado mais de uma vez). Agora a lista sempre busca a versão atual. */
 (function () {
   if (window.__dsCoresNovas) return; window.__dsCoresNovas = true;
+  // 28/10: passa pelo carregador original (que avisa a OF Rápida que as cores ficaram prontas), sempre buscando do
+  // servidor (cor nova aparece na hora) e tirando nomes repetidos.
+  function dedupe(rows) { var v = {}; return (Array.isArray(rows) ? rows : []).filter(function (c) { var k = String(c && c.nome || '').trim().toLowerCase(); if (!k || v[k] || c.ativo === false) return false; v[k] = 1; return true; }); }
+  function aplicar(rows) {
+    try { coresDisponiveis = rows; } catch (_) {} window.coresDisponiveis = rows;
+    try { if (window._coresCache) Object.keys(window._coresCache).forEach(function (k) { window._coresCache[k] = rows.slice(); }); } catch (_) {}
+    try { var st = window.__ofRapidaCoresState; if (st && st.status === 'loading') window.__ofRapidaCoresState = { status: 'ready', error: '', empId: st.empId || '' }; } catch (_) {}
+    try {
+      var g = document.getElementById('seletorCoresOFRapida');
+      if (g && /Carregando cores/.test(g.textContent || '') && typeof window.renderSeletorCores === 'function') window.renderSeletorCores('seletorCoresOFRapida', window.coresSelecionadasOFRapida || (typeof coresSelecionadasOFRapida !== 'undefined' ? coresSelecionadasOFRapida : []));
+      var lb = document.getElementById('btnCoresLabelRapida'); if (lb && /Carregando/.test(lb.textContent || '')) lb.textContent = 'Selecionar cores';
+    } catch (_) {}
+    return rows;
+  }
   function inst() {
     var c0 = window.carregarCoresImpressao; if (typeof c0 !== 'function' || c0.__dsCor) return;
-    var w = async function (empIdOverride) {
-      try {
-        var r = await fetch((window.API_BASE || '') + '/api/cores-impressao?t=' + Date.now(), { cache: 'no-store', headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } });
-        var j = await r.json(); var rows = Array.isArray(j) ? j : (j && j.data) || [];
-        var vistos = {}; rows = rows.filter(function (c) { var k = String(c.nome || '').trim().toLowerCase(); if (!k || vistos[k]) return false; vistos[k] = 1; return c.ativo !== false; });
-        try { coresDisponiveis = rows; } catch (_) {} window.coresDisponiveis = rows;
-        return rows;
-      } catch (e) { return c0.apply(this, arguments); }
+    var w = function (empIdOverride, opts) {
+      var o = Object.assign({}, opts || {}, { force: true });
+      return Promise.resolve(c0.call(this, empIdOverride, o)).then(function (rows) { return aplicar(dedupe(rows && rows.length ? rows : window.coresDisponiveis)); });
     };
-    w.__dsCor = true; window.carregarCoresImpressao = w;
+    w.__dsCor = true; w._patchWithCache = c0._patchWithCache; window.carregarCoresImpressao = w;
   }
+  // rede de segurança: se a OF Rápida ficar presa em "Carregando cores...", carrega de novo
+  setInterval(function () {
+    var g = document.getElementById('seletorCoresOFRapida'); if (!g || !g.offsetParent || !/Carregando cores/.test(g.textContent || '')) { window.__dsCorPreso = 0; return; }
+    if ((window.__dsCorPreso = (window.__dsCorPreso || 0) + 1) % 3 !== 0) return;
+    if (window.coresDisponiveis && window.coresDisponiveis.length) aplicar(dedupe(window.coresDisponiveis));
+    else try { window.carregarCoresImpressao(); } catch (_) {}
+  }, 1000);
   inst(); setInterval(inst, 2000);
 })();
 
