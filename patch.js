@@ -7294,6 +7294,8 @@ window._compraPapelaoFmtMoney = function(v) {
 };
 window._compraPapelaoFmtDate = function(v) {
   if (!v) return '—';
+  // 28/10: data sem hora ("2026-09-21") é o dia certo; sem isto o fuso jogava para o dia anterior
+  try { var mD = String(v).match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T00:00:00(?:\.0+)?(?:Z|\+00:00)?$)/); if (mD) return mD[3] + '/' + mD[2] + '/' + mD[1]; } catch (_) {}
   try {
     return new Date(v).toLocaleDateString('pt-BR');
   } catch (_) {
@@ -9266,7 +9268,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '.header .info.full{grid-column:1 / -1}'
     + '.header .info .lbl{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#bfdbfe;margin-bottom:3px}'
     + '.header .info .val{font-size:14px;font-weight:900;color:#fff;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '.meta4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}'
+    + '.meta4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}'
     + '.meta-card{border:1px solid #cbd5e1;background:#f8fafc;padding:10px 12px;border-radius:10px;min-height:62px;position:relative;overflow:hidden}'
     + '.meta-card::before{content:\'\';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,#1e3a8a)}'
     + '.meta-card .lbl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#475569}'
@@ -9305,9 +9307,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '</div>'
     + '<div class="meta4">'
     + '  <div class="meta-card"><div class="lbl">Pedido do Fornecedor</div><div class="vl">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div>'
-    + '  <div class="meta-card"><div class="lbl">Status</div><div class="vl">' + window._compraPapelaoEsc(String(data.status || 'Aberto')) + '</div></div>'
-    + '  <div class="meta-card"><div class="lbl">Pasta / Grupo</div><div class="vl">' + window._compraPapelaoEsc(String(data.pasta_id && data.pasta_nome ? data.pasta_nome : (data.pasta_id ? data.pasta_id : 'Sem pasta'))) + '</div></div>'
     + '  <div class="meta-card"><div class="lbl">Previsão de Chegada</div><div class="vl">' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.previsao_chegada || '')) + '</div></div>'
+    + (data.data_chegada ? '  <div class="meta-card"><div class="lbl">Chegou em</div><div class="vl">' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_chegada)) + '</div></div>' : '')
     + '</div>'
     + '<table class="planilha"><thead><tr><th style="width:3.0%!important">Nº</th><th style="width:7.2%!important">Entrega</th><th style="width:7.0%!important">PO / Nome</th><th style="width:9.0%!important">Larg × Comp (mm)</th><th style="width:20.0%!important">Posições dos Vincos (mm)</th><th style="width:5.2%!important">Qtd</th><th style="width:6.2%!important">Lote Min</th><th style="width:7.0%!important">Área m²</th><th style="width:7.0%!important">Valor m²</th><th style="width:7.2%!important">Valor / Mil</th><th style="width:8.0%!important">Total Item</th><th style="width:4.2%!important">Obs</th><th style="width:9.0%!important">Pedido Forn.</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="13" style="text-align:center;padding:22px;color:#64748b">Nenhum item informado nesta compra.</td></tr>')
@@ -64353,7 +64354,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             }
             primeiroItem = primeiroItem || {};
             var pedCliente = String(primeiroItem.ped_cliente || primeiroItem.pedidoCliente || primeiroItem.pedido || '—').trim() || '—';
-            var poStr = String(primeiroItem.po || primeiroItem.PO || primeiroItem.numero_po || 'PO não informada').trim() || 'PO não informada';
+            var poStr = String(primeiroItem.po || primeiroItem.PO || primeiroItem.numero_po || primeiroItem.nomenclatura || 'PO não informada').trim() || 'PO não informada';
             var numeroCompra = (window._compraPapelaoNumeroLabel && typeof window._compraPapelaoNumeroLabel === 'function')
               ? String(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || ''))
               : String(compra && compra.numero_compra || '');
@@ -74441,6 +74442,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     host.querySelectorAll('[data-cmpx-edit]').forEach(function (b) {
       var id = b.getAttribute('data-cmpx-edit'), tr = b.closest('tr'); if (!tr) return;
       var c = compraPorId(id); if (!c) return;
+      // 1ª coluna: dia do pedido e, se chegou, o dia que chegou
+      var c0 = tr.children[0], sp0 = c0 && c0.querySelector('.cmpx-stack > span');
+      if (sp0) { var t0 = 'Pedido ' + dBR(c.data_compra || String(c.criado_em || '').slice(0, 10)) + (chave(c.status) === 'concluida' && c.data_chegada ? ' · Chegou ' + dBR(c.data_chegada) : ''); if (sp0.textContent !== t0) sp0.textContent = t0; }
       var i = info(c.status), cel = tr.children[1]; if (!cel) return;
       var txt = i[2] + ' ' + i[1] + (i[0] === 'a_caminho' && c.previsao_chegada ? ' · chega ' + dBR(c.previsao_chegada) : '') + (i[0] === 'concluida' && c.data_chegada ? ' · ' + dBR(c.data_chegada) : '');
       var pill = cel.querySelector('.dcs-pill');
@@ -74523,6 +74527,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var it = e.target.closest('#cmp-body [data-cmpx-toggle-items]'); if (it) { e.preventDefault(); e.stopImmediatePropagation(); return abrirItens(it.getAttribute('data-cmpx-toggle-items')); }
   }, true);
   setInterval(function () { var pg = document.getElementById('page-compras'); if (pg && pg.classList.contains('active')) decorar(); }, 800);
+  // 28/10: no cadastro da compra, Enter vai para o próximo campo (como numa planilha)
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.isComposing) return;
+    var t = e.target, root = t && t.closest && t.closest('.ccpx-fs-shell'); if (!root) return;
+    if (!/^(INPUT|SELECT)$/.test(t.tagName) || /^(button|submit|checkbox|radio|file)$/i.test(t.type || '')) return;
+    if (t.getAttribute('aria-expanded') === 'true') return;
+    var campos = Array.prototype.filter.call(root.querySelectorAll('input, select, textarea'), function (x) {
+      return !x.disabled && !x.readOnly && x.type !== 'hidden' && x.type !== 'file' && x.type !== 'checkbox' && x.offsetParent !== null && x.tabIndex !== -1;
+    });
+    var i = campos.indexOf(t); if (i < 0) return;
+    e.preventDefault();
+    var prox = campos[i + 1]; if (!prox) return;
+    prox.focus(); try { if (prox.select && /^(text|number|search|tel|email|)$/i.test(prox.type || '')) prox.select(); } catch (_) {}
+  }, true);
   var css = '.dcs-pill{margin-top:3px;display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}.dcs-pill:hover{background:var(--s3)}'
     + '.dcs-pill[data-k="pedido_feito"]{border-color:color-mix(in srgb,var(--yellow) 45%,transparent);color:var(--yellow)}.dcs-pill[data-k="a_caminho"]{border-color:color-mix(in srgb,var(--accent) 50%,transparent);color:var(--accent)}.dcs-pill[data-k="concluida"]{border-color:color-mix(in srgb,var(--green) 50%,transparent);color:var(--green)}.dcs-pill[data-k="cancelada"]{color:var(--text3);text-decoration:line-through}'
     + '.dcs-ov{position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}'
