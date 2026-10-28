@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Sincronização INCREMENTAL (servidor de TESTE): traz do Supabase só o que foi criado/alterado desde a
-# última vez em ofs, clientes e vendedores. O Supabase é só lido. Não tira o sistema do ar.
+# Sincronização INCREMENTAL (servidor de TESTE): traz do Supabase só os registros NOVOS (criados lá) desde a
+# última vez em ofs, clientes e vendedores; o que já existe aqui não é sobrescrito. O Supabase é só lido. Não tira o sistema do ar.
 # Usa a conexão guardada em /etc/pcp-pro/sync-origem (só root lê); sem ela, não faz nada.
 set -uo pipefail
 SEG=/etc/pcp-pro/sync-origem
@@ -42,7 +42,9 @@ for T in vendedores clientes ofs; do
       cat "$TMP"
       echo '\.'
       echo "delete from _in where id::text in (select id from public.sync_ignorar where tabela='$T');"
-      echo "insert into public.$T ($Q) select $Q from _in on conflict (id) do update set $SETS;"
+      # 28/10: a equipe já trabalha neste sistema; o antigo só pode TRAZER registros novos, nunca sobrescrever os daqui
+      # (em 27/10 a sincronização desfez conclusões feitas aqui porque o sistema antigo mexeu nas mesmas OFs).
+      echo "insert into public.$T ($Q) select $Q from _in on conflict (id) do nothing;"
       echo "commit;"
     } | loc -q >/dev/null && { echo "$NOVO" >"$WM_F"; echo "$T: $N linha(s) novas/alteradas (até $NOVO)"; } || echo "!! $T: falha ao gravar"
   else
