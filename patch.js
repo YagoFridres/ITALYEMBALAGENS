@@ -75231,7 +75231,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function escolher(inp, p) {
     inp.value = p.nome; fecharSug();
-    try { inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+    inp.__dsProdSet = true; try { inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} inp.__dsProdSet = false; fecharSug();
     // cliente do produto (se o campo estiver vazio)
     var ci = document.getElementById('of-r-cliente');
     if (ci && p.cliente_nome && !String(ci.value || '').trim()) {
