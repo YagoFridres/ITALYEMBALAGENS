@@ -151,3 +151,6 @@ alter table public.papelao_solicitacoes add column if not exists respondido_em t
 alter table public.papelao_solicitacoes add column if not exists legado_id text;
 alter table public.compras_chapas add column if not exists status_historico jsonb not null default '[]'::jsonb;
 alter table public.compras_chapas add column if not exists data_chegada date;
+
+-- Chapa utilizada do orçamento em coluna própria (lista de orçamentos mostra) (28/10/2026)
+alter table public.orcamentos add column if not exists chapa_utilizada text;
