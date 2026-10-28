@@ -8,7 +8,7 @@ cd $B/banco
 echo "==> Backup do banco de teste atual"
 docker compose exec -T db pg_dump -U postgres -d postgres --schema=public -Fc </dev/null > $B/backups/antes-sync-$(date +%F_%H%M).dump && ls -lh $B/backups | tail -2
 echo "==> Guardando o que só existe aqui (estoque da planilha, almoxarifado, solicitações, sequência, modo operador)"
-LOCAIS="sync_ignorar almox_ordens papelao_solicitacoes sequenciamento_manual producao_sessoes chapas_estoque_movimentos_v2 chapas_estoque_v2"
+LOCAIS="sync_ignorar almox_ordens papelao_solicitacoes sequenciamento_manual producao_sessoes chapas_estoque_movimentos_v2 chapas_estoque_v2 produtos_cadastro"
 ARGS=""; for t in $LOCAIS; do ARGS="$ARGS -t public.$t"; done
 docker compose exec -T db pg_dump -U postgres -d postgres --data-only $ARGS </dev/null > $B/backups/locais-$(date +%F_%H%M).sql && ls -lh $B/backups/locais-*.sql | tail -1
 LOCAIS_SQL=$(ls -t $B/backups/locais-*.sql | head -1)

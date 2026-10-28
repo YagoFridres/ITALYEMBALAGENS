@@ -154,3 +154,16 @@ alter table public.compras_chapas add column if not exists data_chegada date;
 
 -- Chapa utilizada do orçamento em coluna própria (lista de orçamentos mostra) (28/10/2026)
 alter table public.orcamentos add column if not exists chapa_utilizada text;
+
+-- Cadastro de produtos (autocompletar "Produto / Descrição" na OF) (28/10/2026)
+create table if not exists public.produtos_cadastro (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  largura numeric, comprimento numeric, altura numeric,
+  cliente_id text, cliente_nome text, observacao text,
+  ativo boolean not null default true,
+  criado_por text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists produtos_cadastro_nome_idx on public.produtos_cadastro (lower(nome));
+grant all on public.produtos_cadastro to anon, authenticated, service_role;

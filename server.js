@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261028151654';
-const SW_RUNTIME_VERSION = '20261028151654';
+const PATCH_RUNTIME_VERSION = '20261028153849';
+const SW_RUNTIME_VERSION = '20261028153849';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -39998,6 +39998,55 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
       try { await supabase.from('chapas_estoque_v2').update({ pinned_compra: false, pinned_status: up.status === 'Recusada' ? 'ignorado' : 'comprado' }).eq('id', s.chapa_id); } catch (_) {}
     }
     return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+// ===== PRODUTOS (cadastro para autocompletar "Produto / Descrição" na OF) (28/10/2026) =====
+const _PROD_CAMPOS = ['nome', 'largura', 'comprimento', 'altura', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
+function _prodPayload(b) {
+  const o = {};
+  _PROD_CAMPOS.forEach((k) => { if (Object.prototype.hasOwnProperty.call(b || {}, k)) o[k] = b[k]; });
+  if (o.nome != null) o.nome = String(o.nome).trim().replace(/\s+/g, ' ');
+  ['largura', 'comprimento', 'altura'].forEach((k) => { if (k in o) { const n = Number(String(o[k] ?? '').replace(',', '.')); o[k] = Number.isFinite(n) && n > 0 ? n : null; } });
+  ['cliente_id', 'cliente_nome', 'observacao'].forEach((k) => { if (k in o) o[k] = String(o[k] ?? '').trim() || null; });
+  if ('ativo' in o) o.ativo = o.ativo !== false && o.ativo !== 'false';
+  return o;
+}
+app.get('/api/produtos-cadastro', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const { data, error } = await supabase.from('produtos_cadastro').select('*').order('nome', { ascending: true }).limit(5000);
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/produtos-cadastro', authMiddleware, async (req, res) => {
+  try {
+    const lista = Array.isArray(req.body?.lote) ? req.body.lote : [req.body || {}];
+    const rows = lista.map(_prodPayload).filter((r) => r.nome);
+    if (!rows.length) return res.status(400).json({ ok: false, error: 'Informe o nome do produto' });
+    const quem = _opNome(req);
+    rows.forEach((r) => { r.criado_por = quem; r.updated_at = new Date().toISOString(); });
+    const { data, error } = await supabase.from('produtos_cadastro').insert(rows).select('*');
+    if (error) throw error;
+    return ok(res, Array.isArray(req.body?.lote) ? data : (data || [])[0]);
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/produtos-cadastro/:id', authMiddleware, async (req, res) => {
+  try {
+    const up = _prodPayload(req.body || {});
+    if ('nome' in up && !up.nome) return res.status(400).json({ ok: false, error: 'Informe o nome do produto' });
+    up.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('produtos_cadastro').update(up).eq('id', String(req.params.id)).select('*').maybeSingle();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.delete('/api/produtos-cadastro/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('produtos_cadastro').delete().eq('id', String(req.params.id));
+    if (error) throw error;
+    return ok(res, { id: req.params.id });
   } catch (e) { return err(res, e); }
 });
 
