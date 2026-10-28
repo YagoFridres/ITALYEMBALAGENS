@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261028094315';
-const SW_RUNTIME_VERSION = '20261028094315';
+const PATCH_RUNTIME_VERSION = '20261028094543';
+const SW_RUNTIME_VERSION = '20261028094543';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4675,7 +4675,7 @@ const CAMPOS_OFS_UPDATE = new Set([
   'cli_id', 'cliId', 'cliente_id', 'cliid',
   'vendid', 'vendId',
   'vendedor', 'vendNome', 'vendedor_nome', 'vendedor_id',
-  'preco', 'total', 'qtd', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
+  'preco', 'total', 'qtd', 'quantidade', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
   'status', 'ent', 'dia', 'data_entrega', 'data_producao', 'maq', 'obs', 'obs2', 'urgente', 'urg',
   'cores_impressao', 'empresa_id', 'emp_id', 'deleted_at',
   'usuario_conclusao', 'data_faturamento', 'data_conclusao',
@@ -4708,6 +4708,8 @@ function normalizeOfUpdateBody(input) {
     delete out.vend_id;
   }
   if (out.quantidade !== undefined && out.qtd === undefined) out.qtd = out.quantidade;
+  // 28/10: as duas colunas andam juntas (a lista lê "quantidade"; antes a edição só gravava "qtd")
+  if (out.qtd !== undefined && out.quantidade === undefined) out.quantidade = out.qtd;
   if (out.valor_unitario !== undefined && out.preco === undefined) out.preco = out.valor_unitario;
   if (out.vendedor !== undefined && out.vendid === undefined) out.vendid = out.vendedor;
   if (out.vendid !== undefined && out.vendedor === undefined) out.vendedor = out.vendid;

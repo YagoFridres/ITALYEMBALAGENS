@@ -74910,7 +74910,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 })();
 
 /* ===== EDITAR OF (OF Rápida em modo edição): grava tudo o que está na tela (28/10/2026) =====
- * O salvar da edição mandava só parte dos campos: Referência, Dia do Pedido, Urgente, Total digitado e troca de
+ * O salvar da edição mandava só parte dos campos: Referência, Urgente, Total digitado e troca de
  * cliente pelo nome não iam; e os itens da OF (de onde a lista lê a quantidade) ficavam com o valor antigo, então
  * a OF parecia "não alterada". Aqui completamos a mesma gravação (PATCH /api/ofs/:id) com esses campos. */
 (function () {
@@ -74924,9 +74924,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (cliNome) {
       var lista = []; try { lista = typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []; } catch (_) {}
       var c = lista.find(function (x) { return String(x && (x.nome || x.razao_social || x.razao || x.rs) || '').trim().toLowerCase() === cliNome.toLowerCase(); });
-      if (c && c.id) { b.cli_id = b.cliId = b.cliente_id = String(c.id); }
+      if (c && c.id) { b.cli_id = b.cliId = b.cliente_id = String(c.id); b.cliNome = b.cliente_nome = b.clinome = String(c.nome || c.razao_social || c.rs || cliNome); }
     }
-    var ped = val('of-r-pedido'); if (ped) { b.data_pedido = ped.slice(0, 10); b.dia = ped.slice(0, 10); }
     var u = document.getElementById('of-r-urgente'); if (u) { b.urg = !!u.checked; b.urgente = !!u.checked; }
     var qtd = b.qtd != null ? Number(b.qtd) : num(val('of-r-qtd')), vu = b.valor_unitario != null ? Number(b.valor_unitario) : num(val('of-r-vlunit'));
     var tot = num(val('of-r-total')); if (!(tot > 0)) tot = qtd * vu;
