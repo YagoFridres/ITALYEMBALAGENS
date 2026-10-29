@@ -3913,9 +3913,10 @@ try {
 
   function rrOpenAmostrasMesModal() {
     try {
-      var now = new Date();
-      var ano = now.getFullYear();
-      var mes = now.getMonth() + 1;
+      var refA = rrCurrentRange();
+      var ano = Number(String(refA.data_inicio || '').slice(0, 4)) || new Date().getFullYear();
+      var mes = Number(String(refA.data_inicio || '').slice(5, 7)) || (new Date().getMonth() + 1);
+      var ultimoAmostras = null;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
       var card = document.createElement('div');
@@ -3925,6 +3926,7 @@ try {
         + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">🧪 Amostras do Mês — ' + String(mes).padStart(2, '0') + '/' + ano + '</div><div style="font-size:12px;color:#94a3b8">Relatório consolidado de amostras produzidas e enviadas no mês.</div></div>'
         + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
         + '    <input type="month" id="rr-amostras-mes" value="' + ano + '-' + String(mes).padStart(2, '0') + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:600" />'
+        + '    <button type="button" id="rr-amostras-imprimir" disabled style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">🖨 Imprimir</button>'
         + '    <button type="button" id="rr-amostras-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
         + '    <button type="button" id="rr-amostras-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
         + '  </div>'
@@ -3954,6 +3956,8 @@ try {
           var taxa = Number(d.taxa_conclusao || 0);
           var clientes = Number(d.clientes_unicos || 0);
           var periodoLabel = d.periodo || 'Atual';
+          ultimoAmostras = { d: d, ranking: ranking, mes: periodo };
+          try { var bi = card.querySelector('#rr-amostras-imprimir'); if (bi) bi.disabled = false; } catch (_) {}
 
           var rankRows = ranking.slice(0, 50).map(function(cli, idx) {
             var pct = cli.pedidas > 0 ? Math.round((Number(cli.feitas || 0) / Number(cli.pedidas || 0)) * 100) : 0;
@@ -3997,6 +4001,32 @@ try {
         });
       }
 
+      var btnImp = card.querySelector('#rr-amostras-imprimir');
+      if (btnImp) btnImp.onclick = function() {
+        if (!ultimoAmostras) return;
+        var d = ultimoAmostras.d, rk = ultimoAmostras.ranking;
+        var mm = String(ultimoAmostras.mes || (ano + '-' + String(mes).padStart(2, '0')));
+        rrOpenPrint({
+          title: 'Relatório de Amostras do Mês',
+          periodo: mm,
+          cards: [
+            { label: 'Amostras pedidas', value: rrFmtNum(d.total_pedidas || 0, 0), sub: 'No mês' },
+            { label: 'Amostras feitas', value: rrFmtNum(d.total_feitas || 0, 0), sub: 'Produzidas/enviadas' },
+            { label: 'Taxa de conclusão', value: rrFmtNum(d.taxa_conclusao || 0, 0) + '%', sub: 'Feitas ÷ pedidas' },
+            { label: 'Clientes', value: rrFmtNum(d.clientes_unicos || 0, 0), sub: 'Clientes com amostra' }
+          ],
+          summaryTitle: 'Ranking de clientes',
+          summaryHeaders: ['#', 'Cliente', 'Pedidas', 'Feitas', '% feitas', 'Último pedido'],
+          summaryRows: rk.map(function(c, ix) {
+            var pc = c.pedidas > 0 ? Math.round((Number(c.feitas || 0) / Number(c.pedidas || 0)) * 100) : 0;
+            return [rrEsc(String(ix + 1)), rrEsc(String(c.cliente_nome || 'Cliente não identificado')), rrEsc(rrFmtNum(c.pedidas || 0, 0)), rrEsc(rrFmtNum(c.feitas || 0, 0)), rrEsc(pc + '%'), rrEsc(c.ultimo_pedido ? rrFmtDate(String(c.ultimo_pedido).slice(0, 10)) : '—')];
+          }),
+          detailTitle: 'Detalhamento',
+          detailHeaders: ['Cliente', 'Pedidas', 'Feitas'],
+          detailRows: rk.map(function(c) { return [rrEsc(String(c.cliente_nome || '—')), rrEsc(rrFmtNum(c.pedidas || 0, 0)), rrEsc(rrFmtNum(c.feitas || 0, 0))]; }),
+          emptySummaryCols: 6, emptyDetailCols: 3
+        });
+      };
       if (btnBuscar) btnBuscar.onclick = function() {
         try {
           if (typeof window.toastMod === 'function') window.toastMod('Buscando amostras...', 'info');
