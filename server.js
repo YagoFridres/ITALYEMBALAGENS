@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029113831';
-const SW_RUNTIME_VERSION = '20261029113831';
+const PATCH_RUNTIME_VERSION = '20261029113844';
+const SW_RUNTIME_VERSION = '20261029113844';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5525,6 +5525,7 @@ function clientesPayload(p) {
   });
   out.updated_at = new Date().toISOString();
   Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
+  if (b.email === '') out.email = null; // permite apagar o e-mail do cliente
   delete out.end;
   return out;
 }
