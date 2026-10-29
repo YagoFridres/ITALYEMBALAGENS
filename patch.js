@@ -75528,11 +75528,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var alvo = doc.body;
       fr.style.height = Math.max(1000, alvo.scrollHeight + 20) + 'px';
       var canvas = await window.html2canvas(alvo, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1400, width: 1400 });
+      // corta o espaço branco do fim (evita página em branco)
+      var fim = canvas.height;
+      try {
+        var ctx0 = canvas.getContext('2d'), passo = 8;
+        for (var yy = canvas.height - 1; yy > 0; yy -= 4) {
+          var lin = ctx0.getImageData(0, yy, canvas.width, 1).data, branco = true;
+          for (var xx = 0; xx < lin.length; xx += 4 * passo) { if (lin[xx] < 245 || lin[xx + 1] < 245 || lin[xx + 2] < 245) { branco = false; break; } }
+          if (!branco) { fim = Math.min(canvas.height, yy + 30); break; }
+        }
+      } catch (_) {}
       var pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
       var pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), mg = 6;
       var w = pw - mg * 2, pxPorMm = canvas.width / w, alturaPag = Math.floor((ph - mg * 2) * pxPorMm);
-      for (var y = 0, pg = 0; y < canvas.height; y += alturaPag, pg++) {
-        var h = Math.min(alturaPag, canvas.height - y);
+      for (var y = 0, pg = 0; y < fim; y += alturaPag, pg++) {
+        var h = Math.min(alturaPag, fim - y);
         var c = document.createElement('canvas'); c.width = canvas.width; c.height = h;
         var cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, h); cx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
         if (pg) pdf.addPage();
