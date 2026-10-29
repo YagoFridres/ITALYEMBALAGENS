@@ -75801,7 +75801,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.head.appendChild(css);
   function alvo(ov) {
     var rows = ov.querySelectorAll('[data-ccpx-item-row]'); if (!rows.length) return -1;
-    var i = Number(ov.__dscdIdx); if (!(i >= 0) || !ov.querySelector('[data-ccpx-item-row="' + i + '"]')) i = Number(rows[rows.length - 1].getAttribute('data-ccpx-item-row'));
+    var i = Number(ov.__dscdIdx); if (!(i >= 0) || !ov.querySelector('[data-ccpx-item-row="' + i + '"]')) {
+      var cheia = null;
+      Array.prototype.forEach.call(rows, function (r) { var tem = Array.prototype.some.call(r.querySelectorAll('[data-field]'), function (f) { return String(f.value || '').trim() !== ''; }); if (tem) cheia = r; });
+      i = Number((cheia || rows[0]).getAttribute('data-ccpx-item-row'));
+    }
     return i;
   }
   function rotulo(ov) {
@@ -75826,4 +75830,137 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     rotulo(ov);
   }
   new MutationObserver(function () { if (document.getElementById('ccpx-add-item')) { montar(); var ov = document.querySelector('.ccpx-fs-overlay'); if (ov) rotulo(ov); } }).observe(document.body, { childList: true, subtree: true });
+})();
+
+// ===== Simulador de Desperdício: visual novo (mesmas funções, mesmos campos) =====
+(function () {
+  if (window.__dsSimdNovo) return; window.__dsSimdNovo = true;
+  var T = '#page-simd #tela-simulador-desperdicio.dssn';
+  var css = document.createElement('style');
+  css.textContent = ''
+    + T + '{--sn-card:var(--s1,#151a23);--sn-bd:var(--b2,rgba(148,163,184,.2));--sn-tx:var(--text,#f1f5f9);--sn-tx2:var(--text2,#94a3b8);--sn-in:var(--bg,#0d1117);--sn-ac:#10b981;max-width:1500px;margin:0 auto}'
+    + T + ' .simd-shell{display:grid;gap:16px}'
+    + T + ' .simd-panel{background:var(--sn-card)!important;border:1px solid var(--sn-bd)!important;border-radius:18px!important;padding:20px!important;box-shadow:0 8px 28px rgba(0,0,0,.12)}'
+    // cabeçalho
+    + T + ' .dssn-hero{display:flex;align-items:center;gap:14px;margin:-20px -20px 18px;padding:18px 20px;border-radius:18px 18px 0 0;background:linear-gradient(120deg,rgba(16,185,129,.16),rgba(37,99,235,.12));border-bottom:1px solid var(--sn-bd)}'
+    + T + ' .dssn-ico{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(16,185,129,.18);flex:0 0 auto}'
+    + T + ' .dssn-hero h2{margin:0;font-size:20px;font-weight:800;color:var(--sn-tx)}'
+    + T + ' .dssn-hero p{margin:3px 0 0;font-size:13px;color:var(--sn-tx2)}'
+    // campos
+    + T + ' .simd-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important}'
+    + T + ' .simd-grid + .simd-grid{grid-template-columns:1fr!important}'
+    + T + ' .simd-field label{display:block;font-size:12px!important;font-weight:700!important;color:var(--sn-tx2)!important;margin-bottom:6px;letter-spacing:.01em}'
+    + T + ' .simd-field input{height:48px!important;border-radius:12px!important;font-size:17px!important;font-weight:700!important;padding:0 14px!important;width:100%;box-sizing:border-box;background:var(--sn-in)!important;color:var(--sn-tx)!important;border:1px solid var(--sn-bd)!important;transition:border-color .15s,box-shadow .15s}'
+    + T + ' .simd-field input:focus{border-color:var(--sn-ac)!important;box-shadow:0 0 0 3px rgba(16,185,129,.2)!important;outline:none}'
+    + T + ' .dssn-un{position:relative;display:block}'
+    + T + ' .dssn-un input{padding-right:52px!important}'
+    + T + ' .dssn-un::after{content:attr(data-u);position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:800;color:var(--sn-tx2);pointer-events:none}'
+    + T + ' #simd-busca-chapa{font-size:14px!important;font-weight:500!important;padding-left:40px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2718%27 height=%2718%27 fill=%27none%27 stroke=%27%2394a3b8%27 stroke-width=%272.2%27 viewBox=%270 0 24 24%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cpath d=%27m20 20-3.5-3.5%27/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:14px center!important}'
+    + T + ' .dssn-dica{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--sn-tx2);margin-top:12px}'
+    + T + ' .dssn-dica b{color:var(--sn-tx)}'
+    // ações
+    + T + ' .simd-actions{display:flex!important;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px!important;padding-top:16px;border-top:1px solid var(--sn-bd)}'
+    + T + ' .simd-actions-left{display:flex;gap:10px;flex-wrap:wrap}'
+    + T + ' .simd-actions-right{font-size:12px;color:var(--sn-tx2);max-width:520px}'
+    + T + ' .simd-btn{height:46px;padding:0 22px!important;border-radius:12px!important;font-size:14.5px!important;font-weight:800!important}'
+    + T + ' .simd-btn.primary{background:linear-gradient(135deg,#10b981,#059669)!important;box-shadow:0 6px 18px rgba(16,185,129,.28);min-width:160px}'
+    + T + ' .simd-btn.ghost{background:transparent!important;border:1px solid var(--sn-bd)!important;color:var(--sn-tx)!important}'
+    // resultado
+    + T + ' .dssn-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}'
+    + T + ' .dssn-kpi{border:1px solid var(--sn-bd);border-radius:14px;padding:12px 14px;background:var(--sn-in)}'
+    + T + ' .dssn-kpi span{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sn-tx2)}'
+    + T + ' .dssn-kpi b{display:block;font-size:19px;font-weight:800;color:var(--sn-tx);margin-top:4px;line-height:1.2;word-break:break-word}'
+    + T + ' .dssn-kpi small{display:block;font-size:12px;color:var(--sn-tx2);margin-top:2px}'
+    + T + ' .dssn-kpi.best{border-color:rgba(16,185,129,.55);background:linear-gradient(135deg,rgba(16,185,129,.14),transparent)}'
+    + T + ' .dssn-kpi.best b{color:#10b981}'
+    + T + ' #simd-info-planif{background:transparent!important;border:1px dashed var(--sn-bd)!important;border-left:3px solid var(--sn-ac)!important;color:var(--sn-tx2)!important;border-radius:12px!important}'
+    + T + ' #simd-tabela-wrap{border:1px solid var(--sn-bd)!important;border-radius:14px!important;background:transparent!important;max-height:72vh;overflow:auto!important}'
+    + T + ' #simd-tabela-wrap .excel-export-bar{position:sticky;top:0;z-index:3;background:var(--sn-card);padding:8px 10px;border-bottom:1px solid var(--sn-bd)}'
+    + T + ' .simd-table{width:100%;border-collapse:separate!important;border-spacing:0}'
+    + T + ' .simd-table thead th{position:sticky;top:0;z-index:2;background:var(--sn-card)!important;color:var(--sn-tx2)!important;font-size:11px!important;font-weight:800!important;letter-spacing:.06em;text-transform:uppercase;padding:12px 12px!important;border-bottom:1px solid var(--sn-bd)!important;text-align:left;white-space:nowrap}'
+    + T + ' .simd-table thead th:first-child{padding-left:52px!important}'
+    + T + ' .simd-table tbody{counter-reset:dssn}'
+    + T + ' .simd-table tbody tr[data-simd-row]{counter-increment:dssn;cursor:pointer;transition:background .12s}'
+    + T + ' .simd-table tbody tr[data-simd-row] td{padding:12px!important;border-bottom:1px solid var(--sn-bd)!important;color:var(--sn-tx)!important;font-size:13.5px;vertical-align:middle}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:first-child{position:relative;padding-left:52px!important}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:first-child::before{content:counter(dssn);position:absolute;left:12px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:var(--sn-in);border:1px solid var(--sn-bd);color:var(--sn-tx2)}'
+    + T + ' .simd-table tbody tr[data-simd-row]:first-child td:first-child::before{content:"🏆";background:rgba(16,185,129,.18);border-color:rgba(16,185,129,.5);font-size:14px}'
+    + T + ' .simd-table tbody tr[data-simd-row]:first-child td{background:rgba(16,185,129,.07)}'
+    + T + ' .simd-table tbody tr[data-simd-row]:hover td{background:rgba(37,99,235,.08)!important}'
+    + T + ' .simd-table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + T + ' .simd-table thead th:nth-child(n+5){text-align:right}'
+    + T + ' .simd-badge{display:inline-flex!important;padding:5px 10px!important;border-radius:999px!important;font-weight:800!important;font-size:12.5px!important;border:1px solid}'
+    + T + ' .simd-cell-main{font-weight:700;color:var(--sn-tx)}'
+    + T + ' .simd-cell-sub{color:var(--sn-tx2)!important}'
+    + T + ' .dssn-dica-tab{font-size:12px;color:var(--sn-tx2);margin:0 0 10px}'
+    + '@media (max-width:1100px){' + T + ' .simd-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}' + T + ' .dssn-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+    + '@media (max-width:640px){' + T + ' .simd-panel{padding:14px!important;border-radius:14px!important}' + T + ' .dssn-hero{margin:-14px -14px 14px;padding:14px;border-radius:14px 14px 0 0}' + T + ' .dssn-hero h2{font-size:17px}'
+    + T + ' .simd-grid{grid-template-columns:1fr!important}' + T + ' .simd-actions-left,' + T + ' .simd-actions-left .simd-btn{width:100%}' + T + ' .dssn-kpi b{font-size:16px}'
+    + T + ' #simd-tabela-wrap{max-height:none}' + T + ' .simd-table thead{display:none}' + T + ' .simd-table,' + T + ' .simd-table tbody{display:block}'
+    + T + ' .simd-table tbody tr[data-simd-row]{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:12px 12px 12px 52px;position:relative;border-bottom:1px solid var(--sn-bd)}'
+    + T + ' .simd-table tbody tr[data-simd-row] td{display:block;padding:0!important;border:0!important;background:transparent!important;text-align:left!important}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:first-child{position:static;padding-left:0!important}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:first-child::before{top:14px;transform:none;left:12px}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:nth-child(2){grid-column:1/-1}'
+    + T + ' .simd-table tbody tr[data-simd-row] td[data-dssn]::before{content:attr(data-dssn);display:block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--sn-tx2)}'
+    + T + ' .simd-table tbody tr[data-simd-row]:first-child{background:rgba(16,185,129,.07)}}';
+  document.head.appendChild(css);
+
+  function txt(el) { return el ? String(el.textContent || '').trim() : ''; }
+  function melhorar() {
+    var t = document.querySelector('#page-simd #tela-simulador-desperdicio'); if (!t) return;
+    if (!t.classList.contains('dssn')) t.classList.add('dssn');
+    var painel = t.querySelector('.simd-shell > .simd-panel');
+    if (painel && !painel.querySelector('.dssn-hero')) {
+      var tit = painel.firstElementChild;
+      var hero = document.createElement('div'); hero.className = 'dssn-hero';
+      hero.innerHTML = '<div class="dssn-ico">♻️</div><div><h2>Simulador de Desperdício de Papelão</h2><p>Informe a largura e o comprimento da peça. O sistema compara todas as chapas do estoque e mostra da que desperdiça menos para a que desperdiça mais.</p></div>';
+      painel.insertBefore(hero, painel.firstChild);
+      if (tit && tit !== hero && /Simulador de Desperd/.test(txt(tit))) tit.style.display = 'none';
+      [['simd-larg', 'mm'], ['simd-comp', 'mm'], ['simd-qtd', 'peças']].forEach(function (p) {
+        var i = document.getElementById(p[0]); if (!i || i.parentNode.classList.contains('dssn-un')) return;
+        var w = document.createElement('span'); w.className = 'dssn-un'; w.setAttribute('data-u', p[1]); i.parentNode.insertBefore(w, i); w.appendChild(i);
+      });
+      // "Resumo" vira uma dica embaixo dos campos
+      var tip = painel.querySelector('.simd-inline-tip');
+      var campoResumo = tip && tip.closest('.simd-field');
+      if (campoResumo) {
+        var dica = document.createElement('div'); dica.className = 'dssn-dica'; dica.innerHTML = '🔄 <span>' + tip.innerHTML + '</span>';
+        campoResumo.style.display = 'none';
+        var g = campoResumo.closest('.simd-grid'); if (g) g.parentNode.insertBefore(dica, g.nextSibling);
+      }
+      var calc = document.getElementById('simd-btn'); if (calc && !/🔍/.test(calc.textContent)) calc.textContent = '🔍 Calcular';
+      var pr = document.getElementById('simd-btn-print'); if (pr && !/🖨/.test(pr.textContent)) pr.textContent = '🖨 Imprimir relatório';
+    }
+    kpis();
+  }
+  var ultimoSinal = '';
+  function kpis() {
+    var tw = document.querySelector('#page-simd #simd-tabela-wrap'); if (!tw) return;
+    var rows = tw.querySelectorAll('tbody tr[data-simd-row]');
+    var box = document.getElementById('dssn-kpis');
+    if (!rows.length) { if (box) box.remove(); ultimoSinal = ''; return; }
+    var r0 = rows[0], td = r0.children;
+    var sinal = rows.length + '|' + txt(r0);
+    // rótulos para o modo celular
+    var heads = Array.prototype.map.call(tw.querySelectorAll('thead th'), txt);
+    Array.prototype.forEach.call(rows, function (r) { Array.prototype.forEach.call(r.children, function (c, i) { if (heads[i] && c.getAttribute('data-dssn') !== heads[i]) c.setAttribute('data-dssn', heads[i]); }); });
+    if (sinal === ultimoSinal && box) return; ultimoSinal = sinal;
+    var qtd = Number(String((document.getElementById('simd-qtd') || {}).value || '').replace(/\D/g, '')) || 0;
+    var chapa = td[1] ? txt(td[1].querySelector('.simd-cell-main') || td[1]) : '—';
+    var forn = td[2] ? txt(td[2].querySelector('.simd-cell-main') || td[2]) : '';
+    var html = '<div class="dssn-kpi best"><span>Melhor chapa</span><b>' + esc(chapa) + '</b><small>' + esc([forn, txt(td[3])].filter(Boolean).join(' · ')) + '</small></div>'
+      + '<div class="dssn-kpi"><span>Desperdício</span><b>' + esc(txt(td[0])) + '</b><small>na melhor chapa</small></div>'
+      + '<div class="dssn-kpi"><span>Peças por chapa</span><b>' + esc(txt(td[4]) || '—') + '</b><small>' + esc(txt(td[5]) ? txt(td[5]) + ' em estoque' : '') + '</small></div>'
+      + '<div class="dssn-kpi"><span>' + (qtd ? 'Custo do pedido' : 'Valor da chapa') + '</span><b>' + esc(qtd ? (txt(td[7]) || '—') : (txt(td[6]) || '—')) + '</b><small>' + (qtd ? qtd.toLocaleString('pt-BR') + ' peças · ' : '') + rows.length + ' chapas comparadas</small></div>';
+    if (!box) { box = document.createElement('div'); box.id = 'dssn-kpis'; box.className = 'dssn-kpis'; tw.parentNode.insertBefore(box, tw); var d = document.createElement('div'); d.className = 'dssn-dica-tab'; d.id = 'dssn-dica-tab'; d.textContent = 'Toque numa chapa para ver o desenho do corte e os detalhes logo abaixo dela.'; tw.parentNode.insertBefore(d, tw); }
+    box.innerHTML = html;
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var agendado = false;
+  new MutationObserver(function () {
+    if (agendado) return; agendado = true;
+    setTimeout(function () { agendado = false; if (document.querySelector('#page-simd #tela-simulador-desperdicio')) melhorar(); }, 120);
+  }).observe(document.body, { childList: true, subtree: true });
+  setTimeout(melhorar, 1500);
 })();
