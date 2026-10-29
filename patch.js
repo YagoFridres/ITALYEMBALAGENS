@@ -73144,6 +73144,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (rec === 'compras-chapas' && sub === 'status') { var lbS = { pedido_feito: 'Pedido feito', a_caminho: 'A caminho', concluida: 'Chegou / Concluída', cancelada: 'Cancelada' }[b.status] || b.status; var prv = b.status === 'a_caminho' && b.previsao_chegada ? 'Previsão de chegada: ' + String(b.previsao_chegada).split('-').reverse().join('/') : ''; return ['Compra ' + (d.numero_compra ? 'CMP-' + String(d.numero_compra).padStart(3, '0') + ' ' : '') + '→ ' + lbS, prv, 'ok']; }
     if (rec === 'compras-chapas' && sub === 'enviar-email') return ['E-mail da compra enviado', (d.para || b.para || []).join(', '), 'ok'];
     if (rec === 'email-compras') return ['E-mail de envio salvo', d.user || '', 'ok'];
+    if (rec === 'email-config') return ['E-mail de envio salvo', d.user || '', 'ok'];
+    if (rec === 'orcamentos' && sub === 'enviar-email') return ['E-mail do orçamento enviado', (d.para || b.para || []).join(', '), 'ok'];
     if (rec === 'papelao' && id === 'solicitacoes' && seg[2]) { var chq = [d.fornecedor, d.nomenclatura, d.tamanho].filter(Boolean).join(' ') || d.descricao || ''; if (b.compra_ref != null && b.status == null) return ['Nº da compra salvo', b.compra_ref || '', 'ok']; var rS = { Aceita: 'Sugestão aceita (OK)', Comprada: 'Sugestão marcada como comprada', Recebida: 'Sugestão marcada como recebida', Recusada: 'Sugestão recusada' }[b.status] || (b.resposta ? 'Resposta enviada' : 'Sugestão atualizada'); return [rS, [chq, b.resposta ? '“' + b.resposta + '”' : ''].filter(Boolean).join(' · '), b.status === 'Recusada' ? 'del' : 'ok']; }
     if (rec === 'papelao' && id === 'solicitacoes' && met === 'POST' && b.descricao && !b.chapa_id) return ['Sugestão de compra enviada', String(b.descricao).slice(0, 120), 'ok'];
     if (rec === 'papelao' && id === 'solicitacoes') { var chp = [d.fornecedor || b.fornecedor, d.nomenclatura || b.nomenclatura, d.tamanho || b.tamanho].filter(Boolean).join(' '); if (met === 'POST') return ['Solicitação de compra registrada', [chp, (d.qtd_sugerida || b.qtd_sugerida) ? n(d.qtd_sugerida || b.qtd_sugerida) + ' chapas' : ''].filter(Boolean).join(' · '), 'ok']; return ['Solicitação de compra: ' + (b.status || d.status || 'atualizada'), chp, 'ok']; }
@@ -74820,7 +74822,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<button type="button" class="doe-btn doe-add" data-add>＋ Adicionar outro item</button>'
       + '<div class="doe-bloco"><h3>Total do orçamento</h3><div class="doe-tots" data-tots></div></div>'
       + '<label class="doe-f doe-bloco"><span>Observações (saem na impressão)</span><textarea class="doe-in doe-ta" data-k="obs" rows="2" placeholder="Prazo, condições de pagamento, validade…">' + esc(E.obs) + '</textarea></label>'
-      + '</div><footer><button type="button" class="doe-btn" data-fechar>Fechar</button><button type="button" class="doe-btn" data-print>🖨 Imprimir</button><button type="button" class="doe-btn doe-pri" data-salvar>💾 Salvar</button></footer>', 'doe-ed');
+      + '</div><footer><button type="button" class="doe-btn" data-fechar>Fechar</button><button type="button" class="doe-btn" data-print>🖨 Imprimir</button><button type="button" class="doe-btn" data-salvar-email>📧 Salvar e enviar e-mail</button><button type="button" class="doe-btn doe-pri" data-salvar>💾 Salvar</button></footer>', 'doe-ed');
     ligar(ov); recalcular();
   }
   function htmlVals() { return E.ondas.map(function (o) { var k = o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc'; return campo('Valor onda ' + o + ' (R$/m²)', 'data-v="' + k + '"', E.vals[k]); }).join(''); }
@@ -74864,6 +74866,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var rm = e.target.closest('[data-rm]'); if (rm) { E.itens.splice(+rm.getAttribute('data-rm'), 1); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); return recalcular(); }
       if (e.target.closest('[data-print]')) { if (!E.imp.length) return aviso('Escolha ao menos uma onda para a impressão'); return imprimir(paraSalvar()); }
       if (e.target.closest('[data-salvar]')) return salvar(e.target.closest('[data-salvar]'));
+      if (e.target.closest('[data-salvar-email]')) { if (!E.imp.length) return aviso('Escolha ao menos uma onda para a impressão'); return salvar(ov.querySelector('[data-salvar]'), function (id) { if (typeof window.dsEnviarOrcEmail === 'function') window.dsEnviarOrcEmail(id); }); }
     });
     ov.addEventListener('input', function (e) {
       var t = e.target;
@@ -74910,7 +74913,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     for (var i = 0; i < E.itens.length; i++) { var it = E.itens[i]; if (!(n(it.comp) && n(it.larg) && n(it.alt))) return 'Preencha as medidas do ' + (it.nome || 'item ' + (i + 1)); if (!n(it.qtd)) return 'Preencha a quantidade do ' + (it.nome || 'item ' + (i + 1)); }
     return '';
   }
-  function salvar(btn) {
+  function salvar(btn, depois) {
     var erro = validar(); if (erro) return aviso(erro);
     var pl = paraSalvar(), id = pl.id; delete pl.id; delete pl.numero_orcamento; delete pl.criado_em;
     btn.disabled = true; btn.textContent = 'Salvando…';
@@ -74922,6 +74925,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var h = document.querySelector('#ds-orc-ov h2'); if (h) h.textContent = 'Orçamento Nº ' + num;
       btn.disabled = false; btn.textContent = '💾 Salvar';
       recarregarLista();
+      if (depois && E.id) depois(E.id);
     }).catch(function (e) { btn.disabled = false; btn.textContent = '💾 Salvar'; try { window.toast('Erro ao salvar: ' + e.message, 'var(--red)'); } catch (_) {} });
   }
   function recarregarLista() { var b = document.getElementById('orx-btn-recarregar'); if (b) { try { b.onclick && b.onclick(); return; } catch (_) {} } try { Promise.resolve(window.carregarOrcamentos && window.carregarOrcamentos()).then(function () { window.renderOrcamentos && window.renderOrcamentos(); }); } catch (_) {} }
@@ -74956,7 +74960,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }).catch(function (e) { fechar(); try { window.toast('Erro: ' + e.message, 'var(--red)'); } catch (_) {} });
   }
   // ---------- impressão ----------
-  function imprimir(pl) {
+  function htmlDe(pl) {
     var p = pl.parametros || {}, imp = (p.ondas_impressao || []).length ? p.ondas_impressao : (p.ondas_orcamento || ['B']);
     var tot = p.totais || {};
     var data = new Date().toLocaleDateString('pt-BR');
@@ -74972,11 +74976,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<h2>Totais</h2><table><thead><tr><th>Opção</th><th class="r">Itens</th><th class="r">Frete</th><th class="r">Total</th></tr></thead><tbody>' + tots + '</tbody></table>'
       + (p.observacoes_orc ? '<h2>Observações</h2><div class="obs">' + esc(p.observacoes_orc) + '</div>' : '')
       + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
+    return html;
+  }
+  function imprimir(pl) {
+    var html = htmlDe(pl);
     var f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
     var d = f.contentWindow.document; d.open(); d.write(html); d.close();
     setTimeout(function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (_) {} setTimeout(function () { f.remove(); }, 60000); }, 300);
   }
-  window.dsOrc = { novo: novo, editar: editar, itens: verItens, imprimirId: function (id) { buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; imprimir(pl); }); }, calcItem: calcItem, deOrc: deOrc, buscarChapas: buscarChapas, carregarChapas: carregarChapas, estado: function () { return E; }, paraSalvar: function () { return paraSalvar(); } };
+  window.dsOrc = { htmlId: function (id) { return buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; return { html: htmlDe(pl), orc: o, pl: pl }; }); }, novo: novo, editar: editar, itens: verItens, imprimirId: function (id) { buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; imprimir(pl); }); }, calcItem: calcItem, deOrc: deOrc, buscarChapas: buscarChapas, carregarChapas: carregarChapas, estado: function () { return E; }, paraSalvar: function () { return paraSalvar(); } };
   // ---------- liga nos botões da lista ----------
   document.addEventListener('click', function (e) {
     var pg = e.target.closest('#page-orcamentos'); if (!pg) return;
@@ -75457,6 +75465,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-msg{font-size:13px;border-radius:10px;padding:10px 12px;display:none}.dsce-msg.err{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}.dsce-msg.ok{display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}'
     + '.dsce-hint{font-size:12px;color:#64748b;font-weight:500}'
     + '.dsce-ov .dsce-m [hidden]{display:none!important}'
+    + '.dsce-ov .dsce-m{color-scheme:light}.dsce-ov .dsce-m option{background:#fff!important;color:#0f172a!important}'
     + '.dsce-ov .dsce-m{--field:#fff;--text:#0f172a;--b2:#cbd5e1;--s2:#fff;--s1:#fff;--bg:#fff}'
     + '.dsce-ov .dsce-m,.dsce-ov .dsce-m header,.dsce-ov .dsce-m footer{background:#fff!important;color:#0f172a!important}'
     + '.dsce-ov .dsce-m header h2{color:#0f172a!important;font-weight:800!important}'
@@ -75487,11 +75496,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // ---------- Configuração da conta de envio ----------
   function abrirConfig(cfg, depois) {
     cfg = cfg || {};
-    var ov = modal('E-mail que envia as compras',
-      '<div class="dsce-hint">As compras saem deste e-mail. A senha fica guardada só no servidor (não aparece para ninguém depois de salva).</div>'
-      + '<label>E-mail de envio<input name="user" type="email" autocomplete="off" value="' + esc(cfg.user || 'comercial@italyembalagens.com.br') + '"></label>'
+    var ov = modal(cfg.conta === 'orcamentos' ? 'E-mail que envia os orçamentos' : 'E-mail que envia as compras',
+      '<div class="dsce-hint">' + (cfg.conta === 'orcamentos' ? 'Os orçamentos' : 'As compras') + ' saem deste e-mail. A senha fica guardada só no servidor (não aparece para ninguém depois de salva).</div>'
+      + '<label>E-mail de envio<input name="user" type="email" autocomplete="off" value="' + esc(cfg.user || (cfg.conta === 'orcamentos' ? 'atendimento@italyembalagens.com.br' : 'comercial@italyembalagens.com.br')) + '"></label>'
       + '<label>Senha do e-mail<input name="pass" type="password" autocomplete="new-password" placeholder="' + (cfg.tem_senha ? '•••••••• (já salva — deixe em branco para manter)' : 'Digite a senha da caixa de e-mail') + '"></label>'
-      + '<label>Nome que aparece para o fornecedor<input name="nome" value="' + esc(cfg.nome || 'Italy Embalagens — Compras') + '"></label>'
+      + '<label>Nome que aparece para quem recebe<input name="nome" value="' + esc(cfg.nome || 'Italy Embalagens') + '"></label>'
       + '<details><summary class="dsce-hint" style="cursor:pointer">Servidor (HostGator)</summary><div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-top:8px">'
       + '<label>Servidor SMTP<input name="host" value="' + esc(cfg.host || 'mail.italyembalagens.com.br') + '"></label>'
       + '<label>Porta<input name="port" type="number" value="' + esc(cfg.port || 465) + '"></label></div></details>'
@@ -75503,13 +75512,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!cfg.tem_senha && !ov.querySelector('[name="pass"]').value) return msg(ov, 'Digite a senha do e-mail.');
       bt.disabled = true; bt.textContent = 'Testando login…';
       try {
-        var r = await api('/api/email-compras/config', { method: 'PUT', body: { user: g('user'), pass: ov.querySelector('[name="pass"]').value, nome: g('nome'), host: g('host'), port: g('port') } });
+        var r = await api('/api/email-config/' + (cfg.conta || 'compras'), { method: 'PUT', body: { user: g('user'), pass: ov.querySelector('[name="pass"]').value, nome: g('nome'), host: g('host'), port: g('port') } });
         ov.fechar(); if (depois) depois(r);
       } catch (e) { msg(ov, String(e && e.message || e)); bt.disabled = false; bt.textContent = 'Testar e salvar'; }
     };
     setTimeout(function () { var p = ov.querySelector('[name="pass"]'); if (p) p.focus(); }, 50);
   }
-  window.dsEmailComprasConfig = function () { api('/api/email-compras/config').then(function (c) { abrirConfig(c); }); };
+  window.dsEmailComprasConfig = function () { api('/api/email-config/compras').then(function (c) { abrirConfig(c); }); };
 
   // ---------- PDF da compra ----------
   function carregarScript(src, teste) {
@@ -75558,40 +75567,44 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } finally { if (fr.parentNode) fr.parentNode.removeChild(fr); }
   }
 
-  // ---------- Enviar ----------
-  async function abrirEnvio(id, payload) {
-    var compra;
-    try { compra = await api('/api/compras-chapas/' + encodeURIComponent(id)); } catch (e) { alert('Não consegui abrir a compra: ' + (e && e.message || e)); return; }
-    var dados = payload ? Object.assign({}, compra, payload, { id: compra.id, numero_compra: compra.numero_compra }) : compra;
-    var cfg = {}, forns = [];
-    try { cfg = await api('/api/email-compras/config'); } catch (_) {}
-    try { var fr = await api('/api/fornecedores'); forns = (Array.isArray(fr) ? fr : (fr && (fr.data || fr.fornecedores)) || []).filter(function (f) { return f && f.nome; }); } catch (_) {}
-    forns.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
-    var nomeForn = String(dados.fornecedor || '').trim();
-    var norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
-    var fSel = forns.find(function (f) { return norm(f.nome) === norm(nomeForn); }) || forns.find(function (f) { return nomeForn && (norm(f.nome).indexOf(norm(nomeForn)) >= 0 || norm(nomeForn).indexOf(norm(f.nome)) >= 0); }) || null;
-    var numero = window._compraPapelaoNumeroLabel ? window._compraPapelaoNumeroLabel(dados.numero_compra || '') : String(dados.numero_compra || '');
-    var arquivo = 'Pedido-de-compra-' + String(numero).replace(/[^\w-]+/g, '') + '.pdf';
+  // ---------- Enviar (genérico: compras -> fornecedor, orçamentos -> cliente) ----------
+  var norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
+  function acharParte(lst, nome, id) {
+    if (id) { var p = lst.find(function (f) { return String(f.id) === String(id); }); if (p) return p; }
+    if (!nome) return null;
+    return lst.find(function (f) { return norm(f.nome) === norm(nome); }) || lst.find(function (f) { return norm(f.nome).indexOf(norm(nome)) >= 0 || norm(nome).indexOf(norm(f.nome)) >= 0; }) || null;
+  }
+  // o: { conta, titulo, rotulo ('Fornecedor'|'Cliente'), partes:[{id,nome,email}], sel, assunto, mensagem, arquivo, htmlFn, enviar(body), salvarEmails(parte, emails), descricaoOk }
+  async function abrirEnvioGen(o) {
+    var cfg = {};
+    try { cfg = await api('/api/email-config/' + o.conta); } catch (_) {}
+    var partes = o.partes || [], fSel = o.sel || null;
     var para = fSel ? lista(fSel.email).filter(function (e) { return EMAIL_RE.test(e); }) : [];
-    var mensagemPadrao = 'Bom dia!\n\nSegue em anexo o nosso pedido de compra Nº ' + numero + '.\nPor favor, confirme o recebimento e a previsão de entrega.\n\nObrigado,\n' + (cfg.nome || 'Italy Embalagens');
     var configurado = !!cfg.tem_senha;
-    var ov = modal('Enviar compra Nº ' + numero + ' por e-mail',
-      '<div class="dsce-de" data-de>' + (configurado ? 'De: <b>' + esc(cfg.user) + '</b>' : '<span style="color:#b45309;font-weight:700">⚠ O e-mail de envio ainda não foi configurado.</span>') + (cfg.pode_editar ? '<button type="button" class="dsce-btn sm" data-cfg>⚙ ' + (configurado ? 'Alterar' : 'Configurar') + '</button>' : '') + '</div>'
-      + '<label>Fornecedor<select data-forn><option value="">— escolha —</option>' + forns.map(function (f, i) { return '<option value="' + i + '"' + (f === fSel ? ' selected' : '') + '>' + esc(f.nome) + (f.email ? ' — ' + esc(f.email) : ' (sem e-mail)') + '</option>'; }).join('') + '</select></label>'
+    var dlId = 'dsce-dl-' + Date.now();
+    var ov = modal(o.titulo,
+      '<div class="dsce-de" data-de></div>'
+      + '<label>' + esc(o.rotulo) + '<input data-parte list="' + dlId + '" autocomplete="off" placeholder="Digite para buscar…" value="' + esc(fSel ? fSel.nome : '') + '"><datalist id="' + dlId + '">' + partes.map(function (f) { return '<option value="' + esc(f.nome) + '">' + (f.email ? esc(f.email) : 'sem e-mail') + '</option>'; }).join('') + '</datalist><span class="dsce-hint" data-parte-info></span></label>'
       + '<label>Para<div class="dsce-chips" data-chips></div><div class="dsce-add"><input data-novo type="email" inputmode="email" placeholder="Adicionar e-mail e apertar Enter"><button type="button" class="dsce-btn sm" data-addbtn>Adicionar</button></div></label>'
-      + '<label class="dsce-ck" data-salvarwrap hidden><input type="checkbox" data-salvar-forn checked> Salvar os e-mails novos no cadastro deste fornecedor</label>'
-      + '<label>Assunto<input data-assunto value="' + esc('Pedido de compra Nº ' + numero + ' — Italy Embalagens') + '"></label>'
-      + '<label>Mensagem<textarea data-msg>' + esc(mensagemPadrao) + '</textarea></label>'
-      + '<div class="dsce-anexo">📎 <span>' + esc(arquivo) + '</span><button type="button" class="dsce-btn sm" data-ver>Ver PDF</button></div>'
-      + '<label class="dsce-ck"><input type="checkbox" data-copia checked> Mandar uma cópia para o nosso e-mail</label>'
+      + '<label class="dsce-ck" data-salvarwrap hidden><input type="checkbox" data-salvar-parte checked> <span>Salvar os e-mails novos no cadastro deste ' + esc(o.rotulo.toLowerCase()) + '</span></label>'
+      + '<label>Assunto<input data-assunto value="' + esc(o.assunto) + '"></label>'
+      + '<label>Mensagem<textarea data-msg>' + esc(o.mensagem.replace('{{NOME}}', cfg.nome || 'Italy Embalagens')) + '</textarea></label>'
+      + '<div class="dsce-anexo">📎 <span>' + esc(o.arquivo) + '</span><button type="button" class="dsce-btn sm" data-ver>Ver PDF</button></div>'
+      + '<label class="dsce-ck"><input type="checkbox" data-copia checked> <span>Mandar uma cópia para o nosso e-mail</span></label>'
       + '<div class="dsce-msg"></div>',
       '<button type="button" class="dsce-btn" data-f>Cancelar</button><button type="button" class="dsce-btn pri" data-enviar>📧 Enviar</button>');
-    var chips = ov.querySelector('[data-chips]'), novo = ov.querySelector('[data-novo]');
-    function fornAtual() { var v = ov.querySelector('[data-forn]').value; return v === '' ? null : forns[Number(v)]; }
-    function novosParaForn() { var f = fornAtual(); if (!f) return []; var ja = lista(f.email); return para.filter(function (e) { return ja.indexOf(e) < 0; }); }
+    var chips = ov.querySelector('[data-chips]'), novo = ov.querySelector('[data-novo]'), inParte = ov.querySelector('[data-parte]');
+    function pintarDe() {
+      var de = ov.querySelector('[data-de]');
+      de.innerHTML = (configurado ? 'De: <b>' + esc(cfg.user) + '</b>' : '<span style="color:#b45309;font-weight:700">⚠ O e-mail de envio ainda não foi configurado.</span>') + (cfg.pode_editar ? '<button type="button" class="dsce-btn sm" data-cfg>⚙ ' + (configurado ? 'Alterar' : 'Configurar') + '</button>' : '');
+      var b = de.querySelector('[data-cfg]');
+      if (b) b.onclick = function () { abrirConfig(cfg, function (n) { cfg = Object.assign(cfg, n); configurado = !!cfg.tem_senha; pintarDe(); msg(ov, 'E-mail de envio configurado. Já pode enviar.', 'ok'); }); };
+    }
+    function novosParaParte() { if (!fSel) return []; var ja = lista(fSel.email); return para.filter(function (e) { return ja.indexOf(e) < 0; }); }
     function render() {
-      chips.innerHTML = para.length ? para.map(function (e, i) { return '<span class="dsce-chip">' + esc(e) + '<button type="button" data-rm="' + i + '" aria-label="Remover">✕</button></span>'; }).join('') : '<span class="dsce-hint">Nenhum destinatário. Escolha um fornecedor com e-mail ou digite um e-mail abaixo.</span>';
-      ov.querySelector('[data-salvarwrap]').hidden = !novosParaForn().length;
+      chips.innerHTML = para.length ? para.map(function (e, i) { return '<span class="dsce-chip">' + esc(e) + '<button type="button" data-rm="' + i + '" aria-label="Remover">✕</button></span>'; }).join('') : '<span class="dsce-hint">Nenhum destinatário. Escolha um ' + esc(o.rotulo.toLowerCase()) + ' com e-mail ou digite um e-mail abaixo.</span>';
+      ov.querySelector('[data-salvarwrap]').hidden = !(o.salvarEmails && fSel && fSel.id && novosParaParte().length);
+      ov.querySelector('[data-parte-info]').textContent = fSel ? (fSel.email ? 'E-mail no cadastro: ' + fSel.email : 'Sem e-mail no cadastro — digite abaixo e ele fica salvo.') : '';
     }
     function adicionar() {
       var vs = lista(novo.value); if (!vs.length) return;
@@ -75599,17 +75612,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (ruins.length) return msg(ov, 'E-mail inválido: ' + ruins.join(', '));
       para = uniq(para.concat(vs)); novo.value = ''; msg(ov, '', 'x'); render();
     }
+    function escolherParte() {
+      var f = partes.find(function (x) { return norm(x.nome) === norm(inParte.value); }) || null;
+      if (f === fSel) return;
+      fSel = f; para = f ? lista(f.email).filter(function (e) { return EMAIL_RE.test(e); }) : []; render();
+    }
     chips.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b) { para.splice(Number(b.getAttribute('data-rm')), 1); render(); } });
     novo.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ',' || e.key === ';') { e.preventDefault(); e.stopPropagation(); adicionar(); } });
     novo.addEventListener('blur', function () { if (novo.value.trim() && lista(novo.value).every(function (e) { return EMAIL_RE.test(e); })) adicionar(); });
+    inParte.addEventListener('input', escolherParte); inParte.addEventListener('change', escolherParte);
+    inParte.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); escolherParte(); novo.focus(); } });
     ov.querySelector('[data-addbtn]').onclick = adicionar;
-    ov.querySelector('[data-forn]').onchange = function () { var f = fornAtual(); para = f ? lista(f.email).filter(function (e) { return EMAIL_RE.test(e); }) : []; render(); };
-    var cfgBtn = ov.querySelector('[data-cfg]');
-    if (cfgBtn) cfgBtn.onclick = function () { abrirConfig(cfg, function (n) { cfg = Object.assign(cfg, n); configurado = !!cfg.tem_senha; ov.querySelector('[data-de]').firstChild && (ov.querySelector('[data-de]').innerHTML = 'De: <b>' + esc(cfg.user) + '</b><button type="button" class="dsce-btn sm" data-cfg>⚙ Alterar</button>'); var nb = ov.querySelector('[data-cfg]'); if (nb) nb.onclick = cfgBtn.onclick; msg(ov, 'E-mail de envio configurado. Já pode enviar.', 'ok'); }); };
-    var htmlPrint = function () { return window._compraPapelaoBuildCompraPrintHtmlFromPayload ? window._compraPapelaoBuildCompraPrintHtmlFromPayload(dados, compra) : window._compraPapelaoBuildCompraPrintHtml(dados); };
     ov.querySelector('[data-ver]').onclick = async function () {
       var b = this; b.disabled = true; b.textContent = 'Gerando…';
-      try { var b64 = await gerarPdf(htmlPrint()); var bin = atob(b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); var w = window.open(url, '_blank'); if (!w) { var a = document.createElement('a'); a.href = url; a.download = arquivo; a.click(); } }
+      try { var b64 = await gerarPdf(await o.htmlFn()); var bin = atob(b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); var w = window.open(url, '_blank'); if (!w) { var a = document.createElement('a'); a.href = url; a.download = o.arquivo; a.click(); } }
       catch (e) { msg(ov, String(e && e.message || e)); }
       b.disabled = false; b.textContent = 'Ver PDF';
     };
@@ -75620,21 +75636,70 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!para.length) return msg(ov, 'Escolha pelo menos um destinatário.');
       bt.disabled = true; bt.textContent = 'Gerando PDF…';
       try {
-        var b64 = await gerarPdf(htmlPrint());
+        var b64 = await gerarPdf(await o.htmlFn());
         bt.textContent = 'Enviando…';
-        await api('/api/compras-chapas/' + encodeURIComponent(compra.id) + '/enviar-email', { method: 'POST', body: { para: para, assunto: ov.querySelector('[data-assunto]').value, mensagem: ov.querySelector('[data-msg]').value, pdf_base64: b64, nome_arquivo: arquivo, copia_para_mim: ov.querySelector('[data-copia]').checked } });
-        var f = fornAtual(), novos = novosParaForn();
-        if (f && f.id && novos.length && ov.querySelector('[data-salvar-forn]').checked) {
-          try { await api('/api/fornecedores/' + encodeURIComponent(f.id), { method: 'PUT', body: { email: uniq(lista(f.email).concat(novos)).join(', ') } }); f.email = uniq(lista(f.email).concat(novos)).join(', '); } catch (_) {}
+        await o.enviar({ para: para, assunto: ov.querySelector('[data-assunto]').value, mensagem: ov.querySelector('[data-msg]').value, pdf_base64: b64, nome_arquivo: o.arquivo, copia_para_mim: ov.querySelector('[data-copia]').checked });
+        var novos = novosParaParte();
+        if (o.salvarEmails && fSel && fSel.id && novos.length && ov.querySelector('[data-salvar-parte]').checked) {
+          var todos = uniq(lista(fSel.email).concat(novos)).join(', ');
+          try { await o.salvarEmails(fSel, todos); fSel.email = todos; } catch (_) {}
         }
         ov.fechar();
-        var ok = modal('E-mail enviado ✓', '<div style="font-size:15px;line-height:1.5">A compra Nº <b>' + esc(numero) + '</b> foi enviada com o PDF para:<br><b>' + esc(para.join(', ')) + '</b></div>', '<button type="button" class="dsce-btn pri" data-f>OK</button>');
-        setTimeout(function () { var b = ok.querySelector('footer [data-f]'); if (b) b.focus(); }, 30);
+        var okm = modal('E-mail enviado ✓', '<div style="font-size:15px;line-height:1.5">' + o.descricaoOk + ' foi enviado com o PDF para:<br><b>' + esc(para.join(', ')) + '</b></div>', '<button type="button" class="dsce-btn pri" data-f>OK</button>');
+        setTimeout(function () { var b = okm.querySelector('footer [data-f]'); if (b) b.focus(); }, 30);
       } catch (e) { msg(ov, String(e && e.message || e)); bt.disabled = false; bt.textContent = '📧 Enviar'; }
     };
-    render();
+    pintarDe(); render();
+    return ov;
+  }
+
+  async function abrirEnvio(id, payload) {
+    var compra;
+    try { compra = await api('/api/compras-chapas/' + encodeURIComponent(id)); } catch (e) { alert('Não consegui abrir a compra: ' + (e && e.message || e)); return; }
+    var dados = payload ? Object.assign({}, compra, payload, { id: compra.id, numero_compra: compra.numero_compra }) : compra;
+    var forns = [];
+    try { var fr = await api('/api/fornecedores'); forns = (Array.isArray(fr) ? fr : (fr && (fr.data || fr.fornecedores)) || []).filter(function (f) { return f && f.nome; }); } catch (_) {}
+    forns.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+    var numero = window._compraPapelaoNumeroLabel ? window._compraPapelaoNumeroLabel(dados.numero_compra || '') : String(dados.numero_compra || '');
+    return abrirEnvioGen({
+      conta: 'compras', titulo: 'Enviar compra Nº ' + numero + ' por e-mail', rotulo: 'Fornecedor',
+      partes: forns, sel: acharParte(forns, String(dados.fornecedor || '').trim(), dados.fornecedor_id),
+      assunto: 'Pedido de compra Nº ' + numero + ' — Italy Embalagens',
+      mensagem: 'Bom dia!\n\nSegue em anexo o nosso pedido de compra Nº ' + numero + '.\nPor favor, confirme o recebimento e a previsão de entrega.\n\nObrigado,\n{{NOME}}',
+      arquivo: 'Pedido-de-compra-' + String(numero).replace(/[^\w-]+/g, '') + '.pdf',
+      htmlFn: function () { return window._compraPapelaoBuildCompraPrintHtmlFromPayload ? window._compraPapelaoBuildCompraPrintHtmlFromPayload(dados, compra) : window._compraPapelaoBuildCompraPrintHtml(dados); },
+      enviar: function (body) { return api('/api/compras-chapas/' + encodeURIComponent(compra.id) + '/enviar-email', { method: 'POST', body: body }); },
+      salvarEmails: function (f, emails) { return api('/api/fornecedores/' + encodeURIComponent(f.id), { method: 'PUT', body: { email: emails } }); },
+      descricaoOk: 'A compra Nº <b>' + esc(numero) + '</b>'
+    });
   }
   window.dsEnviarCompraEmail = abrirEnvio;
+
+  async function abrirEnvioOrc(id) {
+    if (!window.dsOrc || !window.dsOrc.htmlId) { alert('Orçamentos ainda carregando, tente de novo.'); return; }
+    var r;
+    try { r = await window.dsOrc.htmlId(id); } catch (e) { alert('Não consegui abrir o orçamento: ' + (e && e.message || e)); return; }
+    var o = r.orc || {}, numero = String(o.numero_orcamento || r.pl.numero_orcamento || '');
+    var clis = [];
+    try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) && CLIENTES.length) clis = CLIENTES.slice(); } catch (_) {}
+    if (!clis.length) { try { var cr = await api('/api/clientes?limit=10000'); clis = Array.isArray(cr) ? cr : (cr && (cr.data || cr.clientes)) || []; } catch (_) {} }
+    clis = clis.filter(function (c) { return c && c.nome; }).map(function (c) { return { id: c.id, nome: String(c.nome).trim(), email: String(c.email || '').trim(), _c: c }; });
+    clis.sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    var ref = String(o.nome_orcamento || o.nome || r.pl.nome || '').trim();
+    return abrirEnvioGen({
+      conta: 'orcamentos', titulo: 'Enviar orçamento Nº ' + numero + ' por e-mail', rotulo: 'Cliente',
+      partes: clis, sel: acharParte(clis, String(o.cliente_nome || r.pl.cliente_nome || '').trim(), o.cliente_id || r.pl.cliente_id),
+      assunto: 'Orçamento Nº ' + numero + (ref ? ' — ' + ref : '') + ' — Italy Embalagens',
+      mensagem: 'Olá!\n\nSegue em anexo o orçamento Nº ' + numero + (ref ? ' (' + ref + ')' : '') + ' que você nos pediu.\nQualquer dúvida ou ajuste, é só responder este e-mail.\n\nObrigado,\n{{NOME}}',
+      arquivo: 'Orcamento-' + numero.replace(/[^\w-]+/g, '') + '.pdf',
+      htmlFn: function () { return window.dsOrc.htmlId(id).then(function (x) { return x.html; }); },
+      enviar: function (body) { return api('/api/orcamentos/' + encodeURIComponent(id) + '/enviar-email', { method: 'POST', body: body }); },
+      salvarEmails: function (c, emails) { return api('/api/clientes/' + encodeURIComponent(c.id), { method: 'PUT', body: { email: emails } }).then(function () { try { if (c._c) c._c.email = emails; } catch (_) {} }); },
+      descricaoOk: 'O orçamento Nº <b>' + esc(numero) + '</b>'
+    });
+  }
+  window.dsEnviarOrcEmail = abrirEnvioOrc;
+  window.dsEmailConfig = function (conta) { api('/api/email-config/' + conta).then(function (c) { abrirConfig(c); }); };
 
   // Botão "Enviar por Email" dentro da compra
   window._compraPapelaoOpenOutlookMail = async function (payload, compra) {
@@ -75650,6 +75715,17 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       b.insertAdjacentElement('afterend', e);
     });
   }
+  function injetarOrc() {
+    Array.prototype.slice.call(document.querySelectorAll('#page-orcamentos button[onclick^="imprimirOrcamentoId"]:not(.dsce-ok)')).forEach(function (b) {
+      b.classList.add('dsce-ok');
+      var m = (b.getAttribute('onclick') || '').match(/'([^']+)'/); if (!m) return;
+      if (b.parentNode.querySelector('[data-dsce-orc]')) return;
+      var e = document.createElement('button'); e.type = 'button'; e.className = b.className; e.setAttribute('data-dsce-orc', m[1]); e.textContent = '📧 E-mail';
+      b.insertAdjacentElement('afterend', e);
+    });
+  }
+  document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-dsce-orc]'); if (b) { ev.preventDefault(); ev.stopPropagation(); abrirEnvioOrc(b.getAttribute('data-dsce-orc')); } }, true);
+  new MutationObserver(function () { if (document.querySelector('#page-orcamentos button[onclick^="imprimirOrcamentoId"]:not(.dsce-ok)')) injetarOrc(); }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-dsce-email]'); if (b) { ev.preventDefault(); ev.stopPropagation(); abrirEnvio(b.getAttribute('data-dsce-email')); } }, true);
   new MutationObserver(function () { if (document.querySelector('[data-cmpx-print]:not(.dsce-ok)')) { injetar(); Array.prototype.slice.call(document.querySelectorAll('[data-cmpx-print]')).forEach(function (b) { b.classList.add('dsce-ok'); }); } }).observe(document.body, { childList: true, subtree: true });
 })();
