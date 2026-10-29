@@ -7969,7 +7969,7 @@ window._compraVincosArrayFull = function(item) {
   // Lê UMA fonte só (antes juntava texto + lista + extras e deduplicava → 9/8/9/9 virava 9/8).
   if (!item) return [];
   var clean = function(v) { return String(v == null ? '' : v).trim(); };
-  var split = function(s) { return String(s == null ? '' : s).split(/[,;\/]+/).map(clean).filter(Boolean); };
+  var split = function(s) { s = String(s == null ? '' : s); return s.split(s.indexOf('/') >= 0 ? /\/+/ : /[,;\/]+/).map(clean).filter(Boolean); };
   if (Array.isArray(item.vincos) && item.vincos.length) return item.vincos.map(clean).filter(Boolean);
   var txt = clean(item.vincos) || clean(item.vincos_texto) || (Array.isArray(item.vincos_lista) ? item.vincos_lista.join('/') : clean(item.vincos_lista));
   if (txt) return split(txt);
@@ -9045,7 +9045,7 @@ window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
     + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
     + '  <div class="ccpx-fs-footer">'
     + '    <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade total</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área total</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor total</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div><div class="ccpx-chip"><div class="lbl">Total geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div></div>'
-    + '    <div class="ccpx-fs-footer-actions"><button type="button" class="ghost" id="ccpx-cancel-compra">Cancelar</button><button type="button" class="print" id="ccpx-print-compra">Imprimir</button><button type="button" class="ghost" id="ccpx-email-compra">Enviar por Email</button><button type="button" class="primary" id="ccpx-save-compra">' + (compraId ? 'Salvar Compra' : 'Salvar Compra') + '</button></div>'
+    + '    <div class="ccpx-fs-footer-actions"><button type="button" class="ghost" id="ccpx-cancel-compra">Cancelar</button><button type="button" class="print" id="ccpx-print-compra">Imprimir</button><button type="button" class="ghost" id="ccpx-email-compra">📧 Salvar e enviar e-mail</button><button type="button" class="primary" id="ccpx-save-compra">' + (compraId ? 'Salvar Compra' : 'Salvar Compra') + '</button></div>'
     + '  </div>'
     + '</div>';
 };
@@ -9221,12 +9221,11 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
       if (!arr.length) return '<div style="text-align:center;color:#94a3b8;font-weight:700">Sem vincos</div>';
       var soma = arr.reduce(function(t, v){ var n = parseFloat(String(v).replace(',', '.')); return t + (isFinite(n) ? n : 0); }, 0);
       var badges = arr.map(function(v, i){
-        return '<div style="flex:0 0 calc(25% - 5px);box-sizing:border-box;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:4px 3px;text-align:center;white-space:nowrap">'
+        return '<div style="flex:0 0 calc(25% - 4px);min-width:0;box-sizing:border-box;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:4px 3px;text-align:center">'
           + '<div style="font-size:8.5px;font-weight:800;letter-spacing:.08em;color:#64748b;line-height:1.1">V' + (i + 1) + '</div>'
-          + '<div style="font-size:13px;font-weight:900;color:#0f172a;font-family:Consolas,\'Courier New\',monospace;line-height:1.25">' + window._compraPapelaoEsc(v || '—') + '</div></div>';
+          + '<div style="font-size:13px;font-weight:900;color:#0f172a;font-family:Consolas,\'Courier New\',monospace;line-height:1.25;word-break:break-all">' + window._compraPapelaoEsc(v || '—') + '</div></div>';
       }).join('');
-      return '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start">' + badges + '</div>'
-        + '<div style="margin-top:5px;font-size:10px;color:#475569;font-weight:700;text-align:center">' + window._compraPapelaoEsc(arr.join(' / ')) + (soma ? ' &nbsp;·&nbsp; soma ' + window._compraPapelaoEsc(String(Math.round(soma * 100) / 100).replace('.', ',')) + ' mm' : '') + '</div>';
+      return '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start">' + badges + '</div>';
     })();
     return ''
       + '<tr style=\"display:table-row!important\">'
@@ -9436,12 +9435,10 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     if (closeBtn) closeBtn.onclick = window._compraPapelaoCloseCompraModal;
     if (cancelBtn) cancelBtn.onclick = window._compraPapelaoCloseCompraModal;
     if (emailBtn) emailBtn.onclick = async function() {
-      try {
-        var payload = window._compraPapelaoCollectCompraPayload(overlay, compra);
-        await window._compraPapelaoOpenOutlookMail(payload, compra);
-      } catch (e) {
-        alert('Erro ao preparar e-mail: ' + String(e && e.message || e));
-      }
+      var sb = overlay.querySelector('#ccpx-save-compra');
+      if (!sb || typeof sb.onclick !== 'function') return alert('Não consegui salvar a compra.');
+      overlay.__ccpxEnviarDepois = true;
+      try { await sb.onclick(); } finally { overlay.__ccpxEnviarDepois = false; }
     };
     var tbody = overlay.querySelector('#ccpx-modal-items-body');
     overlay.dataset.ccpxVisibleRows = String(Math.max(5, Math.trunc((Array.isArray(compra && compra.itens) ? compra.itens.length : 0)) || 0));
@@ -9552,11 +9549,18 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       saveBtn.style.setProperty('opacity', '0.6', 'important');
       try {
         console.log('[COMPRA-PAPELAO] salvar compra:', compraId ? 'edicao' : 'nova', window._compraPapelaoNumeroLabel(payload.numero_compra), 'itens:', payload.itens.length);
-        if (compraId) await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
-        else await window._compraPapelaoApi('/api/compras-chapas', { method: 'POST', body: payload });
+        var salvo = null;
+        if (compraId) salvo = await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
+        else salvo = await window._compraPapelaoApi('/api/compras-chapas', { method: 'POST', body: payload });
+        var enviarDepois = !!overlay.__ccpxEnviarDepois;
+        var idSalvo = String((salvo && (salvo.id || (salvo.compra && salvo.compra.id) || (Array.isArray(salvo) && salvo[0] && salvo[0].id))) || compraId || '');
         try { if (typeof window.toast === 'function') window.toast(compraId ? 'Compra de papelão atualizada com sucesso ✓' : 'Compra de papelão criada com sucesso ✓', 'var(--green)'); } catch (_) {}
         window._compraPapelaoCloseCompraModal();
         await window._compraPapelaoRenderPage();
+        if (enviarDepois) {
+          if (idSalvo && typeof window.dsEnviarCompraEmail === 'function') window.dsEnviarCompraEmail(idSalvo);
+          else alert('Compra salva, mas não consegui abrir o envio. Use o botão 📧 E-mail na lista.');
+        }
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
         var msg = 'Erro ao salvar compra: ' + String(e && e.message || e);
