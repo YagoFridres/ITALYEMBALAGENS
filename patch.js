@@ -1050,8 +1050,14 @@ try {
 
   async function rrReportPassagens() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/passagens/historico?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=1000');
-    var rows = rrList(json, ['passagens', 'data']);
+    // busca em páginas de 1000 até acabar (antes parava em 1000 e cortava períodos grandes)
+    var rows = [];
+    for (var off = 0; off < 100000; off += 1000) {
+      var json = await rrFetchJson('/api/passagens/historico?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=1000&offset=' + off);
+      var pg = rrList(json, ['passagens', 'data']);
+      rows = rows.concat(pg);
+      if (pg.length < 1000) break;
+    }
     var resumoMap = new Map();
     rows.forEach(function(row) {
       var maq = rrPassagensMaquina(row);

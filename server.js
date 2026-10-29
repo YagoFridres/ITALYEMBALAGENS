@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029153853';
-const SW_RUNTIME_VERSION = '20261029153853';
+const PATCH_RUNTIME_VERSION = '20261029153930';
+const SW_RUNTIME_VERSION = '20261029153930';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -17015,7 +17015,7 @@ async function _relPerdasPeriodo(range) {
     rows.push(...data);
     if (data.length < 1000) break;
   }
-  const noPeriodo = rows.filter((r) => { const d = String(r.data || r.created_at || '').slice(0, 10); return d && d >= ini && d < fimEx; });
+  const noPeriodo = rows.filter((r) => { const d = _relatoriosIsoDateOnly(r.data || r.created_at || ''); return d && d >= ini && d < fimEx; });
   const ofIds = Array.from(new Set(noPeriodo.map((r) => String(r.of_id || '').trim()).filter(_isUuid)));
   const empDaOf = new Map();
   for (let i = 0; i < ofIds.length; i += 200) {
