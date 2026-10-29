@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029150307';
-const SW_RUNTIME_VERSION = '20261029150307';
+const PATCH_RUNTIME_VERSION = '20261029152739';
+const SW_RUNTIME_VERSION = '20261029152739';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -18792,6 +18792,22 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
   }
 });
 
+async function _relatoriosCarregarTodosClientes() {
+  const out = [];
+  for (let off = 0; off < 20000; off += 1000) {
+    const { data, error } = await supabase.from('clientes').select('id,nome,rs,cidade,uf,ramo,ativo').order('nome').range(off, off + 999);
+    if (error) throw error;
+    if (!Array.isArray(data) || !data.length) break;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+function _relNormTxt(v) {
+  return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+}
+// Vendas por Cidade/Estado — mesma fonte oficial e mesmo critério de vendedor da tela de Comissões;
+// cidade/UF/ramo vêm do cadastro ATUAL do cliente.
 app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
@@ -18799,71 +18815,102 @@ app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, 
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    const ofs = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
+    const extras = ['cli_id', 'cliId', 'cliente_id', 'clinome', 'cliNome', 'cliente_nome', 'cliente', 'vendedor_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome', 'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida'];
+    let ofs = await _listarOfsVendasOficiais(range, '', extras);
+    ofs = _filtrarOfsNaoTesteGlobal(ofs).filter((of) => _vendasOficialDentroDoPeriodo(of, range));
+    try { ofs = await _comissoesEnriquecerLista(ofs); } catch (_) {}
+
+    // vendedor: mesmo critério da tela de Comissões (id -> primeiro nome encontrado)
+    const vidToNome = new Map();
+    ofs.forEach((of) => {
+      const vid = _pickOfVendedorIdCompat(of) || '__sem__';
+      const nm = _comissoesTextoValido(of.vendedor) || _comissoesTextoValido(of.vendedor_nome) || _comissoesTextoValido(of.vendNome) || _comissoesTextoValido(of.__vendedor_nome_view) || '';
+      if (nm && !vidToNome.has(vid)) vidToNome.set(vid, nm);
     });
-    const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
+    const nomeVendedor = (of) => {
+      const vid = _pickOfVendedorIdCompat(of) || '__sem__';
+      return _comissoesTextoValido(vidToNome.get(vid)) || _comissoesTextoValido(of.vendedor_nome || of.vendedor || of.vendNome || '') || 'Sem vendedor';
+    };
+
+    // clientes: cadastro atual (por id; se a OF não tiver id, pelo nome)
+    const clientes = await _relatoriosCarregarTodosClientes();
+    const porId = new Map(); const porNome = new Map(); const nomesRepetidos = new Set();
+    clientes.forEach((c) => {
+      porId.set(String(c.id), c);
+      [c.nome, c.rs].forEach((n) => {
+        const k = _relNormTxt(n); if (!k) return;
+        if (porNome.has(k) && porNome.get(k).id !== c.id) nomesRepetidos.add(k); else porNome.set(k, c);
+      });
+    });
+    nomesRepetidos.forEach((k) => porNome.delete(k));
+    const cadastradosPorCidade = new Map();
+    clientes.forEach((c) => {
+      if (c.ativo === false) return;
+      const cid = String(c.cidade || '').trim(); if (!cid) return;
+      const k = _relNormTxt(cid) + '|' + String(c.uf || '').trim().toUpperCase();
+      cadastradosPorCidade.set(k, (cadastradosPorCidade.get(k) || 0) + 1);
+    });
+
     const grupos = new Map();
     const clientesUnicos = new Set();
     const estadosUnicos = new Set();
+    let semCliente = 0;
     ofs.forEach((of) => {
       const cliId = _assistPickOfClienteId(of);
-      const cliente = cliId && _isUuid(cliId) ? clientesMap.get(cliId) : null;
-      const cidade = String(cliente?.cidade || '').trim() || 'Sem cidade';
-      const uf = String(cliente?.uf || '').trim().toUpperCase() || 'Sem UF';
-      const key = cidade.toLowerCase() + '|' + uf.toLowerCase();
+      const nomeOf = _comissoesTextoValido(of.__cliente_nome_view) || _comissoesTextoValido(of.cliente_nome) || _comissoesTextoValido(of.clinome) || _comissoesTextoValido(of.cliNome) || _comissoesTextoValido(of.cliente) || '';
+      const cliente = (cliId && porId.get(cliId)) || porNome.get(_relNormTxt(nomeOf)) || null;
+      if (!cliente) semCliente += 1;
+      const cidade = String(cliente?.cidade || '').trim();
+      const uf = String(cliente?.uf || '').trim().toUpperCase();
+      const key = cidade ? (_relNormTxt(cidade) + '|' + uf) : '__sem_cidade__';
       if (!grupos.has(key)) {
-        grupos.set(key, {
-          cidade,
-          estado: uf,
-          uf,
-          valor_vendido: 0,
-          caixas_produzidas: 0,
-          total_ofs: 0,
-          _clientes: new Set()
-        });
+        grupos.set(key, { cidade: cidade || 'Sem cidade no cadastro', estado: cidade ? (uf || '—') : '—', uf: cidade ? uf : '', valor_vendido: 0, caixas_produzidas: 0, total_ofs: 0,
+          _cli: new Map(), _ramo: new Map(), _vend: new Map() });
       }
-      const item = grupos.get(key);
-      item.valor_vendido += _relatoriosPickValorOf(of);
-      item.caixas_produzidas += _relatoriosPickQtdOf(of);
-      item.total_ofs += 1;
-      if (cliId && _isUuid(cliId)) {
-        item._clientes.add(cliId);
-        clientesUnicos.add(cliId);
-      }
-      if (uf && uf !== 'Sem UF') estadosUnicos.add(uf);
+      const g = grupos.get(key);
+      const val = _vendasOficialValor(of);
+      const qtd = _relatoriosPickQtdOf(of);
+      g.valor_vendido += val; g.caixas_produzidas += qtd; g.total_ofs += 1;
+      const cKey = cliente ? String(cliente.id) : ('nome:' + (_relNormTxt(nomeOf) || 'sem cliente'));
+      const cNome = cliente ? String(cliente.nome || cliente.rs || '').trim() : (nomeOf || 'Cliente não identificado');
+      const ramo = String(cliente?.ramo || '').trim();
+      const vend = nomeVendedor(of);
+      if (!g._cli.has(cKey)) g._cli.set(cKey, { nome: cNome, ramo: ramo || '—', vendedores: new Map(), valor: 0, ofs: 0, caixas: 0, cadastrado: !!cliente });
+      const ci = g._cli.get(cKey); ci.valor += val; ci.ofs += 1; ci.caixas += qtd; ci.vendedores.set(vend, (ci.vendedores.get(vend) || 0) + val);
+      if (ramo) g._ramo.set(ramo, (g._ramo.get(ramo) || 0) + val);
+      g._vend.set(vend, (g._vend.get(vend) || 0) + val);
+      clientesUnicos.add(cKey);
+      if (cidade && uf) estadosUnicos.add(uf);
     });
-    const rows = Array.from(grupos.values()).map((item) => ({
-      cidade: item.cidade,
-      estado: item.estado,
-      uf: item.uf,
-      valor_total: Number(item.valor_vendido || 0),
-      valor_vendido: Number(item.valor_vendido || 0),
-      total_clientes: item._clientes.size,
-      total_ofs: Number(item.total_ofs || 0) || 0,
-      caixas_produzidas: Number(item.caixas_produzidas || 0) || 0
-    })).sort((a, b) => {
-      if (Number(b.valor_vendido || 0) !== Number(a.valor_vendido || 0)) return Number(b.valor_vendido || 0) - Number(a.valor_vendido || 0);
-      if (String(a.estado || '').localeCompare(String(b.estado || ''), 'pt-BR') !== 0) return String(a.estado || '').localeCompare(String(b.estado || ''), 'pt-BR');
-      return String(a.cidade || '').localeCompare(String(b.cidade || ''), 'pt-BR');
+    const topo = (m) => { let best = null; m.forEach((v, k) => { if (!best || v > best[1]) best = [k, v]; }); return best; };
+    const rows = Array.from(grupos.values()).map((g) => {
+      const r = topo(g._ramo), v = topo(g._vend);
+      const clientesLista = Array.from(g._cli.values()).map((c) => ({
+        nome: c.nome, ramo: c.ramo, valor: c.valor, ofs: c.ofs, caixas: c.caixas, cadastrado: c.cadastrado,
+        vendedor: (topo(c.vendedores) || ['Sem vendedor'])[0]
+      })).sort((a, b) => b.valor - a.valor);
+      return {
+        cidade: g.cidade, estado: g.estado, uf: g.uf,
+        valor_total: g.valor_vendido, valor_vendido: g.valor_vendido,
+        total_ofs: g.total_ofs, caixas_produzidas: g.caixas_produzidas,
+        total_clientes: g._cli.size,
+        clientes_cadastrados: g.uf || g.cidade !== 'Sem cidade no cadastro' ? (cadastradosPorCidade.get(_relNormTxt(g.cidade) + '|' + g.uf) || 0) : null,
+        ramo_top: r ? r[0] : 'Sem ramo no cadastro', ramo_top_valor: r ? r[1] : 0,
+        vendedor_top: v ? v[0] : 'Sem vendedor', vendedor_top_valor: v ? v[1] : 0,
+        clientes: clientesLista
+      };
+    }).sort((a, b) => {
+      if (a.cidade === 'Sem cidade no cadastro') return 1;
+      if (b.cidade === 'Sem cidade no cadastro') return -1;
+      return b.valor_vendido - a.valor_vendido || String(a.cidade).localeCompare(String(b.cidade), 'pt-BR');
     });
-    const resumo = rows.reduce((acc, item) => {
-      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
-      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
-      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
-      return acc;
-    }, { valor_vendido: 0, total_ofs: 0, caixas_produzidas: 0 });
-    resumo.total_cidades = rows.length;
+    const resumo = rows.reduce((acc, it) => { acc.valor_vendido += it.valor_vendido; acc.total_ofs += it.total_ofs; acc.caixas_produzidas += it.caixas_produzidas; return acc; }, { valor_vendido: 0, total_ofs: 0, caixas_produzidas: 0 });
+    resumo.total_cidades = rows.filter((r) => r.cidade !== 'Sem cidade no cadastro').length;
     resumo.total_estados = estadosUnicos.size;
     resumo.total_clientes = clientesUnicos.size;
+    resumo.ofs_sem_cliente_identificado = semCliente;
     resumo.valor_total = resumo.valor_vendido;
-    return res.json({
-      ok: true,
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      resumo,
-      rows
-    });
+    return res.json({ ok: true, data_inicio: range.inicio, data_fim: range.fim, resumo, rows });
   } catch (e) {
     console.error('[RELATORIOS][VENDAS-POR-CIDADE-ESTADO]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });

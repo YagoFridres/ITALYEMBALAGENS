@@ -2311,39 +2311,50 @@ try {
     var json = await rrFetchJson('/api/relatorios/vendas-por-cidade-estado?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
+    var pct = function(v, t) { return t > 0 ? ' (' + rrFmtNum(v / t * 100, 0) + '%)' : ''; };
+    var detalhe = [];
+    rows.forEach(function(row) {
+      (Array.isArray(row && row.clientes) ? row.clientes : []).forEach(function(c) {
+        detalhe.push([
+          rrEsc(String(row.cidade || '—') + (row.uf ? ' / ' + row.uf : '')),
+          rrEsc(String(c.nome || '—')) + (c.cadastrado ? '' : ' <small style="color:#b45309">(não achado no cadastro)</small>'),
+          rrEsc(String(c.ramo || '—')),
+          rrEsc(String(c.vendedor || '—')),
+          rrEsc(rrFmtNum(c.ofs || 0, 0)),
+          rrEsc(rrFmtNum(c.caixas || 0, 0)),
+          rrEsc(rrFmtMoney(c.valor || 0))
+        ]);
+      });
+    });
     return rrOpenPrint({
       title: 'Relatório de Vendas por Cidade/Estado',
       periodo: ref.titulo,
       cards: [
         { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Total consolidado do período' },
-        { label: 'Cidades', value: rrFmtNum(resumo.total_cidades || rows.length, 0), sub: 'Cidades com vendas' },
+        { label: 'Cidades', value: rrFmtNum(resumo.total_cidades || 0, 0), sub: rrFmtNum(resumo.total_clientes || 0, 0) + ' clientes compraram' },
         { label: 'Estados', value: rrFmtNum(resumo.total_estados || 0, 0), sub: 'UFs com vendas' },
         { label: 'OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: rrFmtNum(resumo.caixas_produzidas || 0, 0) + ' caixas produzidas' }
       ],
       summaryTitle: 'Resumo por cidade/estado',
-      summaryHeaders: ['Cidade', 'Estado', 'Valor Total Vendido', 'Nº de OFs', 'Quantidade de Caixas'],
+      summaryHeaders: ['Cidade', 'UF', 'Clientes que compraram', 'Clientes cadastrados', 'Ramo que mais compra', 'Vendedor que mais vende', 'Valor Total Vendido', 'Nº de OFs', 'Caixas'],
       summaryRows: rows.map(function(row) {
         return [
           rrEsc(String(row && row.cidade || '—')),
-          rrEsc(String(row && (row.estado || row.uf) || '—')),
+          rrEsc(String(row && row.uf || '—')),
+          rrEsc(rrFmtNum(row && row.total_clientes || 0, 0)),
+          rrEsc(row && row.clientes_cadastrados != null ? rrFmtNum(row.clientes_cadastrados, 0) : '—'),
+          rrEsc(String(row && row.ramo_top || '—')) + (row && row.ramo_top_valor ? '<br><small>' + rrEsc(rrFmtMoney(row.ramo_top_valor) + pct(row.ramo_top_valor, row.valor_vendido)) + '</small>' : ''),
+          rrEsc(String(row && row.vendedor_top || '—')) + (row && row.vendedor_top_valor ? '<br><small>' + rrEsc(rrFmtMoney(row.vendedor_top_valor) + pct(row.vendedor_top_valor, row.valor_vendido)) + '</small>' : ''),
           rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
           rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
           rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0))
         ];
       }),
-      detailTitle: 'Detalhamento',
-      detailHeaders: ['Cidade', 'Estado', 'Valor Total Vendido', 'Nº de OFs', 'Quantidade de Caixas'],
-      detailRows: rows.map(function(row) {
-        return [
-          rrEsc(String(row && row.cidade || '—')),
-          rrEsc(String(row && (row.estado || row.uf) || '—')),
-          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
-          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
-          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0))
-        ];
-      }),
-      emptySummaryCols: 5,
-      emptyDetailCols: 5
+      detailTitle: 'Clientes de cada cidade',
+      detailHeaders: ['Cidade / UF', 'Cliente', 'Ramo', 'Vendedor', 'OFs', 'Caixas', 'Valor'],
+      detailRows: detalhe,
+      emptySummaryCols: 9,
+      emptyDetailCols: 7
     });
   }
 
