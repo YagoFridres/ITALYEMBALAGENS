@@ -3019,7 +3019,8 @@ try {
     var historico = rrList(json, ['historico_ofs']);
     var orcamentos = rrList(json, ['orcamentos']);
     var faturamentoMensal = rrList(json, ['faturamento_mensal']);
-    var ticketMedio = Number(resumo && resumo.total_ofs || 0) > 0 ? ((Number(resumo && resumo.total_comprado || 0) || 0) / Number(resumo.total_ofs || 1)) : 0;
+    var nConcl = Number(resumo && (resumo.ofs_concluidas != null ? resumo.ofs_concluidas : resumo.total_ofs) || 0);
+    var ticketMedio = nConcl > 0 ? ((Number(resumo && resumo.total_comprado || 0) || 0) / nConcl) : 0;
     var topTxt = function(item, key) {
       var nome = String(item && item[key] || '').trim();
       if (!nome) return '—';
@@ -3039,11 +3040,11 @@ try {
       title: 'Ficha Técnica do Cliente',
       periodo: String(cliente && cliente.nome || 'Cliente'),
       cards: [
-        { label: 'Total Comprado', value: rrFmtMoney(resumo.total_comprado || 0), sub: 'Somatório do histórico de OFs' },
-        { label: 'Total de OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: 'Histórico localizado para o cliente' },
+        { label: 'Total Comprado', value: rrFmtMoney(resumo.total_comprado || 0), sub: 'Só OFs concluídas (vendidas)' },
+        { label: 'Total de OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: rrFmtNum(nConcl, 0) + ' concluídas · ' + rrFmtNum(resumo.ofs_canceladas || 0, 0) + ' canceladas' },
         { label: 'OFs em Aberto', value: rrFmtNum(resumo.ofs_abertas || 0, 0), sub: 'Pedidos ainda em produção/abertos' },
         { label: 'Orçamentos', value: rrFmtNum(resumo.total_orcamentos || 0, 0), sub: 'Orçamentos vinculados ao cliente' },
-        { label: 'Frequência Média', value: freqTxt, sub: 'Intervalo médio entre pedidos do cliente' },
+        { label: 'Frequência Média', value: freqTxt, sub: 'Dias, em média, entre um dia de compra e o próximo' },
         { label: 'Média Caixas/Mês', value: mediaCaixasMesTxt, sub: 'Quantidade média de caixas pedidas por mês' }
       ],
       summaryTitle: 'Cadastro e indicadores',

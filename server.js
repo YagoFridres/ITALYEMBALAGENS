@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029155544';
-const SW_RUNTIME_VERSION = '20261029155544';
+const PATCH_RUNTIME_VERSION = '20261029155633';
+const SW_RUNTIME_VERSION = '20261029155633';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -18145,7 +18145,10 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
       return String(b?.numero || '').localeCompare(String(a?.numero || ''), 'pt-BR', { numeric: true });
     });
     const abertas = historico.filter((of) => !_assistIsCancelada(of) && !_assistIsConcluida(of));
-    const totalComprado = historico.reduce((sum, of) => sum + (Number(of?.valor_total || 0) || 0), 0);
+    // comprado = só OFs concluídas (as em aberto e canceladas não foram vendidas)
+    const concluidasHist = historico.filter((of) => _assistIsConcluida(of) && !_assistIsCancelada(of));
+    const canceladasHist = historico.filter((of) => _assistIsCancelada(of));
+    const totalComprado = concluidasHist.reduce((sum, of) => sum + (Number(of?.valor_total || 0) || 0), 0);
     const produtosMap = new Map();
     historico.forEach((of) => {
       const key = String(of?.produto || 'Produto não informado').trim() || 'Produto não informado';
@@ -18237,12 +18240,14 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
       parseColors(of?.cores_impressao).forEach((cor) => pushCount(coresMap, cor, 1));
       const tamanho = pickSize(of);
       if (tamanho) pushCount(tamanhosMap, tamanho, 1);
-      const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
-      quantidadeTotalHistorico += quantidade;
-      const dataRef = String(of?.data_conclusao || of?.created_at || of?.dia || '').slice(0, 10);
-      if (dataRef) {
-        datasPedidos.push(dataRef);
-        mesesComPedidos.add(dataRef.slice(0, 7));
+      if (_assistIsConcluida(of) && !_assistIsCancelada(of)) {
+        const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+        quantidadeTotalHistorico += quantidade;
+        const dataRef = _relatoriosIsoDateOnly(of?.data_conclusao || of?.created_at || of?.dia || '');
+        if (dataRef) {
+          if (datasPedidos.indexOf(dataRef) < 0) datasPedidos.push(dataRef); // um dia de compra conta uma vez
+          mesesComPedidos.add(dataRef.slice(0, 7));
+        }
       }
     });
     const datasOrdenadas = datasPedidos
@@ -18300,6 +18305,8 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
       },
       resumo: {
         total_ofs: historico.length,
+        ofs_concluidas: concluidasHist.length,
+        ofs_canceladas: canceladasHist.length,
         ofs_abertas: abertas.length,
         total_comprado: totalComprado,
         total_orcamentos: orcamentosRows.length,
