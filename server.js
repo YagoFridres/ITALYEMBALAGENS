@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029155317';
-const SW_RUNTIME_VERSION = '20261029155317';
+const PATCH_RUNTIME_VERSION = '20261029155544';
+const SW_RUNTIME_VERSION = '20261029155544';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -18030,7 +18030,7 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
       const clienteRef = clientesMap.get(clienteId) || null;
       const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
       const valorTotal = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
-      const empresaId = String(of?.empresa_id || of?.emp_id || '').trim();
+      const empresaId = String(_relatoriosPickEmpresaId(of) || of?.empresa_id || of?.emp_id || '').trim();
       return {
         id: of?.id || null,
         numero: _assistPickOfNumber(of),
