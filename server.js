@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261028165656';
-const SW_RUNTIME_VERSION = '20261028165656';
+const PATCH_RUNTIME_VERSION = '20261029095354';
+const SW_RUNTIME_VERSION = '20261029095354';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5614,7 +5614,7 @@ function fornecedoresPayload(p) {
   if (nome) out.nome = nome;
   if (b.razao_social !== undefined) out.razao_social = b.razao_social;
   else if (b.rs !== undefined) out.razao_social = b.rs;
-  else if (!out.razao_social) out.razao_social = nome;
+  else if (nome && !out.razao_social) out.razao_social = nome;
 
   if (b.cnpj !== undefined) out.cnpj = b.cnpj;
   else if (b.cpf !== undefined) out.cnpj = b.cpf;
@@ -30118,6 +30118,105 @@ app.patch('/api/compras-chapas/:id/status', authMiddleware, async (req, res) => 
     try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     return ok(res, data);
   } catch (e) { return err(res, e); }
+});
+
+// ===== E-mail das compras (conta comercial) =====
+// A senha fica num arquivo do servidor (fora do repositório e fora do banco), só leitura do root.
+const _EMAIL_CMP_DIR = process.env.PCP_SECRETS_DIR || '/etc/pcp-pro';
+const _EMAIL_CMP_FILE = path.join(_EMAIL_CMP_DIR, 'email-compras.json');
+const _EMAIL_RE = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
+function _emailCmpLer() {
+  try { return JSON.parse(fs.readFileSync(_EMAIL_CMP_FILE, 'utf8')) || {}; } catch (_) { return {}; }
+}
+function _emailCmpGravar(cfg) {
+  fs.mkdirSync(_EMAIL_CMP_DIR, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(_EMAIL_CMP_FILE, JSON.stringify(cfg), { mode: 0o600 });
+  try { fs.chmodSync(_EMAIL_CMP_FILE, 0o600); } catch (_) {}
+}
+function _emailCmpPublico(c) {
+  return { host: c.host || 'mail.italyembalagens.com.br', port: Number(c.port || 465), user: c.user || 'comercial@italyembalagens.com.br', nome: c.nome || 'Italy Embalagens — Compras', tem_senha: !!c.pass, atualizado_em: c.atualizado_em || null, atualizado_por: c.atualizado_por || null };
+}
+function _emailCmpTransport(c) {
+  if (!c || !c.host || !c.user || !c.pass) return null;
+  const port = Number(c.port || 465);
+  return nodemailer.createTransport({ host: c.host, port, secure: port === 465, auth: { user: c.user, pass: c.pass }, connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 60000 });
+}
+function _emailCmpAdmin(req) {
+  const perfil = String(req.usuario?.perfil || '').trim().toLowerCase();
+  return perfil === 'admin' || perfil.includes('admin');
+}
+function _emailLista(v) {
+  const arr = Array.isArray(v) ? v : String(v || '').split(/[,;\s]+/);
+  return [...new Set(arr.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean))];
+}
+app.get('/api/email-compras/config', authMiddleware, async (req, res) => {
+  const c = _emailCmpLer();
+  return ok(res, Object.assign(_emailCmpPublico(c), { pode_editar: _emailCmpAdmin(req) }));
+});
+app.put('/api/email-compras/config', authMiddleware, async (req, res) => {
+  try {
+    if (!_emailCmpAdmin(req)) return res.status(403).json({ ok: false, error: 'Só administradores podem alterar o e-mail de envio.' });
+    const b = req.body || {};
+    const atual = _emailCmpLer();
+    const novo = {
+      host: String(b.host || atual.host || 'mail.italyembalagens.com.br').trim(),
+      port: Math.trunc(Number(b.port || atual.port || 465)) || 465,
+      user: String(b.user || atual.user || '').trim(),
+      nome: String(b.nome || atual.nome || 'Italy Embalagens — Compras').trim(),
+      pass: (b.pass != null && String(b.pass) !== '') ? String(b.pass) : (atual.pass || ''),
+      atualizado_em: new Date().toISOString(),
+      atualizado_por: req.usuario?.nome || req.usuario?.email || 'admin',
+    };
+    if (!_EMAIL_RE.test(novo.user)) return res.status(400).json({ ok: false, error: 'E-mail de envio inválido.' });
+    if (!novo.pass) return res.status(400).json({ ok: false, error: 'Informe a senha do e-mail.' });
+    const t = _emailCmpTransport(novo);
+    try { await t.verify(); } catch (e) {
+      return res.status(400).json({ ok: false, error: 'Não consegui entrar no e-mail com esses dados: ' + String(e && (e.response || e.message) || e).slice(0, 200) });
+    }
+    _emailCmpGravar(novo);
+    return ok(res, _emailCmpPublico(novo));
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/compras-chapas/:id/enviar-email', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    const b = req.body || {};
+    const c = _emailCmpLer();
+    const t = _emailCmpTransport(c);
+    if (!t) return res.status(400).json({ ok: false, error: 'O e-mail de envio das compras ainda não foi configurado.' });
+    const para = _emailLista(b.para); const cc = _emailLista(b.cc);
+    if (!para.length) return res.status(400).json({ ok: false, error: 'Escolha pelo menos um destinatário.' });
+    const ruins = para.concat(cc).filter((e) => !_EMAIL_RE.test(e));
+    if (ruins.length) return res.status(400).json({ ok: false, error: 'E-mail inválido: ' + ruins.join(', ') });
+    if (para.length + cc.length > 10) return res.status(400).json({ ok: false, error: 'Máximo de 10 destinatários.' });
+    const pdf = String(b.pdf_base64 || '').replace(/^data:application\/pdf;base64,/, '');
+    if (!pdf || pdf.length < 1000) return res.status(400).json({ ok: false, error: 'PDF da compra não foi gerado.' });
+    const nomeArq = (String(b.nome_arquivo || 'compra.pdf').replace(/[^\w.\- ]+/g, '').trim() || 'compra.pdf').replace(/(\.pdf)?$/i, '.pdf');
+    const assunto = String(b.assunto || 'Pedido de compra').slice(0, 200);
+    const msg = String(b.mensagem || '').slice(0, 10000);
+    const htmlMsg = msg.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch])).replace(/\n/g, '<br>');
+    const info = await t.sendMail({
+      from: { name: c.nome || 'Italy Embalagens', address: c.user },
+      replyTo: c.user,
+      to: para, cc: cc.length ? cc : undefined,
+      bcc: b.copia_para_mim ? c.user : undefined,
+      subject: assunto,
+      text: msg,
+      html: '<div style="font-family:Arial,sans-serif;font-size:14px;color:#0f172a">' + htmlMsg + '</div>',
+      attachments: [{ filename: nomeArq, content: Buffer.from(pdf, 'base64'), contentType: 'application/pdf' }],
+    });
+    try {
+      const { data: atual } = await supabase.from('compras_chapas').select('id,status,status_historico').eq('id', id).maybeSingle();
+      if (atual) {
+        const hist = Array.isArray(atual.status_historico) ? atual.status_historico : [];
+        hist.push({ em: new Date().toISOString(), por: _comprasChapasUser(req), status: atual.status || null, email: true, nota: 'E-mail enviado para ' + para.concat(cc).join(', ') });
+        await _comprasChapasUpdateCompat('compras_chapas', id, { status_historico: hist }, 'id');
+      }
+    } catch (_) {}
+    return ok(res, { enviado: true, para, cc, id_mensagem: info && info.messageId || null });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'Falha ao enviar: ' + String(e && (e.response || e.message) || e).slice(0, 300) });
+  }
 });
 
 app.get('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
