@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029154745';
-const SW_RUNTIME_VERSION = '20261029154745';
+const PATCH_RUNTIME_VERSION = '20261029154820';
+const SW_RUNTIME_VERSION = '20261029154820';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -17021,7 +17021,7 @@ async function _relPerdasRows(range) {
   const ini = String(range?.inicio || '').slice(0, 10), fimEx = String(range?.fim_exclusivo || '').slice(0, 10);
   const rows = [];
   for (let off = 0; off < 50000; off += 1000) {
-    const { data, error } = await supabase.from('caixas_perdidas').select('id,of_id,emp_id,quantidade,qtd_perdida,valor_perdido,toneladas_perdidas,data,created_at').range(off, off + 999);
+    const { data, error } = await supabase.from('caixas_perdidas').select('id,of_id,emp_id,quantidade,qtd_perdida,valor_perdido,toneladas_perdidas,data,created_at,operador,maquina,maquina_perda').range(off, off + 999);
     if (error || !data || !data.length) break;
     rows.push(...data);
     if (data.length < 1000) break;
@@ -17038,6 +17038,8 @@ async function _relPerdasRows(range) {
     qtd: Math.max(0, Number(x.r.quantidade ?? x.r.qtd_perdida ?? 0) || 0),
     valor: Number(x.r.valor_perdido || 0) || 0,
     ton: Number(x.r.toneladas_perdidas || 0) || 0,
+    operador: String(x.r.operador || '').trim(),
+    maquina: String(x.r.maquina_perda || x.r.maquina || '').trim(),
     empresa_id: empDaOf.get(String(x.r.of_id || '')) || _relatoriosPickEmpresaId({ emp_id: x.r.emp_id }) || ''
   }));
 }
@@ -18762,10 +18764,8 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
       const sts = String(row?.status || '').trim().toLowerCase();
       const isConcluido = sts.includes('conclu') || sts === 'concluida' || sts === 'concluído';
       const isCancelada = sts.includes('cancel');
-      if (!isConcluido && !isCancelada) continue;
-      const qtdPerdida = Number(row?.qtd_perdida ?? row?.caixas_perdidas ?? 0) || 0;
-      const temMaqPerda = String(row?.maquina_perda || '').trim() !== '';
-      if (isCancelada && qtdPerdida <= 0 && !temMaqPerda) continue;
+      // produção = só OFs concluídas; perdas (inclusive de canceladas) vêm da tabela oficial de perdas
+      if (!isConcluido || isCancelada) continue;
       ofsFiltrados.push(row);
     }
 
@@ -18799,8 +18799,9 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
       const valorPerda = Number(((perda / denominador) * valor).toFixed(2));
       const valorProduzido = denominador > 0 ? Number(((qtd / denominador) * valor).toFixed(2)) : valor;
 
-      const operadores = unpackOperadores(of);
-      if (!operadores.length) return;
+      let operadores = unpackOperadores(of);
+      // OF sem operador também entra (senão os totais não fecham com o resto do sistema)
+      if (!operadores.length) operadores = ['Sem operador informado'];
 
       if (!ofsIds.has(idOf)) {
         total_ofs += 1;
@@ -18840,6 +18841,24 @@ app.get('/api/relatorios/perdas-operador', authMiddleware, async (req, res) => {
         }
       });
     });
+
+    // Perdas = tabela oficial de perdas do mês (com o operador registrado na perda), igual ao relatório "Caixas Perdidas"
+    try {
+      const perdasMes = await _relPerdasRows(range);
+      ranking.forEach((r) => { r.qtd_perdida = 0; r.valor_perdido = 0; });
+      total_qtd_perdida = 0; total_valor_perdido = 0;
+      perdasMes.forEach((p) => {
+        if (!isTodasEmpresasPerdas && companyIds && companyIds.length && p.empresa_id && !companyIds.includes(p.empresa_id)) return;
+        total_qtd_perdida += p.qtd; total_valor_perdido += p.valor;
+        const ops = String(p.operador || '').split(/[,;|]+/).map((x) => x.trim()).filter(Boolean);
+        const lista = ops.length ? ops : ['Sem operador informado'];
+        lista.forEach((nomeOp) => {
+          const k = nomeOp.toUpperCase();
+          if (!ranking.has(k)) ranking.set(k, { operador: nomeOp, qtd_produzida: 0, valor_produzido: 0, qtd_perdida: 0, valor_perdido: 0, ofs_ids: new Set(), qtd_ofs: 0 });
+          const r = ranking.get(k); r.qtd_perdida += p.qtd / lista.length; r.valor_perdido += p.valor / lista.length;
+        });
+      });
+    } catch (ePo) { console.warn('[PERDAS-OPERADOR] perdas oficiais falharam:', String(ePo?.message || ePo)); }
 
     const arrRanking = Array.from(ranking.values())
       .map((r) => {
