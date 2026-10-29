@@ -75468,6 +75468,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
   function modal(titulo, corpo, rodape) {
     var ov = document.createElement('div'); ov.className = 'dsce-ov';
+    try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (zb && Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
     ov.innerHTML = '<div class="dsce-m" role="dialog" aria-modal="true"><header><h2>' + esc(titulo) + '</h2><button type="button" class="dsce-x" data-f aria-label="Fechar">✕</button></header><div class="dsce-b">' + corpo + '</div><footer>' + rodape + '</footer></div>';
     document.body.appendChild(ov);
     var fechar = function () { if (ov.parentNode) ov.parentNode.removeChild(ov); document.removeEventListener('keydown', onKey, true); };
