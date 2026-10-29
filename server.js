@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029155633';
-const SW_RUNTIME_VERSION = '20261029155633';
+const PATCH_RUNTIME_VERSION = '20261029155649';
+const SW_RUNTIME_VERSION = '20261029155649';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -15888,7 +15888,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         try {
           const { data, error } = await supabase
             .from('ofs')
-            .select('id,cli_id,cliId,cliente_id,valor_total,valor_venda,total,preco')
+            .select('id,cli_id,cliId,cliente_id,valor_total,valor_venda,total,preco,status')
             .is('deleted_at', null)
             .range(from, from + pageSize - 1);
           if (error) break;
@@ -15904,6 +15904,8 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             if (c2 && idsSet.has(c2)) matchedClientes.add(c2);
             if (c3 && idsSet.has(c3)) matchedClientes.add(c3);
             if (!matchedClientes.size) continue;
+            // pedidos/total do cliente = só OFs concluídas (vendidas), igual aos relatórios
+            if (!_vendasOficialStatusConcluido(of?.status)) continue;
             const vOf = _vendasOficialValor(of);
             for (const cid of matchedClientes) {
               const k = ofId ? `${cid}__${ofId}` : `__no_of_id__${cid}__${Math.random().toString(36).slice(2, 10)}`;
