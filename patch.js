@@ -75453,7 +75453,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-de b{font-weight:800}.dsce-de button{margin-left:auto}'
     + '.dsce-chips{display:flex;flex-wrap:wrap;gap:6px}'
     + '.dsce-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #93c5fd;background:#eff6ff;color:#1e3a8a;border-radius:999px;padding:5px 6px 5px 11px;font-size:13px;font-weight:700}'
-    + '.dsce-chip button{border:0;background:#dbeafe;border-radius:999px;width:22px;height:22px;cursor:pointer;color:#1e3a8a}'
+    + '.dsce-ov .dsce-m .dsce-chip{cursor:pointer;font:inherit;font-size:13px;font-weight:700;background:#fff!important;color:#64748b!important;border:1px dashed #cbd5e1!important;padding:6px 12px 6px 7px;min-height:34px}'
+    + '.dsce-ov .dsce-m .dsce-chip.on{background:#eff6ff!important;color:#1e3a8a!important;border:1px solid #93c5fd!important}'
+    + '.dsce-ck2{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;border:1.5px solid #94a3b8;font-size:12px;line-height:1;background:#fff}.dsce-chip.on .dsce-ck2{background:#1d4ed8;border-color:#1d4ed8;color:#fff}'
+    + '.dsce-hint a{color:#1d4ed8;font-weight:700}'
     + '.dsce-add{display:flex;gap:6px}.dsce-add input{flex:1}'
     + '.dsce-ck{display:flex!important;grid-template-columns:none!important;align-items:center;gap:8px!important;font-weight:600!important;color:#334155!important;font-size:13px!important}.dsce-ck input{width:auto!important}'
     + '.dsce-anexo{display:flex;align-items:center;gap:8px;font-size:13px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:9px 12px;font-weight:700}'
@@ -75602,9 +75605,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var b = de.querySelector('[data-cfg]');
       if (b) b.onclick = function () { abrirConfig(cfg, function (n) { cfg = Object.assign(cfg, n); configurado = !!cfg.tem_senha; pintarDe(); msg(ov, 'E-mail de envio configurado. Já pode enviar.', 'ok'); }); };
     }
+    var todosVistos = [];
     function novosParaParte() { if (!fSel) return []; var ja = lista(fSel.email); return para.filter(function (e) { return ja.indexOf(e) < 0; }); }
     function render() {
-      chips.innerHTML = para.length ? para.map(function (e, i) { return '<span class="dsce-chip">' + esc(e) + '<button type="button" data-rm="' + i + '" aria-label="Remover">✕</button></span>'; }).join('') : '<span class="dsce-hint">Nenhum destinatário. Escolha um ' + esc(o.rotulo.toLowerCase()) + ' com e-mail ou digite um e-mail abaixo.</span>';
+      var doCad = fSel ? lista(fSel.email).filter(function (e) { return EMAIL_RE.test(e); }) : [];
+      todosVistos = uniq(todosVistos.concat(doCad, para));
+      chips.innerHTML = todosVistos.length
+        ? todosVistos.map(function (e, i) { var on = para.indexOf(e) >= 0; return '<button type="button" class="dsce-chip' + (on ? ' on' : '') + '" data-tg="' + i + '" aria-pressed="' + on + '"><span class="dsce-ck2">' + (on ? '✓' : '') + '</span>' + esc(e) + '</button>'; }).join('')
+          + (todosVistos.length > 1 ? '<span class="dsce-hint" style="width:100%">Toque nos e-mails para marcar ou desmarcar · <a href="#" data-tg-todos>' + (para.length === todosVistos.length ? 'desmarcar todos' : 'marcar todos') + '</a></span>' : '')
+        : '<span class="dsce-hint">Nenhum destinatário. Escolha um ' + esc(o.rotulo.toLowerCase()) + ' com e-mail ou digite um e-mail abaixo.</span>';
       ov.querySelector('[data-salvarwrap]').hidden = !(o.salvarEmails && fSel && fSel.id && novosParaParte().length);
       ov.querySelector('[data-parte-info]').textContent = fSel ? (fSel.email ? 'E-mail no cadastro: ' + fSel.email : 'Sem e-mail no cadastro — digite abaixo e ele fica salvo.') : '';
     }
@@ -75617,7 +75626,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var sug = ov.querySelector('[data-sug]'), sugL = [], sugI = -1;
     function definirParte(f) {
       if (f === fSel) return;
-      fSel = f; para = f ? lista(f.email).filter(function (e) { return EMAIL_RE.test(e); }) : []; render();
+      fSel = f; para = f ? lista(f.email).filter(function (e) { return EMAIL_RE.test(e); }) : []; todosVistos = []; render();
     }
     function escolherParte() { definirParte(partes.find(function (x) { return norm(x.nome) === norm(inParte.value); }) || null); }
     function mostrarSug() {
@@ -75633,7 +75642,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     sug.addEventListener('click', function (e) { var b = e.target.closest('[data-si]'); if (b) { pegarSug(Number(b.getAttribute('data-si'))); novo.focus(); } });
     inParte.addEventListener('focus', function () { inParte.select(); mostrarSug(); });
     inParte.addEventListener('blur', function () { setTimeout(function () { sug.hidden = true; }, 120); });
-    chips.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b) { para.splice(Number(b.getAttribute('data-rm')), 1); render(); } });
+    chips.addEventListener('click', function (e) {
+      if (e.target.closest('[data-tg-todos]')) { e.preventDefault(); para = para.length === todosVistos.length ? [] : todosVistos.slice(); return render(); }
+      var b = e.target.closest('[data-tg]'); if (!b) return;
+      var em = todosVistos[Number(b.getAttribute('data-tg'))], k = para.indexOf(em);
+      if (k >= 0) para.splice(k, 1); else para.push(em);
+      render();
+    });
     novo.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ',' || e.key === ';') { e.preventDefault(); e.stopPropagation(); adicionar(); } });
     novo.addEventListener('blur', function () { if (novo.value.trim() && lista(novo.value).every(function (e) { return EMAIL_RE.test(e); })) adicionar(); });
     inParte.addEventListener('input', function () { escolherParte(); mostrarSug(); });
