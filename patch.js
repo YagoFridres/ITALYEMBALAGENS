@@ -75457,6 +75457,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-ov .dsce-m .dsce-chip.on{background:#eff6ff!important;color:#1e3a8a!important;border:1px solid #93c5fd!important}'
     + '.dsce-ck2{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;border:1.5px solid #94a3b8;font-size:12px;line-height:1;background:#fff}.dsce-chip.on .dsce-ck2{background:#1d4ed8;border-color:#1d4ed8;color:#fff}'
     + '.dsce-hint a{color:#1d4ed8;font-weight:700}'
+    + '.dsce-pill{display:inline-flex;align-items:center;gap:2px}'
+    + '.dsce-ov .dsce-m .dsce-rm{border:0!important;background:#f1f5f9!important;color:#64748b!important;border-radius:999px;width:28px;height:28px;cursor:pointer;font-size:13px;padding:0}.dsce-ov .dsce-m .dsce-rm:hover{background:#fee2e2!important;color:#b91c1c!important}'
     + '.dsce-add{display:flex;gap:6px}.dsce-add input{flex:1}'
     + '.dsce-ck{display:flex!important;grid-template-columns:none!important;align-items:center;gap:8px!important;font-weight:600!important;color:#334155!important;font-size:13px!important}.dsce-ck input{width:auto!important}'
     + '.dsce-anexo{display:flex;align-items:center;gap:8px;font-size:13px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:9px 12px;font-weight:700}'
@@ -75611,7 +75613,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var doCad = fSel ? lista(fSel.email).filter(function (e) { return EMAIL_RE.test(e); }) : [];
       todosVistos = uniq(todosVistos.concat(doCad, para));
       chips.innerHTML = todosVistos.length
-        ? todosVistos.map(function (e, i) { var on = para.indexOf(e) >= 0; return '<button type="button" class="dsce-chip' + (on ? ' on' : '') + '" data-tg="' + i + '" aria-pressed="' + on + '"><span class="dsce-ck2">' + (on ? '✓' : '') + '</span>' + esc(e) + '</button>'; }).join('')
+        ? todosVistos.map(function (e, i) { var on = para.indexOf(e) >= 0; return '<span class="dsce-pill"><button type="button" class="dsce-chip' + (on ? ' on' : '') + '" data-tg="' + i + '" aria-pressed="' + on + '"><span class="dsce-ck2">' + (on ? '✓' : '') + '</span>' + esc(e) + '</button><button type="button" class="dsce-rm" data-rm="' + i + '" aria-label="Remover ' + esc(e) + '" title="Remover">✕</button></span>'; }).join('')
           + (todosVistos.length > 1 ? '<span class="dsce-hint" style="width:100%">Toque nos e-mails para marcar ou desmarcar · <a href="#" data-tg-todos>' + (para.length === todosVistos.length ? 'desmarcar todos' : 'marcar todos') + '</a></span>' : '')
         : '<span class="dsce-hint">Nenhum destinatário. Escolha um ' + esc(o.rotulo.toLowerCase()) + ' com e-mail ou digite um e-mail abaixo.</span>';
       ov.querySelector('[data-salvarwrap]').hidden = !(o.salvarEmails && fSel && fSel.id && novosParaParte().length);
@@ -75644,6 +75646,23 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     inParte.addEventListener('blur', function () { setTimeout(function () { sug.hidden = true; }, 120); });
     chips.addEventListener('click', function (e) {
       if (e.target.closest('[data-tg-todos]')) { e.preventDefault(); para = para.length === todosVistos.length ? [] : todosVistos.slice(); return render(); }
+      var rm = e.target.closest('[data-rm]');
+      if (rm) {
+        var emr = todosVistos[Number(rm.getAttribute('data-rm'))];
+        var tirar = function () { todosVistos = todosVistos.filter(function (x) { return x !== emr; }); para = para.filter(function (x) { return x !== emr; }); render(); };
+        var noCad = fSel && fSel.id && o.salvarEmails && lista(fSel.email).indexOf(emr) >= 0;
+        if (!noCad) return tirar();
+        var cm = modal('Remover e-mail', '<div style="font-size:15px;line-height:1.5"><b>' + esc(emr) + '</b> está no cadastro de <b>' + esc(fSel.nome) + '</b>.<br>Quer tirar só deste envio ou apagar do cadastro também?</div><div class="dsce-msg"></div>',
+          '<button type="button" class="dsce-btn" data-f>Cancelar</button><button type="button" class="dsce-btn" data-so>Só deste envio</button><button type="button" class="dsce-btn pri" data-cad style="background:#dc2626!important;border-color:#dc2626!important">Apagar do cadastro</button>');
+        cm.querySelector('[data-so]').onclick = function () { cm.fechar(); tirar(); };
+        cm.querySelector('[data-cad]').onclick = async function () {
+          var bt = this; bt.disabled = true; bt.textContent = 'Apagando…';
+          var resto = lista(fSel.email).filter(function (x) { return x !== emr; }).join(', ');
+          try { await o.salvarEmails(fSel, resto); fSel.email = resto; cm.fechar(); tirar(); msg(ov, emr + ' foi apagado do cadastro de ' + fSel.nome + '.', 'ok'); }
+          catch (er) { msg(cm, 'Não consegui apagar: ' + String(er && er.message || er)); bt.disabled = false; bt.textContent = 'Apagar do cadastro'; }
+        };
+        return;
+      }
       var b = e.target.closest('[data-tg]'); if (!b) return;
       var em = todosVistos[Number(b.getAttribute('data-tg'))], k = para.indexOf(em);
       if (k >= 0) para.splice(k, 1); else para.push(em);
