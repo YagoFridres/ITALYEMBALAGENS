@@ -75465,6 +75465,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-msg{font-size:13px;border-radius:10px;padding:10px 12px;display:none}.dsce-msg.err{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}.dsce-msg.ok{display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}'
     + '.dsce-hint{font-size:12px;color:#64748b;font-weight:500}'
     + '.dsce-ov .dsce-m [hidden]{display:none!important}'
+    + '.dsce-busca{position:relative}.dsce-sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:5;background:#fff!important;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,.18);max-height:240px;overflow:auto}'
+    + '.dsce-sug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;border:0;border-bottom:1px solid #f1f5f9;background:#fff!important;color:#0f172a!important;padding:9px 12px;cursor:pointer;font:inherit}'
+    + '.dsce-sug button b{font-size:14px;font-weight:700}.dsce-sug button span{font-size:12px;color:#64748b}.dsce-sug button:hover,.dsce-sug button.on{background:#eff6ff!important}'
     + '.dsce-ov .dsce-m{color-scheme:light}.dsce-ov .dsce-m option{background:#fff!important;color:#0f172a!important}'
     + '.dsce-ov .dsce-m{--field:#fff;--text:#0f172a;--b2:#cbd5e1;--s2:#fff;--s1:#fff;--bg:#fff}'
     + '.dsce-ov .dsce-m,.dsce-ov .dsce-m header,.dsce-ov .dsce-m footer{background:#fff!important;color:#0f172a!important}'
@@ -75581,10 +75584,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var partes = o.partes || [], fSel = o.sel || null;
     var para = fSel ? lista(fSel.email).filter(function (e) { return EMAIL_RE.test(e); }) : [];
     var configurado = !!cfg.tem_senha;
-    var dlId = 'dsce-dl-' + Date.now();
     var ov = modal(o.titulo,
       '<div class="dsce-de" data-de></div>'
-      + '<label>' + esc(o.rotulo) + '<input data-parte list="' + dlId + '" autocomplete="off" placeholder="Digite para buscar…" value="' + esc(fSel ? fSel.nome : '') + '"><datalist id="' + dlId + '">' + partes.map(function (f) { return '<option value="' + esc(f.nome) + '">' + (f.email ? esc(f.email) : 'sem e-mail') + '</option>'; }).join('') + '</datalist><span class="dsce-hint" data-parte-info></span></label>'
+      + '<label>' + esc(o.rotulo) + '<div class="dsce-busca"><input data-parte autocomplete="off" placeholder="Digite para buscar…" value="' + esc(fSel ? fSel.nome : '') + '"><div class="dsce-sug" data-sug hidden></div></div><span class="dsce-hint" data-parte-info></span></label>'
       + '<label>Para<div class="dsce-chips" data-chips></div><div class="dsce-add"><input data-novo type="email" inputmode="email" placeholder="Adicionar e-mail e apertar Enter"><button type="button" class="dsce-btn sm" data-addbtn>Adicionar</button></div></label>'
       + '<label class="dsce-ck" data-salvarwrap hidden><input type="checkbox" data-salvar-parte checked> <span>Salvar os e-mails novos no cadastro deste ' + esc(o.rotulo.toLowerCase()) + '</span></label>'
       + '<label>Assunto<input data-assunto value="' + esc(o.assunto) + '"></label>'
@@ -75612,16 +75614,34 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (ruins.length) return msg(ov, 'E-mail inválido: ' + ruins.join(', '));
       para = uniq(para.concat(vs)); novo.value = ''; msg(ov, '', 'x'); render();
     }
-    function escolherParte() {
-      var f = partes.find(function (x) { return norm(x.nome) === norm(inParte.value); }) || null;
+    var sug = ov.querySelector('[data-sug]'), sugL = [], sugI = -1;
+    function definirParte(f) {
       if (f === fSel) return;
       fSel = f; para = f ? lista(f.email).filter(function (e) { return EMAIL_RE.test(e); }) : []; render();
     }
+    function escolherParte() { definirParte(partes.find(function (x) { return norm(x.nome) === norm(inParte.value); }) || null); }
+    function mostrarSug() {
+      var q = norm(inParte.value);
+      sugL = (q ? partes.filter(function (x) { return norm(x.nome).indexOf(q) >= 0 || norm(x.email).indexOf(q) >= 0; }) : partes).slice(0, 30);
+      sugL.sort(function (a, b) { return (norm(a.nome).indexOf(q) === 0 ? 0 : 1) - (norm(b.nome).indexOf(q) === 0 ? 0 : 1); });
+      sugI = -1;
+      sug.innerHTML = sugL.length ? sugL.map(function (x, i) { return '<button type="button" data-si="' + i + '"><b>' + esc(x.nome) + '</b><span>' + (x.email ? esc(x.email) : 'sem e-mail') + '</span></button>'; }).join('') : '<div class="dsce-hint" style="padding:10px">Nada encontrado</div>';
+      sug.hidden = false;
+    }
+    function pegarSug(i) { var x = sugL[i]; if (!x) return; inParte.value = x.nome; sug.hidden = true; definirParte(x); }
+    sug.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    sug.addEventListener('click', function (e) { var b = e.target.closest('[data-si]'); if (b) { pegarSug(Number(b.getAttribute('data-si'))); novo.focus(); } });
+    inParte.addEventListener('focus', function () { inParte.select(); mostrarSug(); });
+    inParte.addEventListener('blur', function () { setTimeout(function () { sug.hidden = true; }, 120); });
     chips.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b) { para.splice(Number(b.getAttribute('data-rm')), 1); render(); } });
     novo.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ',' || e.key === ';') { e.preventDefault(); e.stopPropagation(); adicionar(); } });
     novo.addEventListener('blur', function () { if (novo.value.trim() && lista(novo.value).every(function (e) { return EMAIL_RE.test(e); })) adicionar(); });
-    inParte.addEventListener('input', escolherParte); inParte.addEventListener('change', escolherParte);
-    inParte.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); escolherParte(); novo.focus(); } });
+    inParte.addEventListener('input', function () { escolherParte(); mostrarSug(); });
+    inParte.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (sug.hidden) mostrarSug(); sugI = Math.max(0, Math.min(sugL.length - 1, sugI + (e.key === 'ArrowDown' ? 1 : -1))); Array.prototype.forEach.call(sug.querySelectorAll('[data-si]'), function (b, i) { b.classList.toggle('on', i === sugI); if (i === sugI) b.scrollIntoView({ block: 'nearest' }); }); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (!sug.hidden && sugL.length) pegarSug(sugI >= 0 ? sugI : 0); else escolherParte(); novo.focus(); }
+      else if (e.key === 'Escape' && !sug.hidden) { e.stopPropagation(); sug.hidden = true; }
+    });
     ov.querySelector('[data-addbtn]').onclick = adicionar;
     ov.querySelector('[data-ver]').onclick = async function () {
       var b = this; b.disabled = true; b.textContent = 'Gerando…';
