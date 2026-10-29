@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029153831';
-const SW_RUNTIME_VERSION = '20261029153831';
+const PATCH_RUNTIME_VERSION = '20261029153853';
+const SW_RUNTIME_VERSION = '20261029153853';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30740,8 +30740,9 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     const de = String(req.query.de || req.query.data_inicio || req.query.dataInicio || '').trim();
     const ate = String(req.query.ate || req.query.data_fim || req.query.dataFim || '').trim();
     const isIsoDate = (s) => /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(s || '').trim());
-    const deIso = isIsoDate(de) ? `${de}T00:00:00.000Z` : '';
-    const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999Z` : '';
+    // dias no horário de Brasília (antes usava UTC e jogava o fim do dia para o mês seguinte)
+    const deIso = isIsoDate(de) ? `${de}T00:00:00.000-03:00` : '';
+    const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999-03:00` : '';
 
     let movs = null;
     let movErr = null;
