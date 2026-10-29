@@ -75453,6 +75453,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-msg{font-size:13px;border-radius:10px;padding:10px 12px;display:none}.dsce-msg.err{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}.dsce-msg.ok{display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}'
     + '.dsce-hint{font-size:12px;color:#64748b;font-weight:500}'
     + '.dsce-ov .dsce-m [hidden]{display:none!important}'
+    + '.dsce-ov .dsce-m{--field:#fff;--text:#0f172a;--b2:#cbd5e1;--s2:#fff;--s1:#fff;--bg:#fff}'
     + '.dsce-ov .dsce-m,.dsce-ov .dsce-m header,.dsce-ov .dsce-m footer{background:#fff!important;color:#0f172a!important}'
     + '.dsce-ov .dsce-m header h2{color:#0f172a!important;font-weight:800!important}'
     + '.dsce-ov .dsce-m .dsce-b label{color:#475569!important}'
