@@ -75466,7 +75466,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-hint{font-size:12px;color:#64748b;font-weight:500}'
     + '.dsce-ov .dsce-m [hidden]{display:none!important}'
     + '.dsce-busca{position:relative}.dsce-sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:5;background:#fff!important;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,.18);max-height:240px;overflow:auto}'
-    + '.dsce-sug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;border:0;border-bottom:1px solid #f1f5f9;background:#fff!important;color:#0f172a!important;padding:9px 12px;cursor:pointer;font:inherit}'
+    + '.dsce-sug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;border:0!important;border-bottom:1px solid #eef2f7!important;border-radius:0!important;background:#fff!important;color:#0f172a!important;padding:9px 12px;cursor:pointer;font:inherit}'
     + '.dsce-sug button b{font-size:14px;font-weight:700}.dsce-sug button span{font-size:12px;color:#64748b}.dsce-sug button:hover,.dsce-sug button.on{background:#eff6ff!important}'
     + '.dsce-ov .dsce-m{color-scheme:light}.dsce-ov .dsce-m option{background:#fff!important;color:#0f172a!important}'
     + '.dsce-ov .dsce-m{--field:#fff;--text:#0f172a;--b2:#cbd5e1;--s2:#fff;--s1:#fff;--bg:#fff}'
