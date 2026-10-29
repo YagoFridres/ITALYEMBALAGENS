@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029154820';
-const SW_RUNTIME_VERSION = '20261029154820';
+const PATCH_RUNTIME_VERSION = '20261029154845';
+const SW_RUNTIME_VERSION = '20261029154845';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -19123,9 +19123,10 @@ app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, 
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    const companyIds = empresa_id ? [empresa_id] : [];
+    // como os demais relatórios: as três empresas (ou uma, se vier emp_id explícito)
+    const empQ = String(req.query.emp_id || req.query.empresa_id || '').trim();
+    const empresa_id = _isUuid(empQ) ? empQ : null;
+    const companyIds = empresa_id ? [empresa_id] : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
     const ofsMes = await _relatoriosFetchOfsConcluidas(range, { companyIds });
     const historyCols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'created_at',
@@ -19144,7 +19145,7 @@ app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, 
         .ilike('status', '%conclu%')
         .lt('data_conclusao', range.inicio)
         .order('data_conclusao', { ascending: true });
-      if (companyIds.length) query = query.in('empresa_id', companyIds);
+      if (empresa_id) query = query.in('empresa_id', [empresa_id]);
       const { data, error } = await query.range(offset, offset + pageSize - 1);
       if (error) throw error;
       const batch = Array.isArray(data) ? data : [];

@@ -4220,7 +4220,7 @@ try {
             ];
           });
           rrOpenPrint({
-            title: 'Perdas por Operador — ' + String(p.mes).padStart(2, '0') + '/' + p.ano,
+            title: 'Relatório de Perdas por Operador',
             periodo: periodoLabel,
             cards: cards,
             detailTitle: 'Ranking de Produção + Perdas por Operador',
@@ -4420,7 +4420,7 @@ try {
             ];
           });
           rrOpenPrint({
-            title: 'Resumo Anual — ' + p.ano,
+            title: 'Relatório Resumo Anual',
             periodo: periodoLabel,
             cards: cards,
             detailTitle: 'Detalhamento Mês a Mês (Janeiro a Dezembro)',
