@@ -45494,7 +45494,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var email = String((document.getElementById('edt-cli-email') || {}).value || '').trim();
       var uf = String((document.getElementById('edt-cli-uf') || {}).value || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
       var cidade = String((document.getElementById('edt-cli-cidade') || {}).value || '').trim();
-      var ramoSelFb = document.getElementById('novo-cli-ramo') || document.getElementById('edt-cli-ramo');
+      var ramoSelFb = document.getElementById('edt-cli-ramo') || document.getElementById('novo-cli-ramo');
       var ramo = String((ramoSelFb && ramoSelFb.value) || '').trim();
       var observacoes = String((document.getElementById('edt-cli-obs') || {}).value || '').trim();
       if (!nome && !rs) {

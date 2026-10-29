@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029144728';
-const SW_RUNTIME_VERSION = '20261029144728';
+const PATCH_RUNTIME_VERSION = '20261029150126';
+const SW_RUNTIME_VERSION = '20261029150126';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5524,8 +5524,12 @@ function clientesPayload(p) {
     if (b[from] !== undefined) out[to] = b[from];
   });
   out.updated_at = new Date().toISOString();
-  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
-  if (b.email === '') out.email = null; // permite apagar o e-mail do cliente
+  // campo apagado no formulário ('' ) vira null para realmente apagar no banco
+  const _apagaveis = ['rs', 'cnpj', 'cpf', 'tel', 'email', 'cidade', 'uf', 'endereco', 'contato', 'observacoes', 'ramo'];
+  Object.keys(out).forEach(k => {
+    if (out[k] === undefined) delete out[k];
+    else if (out[k] === '') { if (_apagaveis.includes(k)) out[k] = null; else delete out[k]; }
+  });
   delete out.end;
   return out;
 }
@@ -19521,6 +19525,7 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
     if (error) throw error;
     const updated = Array.isArray(data) ? data[0] : data;
     if (!updated) return res.status(404).json({ error: 'Cliente não encontrado' });
+    try { cacheClearPrefix('clientes_'); cacheClearPrefix('cli_'); } catch (_) {}
     await logAuditoria('clientes', 'UPDATE', String(req.params.id || '').trim(), antes, updated, req);
     ok(res, updated);
   } catch (e) { err(res, e); }
