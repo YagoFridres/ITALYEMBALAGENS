@@ -1395,8 +1395,8 @@ try {
       periodo: ref.titulo,
       cards: [
         { label: 'Toneladas', value: rrFmtNum(rows.reduce(function(s, r) { return s + rrNum(r && r.toneladas); }, 0), 3) + ' t', sub: 'Peso vendido no período' },
-        { label: 'OFs', value: rrFmtNum(rows.length, 0), sub: 'Pedidos concluídos' },
-        { label: 'Receita', value: rrFmtMoney(rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Valor vendido no período' },
+        { label: 'OFs com gramatura', value: rrFmtNum(rows.length, 0), sub: (json && json.ofs_sem_gramatura) ? (rrFmtNum(json.ofs_sem_gramatura, 0) + ' OFs vendidas sem gramatura (fora da conta)') : 'Todas as OFs vendidas do período' },
+        { label: 'Valor dessas OFs', value: rrFmtMoney(rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Venda das OFs com toneladas' },
         { label: 'Fornecedor Top', value: resumoRows[0] ? resumoRows[0].nome : 'Sem dados', sub: resumoRows[0] ? (rrFmtNum(resumoRows[0].toneladas, 3) + ' t') : 'Sem dados' }
       ],
       summaryTitle: 'Resumo por fornecedor',

@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029153614';
-const SW_RUNTIME_VERSION = '20261029153614';
+const PATCH_RUNTIME_VERSION = '20261029153732';
+const SW_RUNTIME_VERSION = '20261029153732';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -28790,7 +28790,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { totalRows: Array.isArray(rows) ? rows.length : 0, sample: Array.isArray(rows) && rows[0] ? rows[0] : null },
     });
 
-    return res.json({ ok: true, rows, data_inicio: range?.inicio || null, data_fim: range?.fim || null });
+    return res.json({ ok: true, rows, total_ofs_periodo: Array.isArray(ofs) ? ofs.length : 0, ofs_sem_gramatura: (Array.isArray(ofs) ? ofs.length : 0) - rows.length, data_inicio: range?.inicio || null, data_fim: range?.fim || null });
   } catch (e) {
     _debugRuntimeWrite({
       runId: 'pre-fix',
