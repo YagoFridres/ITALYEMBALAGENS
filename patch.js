@@ -75897,7 +75897,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '@media (max-width:1100px){' + T + ' .simd-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}' + T + ' .dssn-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}'
     + '@media (max-width:640px){' + T + ' .simd-panel{padding:14px!important;border-radius:14px!important}' + T + ' .dssn-hero{margin:-14px -14px 14px;padding:14px;border-radius:14px 14px 0 0}' + T + ' .dssn-hero h2{font-size:17px}'
     + T + ' .simd-grid{grid-template-columns:1fr!important}' + T + ' .simd-actions-left,' + T + ' .simd-actions-left .simd-btn{width:100%}' + T + ' .dssn-kpi b{font-size:16px}'
-    + T + ' #simd-tabela-wrap{max-height:none}' + T + ' .simd-table thead{display:none}' + T + ' .simd-table,' + T + ' .simd-table tbody{display:block}'
+    + T + ' #simd-tabela-wrap{max-height:none;overflow-x:hidden!important}' + T + ' .simd-table{min-width:0!important;width:100%!important}' + T + ' .simd-table tbody tr[data-simd-row]{width:auto!important;min-width:0!important}' + T + ' .simd-table tbody tr[data-simd-row] td{min-width:0!important;width:auto!important;word-break:break-word}' + T + ' .simd-table thead{display:none}' + T + ' .simd-table,' + T + ' .simd-table tbody{display:block}'
     + T + ' .simd-table tbody tr[data-simd-row]{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:12px 12px 12px 52px;position:relative;border-bottom:1px solid var(--sn-bd)}'
     + T + ' .simd-table tbody tr[data-simd-row] td{display:block;padding:0!important;border:0!important;background:transparent!important;text-align:left!important}'
     + T + ' .simd-table tbody tr[data-simd-row] td:first-child{position:static;padding-left:0!important}'
