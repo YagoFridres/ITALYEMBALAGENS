@@ -75946,6 +75946,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var sinal = rows.length + '|' + txt(r0);
     // rótulos para o modo celular
     var tab = tw.querySelector('table.simd-table'); if (tab && !tab.classList.contains('no-card')) { tab.classList.add('no-card'); tab.setAttribute('data-no-mobile-cards', '1'); }
+    if (tab && tab.classList.contains('rtbl')) tab.classList.remove('rtbl');
     var heads = Array.prototype.map.call(tw.querySelectorAll('thead th'), txt);
     Array.prototype.forEach.call(rows, function (r) { Array.prototype.forEach.call(r.children, function (c, i) { if (heads[i] && c.getAttribute('data-dssn') !== heads[i]) c.setAttribute('data-dssn', heads[i]); }); });
     if (sinal === ultimoSinal && box) return; ultimoSinal = sinal;
@@ -76038,7 +76039,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + P + ' #_com_detalhe{margin-top:22px}'
     + P + ' #_com_detalhe > div:first-child h3{font-size:15px!important;font-weight:800!important;margin:0 0 10px!important}'
     + P + ' .dsco-busca{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}'
-    + P + ' .dsco-busca input{flex:1;min-width:220px;height:44px;border-radius:12px;border:1px solid var(--co-bd);background:var(--co-in);color:var(--co-tx);font:inherit;font-size:14.5px;padding:0 14px 0 40px;box-sizing:border-box;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2718%27 height=%2718%27 fill=%27none%27 stroke=%27%2394a3b8%27 stroke-width=%272.2%27 viewBox=%270 0 24 24%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cpath d=%27m20 20-3.5-3.5%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:14px center}'
+    + P + ' .dsco-busca input{flex:1;min-width:220px;height:44px;border-radius:12px;border:1px solid var(--co-bd);background:var(--co-in);color:var(--co-tx);font:inherit;font-size:14.5px;padding:0 14px 0 40px!important;box-sizing:border-box;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2718%27 height=%2718%27 fill=%27none%27 stroke=%27%2394a3b8%27 stroke-width=%272.2%27 viewBox=%270 0 24 24%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cpath d=%27m20 20-3.5-3.5%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:14px center}'
     + P + ' .dsco-busca input:focus{border-color:var(--co-ac);outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.2)}'
     + P + ' .dsco-cont{font-size:12.5px;color:var(--co-tx2);white-space:nowrap}'
     + P + ' #_com_detalhe details{border:1px solid var(--co-bd)!important;border-radius:16px!important;background:var(--co-card)!important;margin-bottom:12px!important;overflow:hidden}'
