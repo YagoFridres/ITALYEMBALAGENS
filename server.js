@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029154259';
-const SW_RUNTIME_VERSION = '20261029154259';
+const PATCH_RUNTIME_VERSION = '20261029154745';
+const SW_RUNTIME_VERSION = '20261029154745';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8877,6 +8877,7 @@ app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
       return companyIds.includes(rowEmp);
     });
     try { ofs = _filtrarOfsNaoTesteGlobal(ofs); } catch (_) {}
+    try { await _relEnriquecerTon(ofs); } catch (_) {}
     const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(Boolean);
     const clientesMap = await _relatoriosLoadClientesDetails(cliIds);
 
@@ -8940,6 +8941,16 @@ app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
       }
     });
 
+    // perdas do ano pela tabela oficial de perdas (mesma do relatório "Caixas Perdidas")
+    try {
+      const perdasAno = await _relPerdasRows(range);
+      porMes.forEach((m) => { m.caixas_perdidas = 0; m.valor_perdido = 0; });
+      perdasAno.forEach((p) => {
+        if (!isTodasEmpresas && companyIds && companyIds.length && p.empresa_id && !companyIds.includes(p.empresa_id)) return;
+        const m = porMes.get(String(p.data).slice(0, 7)); if (!m) return;
+        m.caixas_perdidas += p.qtd; m.valor_perdido += p.valor;
+      });
+    } catch (ePa) { console.warn('[RESUMO-ANUAL] perdas oficiais falharam:', String(ePa?.message || ePa)); }
     const mesesArr = [];
     for (let m = 1; m <= 12; m += 1) {
       const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
@@ -17005,6 +17016,31 @@ async function _relEnriquecerTon(ofs) {
   lista.forEach((o) => { const r = extra.get(String(o?.id || '')); o._ton_calc = r ? _relTonOf(Object.assign({}, o, r), gram) : (Number(o?.tonelada_vendida || 0) || 0); });
   return lista;
 }
+// Linhas da tabela oficial de perdas dentro do período, com data (Brasília), quantidade, valor e empresa
+async function _relPerdasRows(range) {
+  const ini = String(range?.inicio || '').slice(0, 10), fimEx = String(range?.fim_exclusivo || '').slice(0, 10);
+  const rows = [];
+  for (let off = 0; off < 50000; off += 1000) {
+    const { data, error } = await supabase.from('caixas_perdidas').select('id,of_id,emp_id,quantidade,qtd_perdida,valor_perdido,toneladas_perdidas,data,created_at').range(off, off + 999);
+    if (error || !data || !data.length) break;
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  const out = rows.map((r) => ({ r, d: _relatoriosIsoDateOnly(r.data || r.created_at || '') })).filter((x) => x.d && x.d >= ini && x.d < fimEx);
+  const ofIds = Array.from(new Set(out.map((x) => String(x.r.of_id || '').trim()).filter(_isUuid)));
+  const empDaOf = new Map();
+  for (let i = 0; i < ofIds.length; i += 200) {
+    const { data } = await supabase.from('ofs').select('id,empresa_id,emp_id').in('id', ofIds.slice(i, i + 200));
+    (data || []).forEach((o) => empDaOf.set(String(o.id), _relatoriosPickEmpresaId(o)));
+  }
+  return out.map((x) => ({
+    data: x.d,
+    qtd: Math.max(0, Number(x.r.quantidade ?? x.r.qtd_perdida ?? 0) || 0),
+    valor: Number(x.r.valor_perdido || 0) || 0,
+    ton: Number(x.r.toneladas_perdidas || 0) || 0,
+    empresa_id: empDaOf.get(String(x.r.of_id || '')) || _relatoriosPickEmpresaId({ emp_id: x.r.emp_id }) || ''
+  }));
+}
 // Caixas perdidas do período pela tabela oficial de perdas (mesma do relatório "Caixas Perdidas")
 async function _relPerdasPeriodo(range) {
   const ini = String(range?.inicio || '').slice(0, 10), fimEx = String(range?.fim_exclusivo || '').slice(0, 10);
@@ -17462,6 +17498,39 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       }
     });
 
+    // Perdas por máquina = tabela oficial de perdas do período (a mesma do relatório "Caixas Perdidas"),
+    // e não só as perdas gravadas dentro das OFs vendidas.
+    try {
+      const iniP = String(range.inicio || '').slice(0, 10), fimP = String(range.fim_exclusivo || '').slice(0, 10);
+      const perdRows = [];
+      for (let off = 0; off < 50000; off += 1000) {
+        const { data, error } = await supabase.from('caixas_perdidas').select('id,of_id,emp_id,maquina,maquina_perda,quantidade,qtd_perdida,valor_perdido,toneladas_perdidas,data,created_at').range(off, off + 999);
+        if (error || !data || !data.length) break;
+        perdRows.push(...data);
+        if (data.length < 1000) break;
+      }
+      let doPeriodo = perdRows.filter((r) => { const d = _relatoriosIsoDateOnly(r.data || r.created_at || ''); return d && d >= iniP && d < fimP; });
+      if (empresaId) {
+        const ofIdsP = Array.from(new Set(doPeriodo.map((r) => String(r.of_id || '')).filter(_isUuid)));
+        const empOf = new Map();
+        for (let i = 0; i < ofIdsP.length; i += 200) {
+          const { data } = await supabase.from('ofs').select('id,empresa_id,emp_id').in('id', ofIdsP.slice(i, i + 200));
+          (data || []).forEach((o) => empOf.set(String(o.id), _relatoriosPickEmpresaId(o)));
+        }
+        doPeriodo = doPeriodo.filter((r) => (empOf.get(String(r.of_id || '')) || _relatoriosPickEmpresaId({ emp_id: r.emp_id })) === empresaId);
+      }
+      buckets.forEach((b) => { b.caixas_perdidas = 0; b.valor_perdido = 0; b.toneladas_perdidas = 0; });
+      doPeriodo.forEach((r) => {
+        const nomeM = String(r.maquina_perda || r.maquina || '').trim();
+        const canon = _canonMaqNome(nomeM) || nomeM;
+        const b = buckets.get(canon) || buckets.get(semMaquina);
+        if (!b) return;
+        b.caixas_perdidas += Math.max(0, Number(r.quantidade ?? r.qtd_perdida ?? 0) || 0);
+        b.valor_perdido += Number(r.valor_perdido || 0) || 0;
+        b.toneladas_perdidas += Number(r.toneladas_perdidas || 0) || 0;
+      });
+    } catch (ePerd) { console.warn('[LUCRAT-MAQ] perdas da tabela oficial falharam:', String(ePerd?.message || ePerd)); }
+
     const rows = LUCRATIVIDADE_MAQUINAS.map((machine) => {
       const nome = String(machine?.nome || '').trim();
       const bucket = buckets.get(nome);
@@ -17558,7 +17627,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         empresa_filter_todas: empresaFilter?.todas === true,
       },
       fonte_passagens: 'ofs.passagens_maquina (fallback Sem Máquina Definida)',
-      fonte_perdas: 'ofs.perdas_por_maquina',
+      fonte_perdas: 'tabela caixas_perdidas (período)',
       logica_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
       logica_custo: 'gramatura.valor_unitario * (dim/1000)^2 * qtd (fallback custo_m2_venda*area ou custo_total)',
       resumo,
