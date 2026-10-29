@@ -3511,7 +3511,7 @@ try {
       cards: [
         { label: 'Tamanhos distintos', value: rrFmtNum(resumo.total_tamanhos || rows.length, 0), sub: 'Combinações únicas de largura × comprimento' },
         { label: 'Caixas vendidas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + rrInt(r && r.quantidade_total_vendida); }, 0), 0), sub: 'Somatório do período selecionado' },
-        { label: 'OFs analisadas', value: rrFmtNum(resumo.total_ofs || rows.reduce(function(s, r) { return s + rrInt(r && r.total_ofs); }, 0), 0), sub: 'OFs concluídas agrupadas por tamanho' },
+        { label: 'OFs analisadas', value: rrFmtNum(resumo.total_ofs || rows.reduce(function(s, r) { return s + rrInt(r && r.total_ofs); }, 0), 0), sub: resumo.ofs_sem_medida ? ('de ' + rrFmtNum(resumo.ofs_periodo || 0, 0) + ' vendidas · ' + rrFmtNum(resumo.ofs_sem_medida, 0) + ' sem medida da caixa') : 'Todas as OFs vendidas do período' },
         { label: 'Maior tamanho', value: maiorLabel, sub: maior && rrNum(maior.area_mm2) > 0 ? (rrFmtNum(rrNum(maior.area_mm2) / 1000000, 4) + ' m²') : 'Sem dados' }
       ],
       summaryTitle: 'Ranking dos maiores tamanhos',
@@ -4200,11 +4200,12 @@ try {
             { label: 'Caixas Perdidas', value: fmtNum.format(totPeriodoPerda), sub: 'Valor: ' + fmtBRL.format(Number(tot.total_valor_perdido || 0)) + ' · Perda: ' + perdaPct.toFixed(2).replace('.', ',') + '%' },
             { label: 'OFs Contabilizadas', value: fmtNum.format(Number(tot.total_ofs || 0)), sub: ranking.length + ' operador(es) listado(s)' }
           ];
-          if (top3 && top3.length > 0) {
+          var topReal = (ranking || []).filter(function(o) { return o && !/^Sem operador/i.test(String(o.operador || '')); })[0] || null;
+          if (topReal) {
             cards.push({
               label: '🏆 Top 1 Operador',
-              value: esc(String(top3[0].operador || '—')),
-              sub: fmtNum.format(Number(top3[0].qtd_produzida || 0)) + ' cx · ' + fmtBRL.format(Number(top3[0].valor_produzido || 0))
+              value: esc(String(topReal.operador || '—')),
+              sub: fmtNum.format(Number(topReal.qtd_produzida || 0)) + ' cx · ' + fmtBRL.format(Number(topReal.valor_produzido || 0))
             });
           }
           var detailHeaders = ['Operador', 'Caixas Produzidas', 'Valor Produzido', 'Caixas Perdidas', 'Valor Perdido', 'OFs', '% Perda'];
@@ -5034,11 +5035,11 @@ try {
               { label: 'Projeção Conservadora (' + Number(resumo.meses_projetados_qtd || 0) + 'm)', value: fb.format(Number((resumo.somatorio_valores_projetados || {}).conservadora || 0)), sub: 'Cenário baixo' },
               { label: 'Projeção Agressiva (' + Number(resumo.meses_projetados_qtd || 0) + 'm)', value: fb.format(Number((resumo.somatorio_valores_projetados || {}).agressiva || 0)), sub: 'Cenário alto' },
               { label: 'Carteira em Aberto', value: fb.format(Number(aberto2.valor_total || 0)), sub: fn.format(Number(aberto2.qtd_ofs || 0)) + ' OFs · ' + fn.format(Number(aberto2.caixas_estimadas || 0)) + ' cx' },
-              { label: 'Período', value: esc2(String(d.periodo || '')), sub: empLabel(empId) + ' · ' + (resp.modo_empresa || '') }
+              { label: 'Período', value: esc2(__perTxt(d.periodo)), sub: empLabel(empId) }
             ];
             var cfg = {
-              title: 'Projeção de Vendas · ' + empLabel(empId),
-              periodo: String(d.periodo || 'Atual') + ' · ' + empLabel(empId),
+              title: 'Relatório de Projeção de Vendas',
+              periodo: __perTxt(d.periodo) + ' · ' + empLabel(empId),
               cards: cards2,
               summaryTitle: 'Totais 12 meses consolidados',
               summaryHeaders: ['Indicador', 'Valor'],
@@ -76215,3 +76216,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     setTimeout(function () { ag = false; var pg = document.getElementById('page-comissoes'); if (pg && pg.offsetHeight) montar(); }, 150);
   }).observe(document.body, { childList: true, subtree: true });
 })();
+
+// texto de período para relatórios (aceita string, {inicio,fim}, {mes,ano}, {label})
+window.__perTxt = function (p) {
+  if (p == null || p === '') return 'Atual';
+  if (typeof p !== 'object') return String(p);
+  var br = function (iso) { iso = String(iso || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; };
+  if (p.label || p.titulo) return String(p.label || p.titulo);
+  if (p.inicio || p.data_inicio) return [br(p.inicio || p.data_inicio), br(p.fim || p.data_fim)].filter(Boolean).join(' a ');
+  if (p.ano) return (p.mes ? String(p.mes).padStart(2, '0') + '/' : '') + p.ano;
+  return 'Atual';
+};

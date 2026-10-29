@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029154857';
-const SW_RUNTIME_VERSION = '20261029154857';
+const PATCH_RUNTIME_VERSION = '20261029155317';
+const SW_RUNTIME_VERSION = '20261029155317';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -18004,9 +18004,8 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
     const filtroEmpresa = String(req.query.emp_id || req.query.empId || req.query.empresa_id || '').trim();
     let empresaAtual = null;
     try { empresaAtual = await _resolveEmpresaUuid(req); } catch (_) { empresaAtual = null; }
-    const companyIds = (filtroEmpresa && filtroEmpresa !== 'all' && filtroEmpresa !== 'todas')
-      ? [filtroEmpresa]
-      : (empresaAtual ? [empresaAtual] : []);
+    const querTodas = filtroEmpresa === 'all' || filtroEmpresa === 'todas' || filtroEmpresa === 'ALL';
+    const companyIds = querTodas ? [] : (filtroEmpresa ? [filtroEmpresa] : (empresaAtual ? [empresaAtual] : []));
     const cols = [
       'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
       'cli_id', 'cliId', 'cliente_id', 'clienteId', 'cliente', 'cliente_nome', 'cliNome', 'clinome',
@@ -18429,24 +18428,9 @@ app.get('/api/relatorios/maiores-tamanhos-vendidos', authMiddleware, async (req,
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    const cols = [
-      'id', 'numero', 'of', 'status', 'data_conclusao', 'empresa_id',
-      'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
-      'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura'
-    ].join(',');
-    const sel = await _selectCompatRows('ofs', cols, (q) => {
-      let query = q
-        .ilike('status', '%conclu%')
-        .gte('data_conclusao', range.inicio)
-        .lt('data_conclusao', range.fim_exclusivo)
-        .order('data_conclusao', { ascending: false });
-      if (empresa_id && _isUuid(empresa_id)) query = query.eq('empresa_id', empresa_id);
-      return query.limit(10000);
-    });
-    if (sel?.error) throw sel.error;
-    const ofs = Array.isArray(sel?.data) ? sel.data : [];
+    // mesma base oficial de vendas dos outros relatórios (três empresas, data oficial)
+    let ofs = await _listarOfsVendasOficiais(range, '', ['qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura', 'descricao']);
+    ofs = _filtrarOfsNaoTesteGlobal(ofs).filter((of) => _vendasOficialDentroDoPeriodo(of, range));
 
     const pickDim = (row, keys) => {
       for (const key of (Array.isArray(keys) ? keys : [])) {
@@ -18492,6 +18476,8 @@ app.get('/api/relatorios/maiores-tamanhos-vendidos', authMiddleware, async (req,
       acc.total_ofs += Number(item?.total_ofs || 0) || 0;
       return acc;
     }, { total_tamanhos: 0, total_caixas: 0, total_ofs: 0 });
+    resumo.ofs_periodo = ofs.length;
+    resumo.ofs_sem_medida = ofs.length - resumo.total_ofs;
     resumo.maior_tamanho = rows[0]
       ? {
           largura: Number(rows[0].largura || 0) || 0,
