@@ -75137,7 +75137,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var ref = document.getElementById('menu-mapa-clientes') || document.getElementById('menu-tipos-caixa'); if (!ref) return;
     var d = document.createElement('div'); d.id = 'menu-produtos'; d.className = 'nav-item';
     d.innerHTML = '<span class="ico">🏷️</span>Produtos';
-    d.onclick = function () { try { window.go('produtos'); } catch (_) {} try { window.closeNavGroupsExcept && window.closeNavGroupsExcept('ng-cadastros'); } catch (_) {} };
+    d.onclick = function () { pagina(); try { window.go('produtos'); } catch (_) {} try { window.closeNavGroupsExcept && window.closeNavGroupsExcept('ng-cadastros'); } catch (_) {} setTimeout(function () { if (String(window._PAGE_ATUAL || '') === 'produtos') render(); }, 0); try { if (document.body.classList.contains('is-mobile') && window.toggleMobMenu) window.toggleMobMenu(); } catch (_) {} };
     ref.parentNode.insertBefore(d, ref);
   }
   function pagina() {
@@ -75337,7 +75337,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('focusout', function (e) { if (e.target && e.target.id === 'of-r-produto') setTimeout(fecharSug, 150); }, true);
   // ---------- ligar ----------
   function vigiar() {
-    montarMenu();
+    montarMenu(); if (document.getElementById('menu-produtos')) pagina();
     var pa = String(window._PAGE_ATUAL || '');
     if (pa === 'produtos') { var pg = pagina(); if (pg && !pg.querySelector('.dsp-head')) render(); }
     if (document.getElementById('of-r-produto') && Date.now() - P.t > 60000) carregar();
@@ -75782,4 +75782,48 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   new MutationObserver(function () { if (document.querySelector('#page-orcamentos button[onclick^="imprimirOrcamentoId"]:not(.dsce-ok)')) injetarOrc(); }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-dsce-email]'); if (b) { ev.preventDefault(); ev.stopPropagation(); abrirEnvio(b.getAttribute('data-dsce-email')); } }, true);
   new MutationObserver(function () { if (document.querySelector('[data-cmpx-print]:not(.dsce-ok)')) { injetar(); Array.prototype.slice.call(document.querySelectorAll('[data-cmpx-print]')).forEach(function (b) { b.classList.add('dsce-ok'); }); } }).observe(document.body, { childList: true, subtree: true });
+})();
+
+// ===== Compras: "Duplicar item" ao lado de "Adicionar item", os dois em destaque =====
+(function () {
+  if (window.__dsCmpDup) return; window.__dsCmpDup = true;
+  var css = document.createElement('style');
+  css.textContent = ''
+    + '.ccpx-item-action-strip .dup{display:none!important}'
+    + '.dscd-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+    + '#ccpx-add-item.dscd,.dscd-dup{height:42px!important;padding:0 16px!important;border-radius:11px!important;font-weight:800!important;font-size:14px!important;cursor:pointer;display:inline-flex!important;align-items:center;gap:7px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.18)}'
+    + '#ccpx-add-item.dscd{background:#2563eb!important;border:1px solid #2563eb!important;color:#fff!important}'
+    + '#ccpx-add-item.dscd:hover{background:#1d4ed8!important}'
+    + '.dscd-dup{background:#059669!important;border:1px solid #059669!important;color:#fff!important}'
+    + '.dscd-dup:hover{background:#047857!important}'
+    + '.ccpx-item-sheet-row.dscd-alvo{outline:2px solid #10b981;outline-offset:2px;border-radius:12px}'
+    + '@media (max-width:640px){.dscd-acoes{width:100%}.dscd-acoes>button{flex:1;justify-content:center}}';
+  document.head.appendChild(css);
+  function alvo(ov) {
+    var rows = ov.querySelectorAll('[data-ccpx-item-row]'); if (!rows.length) return -1;
+    var i = Number(ov.__dscdIdx); if (!(i >= 0) || !ov.querySelector('[data-ccpx-item-row="' + i + '"]')) i = Number(rows[rows.length - 1].getAttribute('data-ccpx-item-row'));
+    return i;
+  }
+  function rotulo(ov) {
+    var b = ov.querySelector('.dscd-dup'); if (!b) return;
+    var i = alvo(ov); var t = '⧉ Duplicar item ' + (i >= 0 ? (i + 1) : ''); if (b.textContent !== t) b.textContent = t;
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-ccpx-item-row]'), function (r) { r.classList.toggle('dscd-alvo', ov.querySelectorAll('[data-ccpx-item-row]').length > 1 && Number(r.getAttribute('data-ccpx-item-row')) === i && ov.__dscdMostrar); });
+  }
+  function montar() {
+    var add = document.getElementById('ccpx-add-item'); if (!add || add.classList.contains('dscd')) return;
+    var ov = add.closest('.ccpx-fs-overlay') || document;
+    add.classList.add('dscd'); add.innerHTML = '＋ Adicionar item';
+    var box = document.createElement('div'); box.className = 'dscd-acoes';
+    add.parentNode.insertBefore(box, add); box.appendChild(add);
+    var dup = document.createElement('button'); dup.type = 'button'; dup.className = 'dscd-dup'; dup.title = 'Cria uma cópia do item selecionado (o último que você mexeu)';
+    box.appendChild(dup);
+    dup.onclick = function () {
+      var i = alvo(ov); var b = ov.querySelector('[data-ccpx-dup-item="' + i + '"]');
+      if (b) { b.click(); ov.__dscdIdx = i + 1; setTimeout(function () { rotulo(ov); var r = ov.querySelector('[data-ccpx-item-row="' + (i + 1) + '"]'); if (r) r.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 60); }
+    };
+    ov.addEventListener('focusin', function (e) { var r = e.target.closest && e.target.closest('[data-ccpx-item-row]'); if (r) { ov.__dscdIdx = Number(r.getAttribute('data-ccpx-item-row')); ov.__dscdMostrar = true; rotulo(ov); } });
+    dup.addEventListener('mouseenter', function () { ov.__dscdMostrar = true; rotulo(ov); });
+    rotulo(ov);
+  }
+  new MutationObserver(function () { if (document.getElementById('ccpx-add-item')) { montar(); var ov = document.querySelector('.ccpx-fs-overlay'); if (ov) rotulo(ov); } }).observe(document.body, { childList: true, subtree: true });
 })();
