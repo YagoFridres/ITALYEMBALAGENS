@@ -75901,8 +75901,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + T + ' .simd-table tbody tr[data-simd-row] td{display:block;padding:0!important;border:0!important;background:transparent!important;text-align:left!important}'
     + T + ' .simd-table tbody tr[data-simd-row] td:first-child{position:static;padding-left:0!important}'
     + T + ' .simd-table tbody tr[data-simd-row] td:first-child::before{top:14px;transform:none;left:12px}'
-    + T + ' .simd-table tbody tr[data-simd-row] td:nth-child(2){grid-column:1/-1}'
-    + T + ' .simd-table tbody tr[data-simd-row] td[data-dssn]::before{content:attr(data-dssn);display:block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--sn-tx2)}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:nth-child(2){grid-column:1/-1;order:-1;font-size:15px}'
+    + T + ' .simd-table tbody tr[data-simd-row] td:first-child::after{content:" de desperdício";font-size:11px;color:var(--sn-tx2);margin-left:6px}'
+    + T + ' .simd-table tbody tr[data-simd-row] td.num{text-align:left!important}'
+    + T + ' .simd-table tbody tr[data-simd-row] td[data-dssn]:not(:first-child)::before{content:attr(data-dssn);display:block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--sn-tx2)}'
     + T + ' .simd-table tbody tr[data-simd-row]:first-child{background:rgba(16,185,129,.07)}}';
   document.head.appendChild(css);
 
@@ -75943,6 +75945,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var r0 = rows[0], td = r0.children;
     var sinal = rows.length + '|' + txt(r0);
     // rótulos para o modo celular
+    var tab = tw.querySelector('table.simd-table'); if (tab && !tab.classList.contains('no-card')) { tab.classList.add('no-card'); tab.setAttribute('data-no-mobile-cards', '1'); }
     var heads = Array.prototype.map.call(tw.querySelectorAll('thead th'), txt);
     Array.prototype.forEach.call(rows, function (r) { Array.prototype.forEach.call(r.children, function (c, i) { if (heads[i] && c.getAttribute('data-dssn') !== heads[i]) c.setAttribute('data-dssn', heads[i]); }); });
     if (sinal === ultimoSinal && box) return; ultimoSinal = sinal;
