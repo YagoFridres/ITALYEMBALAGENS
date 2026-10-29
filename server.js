@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029153732';
-const SW_RUNTIME_VERSION = '20261029153732';
+const PATCH_RUNTIME_VERSION = '20261029153831';
+const SW_RUNTIME_VERSION = '20261029153831';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -25014,20 +25014,28 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
       if (numero && !facaByNome.has(numero)) facaByNome.set(numero, row);
     });
 
-    let ofsCols = ['id','numero','cliente_nome','clinome','cliNome','cli_id','status','quantidade','qtd','valor_total','valor_venda','itens','empresa_id','deleted_at'];
+    let ofsCols = ['id','numero','cliente_nome','clinome','cliNome','cli_id','status','quantidade','qtd','valor_total','valor_venda','itens','empresa_id','emp_id','deleted_at','data_faturamento','data_conclusao','dia','created_at'];
+    // período escolhido na Central de Relatórios: OFs vendidas (concluídas) no período, todas as empresas
+    const rangeFacas = (req.query.data_inicio || req.query.dataInicio) ? _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true }) : null;
     let ofsRows = null;
     for (let tent = 0; tent < 4; tent++) {
       try {
-        let q = supabase
-          .from('ofs')
-          .select(ofsCols.join(','))
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(5000);
-        if (empresaId) q = q.or('empresa_id.eq.' + String(empresaId) + ',empresa_id.is.null');
-        const { data, error } = await q;
-        if (error) throw error;
-        ofsRows = data;
+        const todas = [];
+        for (let off = 0; off < 60000; off += 1000) {
+          let q = supabase
+            .from('ofs')
+            .select(ofsCols.join(','))
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .range(off, off + 999);
+          if (empresaId && !rangeFacas) q = q.or('empresa_id.eq.' + String(empresaId) + ',empresa_id.is.null');
+          const { data, error } = await q;
+          if (error) throw error;
+          if (!data || !data.length) break;
+          todas.push(...data);
+          if (data.length < 1000) break;
+        }
+        ofsRows = rangeFacas ? _filtrarOfsNaoTesteGlobal(todas).filter((o) => _vendasOficialStatusConcluido(o?.status) && _vendasOficialDentroDoPeriodo(o, rangeFacas)) : todas;
         break;
       } catch (e) {
         const msg = String(e?.message || e || '');
@@ -25140,7 +25148,7 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
         || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
     });
 
-    return res.json({ ok: true, data, _diagnostico: diag });
+    return res.json({ ok: true, data, total_ofs: Array.isArray(ofsRows) ? ofsRows.length : 0, data_inicio: rangeFacas ? rangeFacas.inicio : null, data_fim: rangeFacas ? rangeFacas.fim : null, _diagnostico: diag });
   } catch (e) {
     console.error('[RELATORIOS FACAS MAIS ERRO 500 STACK]', e?.stack || String(e));
     return res.status(500).json({ ok: false, error: String(e?.message || e) });

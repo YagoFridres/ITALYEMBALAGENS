@@ -1955,7 +1955,7 @@ try {
     var qs = rrEmpresaQueryParts().slice();
     qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
     qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
-    var empId = rrEmpId();
+    var empId = ''; // todos os relatórios somam as três empresas
     if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/checklist-recebimento?' + qs.join('&'));
     var resumo = json && json.resumo || {};
@@ -3321,7 +3321,7 @@ try {
 
   async function rrReportTiposCaixa() {
     var ref = rrCurrentRange();
-    var empId = rrEmpId();
+    var empId = ''; // todos os relatórios somam as três empresas
     var qs = [
       'data_inicio=' + encodeURIComponent(ref.data_inicio),
       'data_fim=' + encodeURIComponent(ref.data_fim)
@@ -3369,7 +3369,7 @@ try {
 
   async function rrReportCoresTamanhos() {
     var ref = rrCurrentRange();
-    var empId = rrEmpId();
+    var empId = ''; // todos os relatórios somam as três empresas
     var qs = [
       'data_inicio=' + encodeURIComponent(ref.data_inicio),
       'data_fim=' + encodeURIComponent(ref.data_fim)
@@ -3478,7 +3478,7 @@ try {
 
   async function rrReportMaioresTamanhosVendidos() {
     var ref = rrCurrentRange();
-    var empId = rrEmpId();
+    var empId = ''; // todos os relatórios somam as três empresas
     var qs = [
       'data_inicio=' + encodeURIComponent(ref.data_inicio),
       'data_fim=' + encodeURIComponent(ref.data_fim)
@@ -4046,23 +4046,42 @@ try {
     }
   }
 
-  function rrOpenFacasMaisUtilizadasModal() {
-    try {
-      if (typeof window.openFacasMaisUtilizadasReport === 'function') {
-        window.openFacasMaisUtilizadasReport();
-        return;
-      }
-      if (typeof window.carregarFacas === 'function') {
-        Promise.resolve(window.carregarFacas()).finally(function() {
-          try {
-            if (typeof window.go === 'function') window.go('facas1');
-            setTimeout(function() { try { if (typeof window.renderFacasWireframePage === 'function') window.renderFacasWireframePage(); } catch (_) {} }, 220);
-          } catch (_) {}
-        });
-      }
-    } catch (e) {
-      try { alert('Erro ao abrir Facas Mais Utilizadas: ' + String(e && e.message || e)); } catch (_) {}
-    }
+  async function rrOpenFacasMaisUtilizadasModal() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/facas-mais-utilizadas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var rows = rrList(json, ['data', 'rows']);
+    var usos = rows.reduce(function(s, r) { return s + (Number(r && r.quantidade) || 0); }, 0);
+    var caixas = rows.reduce(function(s, r) { return s + (Number(r && r.quantidade_caixas) || 0); }, 0);
+    var top = rows[0] || null;
+    return rrOpenPrint({
+      title: 'Relatório de Facas Mais Utilizadas',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Facas usadas', value: rrFmtNum(rows.length, 0), sub: rrFmtNum(rows.filter(function(r) { return r && r.cadastrada_no_estoque === false; }).length, 0) + ' não cadastradas no estoque' },
+        { label: 'Usos', value: rrFmtNum(usos, 0), sub: 'Itens de OF com faca' },
+        { label: 'Caixas', value: rrFmtNum(caixas, 0), sub: 'Feitas com essas facas' },
+        { label: 'Mais usada', value: top ? String(top.nome || '—') : 'Sem dados', sub: top ? (rrFmtNum(top.quantidade || 0, 0) + ' usos') : 'Nenhuma OF com faca no período' }
+      ],
+      introHtml: '<div style="font-size:11px;color:#666;margin:-12px 0 16px">OFs vendidas (concluídas) no período: ' + rrEsc(rrFmtNum(json && json.total_ofs || 0, 0)) + '.</div>',
+      summaryTitle: 'Ranking de facas',
+      summaryHeaders: ['Faca', 'Nº / Medidas', 'Usos', 'Caixas', 'Cliente que mais usa'],
+      summaryRows: rows.map(function(r) {
+        return [
+          rrEsc(String(r && r.nome || '—')) + (r && r.cadastrada_no_estoque === false ? ' <small style="color:#b45309">(não cadastrada)</small>' : ''),
+          rrEsc([r && r.numero, r && r.medidas].filter(Boolean).join(' · ') || '—'),
+          rrEsc(rrFmtNum(r && r.quantidade || 0, 0)),
+          rrEsc(rrFmtNum(r && r.quantidade_caixas || 0, 0)),
+          rrEsc(String(r && r.cliente_top || '—')) + (r && r.cliente_top_usos ? ' <small>(' + rrEsc(rrFmtNum(r.cliente_top_usos, 0)) + ' usos)</small>' : '')
+        ];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Faca', 'Categoria', 'Valor da faca', 'Usos', 'Caixas'],
+      detailRows: rows.map(function(r) {
+        return [rrEsc(String(r && r.nome || '—')), rrEsc(String(r && r.categoria || '—')), rrEsc(rrFmtMoney(r && r.valor || 0)), rrEsc(rrFmtNum(r && r.quantidade || 0, 0)), rrEsc(rrFmtNum(r && r.quantidade_caixas || 0, 0))];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
   }
 
   function rrOpenPerdasOperadorModal() {
