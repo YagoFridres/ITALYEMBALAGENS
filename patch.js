@@ -76071,6 +76071,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       topo.insertBefore(h, topo.firstChild);
     }
     if (filtros) {
+      var solta = pg.querySelector('.filtros-comissao');
+      if (solta && !filtros.contains(solta)) filtros.insertBefore(solta, filtros.firstChild);
       var bar = filtros.querySelector('.filtros-comissao');
       if (bar) {
         // "ou" e intervalo de datas
