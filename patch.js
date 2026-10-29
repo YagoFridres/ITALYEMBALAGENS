@@ -76025,6 +76025,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + P + ' table.ds-com-vend th:first-child,' + P + ' table.ds-com-vend td:first-child{text-align:left!important}'
     + P + ' table.ds-com-vend td{background:transparent!important;padding:13px 14px!important;border-top:1px solid var(--co-bd)!important;text-align:right!important;font-variant-numeric:tabular-nums;color:var(--co-tx)!important}'
     + P + ' table.ds-com-vend tbody tr:hover td{background:rgba(99,102,241,.07)!important}'
+    + P + ' table.ds-com-vend tbody tr{background:transparent!important}'
+    + P + ' table.ds-com-vend tbody tr td:first-child{font-weight:800!important;box-shadow:inset 4px 0 0 #6366f1}'
+    + P + ' table.ds-com-vend tbody tr:nth-child(2) td:first-child{box-shadow:inset 4px 0 0 #22d3ee}'
+    + P + ' table.ds-com-vend tbody tr:nth-child(3) td:first-child{box-shadow:inset 4px 0 0 #a855f7}'
+    + P + ' table.ds-com-vend tbody tr:nth-child(4) td:first-child{box-shadow:inset 4px 0 0 #f59e0b}'
     + P + ' table.ds-com-vend td:last-child{color:#10b981!important;font-weight:800!important}'
     // detalhamento
     + P + ' #_com_detalhe{margin-top:22px}'
