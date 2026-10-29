@@ -75964,3 +75964,169 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }).observe(document.body, { childList: true, subtree: true });
   setTimeout(melhorar, 1500);
 })();
+
+// ===== Comissões: visual novo (mesmos dados e funções; busca única que funciona) =====
+(function () {
+  if (window.__dsComNovo) return; window.__dsComNovo = true;
+  var P = '#page-comissoes.dsco';
+  var css = document.createElement('style');
+  css.textContent = ''
+    + P + '{--co-card:var(--s1,#151a23);--co-card2:var(--s2,#1b2130);--co-bd:var(--b2,rgba(148,163,184,.2));--co-tx:var(--text,#f1f5f9);--co-tx2:var(--text2,#94a3b8);--co-in:var(--bg,#0d1117);--co-ac:#6366f1}'
+    + P + ' #_com_topo{padding-top:4px}'
+    // cabeçalho
+    + P + ' .dsco-hero{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}'
+    + P + ' .dsco-hero h1{margin:0;font-size:22px;font-weight:800;color:var(--co-tx);display:flex;align-items:center;gap:10px}'
+    + P + ' .dsco-hero h1 span{font-size:24px}'
+    + P + ' .dsco-hero p{margin:3px 0 0;font-size:13px;color:var(--co-tx2)}'
+    + P + ' .dsco-acoes{display:flex;gap:8px;flex-wrap:wrap}'
+    + P + ' .dsco-btn{height:40px;padding:0 16px;border-radius:11px;border:1px solid var(--co-bd);background:var(--co-card);color:var(--co-tx);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}'
+    + P + ' .dsco-btn:hover{border-color:var(--co-ac)}'
+    // filtros
+    + P + ' #_com_filtros{display:flex!important;flex-wrap:wrap;align-items:flex-end;gap:12px!important;background:var(--co-card);border:1px solid var(--co-bd);border-radius:16px;padding:16px!important;margin-bottom:16px}'
+    + P + ' #_com_filtros .filtros-comissao{display:contents!important}'
+    + P + ' #com-emp,' + P + ' #comissoes-busca-of,' + P + ' #_com_filtros .btn-purple,' + P + ' #comissao-excel-btn,' + P + ' #_com_topo_conteudo > .excel-export-bar,' + P + ' #_com_busca_wrap,' + P + ' #_com_filtro_local_wrap{display:none!important}'
+    + P + ' #_com_filtros select,' + P + ' #_com_filtros input{height:42px!important;border-radius:11px!important;border:1px solid var(--co-bd)!important;background:var(--co-in)!important;color:var(--co-tx)!important;font:inherit!important;font-size:14px!important;padding:0 12px!important;min-width:0;box-sizing:border-box}'
+    + P + ' #_com_filtros select:focus,' + P + ' #_com_filtros input:focus{border-color:var(--co-ac)!important;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.2)}'
+    + P + ' #comissoes-periodo-selects{order:1;display:flex!important;gap:8px!important;position:relative;padding-top:18px}'
+    + P + ' #comissoes-periodo-selects::before{content:"Mês e ano";position:absolute;top:0;left:2px;font-size:11.5px;font-weight:700;color:var(--co-tx2)}'
+    + P + ' #comissoes-periodo-selects select{width:auto!important;min-width:120px}'
+    + P + ' .dsco-ou{order:2;align-self:center;padding-top:18px;font-size:12px;font-weight:700;color:var(--co-tx2)}'
+    + P + ' .dsco-de{order:3;display:flex;flex-direction:column;gap:4px}'
+    + P + ' .dsco-de > b{font-size:11.5px;font-weight:700;color:var(--co-tx2)}'
+    + P + ' .dsco-de > div{display:flex;align-items:center;gap:6px}'
+    + P + ' .dsco-de > div span{font-size:12px;color:var(--co-tx2)}'
+    + P + ' .dsco-emp{order:4;display:flex;flex-direction:column;gap:4px}'
+    + P + ' .dsco-emp > b,' + P + ' .dsco-modo > b{font-size:11.5px;font-weight:700;color:var(--co-tx2)}'
+    + P + ' .dsco-modo{order:5;display:flex;flex-direction:column;gap:4px}'
+    + P + ' .dsco-modo > div > span{display:none}'
+    + P + ' #_com_filtros .btn-accent{order:6;height:42px!important;padding:0 22px!important;border-radius:11px!important;font-size:14px!important;font-weight:800!important;background:linear-gradient(135deg,#6366f1,#4f46e5)!important;border:0!important;color:#fff!important;box-shadow:0 6px 16px rgba(99,102,241,.3);margin-left:auto}'
+    + P + ' #_com_filtros > span:not(.dsco-ou){display:none!important}'
+    // números
+    + P + ' #_com_topo_conteudo > div:first-child{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important}'
+    + P + ' #_com_topo_conteudo > div:first-child > div{position:relative;background:var(--co-card)!important;border:1px solid var(--co-bd);border-radius:16px!important;padding:16px 18px 16px 70px!important;min-height:86px;box-sizing:border-box}'
+    + P + ' #_com_topo_conteudo > div:first-child > div::before{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}'
+    + P + ' #_com_topo_conteudo > div:first-child > div:nth-child(1)::before{content:"💰";background:rgba(59,130,246,.16)}'
+    + P + ' #_com_topo_conteudo > div:first-child > div:nth-child(2)::before{content:"✅";background:rgba(16,185,129,.16)}'
+    + P + ' #_com_topo_conteudo > div:first-child > div:nth-child(3)::before{content:"🏅";background:rgba(234,179,8,.18)}'
+    + P + ' #_com_topo_conteudo > div:first-child > div:nth-child(4)::before{content:"👥";background:rgba(99,102,241,.18)}'
+    + P + ' #_com_topo_conteudo > div:first-child > div > div:first-child{font-size:11.5px!important;font-weight:700!important;letter-spacing:.04em;color:var(--co-tx2)!important}'
+    + P + ' #_com_topo_conteudo > div:first-child > div > div:nth-child(2){font-size:22px!important;font-weight:800!important;margin-top:2px}'
+    // ranking
+    + P + ' #_com_topo_conteudo > div:nth-child(2){display:grid!important;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px!important}'
+    + P + ' #_com_topo_conteudo > div:nth-child(2) > div{background:var(--co-card)!important;border:1px solid var(--co-bd)!important;border-radius:16px!important;padding:16px!important;min-width:0!important;flex:none!important}'
+    + P + ' #_com_topo_conteudo > div:nth-child(2) > div > div:nth-child(2){height:8px!important;border-radius:99px!important;margin:10px 0!important}'
+    + P + ' #_com_topo_conteudo > div:nth-child(2) > div > div:nth-child(2) > div{height:8px!important;border-radius:99px!important;background:linear-gradient(90deg,#6366f1,#22d3ee)!important}'
+    // tabela de vendedores
+    + P + ' .dsco-sec{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 10px}'
+    + P + ' .dsco-sec h3{margin:0;font-size:15px;font-weight:800;color:var(--co-tx)}'
+    + P + ' #_com_topo_conteudo > div:last-child{border:1px solid var(--co-bd);border-radius:16px;overflow:auto;background:var(--co-card)}'
+    + P + ' table.ds-com-vend{width:100%;border-collapse:collapse}'
+    + P + ' table.ds-com-vend th{background:var(--co-card2)!important;color:var(--co-tx2)!important;font-size:11px!important;font-weight:800!important;letter-spacing:.05em;text-transform:uppercase;padding:12px 14px!important;text-align:right!important}'
+    + P + ' table.ds-com-vend th:first-child,' + P + ' table.ds-com-vend td:first-child{text-align:left!important}'
+    + P + ' table.ds-com-vend td{background:transparent!important;padding:13px 14px!important;border-top:1px solid var(--co-bd)!important;text-align:right!important;font-variant-numeric:tabular-nums;color:var(--co-tx)!important}'
+    + P + ' table.ds-com-vend tbody tr:hover td{background:rgba(99,102,241,.07)!important}'
+    + P + ' table.ds-com-vend td:last-child{color:#10b981!important;font-weight:800!important}'
+    // detalhamento
+    + P + ' #_com_detalhe{margin-top:22px}'
+    + P + ' #_com_detalhe > div:first-child h3{font-size:15px!important;font-weight:800!important;margin:0 0 10px!important}'
+    + P + ' .dsco-busca{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}'
+    + P + ' .dsco-busca input{flex:1;min-width:220px;height:44px;border-radius:12px;border:1px solid var(--co-bd);background:var(--co-in);color:var(--co-tx);font:inherit;font-size:14.5px;padding:0 14px 0 40px;box-sizing:border-box;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2718%27 height=%2718%27 fill=%27none%27 stroke=%27%2394a3b8%27 stroke-width=%272.2%27 viewBox=%270 0 24 24%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cpath d=%27m20 20-3.5-3.5%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:14px center}'
+    + P + ' .dsco-busca input:focus{border-color:var(--co-ac);outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.2)}'
+    + P + ' .dsco-cont{font-size:12.5px;color:var(--co-tx2);white-space:nowrap}'
+    + P + ' #_com_detalhe details{border:1px solid var(--co-bd)!important;border-radius:16px!important;background:var(--co-card)!important;margin-bottom:12px!important;overflow:hidden}'
+    + P + ' #_com_detalhe details > summary{list-style:none;cursor:pointer;padding:14px 16px!important;background:var(--co-card2)!important;color:var(--co-tx)!important;font-size:14px!important;font-weight:800!important;border:0!important;border-radius:0!important}'
+    + P + ' #_com_detalhe details > summary::-webkit-details-marker{display:none}'
+    + P + ' #_com_detalhe details > div:last-child{overflow:auto!important;max-height:70vh}'
+    + P + ' #_com_detalhe details table thead th{position:sticky;top:0;z-index:1;background:var(--co-card2)!important;color:var(--co-tx2)!important;font-size:11px!important;font-weight:800!important;letter-spacing:.04em;text-transform:uppercase}'
+    + P + ' #_com_detalhe details tbody tr:hover td{background:rgba(99,102,241,.06)!important}'
+    + P + ' #_com_detalhe .excel-export-bar{padding:8px 12px!important}'
+    + '@media (max-width:900px){' + P + ' #_com_topo_conteudo > div:first-child{grid-template-columns:repeat(2,minmax(0,1fr))!important}' + P + ' #_com_filtros .btn-accent{margin-left:0;flex:1}}'
+    + '@media (max-width:600px){' + P + ' .dsco-hero h1{font-size:19px}' + P + ' .dsco-acoes{width:100%}' + P + ' .dsco-acoes .dsco-btn{flex:1;justify-content:center}'
+    + P + ' #_com_filtros{padding:12px!important}' + P + ' #comissoes-periodo-selects,' + P + ' .dsco-de,' + P + ' .dsco-emp,' + P + ' .dsco-modo{width:100%}' + P + ' #comissoes-periodo-selects select{flex:1}' + P + ' .dsco-de > div input{flex:1}' + P + ' .dsco-emp select,' + P + ' .dsco-modo select{width:100%!important}'
+    + P + ' #_com_topo_conteudo > div:first-child > div{padding:12px 12px 12px 58px!important;min-height:74px}' + P + ' #_com_topo_conteudo > div:first-child > div::before{left:10px;width:38px;height:38px;font-size:18px}' + P + ' #_com_topo_conteudo > div:first-child > div > div:nth-child(2){font-size:17px!important}}';
+  document.head.appendChild(css);
+
+  function txt(e) { return e ? String(e.textContent || '').trim() : ''; }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function envolver(el, cls, rotulo) {
+    if (!el || (el.parentNode && el.parentNode.classList && el.parentNode.classList.contains(cls))) return;
+    var w = document.createElement('div'); w.className = cls; w.innerHTML = '<b>' + rotulo + '</b>';
+    el.parentNode.insertBefore(w, el); w.appendChild(el);
+  }
+  function montar() {
+    var pg = document.getElementById('page-comissoes'); if (!pg) return;
+    if (!pg.classList.contains('dsco')) pg.classList.add('dsco');
+    var topo = document.getElementById('_com_topo'), filtros = document.getElementById('_com_filtros');
+    if (topo && !pg.querySelector('.dsco-hero')) {
+      var h = document.createElement('div'); h.className = 'dsco-hero';
+      h.innerHTML = '<div><h1><span>💸</span>Comissões</h1><p>Vendas concluídas no período e a comissão de cada vendedor.</p></div><div class="dsco-acoes"><button type="button" class="dsco-btn" data-dsco="imp">🖨 Imprimir relatório</button><button type="button" class="dsco-btn" data-dsco="xls">📊 Excel</button></div>';
+      topo.insertBefore(h, topo.firstChild);
+    }
+    if (filtros) {
+      var bar = filtros.querySelector('.filtros-comissao');
+      if (bar) {
+        // "ou" e intervalo de datas
+        var de = document.getElementById('com-de'), ate = document.getElementById('com-ate');
+        if (de && ate && !(de.parentNode && de.parentNode.parentNode && de.parentNode.parentNode.classList.contains('dsco-de'))) {
+          Array.prototype.forEach.call(bar.querySelectorAll(':scope > span'), function (s) { if (/^ou$/i.test(txt(s))) s.classList.add('dsco-ou'); else if (/^at[eé]$/i.test(txt(s))) s.style.display = 'none'; });
+          var w = document.createElement('div'); w.className = 'dsco-de'; w.innerHTML = '<b>Ou escolha as datas</b><div></div>';
+          bar.insertBefore(w, de); w.lastChild.appendChild(de); var sp = document.createElement('span'); sp.textContent = 'até'; w.lastChild.appendChild(sp); w.lastChild.appendChild(ate);
+        }
+      }
+      envolver(document.getElementById('comissoes-filtro-empresa'), 'dsco-emp', 'Empresa');
+      var modo = document.getElementById('comissoes-modo-exibicao');
+      if (modo && modo.parentNode && !modo.parentNode.parentNode.classList.contains('dsco-modo') && !modo.parentNode.classList.contains('dsco-modo')) envolver(modo.parentNode, 'dsco-modo', 'Mostrar as OFs');
+      var calc = filtros.querySelector('.btn-accent'); if (calc && !/🔄/.test(calc.textContent)) calc.textContent = '🔄 Calcular';
+    }
+    // título acima da tabela de vendedores
+    var cont = document.getElementById('_com_topo_conteudo');
+    var tv = cont && cont.querySelector('table.ds-com-vend');
+    if (tv && !cont.querySelector('.dsco-sec')) {
+      var holder = tv.parentNode; var s = document.createElement('div'); s.className = 'dsco-sec'; s.innerHTML = '<h3>📊 Resumo por vendedor</h3>';
+      cont.insertBefore(s, holder);
+    }
+    // busca única
+    var det = document.getElementById('_com_detalhe');
+    if (det && !document.getElementById('dsco-q')) {
+      var head = det.firstElementChild;
+      var b = document.createElement('div'); b.className = 'dsco-busca';
+      b.innerHTML = '<input id="dsco-q" type="search" autocomplete="off" placeholder="Buscar por nº da OF, cliente ou vendedor…"><span class="dsco-cont" id="dsco-cont"></span><button type="button" class="dsco-btn" data-dsco="abrir">Abrir todos</button><button type="button" class="dsco-btn" data-dsco="fechar">Fechar todos</button>';
+      (head || det).appendChild(b);
+      b.querySelector('#dsco-q').addEventListener('input', filtrar);
+    }
+    filtrar();
+  }
+  var ultimo = '';
+  function filtrar() {
+    var det = document.getElementById('_com_detalhe'); if (!det) return;
+    var inp = document.getElementById('dsco-q'); var q = norm(inp ? inp.value : '');
+    var linhas = det.querySelectorAll('tr[data-of-row="1"]');
+    var vis = 0;
+    Array.prototype.forEach.call(det.querySelectorAll('details'), function (g) {
+      var ls = g.querySelectorAll('tr[data-of-row="1"]'), n = 0;
+      Array.prototype.forEach.call(ls, function (tr) {
+        var alvo = norm((tr.getAttribute('data-search') || '') + ' ' + tr.textContent);
+        var ok = !q || alvo.indexOf(q) >= 0;
+        var d = ok ? '' : 'none'; if (tr.style.display !== d) tr.style.display = d;
+        if (ok) n++;
+      });
+      vis += n;
+      if (q) { var mostra = n ? '' : 'none'; if (g.style.display !== mostra) g.style.display = mostra; if (n && !g.open) g.open = true; }
+      else if (g.style.display === 'none') g.style.display = '';
+    });
+    var c = document.getElementById('dsco-cont'); var t = q ? ('Encontradas ' + vis + ' de ' + linhas.length + ' OFs') : (linhas.length + ' OFs');
+    if (c && c.textContent !== t) c.textContent = t;
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-dsco]'); if (!b) return;
+    var a = b.getAttribute('data-dsco');
+    if (a === 'imp') { try { window.imprimirRelatorioComissoes(); } catch (er) { var o = document.querySelector('#page-comissoes .btn-purple'); if (o) o.click(); } }
+    else if (a === 'xls') { var x = document.getElementById('comissao-excel-btn'); if (x) x.click(); }
+    else if (a === 'abrir' || a === 'fechar') Array.prototype.forEach.call(document.querySelectorAll('#_com_detalhe details'), function (d) { if (d.style.display !== 'none') d.open = a === 'abrir'; });
+  });
+  var ag = false;
+  new MutationObserver(function () {
+    if (ag) return; ag = true;
+    setTimeout(function () { ag = false; var pg = document.getElementById('page-comissoes'); if (pg && pg.offsetHeight) montar(); }, 150);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
