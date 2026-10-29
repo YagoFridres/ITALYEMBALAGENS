@@ -75838,7 +75838,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var T = '#page-simd #tela-simulador-desperdicio.dssn';
   var css = document.createElement('style');
   css.textContent = ''
-    + T + '{--sn-card:var(--s1,#151a23);--sn-bd:var(--b2,rgba(148,163,184,.2));--sn-tx:var(--text,#f1f5f9);--sn-tx2:var(--text2,#94a3b8);--sn-in:var(--bg,#0d1117);--sn-ac:#10b981;max-width:1500px;margin:0 auto}'
+    + T + '{--sn-card:var(--s1,#151a23);--sn-bd:var(--b2,rgba(148,163,184,.2));--sn-tx:var(--text,#f1f5f9);--sn-tx2:var(--text2,#94a3b8);--sn-in:var(--bg,#0d1117);--sn-ac:#10b981;width:100%;max-width:1600px;margin:0 auto;box-sizing:border-box}'
     + T + ' .simd-shell{display:grid;gap:16px}'
     + T + ' .simd-panel{background:var(--sn-card)!important;border:1px solid var(--sn-bd)!important;border-radius:18px!important;padding:20px!important;box-shadow:0 8px 28px rgba(0,0,0,.12)}'
     // cabeçalho
