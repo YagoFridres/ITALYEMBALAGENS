@@ -75804,7 +75804,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var rows = ov.querySelectorAll('[data-ccpx-item-row]'); if (!rows.length) return -1;
     var i = Number(ov.__dscdIdx); if (!(i >= 0) || !ov.querySelector('[data-ccpx-item-row="' + i + '"]')) {
       var cheia = null;
-      Array.prototype.forEach.call(rows, function (r) { var tem = Array.prototype.some.call(r.querySelectorAll('[data-field]'), function (f) { return String(f.value || '').trim() !== ''; }); if (tem) cheia = r; });
+      Array.prototype.forEach.call(rows, function (r) { var tem = Array.prototype.some.call(r.querySelectorAll('[data-field]'), function (f) { var v = String(f.value || '').trim(); return v !== '' && !/^0+([.,]0+)?$/.test(v); }); if (tem) cheia = r; });
       i = Number((cheia || rows[0]).getAttribute('data-ccpx-item-row'));
     }
     return i;
