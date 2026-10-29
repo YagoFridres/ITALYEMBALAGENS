@@ -737,6 +737,9 @@ try {
   function rrFmtDate(v) {
     if (!v) return '—';
     try {
+      var sd = String(v).trim();
+      var md = sd.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T00:00:00(?:\.0+)?(?:Z|[+-]00:?00)?$)/);
+      if (md) return md[3] + '/' + md[2] + '/' + md[1];
       var d = new Date(v);
       if (!Number.isFinite(d.getTime())) return '—';
       return d.toLocaleDateString('pt-BR');
@@ -2272,37 +2275,41 @@ try {
     var json = await rrFetchJson('/api/relatorios/vendas-por-ramo?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
+    var pct = function(v, t) { return t > 0 ? ' (' + rrFmtNum(v / t * 100, 0) + '%)' : ''; };
+    var detalhe = [];
+    rows.forEach(function(row) {
+      (Array.isArray(row && row.clientes) ? row.clientes : []).forEach(function(c) {
+        detalhe.push([rrEsc(String(row.ramo || '—')), rrEsc(String(c.nome || '—')), rrEsc(String(c.cidade || '—')), rrEsc(String(c.vendedor || '—')), rrEsc(rrFmtNum(c.ofs || 0, 0)), rrEsc(rrFmtNum(c.caixas || 0, 0)), rrEsc(rrFmtMoney(c.valor || 0))]);
+      });
+    });
     return rrOpenPrint({
       title: 'Relatório de Vendas por Ramo de Atividade',
       periodo: ref.titulo,
       cards: [
         { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Total consolidado do período' },
-        { label: 'Ramos', value: rrFmtNum(rows.length, 0), sub: 'Ramos com vendas' },
-        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || 0, 0), sub: 'Clientes únicos somados por ramo' },
-        { label: 'OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: 'Pedidos concluídos' }
+        { label: 'Ramos', value: rrFmtNum(resumo.total_ramos || 0, 0), sub: 'Ramos com vendas' },
+        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || 0, 0), sub: 'Clientes que compraram' },
+        { label: 'OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: rrFmtNum(resumo.caixas || 0, 0) + ' caixas' }
       ],
       summaryTitle: 'Resumo por ramo',
-      summaryHeaders: ['Ramo', 'Valor vendido', 'Nº clientes', 'Nº OFs'],
+      summaryHeaders: ['Ramo', 'Clientes que compraram', 'Clientes cadastrados', 'Cidade que mais compra', 'Vendedor que mais vende', 'Valor vendido', 'Nº OFs', 'Caixas'],
       summaryRows: rows.map(function(row) {
         return [
           rrEsc(String(row && row.ramo || '—')),
-          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
           rrEsc(rrFmtNum(row && row.total_clientes || 0, 0)),
-          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0))
+          rrEsc(rrFmtNum(row && row.clientes_cadastrados || 0, 0)),
+          rrEsc(String(row && row.cidade_top || '—')) + (row && row.cidade_top_valor ? '<br><small>' + rrEsc(rrFmtMoney(row.cidade_top_valor) + pct(row.cidade_top_valor, row.valor_vendido)) + '</small>' : ''),
+          rrEsc(String(row && row.vendedor_top || '—')) + (row && row.vendedor_top_valor ? '<br><small>' + rrEsc(rrFmtMoney(row.vendedor_top_valor) + pct(row.vendedor_top_valor, row.valor_vendido)) + '</small>' : ''),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row && row.caixas || 0, 0))
         ];
       }),
-      detailTitle: 'Detalhamento',
-      detailHeaders: ['Ramo', 'Valor vendido', 'Nº clientes', 'Nº OFs'],
-      detailRows: rows.map(function(row) {
-        return [
-          rrEsc(String(row && row.ramo || '—')),
-          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
-          rrEsc(rrFmtNum(row && row.total_clientes || 0, 0)),
-          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0))
-        ];
-      }),
-      emptySummaryCols: 4,
-      emptyDetailCols: 4
+      detailTitle: 'Clientes de cada ramo',
+      detailHeaders: ['Ramo', 'Cliente', 'Cidade', 'Vendedor', 'OFs', 'Caixas', 'Valor'],
+      detailRows: detalhe,
+      emptySummaryCols: 8,
+      emptyDetailCols: 7
     });
   }
 

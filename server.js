@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029152739';
-const SW_RUNTIME_VERSION = '20261029152739';
+const PATCH_RUNTIME_VERSION = '20261029153311';
+const SW_RUNTIME_VERSION = '20261029153311';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -18390,20 +18390,19 @@ app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) =
 app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const now = new Date();
-    const inicioAtualDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0));
-    const inicioProximoDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0));
-    const inicioAnteriorDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0));
-    const atual = {
-      inicio: inicioAtualDate.toISOString().slice(0, 10),
-      fim: _relatoriosAddDaysIso(inicioProximoDate.toISOString().slice(0, 10), -1),
-      fim_exclusivo: inicioProximoDate.toISOString().slice(0, 10)
-    };
-    const anterior = {
-      inicio: inicioAnteriorDate.toISOString().slice(0, 10),
-      fim: _relatoriosAddDaysIso(atual.inicio, -1),
-      fim_exclusivo: atual.inicio
-    };
+    // período atual = o escolhido na tela; anterior = mês anterior (se for um mês inteiro) ou o mesmo nº de dias logo antes
+    const rangeSel = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    const atual = { inicio: String(rangeSel.inicio).slice(0, 10), fim: String(rangeSel.fim).slice(0, 10), fim_exclusivo: String(rangeSel.fim_exclusivo).slice(0, 10) };
+    const dI = new Date(atual.inicio + 'T12:00:00Z'), dF = new Date(atual.fim + 'T12:00:00Z');
+    const mesInteiro = dI.getUTCDate() === 1 && _relatoriosAddDaysIso(atual.fim, 1).slice(8, 10) === '01' && atual.inicio.slice(0, 7) === atual.fim.slice(0, 7);
+    let anterior;
+    if (mesInteiro) {
+      const ini = new Date(Date.UTC(dI.getUTCFullYear(), dI.getUTCMonth() - 1, 1, 12));
+      anterior = { inicio: ini.toISOString().slice(0, 10), fim: _relatoriosAddDaysIso(atual.inicio, -1), fim_exclusivo: atual.inicio };
+    } else {
+      const dias = Math.round((dF - dI) / 86400000) + 1;
+      anterior = { inicio: _relatoriosAddDaysIso(atual.inicio, -dias), fim: _relatoriosAddDaysIso(atual.inicio, -1), fim_exclusivo: atual.inicio };
+    }
     const companyIds = _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
     const [ofsAtual, ofsAnterior] = await Promise.all([
       _relatoriosFetchOfsConcluidas(atual, { companyIds }),
@@ -18736,56 +18735,41 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    const ofs = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: empresa_id ? [empresa_id] : []
-    });
-    const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
+    const { linhas, clientes } = await _relVendasBase(range);
+    const cadastrados = new Map();
+    clientes.forEach((c) => { if (c.ativo === false) return; const r = String(c.ramo || '').trim() || 'Sem ramo no cadastro'; cadastrados.set(r, (cadastrados.get(r) || 0) + 1); });
     const grupos = new Map();
-    ofs.forEach((of) => {
-      const cliId = _assistPickOfClienteId(of);
-      const cliente = cliId && _isUuid(cliId) ? clientesMap.get(cliId) : null;
-      const ramo = String(cliente?.ramo || '').trim() || 'Sem ramo';
-      if (!grupos.has(ramo)) {
-        grupos.set(ramo, {
-          ramo,
-          valor_vendido: 0,
-          total_clientes: 0,
-          total_ofs: 0,
-          _clientes: new Set()
-        });
-      }
-      const item = grupos.get(ramo);
-      item.valor_vendido += _relatoriosPickValorOf(of);
-      item.total_ofs += 1;
-      if (cliId && _isUuid(cliId)) item._clientes.add(cliId);
+    const cliUnicos = new Set();
+    linhas.forEach((l) => {
+      const ramo = String(l.cliente?.ramo || '').trim() || 'Sem ramo no cadastro';
+      if (!grupos.has(ramo)) grupos.set(ramo, { ramo, valor: 0, ofs: 0, caixas: 0, _cli: new Map(), _vend: new Map(), _cid: new Map() });
+      const g = grupos.get(ramo);
+      g.valor += l.valor; g.ofs += 1; g.caixas += l.qtd;
+      if (!g._cli.has(l.cliKey)) g._cli.set(l.cliKey, { nome: l.cliNome, cidade: l.cliente?.cidade ? (l.cliente.cidade + (l.cliente.uf ? ' / ' + l.cliente.uf : '')) : '—', valor: 0, ofs: 0, caixas: 0, _vend: new Map() });
+      const c = g._cli.get(l.cliKey); c.valor += l.valor; c.ofs += 1; c.caixas += l.qtd; c._vend.set(l.vendedor, (c._vend.get(l.vendedor) || 0) + l.valor);
+      g._vend.set(l.vendedor, (g._vend.get(l.vendedor) || 0) + l.valor);
+      const cid = l.cliente?.cidade ? (l.cliente.cidade + (l.cliente.uf ? ' / ' + l.cliente.uf : '')) : '';
+      if (cid) g._cid.set(cid, (g._cid.get(cid) || 0) + l.valor);
+      cliUnicos.add(l.cliKey);
     });
-    const rows = Array.from(grupos.values()).map((item) => ({
-      ramo: item.ramo,
-      valor_total: Number(item.valor_vendido || 0),
-      valor_vendido: Number(item.valor_vendido || 0),
-      total_clientes: item._clientes.size,
-      total_ofs: Number(item.total_ofs || 0) || 0
-    })).sort((a, b) => {
-      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
-      return String(a.ramo || '').localeCompare(String(b.ramo || ''), 'pt-BR');
+    const rows = Array.from(grupos.values()).map((g) => {
+      const v = _relTopo(g._vend), c = _relTopo(g._cid);
+      return {
+        ramo: g.ramo, valor_total: g.valor, valor_vendido: g.valor, total_ofs: g.ofs, caixas: g.caixas,
+        total_clientes: g._cli.size, clientes_cadastrados: cadastrados.get(g.ramo) || 0,
+        vendedor_top: v ? v[0] : '—', vendedor_top_valor: v ? v[1] : 0,
+        cidade_top: c ? c[0] : '—', cidade_top_valor: c ? c[1] : 0,
+        clientes: Array.from(g._cli.values()).map((x) => ({ nome: x.nome, cidade: x.cidade, valor: x.valor, ofs: x.ofs, caixas: x.caixas, vendedor: (_relTopo(x._vend) || ['—'])[0] })).sort((a, b) => b.valor - a.valor)
+      };
+    }).sort((a, b) => {
+      if (a.ramo === 'Sem ramo no cadastro') return 1; if (b.ramo === 'Sem ramo no cadastro') return -1;
+      return b.valor_vendido - a.valor_vendido || String(a.ramo).localeCompare(String(b.ramo), 'pt-BR');
     });
-    const resumo = rows.reduce((acc, item) => {
-      acc.valor_total += Number(item?.valor_total || 0) || 0;
-      acc.total_clientes += Number(item?.total_clientes || 0) || 0;
-      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
-      return acc;
-    }, { valor_total: 0, total_clientes: 0, total_ofs: 0 });
-    resumo.total_ramos = rows.length;
+    const resumo = rows.reduce((acc, r) => { acc.valor_total += r.valor_vendido; acc.total_ofs += r.total_ofs; acc.caixas += r.caixas; return acc; }, { valor_total: 0, total_ofs: 0, caixas: 0 });
     resumo.valor_vendido = resumo.valor_total;
-    return res.json({
-      ok: true,
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      resumo,
-      rows
-    });
+    resumo.total_clientes = cliUnicos.size;
+    resumo.total_ramos = rows.filter((r) => r.ramo !== 'Sem ramo no cadastro').length;
+    return res.json({ ok: true, data_inicio: range.inicio, data_fim: range.fim, resumo, rows });
   } catch (e) {
     console.error('[RELATORIOS][VENDAS-POR-RAMO]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -18806,6 +18790,43 @@ async function _relatoriosCarregarTodosClientes() {
 function _relNormTxt(v) {
   return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 }
+// Base única de vendas para relatórios: mesma fonte e mesmo critério de vendedor da tela de Comissões;
+// cliente pelo id da OF (ou pelo nome, se a OF não tiver id) com o cadastro ATUAL.
+async function _relVendasBase(range) {
+  const extras = ['cli_id', 'cliId', 'cliente_id', 'clinome', 'cliNome', 'cliente_nome', 'cliente', 'vendedor_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome', 'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida'];
+  let ofs = await _listarOfsVendasOficiais(range, '', extras);
+  ofs = _filtrarOfsNaoTesteGlobal(ofs).filter((of) => _vendasOficialDentroDoPeriodo(of, range));
+  try { ofs = await _comissoesEnriquecerLista(ofs); } catch (_) {}
+  const vidToNome = new Map();
+  ofs.forEach((of) => {
+    const vid = _pickOfVendedorIdCompat(of) || '__sem__';
+    const nm = _comissoesTextoValido(of.vendedor) || _comissoesTextoValido(of.vendedor_nome) || _comissoesTextoValido(of.vendNome) || _comissoesTextoValido(of.__vendedor_nome_view) || '';
+    if (nm && !vidToNome.has(vid)) vidToNome.set(vid, nm);
+  });
+  const clientes = await _relatoriosCarregarTodosClientes();
+  const porId = new Map(); const porNome = new Map(); const rep = new Set();
+  clientes.forEach((c) => {
+    porId.set(String(c.id), c);
+    [c.nome, c.rs].forEach((n) => { const k = _relNormTxt(n); if (!k) return; if (porNome.has(k) && porNome.get(k).id !== c.id) rep.add(k); else porNome.set(k, c); });
+  });
+  rep.forEach((k) => porNome.delete(k));
+  const linhas = ofs.map((of) => {
+    const cliId = _assistPickOfClienteId(of);
+    const nomeOf = _comissoesTextoValido(of.__cliente_nome_view) || _comissoesTextoValido(of.cliente_nome) || _comissoesTextoValido(of.clinome) || _comissoesTextoValido(of.cliNome) || _comissoesTextoValido(of.cliente) || '';
+    const cliente = (cliId && porId.get(cliId)) || porNome.get(_relNormTxt(nomeOf)) || null;
+    const vid = _pickOfVendedorIdCompat(of) || '__sem__';
+    const vendedor = _comissoesTextoValido(vidToNome.get(vid)) || _comissoesTextoValido(of.vendedor_nome || of.vendedor || of.vendNome || '') || 'Sem vendedor';
+    return {
+      of, cliente, nomeOf, vendedor,
+      cliKey: cliente ? String(cliente.id) : ('nome:' + (_relNormTxt(nomeOf) || 'sem cliente')),
+      cliNome: cliente ? String(cliente.nome || cliente.rs || '').trim() : (nomeOf || 'Cliente não identificado'),
+      valor: _vendasOficialValor(of), qtd: _relatoriosPickQtdOf(of)
+    };
+  });
+  return { linhas, clientes };
+}
+function _relTopo(m) { let best = null; m.forEach((v, k) => { if (!best || v > best[1]) best = [k, v]; }); return best; }
+
 // Vendas por Cidade/Estado — mesma fonte oficial e mesmo critério de vendedor da tela de Comissões;
 // cidade/UF/ramo vêm do cadastro ATUAL do cliente.
 app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, res) => {
