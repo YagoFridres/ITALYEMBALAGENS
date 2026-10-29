@@ -1317,8 +1317,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261029153311';
-const SW_RUNTIME_VERSION = '20261029153311';
+const PATCH_RUNTIME_VERSION = '20261029153529';
+const SW_RUNTIME_VERSION = '20261029153529';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9762,7 +9762,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const customInicio = _relatoriosIsoDateOnly(req.query.data_inicio || req.query.dataInicio);
     const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
     const rangeInicio = customInicio || resolvedRange?.inicio || '';
-    const rangeFimExclusivo = customFim || resolvedRange?.fim_exclusivo || '';
+    // data_fim vem inclusiva: o limite exclusivo é o dia seguinte
+    const rangeFimExclusivo = (customFim ? _relatoriosAddDaysIso(customFim, 1) : '') || resolvedRange?.fim_exclusivo || '';
     const customIniDate = rangeInicio ? new Date(`${rangeInicio}T00:00:00`) : null;
     const customFimDate = rangeFimExclusivo ? new Date(`${rangeFimExclusivo}T00:00:00`) : null;
     const hasCustomRange = !!(rangeInicio && rangeFimExclusivo);
@@ -10159,7 +10160,8 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
     const customInicio = _relatoriosIsoDateOnly(req.query.data_inicio || req.query.dataInicio);
     const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
     const rangeInicio = customInicio || resolvedRange?.inicio || '';
-    const rangeFimExclusivo = customFim || resolvedRange?.fim_exclusivo || '';
+    // data_fim vem inclusiva: o limite exclusivo é o dia seguinte
+    const rangeFimExclusivo = (customFim ? _relatoriosAddDaysIso(customFim, 1) : '') || resolvedRange?.fim_exclusivo || '';
     const customIniDate = rangeInicio ? new Date(`${rangeInicio}T00:00:00`) : null;
     const customFimDate = rangeFimExclusivo ? new Date(`${rangeFimExclusivo}T00:00:00`) : null;
     const hasCustomRange = !!(rangeInicio && rangeFimExclusivo);
@@ -16950,7 +16952,90 @@ function _relatoriosPickPerdaOf(of) {
 }
 
 function _relatoriosPickTonOf(of) {
+  if (of && typeof of._ton_calc === 'number') return of._ton_calc;
   return Number(of?.tonelada_vendida || 0) || 0;
+}
+// Toneladas de uma OF — mesma regra do relatório "Toneladas Vendidas":
+// toneladas utilizadas > tonelada vendida gravada > recálculo (área × quantidade × gramatura)
+function _relTonOf(of, gramMap) {
+  const g = gramMap && gramMap.get(String(of?.gramatura_id ?? of?.gramaturaId ?? '').trim());
+  const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
+  const gramatura = Number(of?.gramatura ?? g?.gramatura ?? 0) || 0;
+  const tonUtilizada = Number(of?.toneladas_utilizadas || 0) || 0;
+  const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
+  if (tonUtilizada > 0) return tonUtilizada;
+  if (tonPersistida > 0) return tonPersistida;
+  const desc = String(of?.descricao || '').trim();
+  const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
+  const cD = match ? parseFloat(String(match[1]).replace(',', '.')) : 0;
+  const lD = match ? parseFloat(String(match[2]).replace(',', '.')) : 0;
+  let area = 0;
+  const cR = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+  const lR = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+  if (cR > 0 && lR > 0) {
+    const aMm = (cR / 1000) * (lR / 1000), aCm = (cR / 100) * (lR / 100);
+    const aD = (cD > 0 && lD > 0) ? ((cD / 100) * (lD / 100)) : 0;
+    if (aD > 0 && Math.abs(aCm - aD) < Math.abs(aMm - aD) * 0.5) area = aCm;
+    else if (aMm < 0.005 && aCm >= 0.01) area = aCm;
+    else area = aMm;
+  }
+  if (!(area > 0) && cD > 0 && lD > 0) area = (cD / 100) * (lD / 100);
+  return area > 0 ? (area * qtd * gramatura) / 1000000 : 0;
+}
+async function _relGramaturasMap(ids) {
+  const m = new Map();
+  const u = Array.from(new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)));
+  for (let i = 0; i < u.length; i += 200) {
+    const { data } = await supabase.from('gramaturas').select('id,gramatura,fornecedor_id').in('id', u.slice(i, i + 200));
+    (data || []).forEach((g) => m.set(String(g.id).trim(), g));
+  }
+  return m;
+}
+// grava of._ton_calc em cada OF da lista (busca as colunas necessárias)
+async function _relEnriquecerTon(ofs) {
+  const lista = Array.isArray(ofs) ? ofs : [];
+  const ids = lista.map((o) => String(o?.id || '').trim()).filter(Boolean);
+  const extra = new Map();
+  const cols = ['id', 'gramatura_id', 'gramatura', 'tonelada_vendida', 'toneladas_utilizadas', 'descricao', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura', 'qtd_produzida', 'qtd', 'quantidade'].filter((c) => c === 'id' || !_ofsSelectableHas || _ofsSelectableHas(c));
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await supabase.from('ofs').select(cols.join(',')).in('id', ids.slice(i, i + 200));
+    (data || []).forEach((r) => extra.set(String(r.id), r));
+  }
+  const gram = await _relGramaturasMap(Array.from(extra.values()).map((r) => r.gramatura_id));
+  lista.forEach((o) => { const r = extra.get(String(o?.id || '')); o._ton_calc = r ? _relTonOf(Object.assign({}, o, r), gram) : (Number(o?.tonelada_vendida || 0) || 0); });
+  return lista;
+}
+// Caixas perdidas do período pela tabela oficial de perdas (mesma do relatório "Caixas Perdidas")
+async function _relPerdasPeriodo(range) {
+  const ini = String(range?.inicio || '').slice(0, 10), fimEx = String(range?.fim_exclusivo || '').slice(0, 10);
+  const rows = [];
+  for (let off = 0; off < 50000; off += 1000) {
+    const { data, error } = await supabase.from('caixas_perdidas').select('id,of_id,emp_id,quantidade,qtd_perdida,qtd,data,created_at').range(off, off + 999);
+    if (error || !data || !data.length) break;
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  const noPeriodo = rows.filter((r) => { const d = String(r.data || r.created_at || '').slice(0, 10); return d && d >= ini && d < fimEx; });
+  const ofIds = Array.from(new Set(noPeriodo.map((r) => String(r.of_id || '').trim()).filter(_isUuid)));
+  const empDaOf = new Map();
+  for (let i = 0; i < ofIds.length; i += 200) {
+    const { data } = await supabase.from('ofs').select('id,empresa_id,emp_id').in('id', ofIds.slice(i, i + 200));
+    (data || []).forEach((o) => empDaOf.set(String(o.id), _relatoriosPickEmpresaId(o)));
+  }
+  const porEmpresa = new Map(); let total = 0;
+  noPeriodo.forEach((r) => {
+    const q = Math.max(0, Number(r.quantidade ?? r.qtd_perdida ?? r.qtd ?? 0) || 0);
+    total += q;
+    const emp = empDaOf.get(String(r.of_id || '')) || _relatoriosPickEmpresaId({ emp_id: r.emp_id }) || '';
+    if (emp) porEmpresa.set(emp, (porEmpresa.get(emp) || 0) + q);
+  });
+  return { total, porEmpresa };
+}
+function _relAplicarPerdas(agg, perdas) {
+  if (!agg || !perdas) return agg;
+  agg.resumo.caixas_perdidas = perdas.total;
+  (agg.por_empresa || []).forEach((e) => { e.caixas_perdidas = perdas.porEmpresa.get(e.empresa_id) || 0; });
+  return agg;
 }
 
 function _relatoriosPickVendedorId(of) {
@@ -18367,9 +18452,11 @@ app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) =
     const ofs = await _relatoriosFetchOfsConcluidas(range, {
       companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
     });
+    await _relEnriquecerTon(ofs);
     const aggregated = _relatoriosSummarizeOfs(ofs, {
       companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
     });
+    _relAplicarPerdas(aggregated, await _relPerdasPeriodo(range));
     const rows = (Array.isArray(aggregated.por_empresa) ? aggregated.por_empresa.slice() : []).sort((a, b) => {
       if (Number(a?.valor_vendido || 0) !== Number(b?.valor_vendido || 0)) return Number(b?.valor_vendido || 0) - Number(a?.valor_vendido || 0);
       return String(a?.empresa_nome || '').localeCompare(String(b?.empresa_nome || ''), 'pt-BR');
@@ -18408,8 +18495,11 @@ app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) =
       _relatoriosFetchOfsConcluidas(atual, { companyIds }),
       _relatoriosFetchOfsConcluidas(anterior, { companyIds })
     ]);
+    await Promise.all([_relEnriquecerTon(ofsAtual), _relEnriquecerTon(ofsAnterior)]);
     const aggAtual = _relatoriosSummarizeOfs(ofsAtual, { companyIds });
     const aggAnterior = _relatoriosSummarizeOfs(ofsAnterior, { companyIds });
+    const [perdAtual, perdAnterior] = await Promise.all([_relPerdasPeriodo(atual), _relPerdasPeriodo(anterior)]);
+    _relAplicarPerdas(aggAtual, perdAtual); _relAplicarPerdas(aggAnterior, perdAnterior);
     const valueOrZero = (v) => Number(v || 0) || 0;
     const variacaoPct = (cur, prev) => (prev > 0 ? Number((((cur - prev) / prev) * 100).toFixed(1)) : null);
     const rows = []
@@ -28579,20 +28669,9 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       msg: '[DEBUG] toneladas-vendidas select pronto',
       data: { selectExpr, totalCols: selectedCols.length },
     });
-    let from = 0;
-    while (true) {
-      let q = supabase.from('ofs').select(selectExpr);
-      q = q.not('data_conclusao', 'is', null);
-      if (range?.inicio) q = q.gte('data_conclusao', range.inicio);
-      if (range?.fim_exclusivo) q = q.lt('data_conclusao', range.fim_exclusivo);
-      q = q.range(from, from + 999);
-      const { data, error } = await q;
-      if (error) throw error;
-      if (!data || !data.length) break;
-      ofs = ofs.concat(data);
-      if (data.length < 1000) break;
-      from += 1000;
-    }
+    // mesma base oficial de vendas (concluídas, não excluídas, data oficial dentro do período)
+    ofs = await _listarOfsVendasOficiais(range || {}, '', selectedCols);
+    ofs = _filtrarOfsNaoTesteGlobal(ofs).filter((of) => _vendasOficialDentroDoPeriodo(of, range || {}));
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'T',
@@ -28640,7 +28719,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const tonUtilizada = Number(of?.toneladas_utilizadas || 0) || 0;
-      return !!String(of?.data_conclusao || '').trim() && (tonPersistida > 0 || tonUtilizada > 0 || gramatura > 0);
+      return (tonPersistida > 0 || tonUtilizada > 0 || gramatura > 0);
     }).map((of) => {
       const cliId = pickOfCliId(of);
       const gramaturaId = pickOfGramaturaId(of);
