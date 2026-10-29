@@ -75452,6 +75452,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsce-btn.sm{padding:6px 10px;min-height:32px;font-size:12px}'
     + '.dsce-msg{font-size:13px;border-radius:10px;padding:10px 12px;display:none}.dsce-msg.err{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}.dsce-msg.ok{display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}'
     + '.dsce-hint{font-size:12px;color:#64748b;font-weight:500}'
+    + '.dsce-ov .dsce-m [hidden]{display:none!important}'
+    + '.dsce-ov .dsce-m,.dsce-ov .dsce-m header,.dsce-ov .dsce-m footer{background:#fff!important;color:#0f172a!important}'
+    + '.dsce-ov .dsce-m header h2{color:#0f172a!important;font-weight:800!important}'
+    + '.dsce-ov .dsce-m .dsce-b label{color:#475569!important}'
+    + '.dsce-ov .dsce-m input:not([type=checkbox]),.dsce-ov .dsce-m select,.dsce-ov .dsce-m textarea{background:#fff!important;color:#0f172a!important;border:1px solid #cbd5e1!important;-webkit-text-fill-color:#0f172a!important}'
+    + '.dsce-ov .dsce-m input::placeholder,.dsce-ov .dsce-m textarea::placeholder{color:#94a3b8!important;-webkit-text-fill-color:#94a3b8!important}'
+    + '.dsce-ov .dsce-m .dsce-btn{background:#fff!important;color:#0f172a!important}.dsce-ov .dsce-m .dsce-btn.pri{background:#1d4ed8!important;color:#fff!important}'
+    + '.dsce-ov .dsce-m .dsce-x{background:#f1f5f9!important;color:#0f172a!important}'
+    + '.dsce-ov .dsce-m .dsce-de{background:#f8fafc!important;color:#0f172a!important}'
     + '.cmpx-actions-row [data-dsce-email]{white-space:nowrap}'
     + '@media (max-width:600px){.dsce-ov{padding:0;align-items:stretch}.dsce-m{border-radius:0;max-height:100vh;height:100%}.dsce-m footer{flex-wrap:wrap}.dsce-m footer .dsce-btn{flex:1}}';
   document.head.appendChild(css);
@@ -75554,7 +75563,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       '<div class="dsce-de" data-de>' + (configurado ? 'De: <b>' + esc(cfg.user) + '</b>' : '<span style="color:#b45309;font-weight:700">⚠ O e-mail de envio ainda não foi configurado.</span>') + (cfg.pode_editar ? '<button type="button" class="dsce-btn sm" data-cfg>⚙ ' + (configurado ? 'Alterar' : 'Configurar') + '</button>' : '') + '</div>'
       + '<label>Fornecedor<select data-forn><option value="">— escolha —</option>' + forns.map(function (f, i) { return '<option value="' + i + '"' + (f === fSel ? ' selected' : '') + '>' + esc(f.nome) + (f.email ? ' — ' + esc(f.email) : ' (sem e-mail)') + '</option>'; }).join('') + '</select></label>'
       + '<label>Para<div class="dsce-chips" data-chips></div><div class="dsce-add"><input data-novo type="email" inputmode="email" placeholder="Adicionar e-mail e apertar Enter"><button type="button" class="dsce-btn sm" data-addbtn>Adicionar</button></div></label>'
-      + '<label class="dsce-ck" data-salvarwrap style="display:none"><input type="checkbox" data-salvar-forn checked> Salvar os e-mails novos no cadastro deste fornecedor</label>'
+      + '<label class="dsce-ck" data-salvarwrap hidden><input type="checkbox" data-salvar-forn checked> Salvar os e-mails novos no cadastro deste fornecedor</label>'
       + '<label>Assunto<input data-assunto value="' + esc('Pedido de compra Nº ' + numero + ' — Italy Embalagens') + '"></label>'
       + '<label>Mensagem<textarea data-msg>' + esc(mensagemPadrao) + '</textarea></label>'
       + '<div class="dsce-anexo">📎 <span>' + esc(arquivo) + '</span><button type="button" class="dsce-btn sm" data-ver>Ver PDF</button></div>'
@@ -75566,7 +75575,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     function novosParaForn() { var f = fornAtual(); if (!f) return []; var ja = lista(f.email); return para.filter(function (e) { return ja.indexOf(e) < 0; }); }
     function render() {
       chips.innerHTML = para.length ? para.map(function (e, i) { return '<span class="dsce-chip">' + esc(e) + '<button type="button" data-rm="' + i + '" aria-label="Remover">✕</button></span>'; }).join('') : '<span class="dsce-hint">Nenhum destinatário. Escolha um fornecedor com e-mail ou digite um e-mail abaixo.</span>';
-      ov.querySelector('[data-salvarwrap]').style.display = novosParaForn().length ? '' : 'none';
+      ov.querySelector('[data-salvarwrap]').hidden = !novosParaForn().length;
     }
     function adicionar() {
       var vs = lista(novo.value); if (!vs.length) return;
