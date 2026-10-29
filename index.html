@@ -33676,6 +33676,7 @@ function _renderMobMoreDrawer(){
     ]},
     { lbl:'Cadastros', items:[
       { ico:'👥', lbl:'Clientes', act:'go:clientes' },
+      { ico:'🏷️', lbl:'Produtos', act:'go:produtos' },
       { ico:'🗺', lbl:'Mapa Clientes', act:'go:mapa-clientes' },
       { ico:'🔄', lbl:'Ped. Recorrentes', act:'go:pedidos-recorrentes' },
       { ico:'🚚', lbl:'Fornecedores', act:'go:fornecedores' },
@@ -33894,7 +33895,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261029144236';
+      const swVersion = '20261029144356';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61374,6 +61375,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261029144236"></script>
+<script src="/patch.js?v=20261029144356"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

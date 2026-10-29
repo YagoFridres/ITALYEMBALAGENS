@@ -32896,6 +32896,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'roteiro-entrega',     label: 'Roteiro Entrega',     icone: '🚚', grupo: 'Produção' },
 
     { id: 'clientes',            label: 'Clientes',            icone: '👥', grupo: 'Cadastros' },
+    { id: 'produtos',            label: 'Produtos',            icone: '🏷️', grupo: 'Cadastros' },
     { id: 'mapa-clientes',       label: 'Mapa Clientes',       icone: '🗺', grupo: 'Cadastros' },
     { id: 'fornecedores',        label: 'Fornecedores',        icone: '🏭', grupo: 'Cadastros' },
     { id: 'vendedores',          label: 'Vendedores',          icone: '🤝', grupo: 'Cadastros' },
