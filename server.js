@@ -1003,9 +1003,13 @@ const _JJ3_U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a';
 function _jj3ClassificaEmpresa(of) {
   const eid = String(of?.empresa_id || '').trim().toLowerCase();
   const sid = String(of?.emp_id || '').trim().toUpperCase();
+  // A empresa escolhida na OF (E1/E2/E3) prevalece sobre o empresa_id (decisão 30/10).
+  if (sid === 'E1' || sid === 'ITALY') return 'U1';
+  if (sid === 'E2') return 'U2';
+  if (sid === 'E3') return 'U3';
   if (eid === _JJ3_U1) return 'U1';
   if (eid === _JJ3_U2) return 'U2';
-  if (eid === _JJ3_U3) return 'U3';
+  if (eid === _JJ3_U3 || eid === 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667') return 'U3';
   if (!eid) return 'SEM';
   if (sid === 'E3' && eid !== _JJ3_U1 && eid !== _JJ3_U2) return 'U3';
   return 'OUTRA';
@@ -1317,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261030120519';
-const SW_RUNTIME_VERSION = '20261030120519';
+const PATCH_RUNTIME_VERSION = '20261030121121';
+const SW_RUNTIME_VERSION = '20261030121121';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -16931,7 +16935,9 @@ function _relatoriosLegacyEmpresaUuid(raw) {
 }
 
 function _relatoriosPickEmpresaId(of) {
-  const uuid = String(of?.empresa_id || '').trim();
+  const _sig = String(of?.emp_id || '').trim().toUpperCase();
+  if (_sig === 'E1' || _sig === 'E2' || _sig === 'E3' || _sig === 'ITALY') return _relatoriosLegacyEmpresaUuid(_sig);
+  const uuid = corrigirUuid(String(of?.empresa_id || '').trim());
   if (_isUuid(uuid)) return uuid;
   return _relatoriosLegacyEmpresaUuid(
     of?.emp_id ??
