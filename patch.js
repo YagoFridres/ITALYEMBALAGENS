@@ -50726,10 +50726,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var partes = [];
       if (papelTipo) partes.push(papelTipo);
       if (gram && partes.indexOf(gram) < 0) partes.push(gram + 'g');
+      // "Aguardar compra" só quando a OF foi marcada como SEM PAPELÃO; senão não inventa status
+      var obsPapel = String(o.papel_observacao || o.papelObservacao || '').trim();
       if (comprado) partes.push('✅ Comprado');
       else if (String(o.papel_pedido || o.status_papel || o.status_compra || '').toLowerCase() === 'pedido' || o.papel_pedido === true || o.papel_pedido === 1) partes.push('📦 Em trânsito / Pedido');
-      else partes.push('⏳ Aguardar compra');
+      else if (__dashIsSemPapelao(o)) partes.push('⏳ Aguardar compra');
       if (prev) { var pd = __dashFmtDtEnt(prev); if (pd && pd !== '—') partes.push('Prev: ' + pd); }
+      if (obsPapel) partes.push(obsPapel);
       return partes.length ? partes.join(' · ') : '—';
     } catch (_) { return '—'; }
   }
@@ -76214,7 +76217,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-dsco]'); if (!b) return;
     var a = b.getAttribute('data-dsco');
-    if (a === 'imp') { try { window.imprimirRelatorioComissoes(); } catch (er) { var o = document.querySelector('#page-comissoes .btn-purple'); if (o) o.click(); } }
+    if (a === 'imp') { try { if (typeof window._abrirModalImpressaoComissoes === 'function') window._abrirModalImpressaoComissoes(); else window.imprimirRelatorioComissoes(); } catch (er) { try { window.imprimirRelatorioComissoes(); } catch (_) {} } }
     else if (a === 'xls') { var x = document.getElementById('comissao-excel-btn'); if (x) x.click(); }
     else if (a === 'abrir' || a === 'fechar') Array.prototype.forEach.call(document.querySelectorAll('#_com_detalhe details'), function (d) { if (d.style.display !== 'none') d.open = a === 'abrir'; });
   });
