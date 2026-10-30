@@ -71159,7 +71159,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     { k: 'faca', t: 'Faca', c: 'dsc-c-txt', f: function (o) { return esc(hv('faca', o)); } },
     { k: 'urg', t: 'Urgente', c: 'dsc-c-flag', f: function (o) { return (sim(o.urg) || sim(o.urgente)) ? '<span class="dsc-pill dsc-pill-red">Sim</span>' : '<span class="dsc-sub">Não</span>'; } },
     { k: 'sp', t: 'Sem papelão', c: 'dsc-c-flag', f: function (o) { return (sim(o.sem_papel) || sim(o.sem_papelao)) ? '<span class="dsc-pill dsc-pill-yel">Sim</span>' : '<span class="dsc-sub">Não</span>'; } },
-    { k: 'papel', t: 'Papel / Previsão', c: 'dsc-c-papel', f: function (o) { if (stNorm(o) === 'concluida' || stNorm(o) === 'cancelada') return '<span class="dsc-sub">—</span>'; return esc(String(hv('papelPrev', o)).replace(/^[^\wÀ-ÿ]+\s*/, '')); } },
+    { k: 'papel', t: 'Papel / Previsão', c: 'dsc-c-papel', f: function (o) { if (stNorm(o) === 'concluida' || stNorm(o) === 'cancelada') return '<span class="dsc-sub">—</span>'; var tp = String(hv('papelPrev', o)).replace(/^[^\wÀ-ÿ]+\s*/, ''); return tp ? esc(tp) : '<span class="dsc-sub">—</span>'; } },
     { k: 'tempo', t: 'Tempo', c: 'dsc-c-num', f: function (o) { return esc(hv('minutos', o)); } },
     { k: 'gram', t: 'Gramatura', c: 'dsc-c-txt', f: function (o) { return esc(hv('gramatura', o)); } },
     { k: 'perdas', t: 'Caixas perdidas', c: 'dsc-c-txt', f: function (o) { var v = hv('perdas', o); return v === '—' ? '<span class="dsc-sub">—</span>' : '<span class="dsc-txt-atr">' + esc(v) + '</span>'; } },
