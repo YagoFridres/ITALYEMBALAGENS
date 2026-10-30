@@ -74807,7 +74807,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var c = comps[IDX[o]]; if (!c) return;
       var val = n(vals[o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc']);
       var bruto = c.area * val * qtd, liquida = w3 > 0 ? bruto * 100 / w3 : 0;
-      res[o] = { onda: o, compIdx: IDX[o], compLabel: String(IDX[o] + 1), compTitle: 'Onda ' + o, largura: c.largura, comprimento: c.comprimento, pecas: c.pecas, area: c.area, val: val, bruto: bruto, liquida: liquida, comFrete: liquida + n(par.vkm) * n(par.km), frete: n(par.vkm) * n(par.km), qtd: qtd, vunitLiq: qtd ? liquida / qtd : 0, vunit: qtd ? (liquida + n(par.vkm) * n(par.km)) / qtd : 0 };
+      res[o] = { onda: o, compIdx: IDX[o], compLabel: String(IDX[o] + 1), compTitle: 'Onda ' + o, largura: c.largura, comprimento: c.comprimento, pecas: c.pecas, area: c.area, val: val, bruto: bruto, liquida: liquida, frete: (n(par.vkm) * n(par.km)) * qtd / 1000, comFrete: liquida + (n(par.vkm) * n(par.km)) * qtd / 1000, qtd: qtd, vunitLiq: qtd ? liquida / qtd : 0, vunit: (qtd ? liquida / qtd : 0) + (n(par.vkm) * n(par.km)) / 1000 };
     });
     return res;
   }
@@ -74816,10 +74816,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var porItem = E.itens.map(function (it) { return calcItem(it, E.par, E.vals, E.ondas); });
     var tot = {}; E.ondas.forEach(function (o) {
       var s = porItem.reduce(function (a, r) { return a + (r[o] ? r[o].liquida : 0); }, 0);
-      var nIt = porItem.filter(function (r) { return r[o]; }).length || 1;
-      // frete entra no preço final (como na planilha: Valor venda c/ frete = líquida + frete); com vários itens é rateado pelo valor
-      porItem.forEach(function (r) { var x = r[o]; if (!x) return; var parte = s > 0 ? frete * x.liquida / s : frete / nIt; x.frete = parte; x.comFrete = x.liquida + parte; x.vunit = x.qtd ? x.comFrete / x.qtd : 0; });
-      tot[o] = { subtotal: s, frete: frete, total: s + frete };
+      // Como na planilha (base de 1.000 caixas, tudo ÷ 1000): preço da caixa = venda por caixa + frete ÷ 1000,
+      // valendo para qualquer quantidade; o valor do item = preço da caixa × quantidade.
+      var fr = 0;
+      porItem.forEach(function (r) { var x = r[o]; if (!x) return; x.frete = frete * x.qtd / 1000; x.comFrete = x.liquida + x.frete; x.vunit = (x.qtd ? x.liquida / x.qtd : 0) + frete / 1000; fr += x.frete; });
+      tot[o] = { subtotal: s, frete: fr, total: s + fr };
     });
     return { w3: w3, frete: frete, porItem: porItem, tot: tot };
   }
@@ -74899,7 +74900,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<div class="doe-bloco doe-ondas"><div><b>Ondas do orçamento</b><div class="doe-chips">' + chips(E.ondas, 'data-oo') + '</div></div><div><b>Vão para a impressão</b><div class="doe-chips" data-imp-chips>' + chips(E.imp, 'data-oi', E.ondas) + '</div></div></div>'
       + '<div class="doe-bloco"><h3>Valores e parâmetros</h3><div class="doe-g doe-g4" data-vals>' + htmlVals() + '</div>'
       + '<div class="doe-g doe-g4">' + campo('Custo fixo %', 'data-p="cf"', E.par.cf) + campo('Margem %', 'data-p="mg"', E.par.mg) + campo('Comissão %', 'data-p="cvend"', E.par.cvend) + campo('Impostos %', 'data-p="imp"', E.par.imp)
-      + '<label class="doe-f"><span>Custo mercadoria %</span><output class="doe-out" data-w3></output></label>' + campo('Vl. km frete (R$)', 'data-p="vkm"', E.par.vkm) + campo('Km entrega', 'data-p="km"', E.par.km) + '<label class="doe-f"><span>Frete</span><output class="doe-out" data-frete></output></label></div></div>'
+      + '<label class="doe-f"><span>Custo mercadoria %</span><output class="doe-out" data-w3></output></label>' + campo('Vl. km frete (R$)', 'data-p="vkm"', E.par.vkm) + campo('Km entrega', 'data-p="km"', E.par.km) + '<label class="doe-f"><span>Frete (por 1.000 cx)</span><output class="doe-out" data-frete></output></label></div></div>'
       + '<div data-itens>' + E.itens.map(htmlItem).join('') + '</div>'
       + '<button type="button" class="doe-btn doe-add" data-add>＋ Adicionar outro item</button>'
       + '<div class="doe-bloco"><h3>Total do orçamento</h3><div class="doe-tots" data-tots></div></div>'
