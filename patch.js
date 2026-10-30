@@ -75826,7 +75826,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       conta: 'orcamentos', titulo: 'Enviar orçamento Nº ' + numero + ' por e-mail', rotulo: 'Cliente',
       partes: clis, sel: acharParte(clis, String(o.cliente_nome || r.pl.cliente_nome || '').trim(), o.cliente_id || r.pl.cliente_id),
       assunto: 'Orçamento Nº ' + numero + (ref ? ' — ' + ref : '') + ' — Italy Embalagens',
-      mensagem: 'Olá!\n\nSegue em anexo o orçamento Nº ' + numero + (ref ? ' (' + ref + ')' : '') + ' que você nos pediu.\nQualquer dúvida ou ajuste, é só responder este e-mail.\n\nObrigado,\n{{NOME}}',
+      mensagem: 'Olá!\n\nSegue em anexo o orçamento Nº ' + numero + (ref ? ' (' + ref + ')' : '') + ' que você nos solicitou.\nQualquer dúvida ou ajuste, é só responder este e-mail.\n\nAtenciosamente\n\nEleomar Fridres\n(49) 3622 8512\n(49) 9 9998 0203',
       arquivo: 'Orcamento-' + numero.replace(/[^\w-]+/g, '') + '.pdf',
       htmlFn: function () { return window.dsOrc.htmlId(id).then(function (x) { return x.html; }); },
       enviar: function (body) { return api('/api/orcamentos/' + encodeURIComponent(id) + '/enviar-email', { method: 'POST', body: body }); },
