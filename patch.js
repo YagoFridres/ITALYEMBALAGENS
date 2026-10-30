@@ -75055,7 +75055,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<header><div><h1>Italy Embalagens</h1><div>Orçamento de caixas de papelão</div></div><div style="text-align:right"><b style="font-size:16px">Orçamento Nº ' + esc(pl.numero_orcamento || '(rascunho)') + '</b><br>' + data + '</div></header>'
       + '<div class="meta"><div><b>Cliente:</b> ' + esc(pl.cliente_nome || '—') + '</div><div><b>Referência:</b> ' + esc(pl.nome || '—') + '</div></div>'
       + '<table><thead><tr><th>Item</th><th>Medidas (C×L×A)</th><th class="c">Onda</th><th class="r">Quantidade</th><th class="r">Valor unitário (c/ frete)</th><th class="r">Valor total (c/ frete)</th></tr></thead><tbody>' + linhas + '</tbody></table>'
-      + '<h2>Totais</h2><table><thead><tr><th>Opção</th><th class="r">Itens</th><th class="r">Frete (incluso)</th><th class="r">Total com frete</th></tr></thead><tbody>' + tots + '</tbody></table>'
+      // (tabela de totais removida da impressão: o frete já está dentro do valor de cada item)
       + (p.observacoes_orc ? '<h2>Observações</h2><div class="obs">' + esc(p.observacoes_orc) + '</div>' : '')
       + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
     return html;
