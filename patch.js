@@ -74807,14 +74807,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var c = comps[IDX[o]]; if (!c) return;
       var val = n(vals[o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc']);
       var bruto = c.area * val * qtd, liquida = w3 > 0 ? bruto * 100 / w3 : 0;
-      res[o] = { onda: o, compIdx: IDX[o], compLabel: String(IDX[o] + 1), compTitle: 'Onda ' + o, largura: c.largura, comprimento: c.comprimento, pecas: c.pecas, area: c.area, val: val, bruto: bruto, liquida: liquida, comFrete: liquida + n(par.vkm) * n(par.km), vunit: qtd ? liquida / qtd : 0 };
+      res[o] = { onda: o, compIdx: IDX[o], compLabel: String(IDX[o] + 1), compTitle: 'Onda ' + o, largura: c.largura, comprimento: c.comprimento, pecas: c.pecas, area: c.area, val: val, bruto: bruto, liquida: liquida, comFrete: liquida + n(par.vkm) * n(par.km), frete: n(par.vkm) * n(par.km), qtd: qtd, vunitLiq: qtd ? liquida / qtd : 0, vunit: qtd ? (liquida + n(par.vkm) * n(par.km)) / qtd : 0 };
     });
     return res;
   }
   function calcTudo() {
     var frete = n(E.par.vkm) * n(E.par.km), w3 = 100 - n(E.par.cf) - n(E.par.mg) - n(E.par.cvend) - n(E.par.imp);
     var porItem = E.itens.map(function (it) { return calcItem(it, E.par, E.vals, E.ondas); });
-    var tot = {}; E.ondas.forEach(function (o) { var s = porItem.reduce(function (a, r) { return a + (r[o] ? r[o].liquida : 0); }, 0); tot[o] = { subtotal: s, frete: frete, total: s + frete }; });
+    var tot = {}; E.ondas.forEach(function (o) {
+      var s = porItem.reduce(function (a, r) { return a + (r[o] ? r[o].liquida : 0); }, 0);
+      var nIt = porItem.filter(function (r) { return r[o]; }).length || 1;
+      // frete entra no preço final (como na planilha: Valor venda c/ frete = líquida + frete); com vários itens é rateado pelo valor
+      porItem.forEach(function (r) { var x = r[o]; if (!x) return; var parte = s > 0 ? frete * x.liquida / s : frete / nIt; x.frete = parte; x.comFrete = x.liquida + parte; x.vunit = x.qtd ? x.comFrete / x.qtd : 0; });
+      tot[o] = { subtotal: s, frete: frete, total: s + frete };
+    });
     return { w3: w3, frete: frete, porItem: porItem, tot: tot };
   }
   // ---------- a partir de um orçamento salvo ----------
@@ -74914,11 +74920,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       box.innerHTML = E.ondas.map(function (o) { var x = r[o]; if (!x) return '<div class="doe-card"><b>Onda ' + o + '</b><span class="doe-vazio">Sem fórmula para este tipo</span></div>';
         return '<div class="doe-card' + (E.imp.indexOf(o) >= 0 ? ' imp' : '') + '"><div class="doe-card-h"><b>Onda ' + o + '</b>' + (E.imp.indexOf(o) >= 0 ? '<span class="doe-tag">🖨 impressão</span>' : '') + '</div>'
           + '<div class="doe-pecas">' + (x.pecas || []).map(function (pc) { return (pc.nome ? '<div class="doe-pn">' + esc(pc.nome) + '</div>' : '') + '<div class="doe-pl"><span>' + esc(pc.l1 || 'LARGURA') + '</span><code>' + pc.p1.join(' x ') + '</code><b>' + pc.s1 + '</b></div><div class="doe-pl"><span>' + esc(pc.l2 || 'COMPRIMENTO') + '</span><code>' + pc.p2.join(' x ') + '</code><b>' + pc.s2 + '</b></div>'; }).join('') + '</div>'
-          + '<dl><dt>Área</dt><dd><b>' + N(x.area, 6) + '</b> m²</dd><dt>Valor onda ' + o + '</dt><dd>' + R(x.val) + '/m²</dd><dt>Val. total bruto</dt><dd>' + R(x.bruto) + '</dd><dt>Valor venda líquida</dt><dd><b>' + R(x.liquida) + '</b></dd><dt>Valor venda c/ frete</dt><dd>' + R(x.comFrete) + '</dd></dl>'
-          + '<div class="doe-unit">' + R(x.vunit, 4) + ' <small>por caixa</small></div></div>'; }).join('');
+          + '<dl><dt>Área</dt><dd><b>' + N(x.area, 6) + '</b> m²</dd><dt>Valor onda ' + o + '</dt><dd>' + R(x.val) + '/m²</dd><dt>Val. total bruto</dt><dd>' + R(x.bruto) + '</dd><dt>Valor venda líquida</dt><dd>' + R(x.liquida) + '</dd><dt>Frete</dt><dd>' + R(x.frete) + '</dd><dt>Valor venda c/ frete</dt><dd><b>' + R(x.comFrete) + '</b></dd></dl>'
+          + '<div class="doe-unit">' + R(x.vunit, 4) + ' <small>por caixa (com frete)</small></div></div>'; }).join('');
     });
     var t = ov.querySelector('[data-tots]');
-    if (t) t.innerHTML = E.ondas.map(function (o) { var x = c.tot[o]; return '<div class="doe-tot' + (E.imp.indexOf(o) >= 0 ? ' imp' : '') + '"><b>Onda ' + o + '</b><span>Itens ' + R(x.subtotal) + '</span><span>Frete ' + R(x.frete) + '</span><strong>' + R(x.total) + '</strong></div>'; }).join('') || '<div class="doe-vazio">Escolha ao menos uma onda.</div>';
+    if (t) t.innerHTML = E.ondas.map(function (o) { var x = c.tot[o]; return '<div class="doe-tot' + (E.imp.indexOf(o) >= 0 ? ' imp' : '') + '"><b>Onda ' + o + '</b><span>Itens ' + R(x.subtotal) + '</span><span>+ Frete ' + R(x.frete) + '</span><strong>' + R(x.total) + ' <small>preço final</small></strong></div>'; }).join('') || '<div class="doe-vazio">Escolha ao menos uma onda.</div>';
   }
   function redesenharOndas(ov) {
     ov.querySelector('[data-imp-chips]').innerHTML = chips(E.imp, 'data-oi', E.ondas);
@@ -74972,7 +74978,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var par = { tipo: String(it.tipo), comp: n(it.comp), larg: n(it.larg), alt: n(it.alt), qtd: n(it.qtd), vb: n(E.vals.vb), vc: n(E.vals.vc), vbc: n(E.vals.vbc), cm: c.w3, cf: n(E.par.cf), mg: n(E.par.mg), cvend: n(E.par.cvend), imp: n(E.par.imp), vkm: n(E.par.vkm), km: n(E.par.km), sob: n(it.sob), enc: n(it.enc) };
       return { indice: i + 1, nome: it.nome || ('Item ' + (i + 1)), nome_item: it.nome || ('Item ' + (i + 1)), descricao: it.nome, tipo: String(it.tipo), tipo_nome: nomeTipo(it.tipo), comp: par.comp, larg: par.larg, alt: par.alt, sob: par.sob, enc: par.enc, medidas: medidas(it), quantidade: par.qtd,
         parametros: par, resultados: E.ondas.map(function (o) { return r[o]; }).filter(Boolean), onda_selecionada: princ, onda: E.ondas.join(' / '), chapa_utilizada: E.chapa || null,
-        area: rp.area || 0, bruto: rp.bruto || 0, liquida: rp.liquida || 0, comFrete: (rp.liquida || 0) + (i === 0 ? c.frete : 0), valor_unitario: rp.vunit || 0, valor_total: rp.liquida || 0, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '' };
+        area: rp.area || 0, bruto: rp.bruto || 0, liquida: rp.liquida || 0, comFrete: rp.comFrete || 0, frete: rp.frete || 0, valor_unitario: rp.vunit || 0, valor_total: rp.comFrete || 0, valor_sem_frete: rp.liquida || 0, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '' };
     });
     var p0 = blocos[0].parametros, tp = c.tot[princ] || { subtotal: 0, frete: c.frete, total: c.frete };
     var parametros = Object.assign({}, p0, { itens: blocos, ondas_orcamento: E.ondas.slice(), ondas_impressao: E.imp.slice(), onda_principal: princ, chapa_utilizada: E.chapa || undefined, chapaUtilizada: E.chapa || undefined, chapa_id: E.chapa_id || null, observacoes_orc: E.obs || '', totais: c.tot, editor: 'ds-2026-10' });
@@ -75025,8 +75031,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<span><b>Custo fixo</b>' + N(S.par.cf) + '%</span><span><b>Margem</b>' + N(S.par.mg) + '%</span><span><b>Comissão</b>' + N(S.par.cvend) + '%</span><span><b>Impostos</b>' + N(S.par.imp) + '%</span><span><b>Custo mercadoria</b>' + N(c.w3) + '%</span><span><b>Vl. km frete</b>' + R(S.par.vkm) + '</span><span><b>Km entrega</b>' + N(S.par.km) + '</span><span><b>Frete</b>' + R(c.frete) + '</span></div></div>'
         + S.itens.map(function (it, i) { var r = c.porItem[i];
           return '<div class="doe-bloco"><h3>' + esc(it.nome || 'Item ' + (i + 1)) + ' — ' + esc(nomeTipo(it.tipo)) + '</h3><p class="doe-sub">Medidas ' + esc(medidas(it)) + ' mm · Quantidade ' + N(n(it.qtd), 0) + (n(it.sob) ? ' · Sobreposição ' + N(n(it.sob)) : '') + (n(it.enc) ? ' · Encurtar ' + N(n(it.enc)) : '') + '</p>'
-            + '<div class="doe-tw"><table class="doe-t"><thead><tr><th>Onda</th><th>Chapa (largura)</th><th>Chapa (comprimento)</th><th>Área m²</th><th>Valor m²</th><th>Total bruto</th><th>Venda líquida</th><th>Venda c/ frete</th><th>Unitário</th></tr></thead><tbody>'
-            + S.ondas.map(function (x) { var y = r[x]; if (!y) return ''; return '<tr><td data-l="Onda"><b>' + x + '</b>' + (S.imp.indexOf(x) >= 0 ? ' 🖨' : '') + '</td><td data-l="Chapa (largura)">' + esc(y.largura) + '</td><td data-l="Chapa (comprimento)">' + esc(y.comprimento) + '</td><td data-l="Área m²">' + N(y.area, 6) + '</td><td data-l="Valor m²">' + R(y.val) + '</td><td data-l="Total bruto">' + R(y.bruto) + '</td><td data-l="Venda líquida"><b>' + R(y.liquida) + '</b></td><td data-l="Venda c/ frete">' + R(y.comFrete) + '</td><td data-l="Unitário">' + R(y.vunit, 4) + '</td></tr>'; }).join('')
+            + '<div class="doe-tw"><table class="doe-t"><thead><tr><th>Onda</th><th>Chapa (largura)</th><th>Chapa (comprimento)</th><th>Área m²</th><th>Valor m²</th><th>Total bruto</th><th>Venda líquida</th><th>Venda c/ frete</th><th>Unitário c/ frete</th></tr></thead><tbody>'
+            + S.ondas.map(function (x) { var y = r[x]; if (!y) return ''; return '<tr><td data-l="Onda"><b>' + x + '</b>' + (S.imp.indexOf(x) >= 0 ? ' 🖨' : '') + '</td><td data-l="Chapa (largura)">' + esc(y.largura) + '</td><td data-l="Chapa (comprimento)">' + esc(y.comprimento) + '</td><td data-l="Área m²">' + N(y.area, 6) + '</td><td data-l="Valor m²">' + R(y.val) + '</td><td data-l="Total bruto">' + R(y.bruto) + '</td><td data-l="Venda líquida">' + R(y.liquida) + '</td><td data-l="Venda c/ frete"><b>' + R(y.comFrete) + '</b></td><td data-l="Unitário c/ frete"><b>' + R(y.vunit, 4) + '</b></td></tr>'; }).join('')
             + '</tbody></table></div></div>'; }).join('')
         + '<div class="doe-bloco"><h3>Totais</h3><div class="doe-tots">' + S.ondas.map(function (x) { var y = c.tot[x]; return '<div class="doe-tot' + (S.imp.indexOf(x) >= 0 ? ' imp' : '') + '"><b>Onda ' + x + '</b><span>Itens ' + R(y.subtotal) + '</span><span>Frete ' + R(y.frete) + '</span><strong>' + R(y.total) + '</strong></div>'; }).join('') + '</div></div>'
         + (S.obs ? '<div class="doe-bloco"><h3>Observações</h3><p class="doe-sub">' + esc(S.obs) + '</p></div>' : '')
@@ -75042,14 +75048,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var data = new Date().toLocaleDateString('pt-BR');
     var linhas = (pl.itens || []).map(function (b) {
       return imp.map(function (o) { var r = (b.resultados || []).filter(function (x) { return x.onda === o; })[0]; if (!r) return '';
-        return '<tr><td>' + esc(b.nome_item || '') + '<small>' + esc(b.tipo_nome || nomeTipo(b.tipo)) + '</small></td><td>' + esc(b.medidas) + ' mm</td><td class="c">' + o + '</td><td class="r">' + N(b.quantidade, 0) + '</td><td class="r">' + R(r.vunit, 4) + '</td><td class="r"><b>' + R(r.liquida) + '</b></td></tr>'; }).join('');
+        return '<tr><td>' + esc(b.nome_item || '') + '<small>' + esc(b.tipo_nome || nomeTipo(b.tipo)) + '</small></td><td>' + esc(b.medidas) + ' mm</td><td class="c">' + o + '</td><td class="r">' + N(b.quantidade, 0) + '</td><td class="r">' + R(r.vunit, 4) + '</td><td class="r"><b>' + R(r.comFrete != null ? r.comFrete : r.liquida) + '</b></td></tr>'; }).join('');
     }).join('');
     var tots = imp.map(function (o) { var t = tot[o]; if (!t) return ''; return '<tr><td>Onda ' + o + '</td><td class="r">' + R(t.subtotal) + '</td><td class="r">' + R(t.frete) + '</td><td class="r"><b>' + R(t.total) + '</b></td></tr>'; }).join('');
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>Orçamento ' + esc(pl.numero_orcamento || '') + '</title><style>@page{size:A4;margin:14mm}body{font:12px/1.45 Arial,Helvetica,sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0}header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:14px}.meta b{display:inline-block;min-width:70px;color:#555;font-weight:600}table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{border:1px solid #bbb;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee;font-size:11px}td small{display:block;color:#666;font-size:10.5px}.r{text-align:right;white-space:nowrap}.c{text-align:center}h2{font-size:13px;margin:16px 0 6px}.obs{white-space:pre-wrap;border:1px solid #bbb;padding:8px}footer{margin-top:28px;color:#666;font-size:10.5px}</style></head><body>'
       + '<header><div><h1>Italy Embalagens</h1><div>Orçamento de caixas de papelão</div></div><div style="text-align:right"><b style="font-size:16px">Orçamento Nº ' + esc(pl.numero_orcamento || '(rascunho)') + '</b><br>' + data + '</div></header>'
       + '<div class="meta"><div><b>Cliente:</b> ' + esc(pl.cliente_nome || '—') + '</div><div><b>Referência:</b> ' + esc(pl.nome || '—') + '</div></div>'
-      + '<table><thead><tr><th>Item</th><th>Medidas (C×L×A)</th><th class="c">Onda</th><th class="r">Quantidade</th><th class="r">Valor unitário</th><th class="r">Valor total</th></tr></thead><tbody>' + linhas + '</tbody></table>'
-      + '<h2>Totais</h2><table><thead><tr><th>Opção</th><th class="r">Itens</th><th class="r">Frete</th><th class="r">Total</th></tr></thead><tbody>' + tots + '</tbody></table>'
+      + '<table><thead><tr><th>Item</th><th>Medidas (C×L×A)</th><th class="c">Onda</th><th class="r">Quantidade</th><th class="r">Valor unitário (c/ frete)</th><th class="r">Valor total (c/ frete)</th></tr></thead><tbody>' + linhas + '</tbody></table>'
+      + '<h2>Totais</h2><table><thead><tr><th>Opção</th><th class="r">Itens</th><th class="r">Frete (incluso)</th><th class="r">Total com frete</th></tr></thead><tbody>' + tots + '</tbody></table>'
       + (p.observacoes_orc ? '<h2>Observações</h2><div class="obs">' + esc(p.observacoes_orc) + '</div>' : '')
       + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
     return html;
