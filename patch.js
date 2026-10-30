@@ -75064,13 +75064,31 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
     return html;
   }
-  function imprimir(pl) {
+  function ehMovel() {
+    try {
+      var dv = document.body.getAttribute('data-device') || '';
+      return dv === 'mobile' || dv === 'tablet' || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+    } catch (_) { return false; }
+  }
+  // Celular/tablet não imprimem a partir de um quadro escondido: lá abrimos o PDF do orçamento (de onde dá para imprimir ou salvar).
+  function imprimir(pl, w) {
     var html = htmlDe(pl);
+    if (ehMovel() && window.dsGerarPdfBlob) {
+      w = w || window.open('', '_blank');
+      try { if (w) w.document.write('<p style="font:16px Arial,sans-serif;padding:24px">Gerando o PDF do orçamento…</p>'); } catch (_) {}
+      window.dsGerarPdfBlob(html, { retrato: true }).then(function (b) {
+        var url = URL.createObjectURL(b);
+        if (w && !w.closed) { try { w.location.href = url; return; } catch (_) {} }
+        var a = document.createElement('a'); a.href = url; a.download = 'Orcamento-' + String(pl.numero_orcamento || '').replace(/[^\w-]+/g, '') + '.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      }).catch(function (e) { try { if (w) w.close(); } catch (_) {} alert('Não consegui gerar o PDF do orçamento: ' + (e && e.message || e)); });
+      return;
+    }
+    try { if (w) w.close(); } catch (_) {}
     var f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
     var d = f.contentWindow.document; d.open(); d.write(html); d.close();
     setTimeout(function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (_) {} setTimeout(function () { f.remove(); }, 60000); }, 300);
   }
-  window.dsOrc = { htmlId: function (id) { return buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; return { html: htmlDe(pl), orc: o, pl: pl }; }); }, novo: novo, editar: editar, itens: verItens, imprimirId: function (id) { buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; imprimir(pl); }); }, calcItem: calcItem, deOrc: deOrc, buscarChapas: buscarChapas, carregarChapas: carregarChapas, estado: function () { return E; }, paraSalvar: function () { return paraSalvar(); } };
+  window.dsOrc = { htmlId: function (id) { return buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; return { html: htmlDe(pl), orc: o, pl: pl }; }); }, novo: novo, editar: editar, itens: verItens, imprimirId: function (id) { var w = ehMovel() ? window.open('', '_blank') : null; buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; imprimir(pl, w); }).catch(function (e) { try { if (w) w.close(); } catch (_) {} alert('Não consegui abrir o orçamento para imprimir: ' + (e && e.message || e)); }); }, calcItem: calcItem, deOrc: deOrc, buscarChapas: buscarChapas, carregarChapas: carregarChapas, estado: function () { return E; }, paraSalvar: function () { return paraSalvar(); } };
   // ---------- liga nos botões da lista ----------
   document.addEventListener('click', function (e) {
     var pg = e.target.closest('#page-orcamentos'); if (!pg) return;
@@ -75622,13 +75640,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       document.head.appendChild(s);
     });
   }
-  async function gerarPdf(html) {
+  async function gerarPdf(html, op) {
+    op = op || {}; var LARG = op.retrato ? 900 : 1400;
     await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', function () { return !!window.html2canvas; });
     await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function () { return !!(window.jspdf && window.jspdf.jsPDF); });
     html = String(html || '').replace(/<script[\s\S]*?<\/script>/gi, '');
     var fr = document.createElement('iframe');
     fr.setAttribute('aria-hidden', 'true');
-    fr.style.cssText = 'position:fixed;left:-20000px;top:0;width:1400px;height:1000px;border:0;visibility:visible;zoom:1';
+    fr.style.cssText = 'position:fixed;left:-20000px;top:0;width:' + LARG + 'px;height:1000px;border:0;visibility:visible;zoom:1';
     document.body.appendChild(fr);
     try {
       var doc = fr.contentDocument; doc.open(); doc.write(html); doc.close();
@@ -75636,7 +75655,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       try { if (doc.fonts && doc.fonts.ready) await doc.fonts.ready; } catch (_) {}
       var alvo = doc.body;
       fr.style.height = Math.max(1000, alvo.scrollHeight + 20) + 'px';
-      var canvas = await window.html2canvas(alvo, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1400, width: 1400 });
+      var canvas = await window.html2canvas(alvo, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: LARG, width: LARG });
       // corta o espaço branco do fim (evita página em branco)
       var fim = canvas.height;
       try {
@@ -75647,7 +75666,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           if (!branco) { fim = Math.min(canvas.height, yy + 30); break; }
         }
       } catch (_) {}
-      var pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+      var pdf = new window.jspdf.jsPDF({ orientation: op.retrato ? 'portrait' : 'landscape', unit: 'mm', format: 'a4', compress: true });
       var pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), mg = 6;
       var w = pw - mg * 2, pxPorMm = canvas.width / w, alturaPag = Math.floor((ph - mg * 2) * pxPorMm);
       for (var y = 0, pg = 0; y < fim; y += alturaPag, pg++) {
@@ -75657,9 +75676,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (pg) pdf.addPage();
         pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', mg, mg, w, h / pxPorMm);
       }
+      if (op.blob) return pdf.output('blob');
       return pdf.output('datauristring').split(',')[1];
     } finally { if (fr.parentNode) fr.parentNode.removeChild(fr); }
   }
+  window.dsGerarPdfBlob = function (html, op) { return gerarPdf(html, Object.assign({}, op || {}, { blob: true })); };
 
   // ---------- Enviar (genérico: compras -> fornecedor, orçamentos -> cliente) ----------
   var norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
@@ -75765,7 +75786,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ov.querySelector('[data-addbtn]').onclick = adicionar;
     ov.querySelector('[data-ver]').onclick = async function () {
       var b = this; b.disabled = true; b.textContent = 'Gerando…';
-      try { var b64 = await gerarPdf(await o.htmlFn()); var bin = atob(b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); var w = window.open(url, '_blank'); if (!w) { var a = document.createElement('a'); a.href = url; a.download = o.arquivo; a.click(); } }
+      try { var b64 = await gerarPdf(await o.htmlFn(), o.pdfOpts); var bin = atob(b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); var w = window.open(url, '_blank'); if (!w) { var a = document.createElement('a'); a.href = url; a.download = o.arquivo; a.click(); } }
       catch (e) { msg(ov, String(e && e.message || e)); }
       b.disabled = false; b.textContent = 'Ver PDF';
     };
@@ -75776,7 +75797,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!para.length) return msg(ov, 'Escolha pelo menos um destinatário.');
       bt.disabled = true; bt.textContent = 'Gerando PDF…';
       try {
-        var b64 = await gerarPdf(await o.htmlFn());
+        var b64 = await gerarPdf(await o.htmlFn(), o.pdfOpts);
         bt.textContent = 'Enviando…';
         await o.enviar({ para: para, assunto: ov.querySelector('[data-assunto]').value, mensagem: ov.querySelector('[data-msg]').value, pdf_base64: b64, nome_arquivo: o.arquivo, copia_para_mim: ov.querySelector('[data-copia]').checked });
         var novos = novosParaParte();
@@ -75833,12 +75854,78 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       mensagem: 'Olá!\n\nSegue em anexo o orçamento Nº ' + numero + (ref ? ' (' + ref + ')' : '') + ' que você nos solicitou.\nQualquer dúvida ou ajuste, é só responder este e-mail.\n\nAtenciosamente\n\nEleomar Fridres\n(49) 3622 8512\n(49) 9 9998 0203',
       arquivo: 'Orcamento-' + numero.replace(/[^\w-]+/g, '') + '.pdf',
       htmlFn: function () { return window.dsOrc.htmlId(id).then(function (x) { return x.html; }); },
+      pdfOpts: { retrato: true },
       enviar: function (body) { return api('/api/orcamentos/' + encodeURIComponent(id) + '/enviar-email', { method: 'POST', body: body }); },
       salvarEmails: function (c, emails) { return api('/api/clientes/' + encodeURIComponent(c.id), { method: 'PUT', body: { email: emails } }).then(function () { try { if (c._c) c._c.email = emails; } catch (_) {} }); },
       descricaoOk: 'O orçamento Nº <b>' + esc(numero) + '</b>'
     });
   }
   window.dsEnviarOrcEmail = abrirEnvioOrc;
+
+  // ---------- WhatsApp do orçamento (30/10) ----------
+  // Celular/tablet (e PC que tenha): abre o "Compartilhar" do aparelho com o PDF + a mensagem -> escolhe WhatsApp e o contato.
+  // PC sem isso: baixa o PDF, copia a mensagem e abre o WhatsApp que estiver aberto (app ou web) para escolher o contato e anexar.
+  function waFone(t) { var d = String(t || '').replace(/\D+/g, ''); if (!d) return ''; d = d.replace(/^0+/, ''); if (d.length === 10 || d.length === 11) d = '55' + d; return d.length >= 12 ? d : ''; }
+  async function abrirWhatsOrc(id) {
+    if (!window.dsOrc || !window.dsOrc.htmlId || !window.dsGerarPdfBlob) { alert('Orçamentos ainda carregando, tente de novo.'); return; }
+    var r;
+    try { r = await window.dsOrc.htmlId(id); } catch (e) { alert('Não consegui abrir o orçamento: ' + (e && e.message || e)); return; }
+    var o = r.orc || {}, numero = String(o.numero_orcamento || r.pl.numero_orcamento || '');
+    var ref = String(o.nome_orcamento || o.nome || r.pl.nome || '').trim();
+    var cliNome = String(o.cliente_nome || r.pl.cliente_nome || '').trim();
+    var clis = [];
+    try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) clis = CLIENTES.slice(); } catch (_) {}
+    var cli = acharParte(clis.filter(function (c) { return c && c.nome; }).map(function (c) { return { id: c.id, nome: String(c.nome).trim(), tel: c.tel || c.telefone || c.celular || c.whatsapp || '' }; }), cliNome, o.cliente_id || r.pl.cliente_id);
+    var arquivo = 'Orcamento-' + numero.replace(/[^\w-]+/g, '') + '.pdf';
+    var texto = 'Olá!' + (cliNome ? '' : '') + '\n\nSegue o orçamento Nº ' + numero + (ref ? ' (' + ref + ')' : '') + ' que você nos solicitou.\nQualquer dúvida ou ajuste, estou à disposição.\n\nAtenciosamente\n\nEleomar Fridres\n(49) 3622 8512\n(49) 9 9998 0203';
+    var ov = modal('Enviar orçamento Nº ' + numero + ' pelo WhatsApp',
+      '<div class="dsce-de">' + (cliNome ? 'Cliente: <b>' + esc(cliNome) + '</b>' : 'Orçamento Nº <b>' + esc(numero) + '</b>') + '</div>'
+      + '<label>Mensagem<textarea data-wa-msg rows="9">' + esc(texto) + '</textarea></label>'
+      + '<label>WhatsApp do contato <span class="dsce-hint">(opcional — deixe vazio para escolher o contato no WhatsApp)</span><input data-wa-fone inputmode="tel" placeholder="(49) 9 9999-9999" value="' + esc(cli && cli.tel ? cli.tel : '') + '"></label>'
+      + '<div class="dsce-anexo">📄 <span data-wa-st>Preparando o PDF ' + esc(arquivo) + '…</span><button type="button" class="dsce-btn sm" data-wa-ver disabled>Ver PDF</button></div>'
+      + '<div class="dsce-msg"></div>',
+      '<button type="button" class="dsce-btn" data-f>Cancelar</button><button type="button" class="dsce-btn" data-wa-abrir hidden>Abrir WhatsApp</button><button type="button" class="dsce-btn pri" data-wa-env disabled style="background:#16a34a!important;border-color:#16a34a!important">🟢 Enviar pelo WhatsApp</button>');
+    var st = ov.querySelector('[data-wa-st]'), bEnv = ov.querySelector('[data-wa-env]'), bVer = ov.querySelector('[data-wa-ver]'), bAbrir = ov.querySelector('[data-wa-abrir]');
+    var arqFile = null, blobUrl = '';
+    try {
+      var blob = await window.dsGerarPdfBlob(r.html, { retrato: true });
+      arqFile = new File([blob], arquivo, { type: 'application/pdf' });
+      blobUrl = URL.createObjectURL(blob);
+      st.textContent = arquivo + ' pronto (' + Math.max(1, Math.round(blob.size / 1024)) + ' KB)'; bEnv.disabled = false; bVer.disabled = false;
+    } catch (e) { msg(ov, 'Não consegui gerar o PDF: ' + (e && e.message || e)); st.textContent = 'Falha ao gerar o PDF'; return; }
+    var podeCompartilhar = false;
+    try { podeCompartilhar = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [arqFile] })); } catch (_) {}
+    bVer.onclick = function () { var w = window.open(blobUrl, '_blank'); if (!w) baixar(); };
+    function baixar() { var a = document.createElement('a'); a.href = blobUrl; a.download = arquivo; document.body.appendChild(a); a.click(); a.remove(); }
+    function linkWa() {
+      var t = ov.querySelector('[data-wa-msg]').value, f = waFone(ov.querySelector('[data-wa-fone]').value);
+      return 'https://api.whatsapp.com/send?' + (f ? 'phone=' + f + '&' : '') + 'text=' + encodeURIComponent(t);
+    }
+    function semCompartilhar() {
+      var t = ov.querySelector('[data-wa-msg]').value;
+      baixar();
+      try { if (navigator.clipboard) navigator.clipboard.writeText(t); } catch (_) {}
+      var w = window.open(linkWa(), '_blank');
+      bAbrir.hidden = false;
+      msg(ov, 'O PDF foi baixado e o WhatsApp foi aberto com a mensagem. Escolha o contato e anexe o PDF (clipe 📎 ou arraste o arquivo baixado para a conversa).' + (w ? '' : ' Se o WhatsApp não abriu, clique em "Abrir WhatsApp".'), 'ok');
+    }
+    bAbrir.onclick = function () { window.open(linkWa(), '_blank'); };
+    bEnv.onclick = async function () {
+      var t = ov.querySelector('[data-wa-msg]').value;
+      if (podeCompartilhar) {
+        try {
+          await navigator.share({ files: [arqFile], text: t, title: 'Orçamento Nº ' + numero });
+          msg(ov, 'Pronto! Escolha o WhatsApp e o contato na janela que abriu. Se a mensagem não aparecer junto do PDF, ela já está copiada — é só colar.', 'ok');
+          try { if (navigator.clipboard) navigator.clipboard.writeText(t); } catch (_) {}
+          return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') return; // a pessoa fechou a janela de compartilhar
+        }
+      }
+      semCompartilhar();
+    };
+  }
+  window.dsEnviarOrcWhats = abrirWhatsOrc;
   window.dsEmailConfig = function (conta) { api('/api/email-config/' + conta).then(function (c) { abrirConfig(c); }); };
 
   // Botão "Enviar por Email" dentro da compra
@@ -75862,9 +75949,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (b.parentNode.querySelector('[data-dsce-orc]')) return;
       var e = document.createElement('button'); e.type = 'button'; e.className = b.className; e.setAttribute('data-dsce-orc', m[1]); e.textContent = '📧 E-mail';
       b.insertAdjacentElement('afterend', e);
+      var wz = document.createElement('button'); wz.type = 'button'; wz.className = b.className; wz.setAttribute('data-dswa-orc', m[1]); wz.textContent = '🟢 WhatsApp';
+      e.insertAdjacentElement('afterend', wz);
     });
   }
   document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-dsce-orc]'); if (b) { ev.preventDefault(); ev.stopPropagation(); abrirEnvioOrc(b.getAttribute('data-dsce-orc')); } }, true);
+  document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-dswa-orc]'); if (b) { ev.preventDefault(); ev.stopPropagation(); abrirWhatsOrc(b.getAttribute('data-dswa-orc')); } }, true);
   new MutationObserver(function () { if (document.querySelector('#page-orcamentos button[onclick^="imprimirOrcamentoId"]:not(.dsce-ok)')) injetarOrc(); }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-dsce-email]'); if (b) { ev.preventDefault(); ev.stopPropagation(); abrirEnvio(b.getAttribute('data-dsce-email')); } }, true);
   new MutationObserver(function () { if (document.querySelector('[data-cmpx-print]:not(.dsce-ok)')) { injetar(); Array.prototype.slice.call(document.querySelectorAll('[data-cmpx-print]')).forEach(function (b) { b.classList.add('dsce-ok'); }); } }).observe(document.body, { childList: true, subtree: true });
