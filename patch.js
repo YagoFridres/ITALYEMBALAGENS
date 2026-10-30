@@ -73358,10 +73358,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return aberto;
   }
   // 27/10: toda vez que o sistema abre, começa travado (a liberação não sobrevive a recarregar a página)
-  try { sessionStorage.removeItem('ds_fin_ok'); } catch (_) {}
+  try { sessionStorage.removeItem('ds_fin_ok'); sessionStorage.removeItem('fin_ok'); } catch (_) {}
   window.dsPedirSenhaFinanceiro = pedir;
   window.dsBloquearFinanceiro = function () {
-    try { sessionStorage.removeItem('ds_fin_ok'); } catch (_) {} marcar();
+    try { sessionStorage.removeItem('ds_fin_ok'); sessionStorage.removeItem('fin_ok'); } catch (_) {} marcar();
     try { if (PAGINAS[window._PAGE_ATUAL]) window.go('hub'); } catch (_) {}
     try { var g = document.getElementById(GRUPO); if (g) g.classList.remove('open'); } catch (_) {}
   };
@@ -73372,7 +73372,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var w = function (pg) {
       var self = this, args = arguments;
       if (PAGINAS[String(pg || '')] && String(window._PAGE_ATUAL || '') === 'historico-passagens' && liberado()) { try { sessionStorage.removeItem('ds_fin_ok'); marcar(); } catch (_) {} }
-      if (PAGINAS[String(pg || '')] && !liberado()) { pedir('O Financeiro é protegido por senha.').then(function (v) { if (v) g0.apply(self, args); }); return; }
+      if (PAGINAS[String(pg || '')] && !liberado()) { pedir('O Financeiro é protegido por senha.').then(function (v) { if (v) { try { sessionStorage.setItem('fin_ok', '1'); } catch (_) {} g0.apply(self, args); } }); return; }
+      // a senha nova também vale para a checagem antiga (evita a janelinha "Senha do Financeiro" do navegador)
+      if (PAGINAS[String(pg || '')] && liberado()) { try { sessionStorage.setItem('fin_ok', '1'); } catch (_) {} }
       return g0.apply(this, arguments);
     };
     for (var k in g0) { try { w[k] = g0[k]; } catch (_) {} }
