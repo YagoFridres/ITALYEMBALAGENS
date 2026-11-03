@@ -76366,7 +76366,7 @@ window.__perTxt = function (p) {
     + '.dsch-hd h2{margin:0;font-size:20px;font-weight:800}.dsch-hd p{margin:3px 0 0;font-size:13px;color:var(--text2,#94a3b8)}'
     + '.dsch-x{margin-left:auto;width:38px;height:38px;border-radius:10px;border:1px solid var(--border,#334155);background:transparent;color:var(--text2,#94a3b8);font-size:18px;cursor:pointer;flex:0 0 auto}.dsch-x:hover{background:rgba(239,68,68,.15);color:#f87171}'
     + '.dsch-bd{overflow:auto;padding:18px 22px;display:flex;flex-direction:column;gap:16px}'
-    + '.dsch-ft{display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid var(--border,#1e293b);flex-wrap:wrap}.dsch-ft .dsch-dica{margin-right:auto;font-size:12px;color:var(--text3,#64748b)}'
+    + '.dsch-ft{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--border,#1e293b);flex-wrap:wrap}.dsch-ft .dsch-dica{margin-right:auto;font-size:12px;color:var(--text3,#64748b)}'
     + '.dsch-bt{border:1px solid var(--border,#334155);background:transparent;color:var(--text,#e2e8f0);border-radius:11px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;min-height:44px}.dsch-bt:hover{background:var(--s2,#1e293b)}'
     + '.dsch-bt.ok{border:0;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);font-weight:800;font-size:15px;padding:12px 26px;box-shadow:0 8px 20px rgba(22,163,74,.35)}.dsch-bt.ok:hover{filter:brightness(1.08)}.dsch-bt.ok:disabled{opacity:.6;cursor:wait}'
     + '.dsch-bt.azul{border:0;color:#fff;background:linear-gradient(135deg,#2563eb,#0ea5e9)}'
@@ -76536,7 +76536,7 @@ window.__perTxt = function (p) {
   function tonDe(c) { if (typeof window.__dsEstTon === 'function') return window.__dsEstTon(c) || 0; var t = Number(c && (c.toneladas_atual != null ? c.toneladas_atual : c.toneladas) || 0) || 0; if (t > 0) return t; var kg = Number(c && c.peso_kg_unidade || 0) || 0; return kg > 0 ? qtdDe(c) * kg / 1000 : 0; }
   function valorDe(c) { if (typeof window.__dsEstValor === 'function') return window.__dsEstValor(c) || 0; return qtdDe(c) * (Number(c && c.valor_unitario || 0) || 0); }
   function fornDe(c) { return String(c && (c.fornecedor || c.forn) || '').trim().toUpperCase() || 'SEM FORNECEDOR'; }
-  function empDe(c) { return String(c && (c.qual_cnpj || c.empresa_vinculada || c.qual || c.empresa) || '').trim() || '—'; }
+  function empDe(c) { var e = String(c && (c.qual_cnpj || c.empresa_vinculada || c.qual || c.empresa) || '').trim().toUpperCase(); if (!e) return '—'; if (e.indexOf('ITALY') === 0) return 'ITALY EMBALAGENS'; if (e.indexOf('CARTO') === 0) return 'CARTOESTE'; if (e.indexOf('OESTE') === 0) return 'OESTEPACK'; return e; }
   function nomeDe(c) { return String(c && (c.nome_uso || c.nome || c.nomenclatura) || '—').trim(); }
   function imprimir(cfg) { try { window._openStyledPrintWindow(window._buildStyledPrintHtml(cfg)); } catch (e) { alert('Não consegui abrir a impressão: ' + (e && e.message || e)); } }
 
@@ -76617,7 +76617,7 @@ window.__perTxt = function (p) {
         var pct = totV ? f.valor / totV * 100 : 0;
         var emps = Object.keys(f.emp).filter(function (e) { return f.emp[e] > 0; }).sort(function (a, b) { return f.emp[b] - f.emp[a]; }).map(function (e) { return e + ' ' + R(f.emp[e]); }).join(' · ');
         var h = '<tr class="cl" data-i="' + i + '"><td><b>' + (aberto[i] ? '▾ ' : '▸ ') + esc(f.nome) + '</b><small>' + esc(emps) + '</small></td><td class="n">' + N(f.itens.length) + '</td><td class="n">' + N(f.qtd) + '</td><td class="n">' + N(f.ton, 3) + ' t</td><td class="n"><b>' + R(f.valor) + '</b></td><td><div class="dsch-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div><small>' + N(pct, 1) + '%</small></td></tr>';
-        if (aberto[i]) h += f.itens.slice().sort(function (a, b) { return b.valor - a.valor; }).map(function (it) { return '<tr class="sub"><td>' + esc(it.nome) + '<small>' + esc([it.nom, it.tam, it.emp].filter(Boolean).join(' · ')) + '</small></td><td class="n">' + (it.vu ? R(it.vu) + '/un' : '') + '</td><td class="n">' + N(it.qtd) + '</td><td class="n">' + (it.ton > 0 ? N(it.ton, 3) + ' t' : '—') + '</td><td class="n">' + R(it.valor) + '</td><td></td></tr>'; }).join('');
+        if (aberto[i]) h += f.itens.slice().sort(function (a, b) { return b.valor - a.valor; }).map(function (it) { return '<tr class="sub"><td>' + esc(it.nome) + '<small>' + esc([it.nom, it.tam, it.emp, it.vu ? R(it.vu) + ' por chapa' : ''].filter(Boolean).join(' · ')) + '</small></td><td class="n"></td><td class="n">' + N(it.qtd) + '</td><td class="n">' + (it.ton > 0 ? N(it.ton, 3) + ' t' : '—') + '</td><td class="n">' + R(it.valor) + '</td><td></td></tr>'; }).join('');
         return h;
       }).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px">Nenhuma chapa no estoque.</td></tr>';
     }
