@@ -75541,19 +75541,52 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // ---------- autocompletar na OF ----------
   var sugBox = null;
   function fecharSug() { if (sugBox) { sugBox.remove(); sugBox = null; } }
+  // 03/11: além do cadastro, usa os produtos que o cliente já pediu nas OFs (com medidas, cores e último valor)
+  var HC = { key: '', lista: [], prom: null };
+  function cliOF() { try { if (typeof window.__dsOfrCliente === 'function') return window.__dsOfrCliente(); } catch (_) {} var v = (document.getElementById('of-r-cliente') || {}).value || ''; return v ? { nome: v } : null; }
+  function cliKey(c) { return c ? String(c.id || '') + '|' + norm(c.nome || c.rs || '') : ''; }
+  function carregarHist() {
+    var c = cliOF(), k = cliKey(c);
+    if (!c || !(c.id || c.nome)) { HC = { key: '', lista: [], prom: null }; return Promise.resolve([]); }
+    if (HC.key === k) return HC.prom || Promise.resolve(HC.lista);
+    HC = { key: k, lista: [], prom: null };
+    HC.prom = req('GET', '/api/produtos-cadastro/por-cliente?cliente_id=' + encodeURIComponent(c._so ? '' : (c.id || '')) + '&cliente=' + encodeURIComponent(c.nome || c.rs || ''))
+      .then(function (j) { if (HC.key !== k) return []; HC.lista = ((j && j.produtos) || []).map(function (x) { return { nome: x.produto, largura: x.largura, comprimento: x.comprimento, valor_unitario: x.valor_unitario, cores: x.cores || [], _ped: x.pedidos, _hist: true }; }); HC.prom = null; return HC.lista; })
+      .catch(function () { HC.prom = null; return []; });
+    return HC.prom;
+  }
+  window.__dsProdHistCarregar = carregarHist;
+  function completarComHist(p) {
+    if (!p || p._hist) return p;
+    var h = HC.lista.find(function (x) { return norm(x.nome) === norm(p.nome); }); if (!h) return p;
+    var o = Object.assign({}, p);
+    ['largura', 'comprimento', 'valor_unitario'].forEach(function (k) { if (!(Number(o[k]) > 0) && Number(h[k]) > 0) o[k] = h[k]; });
+    if (!coresDe(o).length && h.cores && h.cores.length) o.cores = h.cores;
+    o._ped = h._ped;
+    return o;
+  }
   function achar(txt) {
-    var q = norm(txt);
-    var cli = norm((document.getElementById('of-r-cliente') || {}).value || '');
-    if (!q) return cli ? P.lista.filter(function (p) { return doCliente(p, cli); }).sort(function (a, b) { return a.nome.localeCompare(b.nome); }).slice(0, 30) : [];
-    var l = P.lista.filter(function (p) { return norm(p.nome).indexOf(q) >= 0; });
-    l.sort(function (a, b) {
-      var pa = norm(a.nome).indexOf(q) === 0 ? 0 : 1, pb = norm(b.nome).indexOf(q) === 0 ? 0 : 1;
-      var ca = doCliente(a, cli) ? 0 : 1, cb = doCliente(b, cli) ? 0 : 1;
-      return ca - cb || pa - pb || a.nome.length - b.nome.length || a.nome.localeCompare(b.nome);
-    });
-    return l.slice(0, 12);
+    var q = norm(txt), c = cliOF(), cli = norm(c && (c.nome || c.rs) || '');
+    var hist = HC.key === cliKey(c) ? HC.lista : [];
+    var vistos = {};
+    function un(p) { var k = norm(p.nome); if (vistos[k]) return false; vistos[k] = 1; return true; }
+    if (!q) {
+      var a = P.lista.filter(function (p) { return doCliente(p, cli); }).map(completarComHist);
+      var b = hist.slice().sort(function (x, y) { return (y._ped || 0) - (x._ped || 0); });
+      return a.concat(b).filter(un).slice(0, 40);
+    }
+    var hl = hist.filter(function (p) { return norm(p.nome).indexOf(q) >= 0; });
+    var cl = P.lista.filter(function (p) { return norm(p.nome).indexOf(q) >= 0; }).map(completarComHist);
+    function ordem(x, y) {
+      var pa = norm(x.nome).indexOf(q) === 0 ? 0 : 1, pb = norm(y.nome).indexOf(q) === 0 ? 0 : 1;
+      var ca = (x._ped || doCliente(x, cli)) ? 0 : 1, cb = (y._ped || doCliente(y, cli)) ? 0 : 1;
+      return ca - cb || pa - pb || (y._ped || 0) - (x._ped || 0) || x.nome.length - y.nome.length || x.nome.localeCompare(y.nome);
+    }
+    return cl.concat(hl).sort(ordem).filter(un).slice(0, 15);
   }
   function escolher(inp, p) {
+    p = completarComHist(p);
+    inp.__dsProdAplicado = norm(p.nome);
     inp.value = p.nome; fecharSug();
     inp.__dsProdSet = true; try { inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} inp.__dsProdSet = false; fecharSug();
     // cliente do produto (se o campo estiver vazio)
@@ -75593,7 +75626,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     // dentro do próprio campo (o modal da OF usa zoom, então posição fixa na tela sairia deslocada)
     var pai = inp.parentNode; if (getComputedStyle(pai).position === 'static') pai.style.position = 'relative';
     sugBox.style.left = inp.offsetLeft + 'px'; sugBox.style.top = (inp.offsetTop + inp.offsetHeight + 4) + 'px'; sugBox.style.width = inp.offsetWidth + 'px';
-    sugBox.innerHTML = (!String(inp.value || '').trim() ? '<div class="dsp-sug-h">Produtos deste cliente</div>' : '') + l.map(function (p, i) { return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : '') + '><b>' + esc(p.nome) + '</b><span>' + esc([medidasTxt(p), medida(p), valorTxt(p), clientesDe(p).map(function (c) { return c.nome; }).join(', ')].filter(Boolean).join(' · ')) + '</span></button>'; }).join('');
+    sugBox.innerHTML = (!String(inp.value || '').trim() ? '<div class="dsp-sug-h">Produtos deste cliente</div>' : '') + l.map(function (p, i) { return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : '') + '><b>' + esc(p.nome) + '</b><span>' + esc([medidasTxt(p), medida(p), valorTxt(p), p._ped ? p._ped + ' pedido' + (p._ped > 1 ? 's' : '') + ' deste cliente' : clientesDe(p).map(function (c) { return c.nome; }).join(', ')].filter(Boolean).join(' · ')) + '</span></button>'; }).join('');
     sugBox.addEventListener('mousedown', function (e) { var b = e.target.closest('[data-i]'); if (!b) return; e.preventDefault(); escolher(inp, l[+b.getAttribute('data-i')]); });
     sugBox.__l = l;
     pai.appendChild(sugBox);
@@ -75602,7 +75635,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var inp = e.target; if (!inp || inp.id !== 'of-r-produto') return;
     if (inp.__dsProdSet) { inp.__dsProdSet = false; return; }
     var digitado = inp.value, apagando = e.inputType && /^delete/.test(e.inputType);
-    carregar().then(function () {
+    carregar().then(carregarHist).then(function () {
       if (inp.value !== digitado) return;
       var l = achar(digitado); mostrarSug(inp, l);
       // completa na própria caixa quando o começo bate (o resto fica selecionado; continuar digitando substitui)
@@ -75623,9 +75656,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }, true);
   document.addEventListener('focusin', function (e) {
     var inp = e.target; if (!inp || inp.id !== 'of-r-produto' || String(inp.value || '').trim()) return;
-    carregar().then(function () { if (document.activeElement === inp && !String(inp.value || '').trim()) mostrarSug(inp, achar('')); });
+    carregar().then(carregarHist).then(function () { if (document.activeElement === inp && !String(inp.value || '').trim()) mostrarSug(inp, achar('')); });
   }, true);
-  document.addEventListener('focusout', function (e) { if (e.target && e.target.id === 'of-r-produto') setTimeout(fecharSug, 150); }, true);
+  document.addEventListener('focusout', function (e) {
+    var inp = e.target; if (!inp || inp.id !== 'of-r-produto') return;
+    setTimeout(fecharSug, 150);
+    // digitou o nome inteiro de um produto conhecido sem escolher da lista: preenche igual
+    var v = norm(inp.value); if (!v || inp.__dsProdAplicado === v) return;
+    var l = achar(inp.value), p = l.find(function (x) { return norm(x.nome) === v; });
+    if (p) setTimeout(function () { if (norm(inp.value) === v) { inp.__dsProdSet = true; escolher(inp, p); } }, 160);
+  }, true);
   // ---------- ligar ----------
   function vigiar() {
     montarMenu(); if (document.getElementById('menu-produtos')) pagina();
@@ -76870,6 +76910,7 @@ window.__perTxt = function (p) {
     if (!c && nome) c = lista().find(function (x) { return norm(x.nome || x.rs) === nome; }) || null;
     return c || (id || nome ? { id: id, nome: nome, _so: true } : null);
   }
+  window.__dsOfrCliente = clienteAtual;
   function vendedorDo(c) {
     var v = String(c.vendedor_id || c.vendId || c.vend_id || '').trim();
     if (v) return v;
@@ -76883,15 +76924,25 @@ window.__perTxt = function (p) {
     });
     return melhor ? melhor.v : '';
   }
+  // cliente sem vendedor: avisa embaixo do campo (ao salvar a OF o vendedor escolhido fica gravado no cliente)
+  function avisoSemVend(mostrar) {
+    var sel = document.getElementById('of-r-vendedor'); if (!sel) return;
+    var av = document.getElementById('dsofr-semvend');
+    if (!mostrar) { if (av) av.remove(); return; }
+    if (!av) { av = document.createElement('div'); av.id = 'dsofr-semvend'; av.style.cssText = 'margin-top:4px;font-size:11.5px;color:#fbbf24;line-height:1.3'; av.textContent = 'Este cliente ainda não tem vendedor. Escolha aqui: ao salvar a OF ele fica gravado no cliente.'; sel.parentNode.appendChild(av); }
+  }
   setInterval(function () {
     var m = document.getElementById('modal-of-rapida');
     var aberto = !!(m && m.offsetParent !== null && getComputedStyle(m).display !== 'none');
     if (!aberto) { st.cli = undefined; st.auto = ''; return; }
     var sel = document.getElementById('of-r-vendedor'); if (!sel) return;
+    if (String(sel.value || '').trim()) avisoSemVend(false);
     var c = clienteAtual(), chave = c ? String(c.id || c.nome) : '';
     if (st.cli === undefined) { st.cli = chave; if (String(sel.value || '').trim()) return; }  // abriu (edição já vem com vendedor)
     else if (chave === st.cli) return;
     st.cli = chave;
+    try { if (typeof window.__dsProdHistCarregar === 'function') window.__dsProdHistCarregar(); } catch (_) {}
+    avisoSemVend(c && !vendedorDo(c) && !String(sel.value || '').trim());
     if (!c) return;
     var atual = String(sel.value || '').trim();
     if (atual && atual !== st.auto) return;  // escolhido à mão: não mexe
