@@ -3011,6 +3011,46 @@ try {
   }
 
   try { window.__rrFichaCliente = function (id) { return rrReportFichaCliente(id); }; } catch (_) {}
+  // 03/11: Pizzas e Salgados
+  async function rrReportPizzasSalgados() {
+    var ref = rrCurrentRange();
+    var j = await rrFetchJson('/api/relatorios/pizzas-salgados?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var T = j.total || {}, PT = (j.por_tipo || {}).Pizza || {}, ST = (j.por_tipo || {}).Salgado || {};
+    var M = function (v) { return rrFmtMoney(v || 0); }, Nn = function (v, d) { return rrFmtNum(v || 0, d || 0); };
+    var varPct = function (a, b) { a = Number(a) || 0; b = Number(b) || 0; if (!b) return a ? 'novo' : '—'; var p = (a - b) / b * 100; return (p >= 0 ? '+' : '') + rrFmtNum(p, 1) + '%'; };
+    var mesTxt = function (m) { var n = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']; return n[(+String(m).slice(5, 7) || 1) - 1] + '/' + String(m).slice(2, 4); };
+    var dt = function (d) { return d ? rrFmtDate(d) : '—'; };
+    var linhaTipo = function (nome, x) { var a = x.anterior || {}; return [rrEsc(nome), Nn(x.ofs), Nn(x.caixas), M(x.valor), Nn(x.clientes), M(x.ticket_medio), M(x.preco_medio_caixa), varPct(x.valor, a.valor), varPct(x.clientes, a.clientes)]; };
+    var intro = '<div style="font-size:11px;color:#475569;margin:4px 0 10px">' + rrEsc(j.criterio || '') + (T.pela_descricao ? ' Neste período, ' + Nn(T.pela_descricao) + ' OF(s) sem tipo de caixa entraram pela descrição.' : '') + ' Comparação com o período anterior de mesmo tamanho (desde ' + rrEsc(dt(j.periodo && j.periodo.anterior_inicio)) + ').</div>';
+    return rrOpenPrint({
+      title: 'Relatório de Pizzas e Salgados',
+      periodo: ref.titulo,
+      introHtml: intro,
+      cards: [
+        { label: 'Vendido (pizza + salgado)', value: M(T.valor), sub: rrFmtNum(T.pct_vendas_empresa || 0, 1) + '% das vendas da empresa · ' + varPct(T.valor, (T.anterior || {}).valor) + ' vs anterior' },
+        { label: 'Caixas', value: Nn(T.caixas), sub: Nn(T.ofs) + ' OFs concluídas' },
+        { label: 'Clientes', value: Nn(T.clientes), sub: Nn((j.clientes || []).filter(function (c) { return c.novo; }).length) + ' novos · ' + Nn((j.pararam || []).length) + ' pararam' },
+        { label: 'Pizza / Salgado', value: M(PT.valor) + ' / ' + M(ST.valor), sub: Nn(PT.caixas) + ' cx pizza · ' + Nn(ST.caixas) + ' cx salgado' }
+      ],
+      summaryTitle: 'Resumo por tipo de caixa no período',
+      summaryHeaders: ['Tipo', 'OFs', 'Caixas', 'Valor vendido', 'Clientes', 'Ticket médio (OF)', 'Preço médio (caixa)', 'Valor vs anterior', 'Clientes vs anterior'],
+      summaryRows: [linhaTipo('🍕 Pizza', PT), linhaTipo('🥟 Salgado', ST), linhaTipo('Total', T)],
+      detailSections: [
+        { title: 'Mês a mês (valor, caixas e clientes)', headers: ['Mês', 'Pizza R$', 'Pizza cx', 'Pizza clientes', 'Salgado R$', 'Salgado cx', 'Salgado clientes', 'Total R$', 'Total clientes', 'Clientes novos'],
+          rows: (j.por_mes || []).map(function (m) { return [mesTxt(m.mes), M(m.pizza.valor), Nn(m.pizza.caixas), Nn(m.pizza.clientes), M(m.salgado.valor), Nn(m.salgado.caixas), Nn(m.salgado.clientes), '<b>' + M(m.total.valor) + '</b>', '<b>' + Nn(m.total.clientes) + '</b>', Nn(m.total.novos)]; }) },
+        { title: 'Clientes que compraram no período', headers: ['Cliente', 'Cidade', 'Tipo', 'OFs', 'Caixas', 'Valor', 'Meses c/ compra (12m)', 'Última compra', 'Vendedor'],
+          rows: (j.clientes || []).map(function (c) { return [rrEsc(c.nome) + (c.novo ? ' <b style="color:#16a34a">(novo)</b>' : ''), rrEsc(c.cidade || '—'), rrEsc(c.tipos), Nn(c.ofs), Nn(c.caixas), M(c.valor), Nn(c.meses_12m) + ' de 12', dt(c.ultima), rrEsc(c.vendedor || '—')]; }) },
+        { title: 'Compravam e não compraram no período (última compra nos 90 dias antes)', headers: ['Cliente', 'Cidade', 'Última compra', 'OFs no histórico', 'Vendedor'],
+          rows: (j.pararam || []).map(function (c) { return [rrEsc(c.nome), rrEsc(c.cidade || '—'), dt(c.ultima), Nn(c.ofs_total), rrEsc(c.vendedor || '—')]; }) },
+        { title: 'Produtos mais vendidos', headers: ['Produto', 'Tipo', 'OFs', 'Caixas', 'Valor', 'Clientes'],
+          rows: (j.produtos || []).map(function (p) { return [rrEsc(p.nome), rrEsc(p.tipo), Nn(p.ofs), Nn(p.caixas), M(p.valor), Nn(p.clientes)]; }) },
+        { title: 'Por vendedor', headers: ['Vendedor', 'OFs', 'Caixas', 'Valor', 'Clientes'], rows: (j.vendedores || []).map(function (v) { return [rrEsc(v.nome), Nn(v.ofs), Nn(v.caixas), M(v.valor), Nn(v.clientes)]; }) },
+        { title: 'Por cidade', headers: ['Cidade', 'OFs', 'Caixas', 'Valor', 'Clientes'], rows: (j.cidades || []).map(function (v) { return [rrEsc(v.nome), Nn(v.ofs), Nn(v.caixas), M(v.valor), Nn(v.clientes)]; }) },
+        { title: 'OFs do período', headers: ['OF', 'Data', 'Cliente', 'Tipo', 'Produto', 'Caixas', 'Valor', 'Vendedor'],
+          rows: (j.detalhe || []).map(function (o) { return [rrEsc(o.of), dt(o.data), rrEsc(o.cliente), rrEsc(o.tipo) + (o.pela === 'descricao' ? ' <small>(pela descrição)</small>' : ''), rrEsc(o.produto), Nn(o.caixas), M(o.valor), rrEsc(o.vendedor || '—')]; }) }
+      ]
+    });
+  }
   async function rrReportFichaCliente(clienteId) {
     var json = await rrFetchJson('/api/relatorios/cliente-ficha?cliente_id=' + encodeURIComponent(String(clienteId || '').trim()));
     var cliente = json && json.cliente || {};
@@ -3892,6 +3932,7 @@ try {
     { id: 'papelao-resumo-mes', label: 'Papelão: Quantidade e Valor do Mês', icon: '📊', desc: 'Resumo consolidado do período com total de compras, quantidade em chapas, área e valor financeiro.', run: rrReportPapelaoResumoMes },
     { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
     { id: 'lucratividade-por-maquina', label: 'Lucratividade por Máquina', icon: '🏭', desc: 'Consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina usando ofs.passagens_maquina.', run: rrOpenLucratividadeMaquinaModal },
+    { id: 'pizzas-salgados', label: 'Pizzas e Salgados', icon: '🍕', desc: 'Vendas das caixas de pizza e de salgado: valor, caixas e clientes por mês, clientes novos, quem parou de comprar, produtos, vendedores e cidades.', run: rrReportPizzasSalgados },
     { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
     { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },
@@ -75506,7 +75547,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var k = norm(c.nome || c.rs);
     var extras = P.lista.filter(function (p) { return doCliente(p, k) && !l.some(function (x) { return norm(x.produto) === norm(p.nome); }); });
     function dataBR(d) { return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(2, 4) : '—'; }
-    res.innerHTML = '<h3>' + esc(c.nome || c.rs) + '</h3><p>' + l.length + ' produto' + (l.length === 1 ? '' : 's') + ' em ' + (PC.dados.total_ofs || 0) + ' OFs' + (extras.length ? ' · mais ' + extras.length + ' cadastrado' + (extras.length > 1 ? 's' : '') + ' para ele sem OF ainda' : '') + '</p>'
+    res.innerHTML = '<div class="dsp-pc-top"><h3>' + esc(c.nome || c.rs) + '</h3>' + (l.length || extras.length ? '<button type="button" class="dsp-btn sm" data-pc-print>🖨 Imprimir lista</button>' : '') + '</div><p>' + l.length + ' produto' + (l.length === 1 ? '' : 's') + ' em ' + (PC.dados.total_ofs || 0) + ' OFs' + (extras.length ? ' · mais ' + extras.length + ' cadastrado' + (extras.length > 1 ? 's' : '') + ' para ele sem OF ainda' : '') + '</p>'
       + (l.length || extras.length ? '<div class="dsp-tw"><table class="dsp-t" data-no-mobile-cards="1"><thead><tr><th class="dsp-ck"></th><th>Produto</th><th>Medidas</th><th>Cores</th><th>Último valor un.</th><th>Pedidos</th><th>Último pedido</th><th></th></tr></thead><tbody>'
         + l.map(function (x, i) {
           var cad = cadastrado(x.produto);
@@ -75517,6 +75558,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + extras.map(function (p) { return '<tr><td class="dsp-ck"></td><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Medidas">' + (esc(medidasTxt(p)) || '—') + '</td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Valor un.">' + (esc(valorTxt(p)) || '—') + '</td><td data-l="Pedidos">0</td><td data-l="Último pedido">—</td><td class="dsp-ac"><span class="dsp-ok">✓ cadastrado</span></td></tr>'; }).join('')
         + '</tbody></table></div>' : '<div class="dsp-vazio">Este cliente ainda não tem OFs com produto preenchido.</div>');
     res.__l = l;
+    var bp = res.querySelector('[data-pc-print]');
+    if (bp) bp.onclick = function () {
+      var todos = l.map(function (x) { return { nome: x.produto, medidas: medidasTxt(x), cores: (x.cores || []).join(' + '), valor: valorTxt(x), pedidos: x.pedidos, caixas: x.caixas || 0, ultimo: x.ultimo, of: x.ultima_of }; })
+        .concat(extras.map(function (p) { return { nome: p.nome, medidas: medidasTxt(p), cores: medida(p), valor: valorTxt(p), pedidos: 0, caixas: 0, ultimo: '', of: '' }; }));
+      var totPed = todos.reduce(function (s2, x) { return s2 + (x.pedidos || 0); }, 0), totCx = todos.reduce(function (s2, x) { return s2 + (x.caixas || 0); }, 0);
+      try {
+        window._openStyledPrintWindow(window._buildStyledPrintHtml({
+          title: 'Produtos do Cliente — ' + (c.nome || c.rs), periodo: 'Posição em ' + new Date().toLocaleDateString('pt-BR'),
+          cards: [{ label: 'Produtos', value: String(todos.length), sub: 'Diferentes já pedidos' }, { label: 'OFs', value: String(PC.dados.total_ofs || 0), sub: 'Pedidos do cliente' }, { label: 'Caixas', value: nBR(totCx), sub: 'Somando todos os pedidos' }, { label: 'Mais pedido', value: todos[0] ? todos[0].nome : '—', sub: todos[0] ? todos[0].pedidos + ' pedidos' : '' }],
+          summaryTitle: 'Produtos', summaryHeaders: ['Produto', 'Medidas', 'Cores', 'Último valor un.', 'Pedidos', 'Caixas', 'Último pedido'],
+          summaryRows: todos.map(function (x) { return [esc(x.nome), esc(x.medidas || '—'), esc(x.cores || '—'), esc(x.valor || '—'), String(x.pedidos || 0), nBR(x.caixas || 0), x.ultimo ? dataBR(x.ultimo) + (x.of ? ' (OF ' + esc(x.of) + ')' : '') : '—']; })
+        }));
+      } catch (er) { alert('Não consegui abrir a impressão: ' + (er && er.message || er)); }
+    };
     setTimeout(barraMesclar, 0);
   }
   // ---------- mesclar produtos (03/11) ----------
@@ -75751,6 +75806,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     + '.dsp-m header{display:flex;justify-content:space-between;align-items:center}.dsp-m h2{margin:0;font-size:18px}.dsp-x{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer}.dsp-sub{margin:0;color:var(--text2);font-size:13px}'
     + '.dsp-f{display:flex;flex-direction:column;gap:5px}.dsp-f>span{font-size:12px;font-weight:600;color:var(--text2)}.dsp-cores{display:flex;flex-wrap:wrap;gap:6px}.dsp-cor{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--b2);background:var(--bg);color:var(--text2);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dsp-cor i{width:12px;height:12px;border-radius:50%;border:1px solid var(--b2)}.dsp-cor.on{background:var(--accent);border-color:var(--accent);color:#fff}.dsp-m footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}.dsp-sel{margin-right:auto;font-size:12.5px;color:var(--text2)}'
     + '.dsp-imp{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px}.dsp-imp label{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}.dsp-imp label:hover{background:var(--s2)}.dsp-imp label[hidden]{display:none}.dsp-imp input{width:18px;height:18px;margin-top:2px}.dsp-imp b{display:block;font-size:13.5px}.dsp-imp small{color:var(--text3);font-size:12px}'
+    + '.dsp-pc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}'
     + '.dsp-ck{width:34px;text-align:center}.dsp-ck input{width:18px;height:18px;cursor:pointer}.dsp-al{display:block;font-size:11px;color:var(--text3);font-weight:500}'
     + '#dsp-mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9000;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--accent);box-shadow:0 14px 40px rgba(0,0,0,.45);color:var(--text);font-size:14px;max-width:calc(100vw - 24px);flex-wrap:wrap}'
     + '.dsp-mlist{display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow:auto}.dsp-mitem{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer}.dsp-mitem:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}.dsp-mitem input{margin-top:3px;width:18px;height:18px}.dsp-mitem small{display:block;font-size:12px;color:var(--text3)}'

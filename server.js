@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103145621';
-const SW_RUNTIME_VERSION = '20261103145621';
+const PATCH_RUNTIME_VERSION = '20261103145931';
+const SW_RUNTIME_VERSION = '20261103145931';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4790,7 +4790,7 @@ const OFS_TABLE_COLS = [
   'created_at', 'updated_at',
 ];
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
-const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.slice();
+const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.slice().concat(['tipo_caixa_id']); // só leitura (relatório Pizzas e Salgados)
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
 try { console.log('[BOOT] OFS_SELECTABLE_COLS_SET size:', OFS_SELECTABLE_COLS_SET?.size); } catch (_) {}
 function _ofsSelectableHas(col) {
@@ -18970,8 +18970,8 @@ function _relNormTxt(v) {
 }
 // Base única de vendas para relatórios: mesma fonte e mesmo critério de vendedor da tela de Comissões;
 // cliente pelo id da OF (ou pelo nome, se a OF não tiver id) com o cadastro ATUAL.
-async function _relVendasBase(range) {
-  const extras = ['cli_id', 'cliId', 'cliente_id', 'clinome', 'cliNome', 'cliente_nome', 'cliente', 'vendedor_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome', 'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida'];
+async function _relVendasBase(range, maisCols) {
+  const extras = ['cli_id', 'cliId', 'cliente_id', 'clinome', 'cliNome', 'cliente_nome', 'cliente', 'vendedor_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome', 'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida'].concat(Array.isArray(maisCols) ? maisCols : []);
   let ofs = await _listarOfsVendasOficiais(range, '', extras);
   ofs = _filtrarOfsNaoTesteGlobal(ofs).filter((of) => _vendasOficialDentroDoPeriodo(of, range));
   try { ofs = await _comissoesEnriquecerLista(ofs); } catch (_) {}
@@ -19004,6 +19004,94 @@ async function _relVendasBase(range) {
   return { linhas, clientes };
 }
 function _relTopo(m) { let best = null; m.forEach((v, k) => { if (!best || v > best[1]) best = [k, v]; }); return best; }
+
+// ===== Relatório PIZZAS E SALGADOS (03/11) =====
+// Base: vendas oficiais (OFs concluídas, mesma regra das Comissões). Tipo pelo "Tipo de caixa" da OF (PIZZA / SALGADO);
+// OF sem tipo de caixa entra pela descrição do produto ("PIZZA ...", "SALGADO ..."), e o relatório informa quantas foram assim.
+const _PS_IDS = { '5b1f7136-6d8b-48c2-b9d1-2d5f3c7d6579': 'Pizza', 'f9d2e3a0-cc38-4a6e-beac-7760156e7ae8': 'Salgado' };
+function _psTipo(of) {
+  const t = _relNormTxt(of.tipo_caixa || of.tipo_caixa_nome || '');
+  if (t) { if (t.indexOf('PIZZA') >= 0) return { tipo: 'Pizza', pela: 'tipo' }; if (t.indexOf('SALGAD') >= 0) return { tipo: 'Salgado', pela: 'tipo' }; return null; }
+  const id = String(of.tipo_caixa_id || '').trim().toLowerCase();
+  if (id) return _PS_IDS[id] ? { tipo: _PS_IDS[id], pela: 'tipo' } : null;
+  const d = _relNormTxt(of.descricao || of.produto || '');
+  if (/\bPIZZA/.test(d)) return { tipo: 'Pizza', pela: 'descricao' };
+  if (/\bSALGAD/.test(d)) return { tipo: 'Salgado', pela: 'descricao' };
+  return null;
+}
+app.get('/api/relatorios/pizzas-salgados', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    const ini = String(range.inicio).slice(0, 10), fimEx = String(range.fim_exclusivo).slice(0, 10);
+    // histórico inteiro até o fim do período (para meses, clientes novos e quem parou de comprar)
+    const { linhas } = await _relVendasBase({ inicio: '2000-01-01', fim_exclusivo: fimEx }, ['tipo_caixa', 'tipo_caixa_id', 'descricao']);
+    const aliasMap = await _prodAliasMap();
+    const todas = linhas.map((l) => { const d = _vendasOficialDataRef(l.of); return Object.assign(l, { data: d, mes: d ? d.slice(0, 7) : '' }); }).filter((l) => l.data);
+    const totalEmpresaPeriodo = todas.filter((l) => l.data >= ini && l.data < fimEx).reduce((a, l) => a + l.valor, 0);
+    const ps = todas.map((l) => { const t = _psTipo(l.of); return t ? Object.assign(l, { tipo: t.tipo, pela: t.pela, produto: _prodNomePrincipal(aliasMap, String(l.of.descricao || '').trim() || 'Sem descrição') }) : null; }).filter(Boolean);
+    const noPer = ps.filter((l) => l.data >= ini && l.data < fimEx);
+    // período anterior do mesmo tamanho
+    const dIni = new Date(ini + 'T12:00:00Z'), dFim = new Date(fimEx + 'T12:00:00Z');
+    const dias = Math.max(1, Math.round((dFim - dIni) / 86400000));
+    const pIni = new Date(dIni.getTime() - dias * 86400000).toISOString().slice(0, 10);
+    const antes = ps.filter((l) => l.data >= pIni && l.data < ini);
+    const resumir = (arr) => {
+      const cli = new Set(arr.map((l) => l.cliKey));
+      const valor = arr.reduce((a, l) => a + l.valor, 0), caixas = arr.reduce((a, l) => a + l.qtd, 0);
+      return { ofs: arr.length, caixas, valor: Math.round(valor * 100) / 100, clientes: cli.size, ticket_medio: arr.length ? valor / arr.length : 0, preco_medio_caixa: caixas ? valor / caixas : 0 };
+    };
+    const porTipo = {};
+    ['Pizza', 'Salgado'].forEach((t) => { porTipo[t] = Object.assign(resumir(noPer.filter((l) => l.tipo === t)), { anterior: resumir(antes.filter((l) => l.tipo === t)) }); });
+    const total = Object.assign(resumir(noPer), { anterior: resumir(antes), pct_vendas_empresa: totalEmpresaPeriodo ? resumir(noPer).valor / totalEmpresaPeriodo * 100 : 0, pela_descricao: noPer.filter((l) => l.pela === 'descricao').length });
+    // primeira compra de cada cliente em cada tipo (para "clientes novos")
+    const primeira = new Map();
+    ps.forEach((l) => { ['Total', l.tipo].forEach((t) => { const k = t + '|' + l.cliKey; const p = primeira.get(k); if (!p || l.data < p) primeira.set(k, l.data); }); });
+    // meses: os 12 meses até o fim do período (ou todos os meses do período, se for maior)
+    const ultMes = (() => { const d = new Date(dFim.getTime() - 86400000); return d.toISOString().slice(0, 7); })();
+    const meses = [];
+    { let [y, m] = ultMes.split('-').map(Number); const iniMes = ini.slice(0, 7); for (let i = 0; i < 60; i++) { const mm = y + '-' + String(m).padStart(2, '0'); meses.unshift(mm); if (i >= 11 && mm <= iniMes) break; m--; if (!m) { m = 12; y--; } } }
+    const porMes = meses.map((mm) => {
+      const arr = ps.filter((l) => l.mes === mm);
+      const linha = { mes: mm };
+      ['Total', 'Pizza', 'Salgado'].forEach((t) => {
+        const a = t === 'Total' ? arr : arr.filter((l) => l.tipo === t);
+        const r = resumir(a);
+        const novos = new Set(a.filter((l) => String(primeira.get(t + '|' + l.cliKey) || '').slice(0, 7) === mm).map((l) => l.cliKey)).size;
+        linha[t.toLowerCase()] = { ofs: r.ofs, caixas: r.caixas, valor: r.valor, clientes: r.clientes, novos };
+      });
+      return linha;
+    });
+    // clientes no período
+    const mapaCli = new Map();
+    const ini12 = meses.length >= 12 ? meses[meses.length - 12] : meses[0];
+    ps.forEach((l) => {
+      let c = mapaCli.get(l.cliKey);
+      if (!c) { c = { nome: l.cliNome, cidade: l.cliente ? [l.cliente.cidade, l.cliente.uf].filter(Boolean).join('/') : '', vendedor: l.vendedor, tipos: new Set(), ofs: 0, caixas: 0, valor: 0, meses12: new Set(), ultima: '', ofs_total: 0, primeira: l.data }; mapaCli.set(l.cliKey, c); }
+      c.ofs_total += 1;
+      if (l.data > c.ultima) { c.ultima = l.data; c.vendedor = l.vendedor; }
+      if (l.data < c.primeira) c.primeira = l.data;
+      if (l.mes >= ini12 && l.mes <= ultMes) c.meses12.add(l.mes);
+      if (l.data >= ini && l.data < fimEx) { c.ofs += 1; c.caixas += l.qtd; c.valor += l.valor; c.tipos.add(l.tipo); }
+    });
+    const clientes = Array.from(mapaCli.values()).filter((c) => c.ofs > 0).sort((a, b) => b.valor - a.valor).map((c) => ({ nome: c.nome, cidade: c.cidade, vendedor: c.vendedor, tipos: Array.from(c.tipos).join(' + '), ofs: c.ofs, caixas: c.caixas, valor: Math.round(c.valor * 100) / 100, meses_12m: c.meses12.size, ultima: c.ultima, novo: c.primeira >= ini }));
+    // compravam nos 90 dias antes do período e não compraram no período
+    const p90 = new Date(dIni.getTime() - 90 * 86400000).toISOString().slice(0, 10);
+    const pararam = Array.from(mapaCli.values()).filter((c) => c.ofs === 0 && c.ultima >= p90 && c.ultima < ini).sort((a, b) => b.ultima.localeCompare(a.ultima)).map((c) => ({ nome: c.nome, cidade: c.cidade, vendedor: c.vendedor, ultima: c.ultima, ofs_total: c.ofs_total }));
+    // produtos, vendedores e cidades no período
+    const agrupa = (fnKey, fnExtra) => { const m = new Map(); noPer.forEach((l) => { const k = fnKey(l); let x = m.get(k); if (!x) { x = Object.assign({ nome: k, ofs: 0, caixas: 0, valor: 0, cli: new Set() }, fnExtra ? fnExtra(l) : {}); m.set(k, x); } x.ofs++; x.caixas += l.qtd; x.valor += l.valor; x.cli.add(l.cliKey); }); return Array.from(m.values()).map((x) => Object.assign(x, { clientes: x.cli.size, cli: undefined, valor: Math.round(x.valor * 100) / 100 })).sort((a, b) => b.valor - a.valor); };
+    const produtos = agrupa((l) => l.produto, (l) => ({ tipo: l.tipo })).slice(0, 60);
+    const vendedores = agrupa((l) => l.vendedor || 'Sem vendedor');
+    const cidades = agrupa((l) => (l.cliente && l.cliente.cidade) ? [l.cliente.cidade, l.cliente.uf].filter(Boolean).join('/') : 'Sem cidade no cadastro');
+    const detalhe = noPer.slice().sort((a, b) => b.data.localeCompare(a.data)).map((l) => ({ of: _assistPickOfNumber(l.of), data: l.data, cliente: l.cliNome, tipo: l.tipo, pela: l.pela, produto: l.produto, caixas: l.qtd, valor: l.valor, vendedor: l.vendedor }));
+    return res.json({ ok: true, periodo: { inicio: ini, fim_exclusivo: fimEx, anterior_inicio: pIni }, total, por_tipo: porTipo, por_mes: porMes, clientes, pararam, produtos, vendedores, cidades, detalhe,
+      criterio: 'Vendas = OFs concluídas (mesma base das Comissões). Tipo pelo campo Tipo de Caixa da OF; OFs sem tipo de caixa entram pela descrição do produto.' });
+  } catch (e) {
+    console.error('[REL][PIZZAS-SALGADOS]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 // Vendas por Cidade/Estado — mesma fonte oficial e mesmo critério de vendedor da tela de Comissões;
 // cidade/UF/ramo vêm do cadastro ATUAL do cliente.
