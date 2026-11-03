@@ -9627,7 +9627,8 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     var saveBtn = overlay.querySelector('#ccpx-save-compra');
     if (saveBtn) saveBtn.onclick = async function() {
       if (overlay.__ccpxSaveRunning) return;
-      var payload = window._compraPapelaoCollectCompraPayload(overlay, compra);
+      var payload;
+      try { payload = window._compraPapelaoCollectCompraPayload(overlay, compra); } catch (eCol) { return alert(String(eCol && eCol.message || eCol)); }
       payload.numero_compra = compra && compra.numero_compra || window._compraPapelaoNextNumeroPreview();
       if (!payload.fornecedor) return alert('Informe o fornecedor da compra.');
       if (!payload.itens.length) return alert('Adicione pelo menos um item.');
