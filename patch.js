@@ -71894,6 +71894,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function cliOf(o) { return String(o.cliNome || o.cliente || o.cliente_nome || o.clinome || '—'); }
   function prodOf(o) { return String(o.produto || o.prodDesc || o.descricao || ''); }
   function minutosPrevistos(o, maq) {
+    try { var pv0 = typeof window.dsPrevisaoTempo === 'function' ? window.dsPrevisaoTempo(o, maq) : null; if (pv0 && pv0.fonte === 'produto') return pv0.min; } catch (_) {}
     var q = qtdOf(o), v = E.vel[maq];
     if (v && v.amostras >= 2 && v.cx_hora > 0 && q > 0) return Math.max(5, Math.round(q / v.cx_hora * 60));
     try { var d = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maq) : null; var t = typeof window.calcularTempoOf === 'function' ? Number(window.calcularTempoOf(o, d)) : 0; if (t > 0) return Math.round(t); } catch (_) {}
@@ -72413,7 +72414,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (x.getAttribute('data-d') === 'nao') { dlg.remove(); return; }
       x.disabled = true; x.textContent = 'Salvando…';
       var qtd = Number(inp.value) || 0;
-      req('POST', '/api/operador/finalizar', { sessao_id: sid, quantidade: qtd })
+      req('POST', '/api/operador/finalizar', { sessao_id: sid, quantidade: qtd }).then(function (r) { try { window.dsTemposRecarregar && setTimeout(window.dsTemposRecarregar, 800); } catch (_) {} return r; })
         .then(function () { return req('POST', '/api/ofs/' + encodeURIComponent(s.of_id) + '/passou-maquina', { maquina_nome: s.maquina, maquina: s.maquina, quantidade: qtd }); })
         .then(function () {
           // próxima máquina do fluxo da OF: a OF entra na fila dela; se era a última, sai das filas (aguarda conclusão)
@@ -75448,6 +75449,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<label class="dsp-f"><span>Comprimento (mm)</span><input class="dsp-in" name="comprimento" inputmode="decimal" value="' + esc(p && p.comprimento ? String(p.comprimento) : '') + '" placeholder="Ex.: 1020"></label>'
       + '<label class="dsp-f"><span>Valor unitário (R$)</span><input class="dsp-in" name="valor_unitario" inputmode="decimal" value="' + esc(p && p.valor_unitario ? String(p.valor_unitario).replace('.', ',') : '') + '" placeholder="0,00"></label></div>'
       + '<p class="dsp-dica">Ao escolher este produto na OF, as medidas, as cores e o valor unitário já vêm preenchidos.</p>'
+      + (p && p.nome && typeof window.dsTemposHtml === 'function' ? window.dsTemposHtml(p.nome) : '')
       + (p && p.id && aliasesDe(p).length ? '<div class="dsp-f"><span>Nomes juntados neste produto (os pedidos com esses nomes contam como dele — tire um nome para separá-lo de novo)</span><div class="dsp-als"></div></div>' : '')
       + '<div class="dsp-f"><span>Cores (opcional)</span><div class="dsp-cores">' + coresDisp().map(function (c) { var on = coresDe(p).some(function (x) { return norm(x) === norm(c.nome); }); return '<button type="button" class="dsp-cor' + (on ? ' on' : '') + '" data-cor="' + esc(c.nome) + '"><i style="background:' + esc(c.hex || 'transparent') + '"></i>' + esc(c.nome) + '</button>'; }).join('') + '</div></div>'
       + '<div class="dsp-f"><span>Clientes (opcional — vazio serve para qualquer cliente)</span><div class="dsp-clis"></div><input class="dsp-in" name="cli_add" list="dsp-cli-list" placeholder="Digite o cliente e tecle Enter para adicionar" autocomplete="off"><datalist id="dsp-cli-list">' + clientes().slice(0, 3000).map(function (c) { return '<option value="' + esc(c.nome || c.rs || '') + '">'; }).join('') + '</datalist></div>'
@@ -77328,4 +77330,93 @@ window.__perTxt = function (p) {
     + '#page-clientes .cli-card button[onclick*="abrirFichaTecnicaCliente("]{display:none!important}'
     + '#page-clientes .cli-card button[onclick*="abrirPainelCliente("]{font-weight:800!important}';
   document.head.appendChild(st);
+})();
+
+
+/* ===== Tempos reais por produto e máquina (03/11) =====
+ * Vêm do Modo Operador: cada produção (início→fim, contando o acerto) com as caixas feitas.
+ * Previsão de tempo da OF: 1) média real desse produto nessa máquina (já com 1 produção);
+ * 2) média real da máquina (com 2+ produções); 3) a conta de antes (caixas/hora e setup da tela Máquinas). */
+(function () {
+  if (window.__dsTemposReais) return; window.__dsTemposReais = true;
+  var T = { prod: {}, maq: {}, aliases: {}, t: 0 };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(v) { return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function fmtMin(m) { m = Math.round(m || 0); var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? String(r).padStart(2, '0') : '') : r + ' min'; }
+  function N(v) { return (Number(v) || 0).toLocaleString('pt-BR'); }
+  function carregar() {
+    var tk = ''; try { tk = localStorage.getItem('token') || ''; } catch (_) {}
+    if (!tk) return;
+    fetch((window.API_BASE || '') + '/api/produtos-cadastro/tempos', { headers: { Authorization: 'Bearer ' + tk } }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) return;
+      var p = {}, m = {};
+      (j.produtos || []).forEach(function (x) { p[norm(x.produto) + '|' + norm(x.maquina)] = x; });
+      (j.maquinas || []).forEach(function (x) { m[norm(x.maquina)] = x; });
+      T = { prod: p, maq: m, aliases: j.aliases || {}, t: Date.now(), lista: j.produtos || [] };
+    }).catch(function () {});
+  }
+  setTimeout(carregar, 3500); setInterval(carregar, 5 * 60 * 1000);
+  window.dsTemposRecarregar = carregar;
+  function principal(nome) { var k = norm(nome); return norm(T.aliases[k] || nome); }
+  function maqDe(of, maqDados) {
+    var n = maqDados && (maqDados.nome || maqDados.col || maqDados.maquina);
+    if (n) return String(n);
+    var c = [of && of.maquina_atual, of && of.maquina, of && of.maquina_agendada].filter(Boolean);
+    if (c.length) return String(typeof c[0] === 'object' ? (c[0].nome || '') : c[0]);
+    return '';
+  }
+  // previsão em minutos para uma OF numa máquina (ou null quando não há tempo real)
+  window.dsPrevisaoTempo = function (of, maq) {
+    var q = Math.trunc(Number(of && (of.quantidade || of.qtd || of.qtd_pedida)) || 0); if (!(q > 0)) return null;
+    var mk = norm(maq); if (!mk) return null;
+    var prod = String(of && (of.descricao || of.produto || of.prodDesc) || '').trim();
+    if (prod) { var g = T.prod[principal(prod) + '|' + mk]; if (g && g.producoes >= 1 && g.media_cx_hora > 0) return { min: Math.max(1, Math.round(q / g.media_cx_hora * 60)), fonte: 'produto', producoes: g.producoes, cx_hora: g.media_cx_hora }; }
+    var m = T.maq[mk]; if (m && m.producoes >= 2 && m.media_cx_hora > 0) return { min: Math.max(1, Math.round(q / m.media_cx_hora * 60)), fonte: 'maquina', producoes: m.producoes, cx_hora: m.media_cx_hora };
+    return null;
+  };
+  // a conta de tempo usada no sistema todo passa a olhar o tempo real primeiro
+  function instalar() {
+    var f0 = window.calcularTempoOf; if (typeof f0 !== 'function' || f0.__dsReal) return;
+    var w = function (of, maqDados) {
+      try {
+        if (of && of.tempo_estimado_min && parseInt(of.tempo_estimado_min, 10) > 0) return parseInt(of.tempo_estimado_min, 10);
+        var pv = window.dsPrevisaoTempo(of, maqDe(of, maqDados));
+        if (pv) return pv.min;
+      } catch (_) {}
+      return f0.apply(this, arguments);
+    };
+    w.__dsReal = true; w.__orig = f0; window.calcularTempoOf = w;
+  }
+  instalar(); setInterval(instalar, 2000);
+  // seção no cadastro do produto
+  window.dsTemposHtml = function (nome) {
+    var k = principal(nome), l = (T.lista || []).filter(function (x) { return norm(x.produto) === k; });
+    var cab = '<div class="dsp-f dstr"><span>⏱ Tempos reais de produção <em>(do Modo Operador — usados na previsão das próximas OFs deste produto)</em></span>';
+    if (!l.length) return cab + '<div class="dstr-vazio">Ainda sem produção registrada no Modo Operador para este produto. Na primeira vez que for feito, o tempo fica salvo aqui.</div></div>';
+    return cab + '<div class="dstr-tw"><table class="dstr-t"><thead><tr><th>Máquina</th><th>Produções</th><th>Média</th><th>Melhor</th><th>Pior</th><th>Última</th></tr></thead><tbody>'
+      + l.map(function (x) {
+        var cel = function (r) { return r ? '<b>' + N(r.cx_hora) + ' cx/h</b><small>' + N(r.caixas) + ' cx em ' + fmtMin(r.minutos) + (r.of ? ' · OF ' + esc(r.of) : '') + '</small>' : '—'; };
+        return '<tr><td><b>' + esc(x.maquina) + '</b></td><td>' + x.producoes + '</td><td><b>' + N(x.media_cx_hora) + ' cx/h</b><small>~' + fmtMin(x.media_minutos) + ' por produção</small></td><td>' + cel(x.melhor) + '</td><td>' + cel(x.pior) + '</td><td>' + (x.ultima ? esc(String(x.ultima.data).split('-').reverse().join('/')) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+  };
+  // OF Rápida: mostra a previsão quando produto, quantidade e máquina estão preenchidos
+  setInterval(function () {
+    var mq = document.getElementById('of-r-maquina'); if (!mq || !mq.offsetParent) return;
+    var sel = mq.options[mq.selectedIndex]; var maq = sel && sel.value ? (sel.text || sel.value) : '';
+    var of = { descricao: (document.getElementById('of-r-produto') || {}).value || '', quantidade: (document.getElementById('of-r-qtd') || {}).value || 0 };
+    var box = document.getElementById('dsofr-prev');
+    if (!box) { box = document.createElement('div'); box.id = 'dsofr-prev'; box.style.cssText = 'margin-top:4px;font-size:12px;line-height:1.35'; var st = document.getElementById('of-r-maquina-status'); (st || mq).parentNode.insertBefore(box, st ? st.nextSibling : mq.nextSibling); }
+    var txt = '';
+    if (maq && Number(of.quantidade) > 0) {
+      var pv = window.dsPrevisaoTempo(of, maq);
+      if (pv) txt = '<span style="color:#4ade80">⏱ Previsão: <b>' + fmtMin(pv.min) + '</b> — ' + (pv.fonte === 'produto' ? 'média real deste produto nesta máquina (' + pv.producoes + ' produç' + (pv.producoes > 1 ? 'ões' : 'ão') + ', ' + N(pv.cx_hora) + ' cx/h)' : 'média real da máquina (' + N(pv.cx_hora) + ' cx/h)') + '</span>';
+      else {
+        try { var d = window.getDadosMaquina ? window.getDadosMaquina(maq) : null; var f0 = window.calcularTempoOf && window.calcularTempoOf.__orig; var t = f0 ? f0({ quantidade: of.quantidade }, d) : 0; if (t > 0) txt = '<span style="color:rgba(255,255,255,.55)">⏱ Previsão: <b>' + fmtMin(t) + '</b> — pelos dados da máquina (ainda sem tempo real deste produto)</span>'; } catch (_) {}
+      }
+    }
+    if (box.__t !== txt) { box.__t = txt; box.innerHTML = txt; }
+  }, 700);
+  var css = document.createElement('style');
+  css.textContent = '.dstr-vazio{font-size:12.5px;color:var(--text3);padding:8px 10px;border:1px dashed var(--border);border-radius:10px}.dstr-tw{overflow:auto;border:1px solid var(--border);border-radius:10px}.dstr-t{width:100%;border-collapse:collapse;font-size:12.5px}.dstr-t th{background:var(--s2);text-align:left;padding:6px 8px;font-size:11px;color:var(--text2)}.dstr-t td{padding:6px 8px;border-top:1px solid var(--border);vertical-align:top}.dstr-t small{display:block;color:var(--text3);font-size:11px}';
+  document.head.appendChild(css);
 })();

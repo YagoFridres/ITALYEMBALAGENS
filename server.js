@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103174550';
-const SW_RUNTIME_VERSION = '20261103174550';
+const PATCH_RUNTIME_VERSION = '20261103175050';
+const SW_RUNTIME_VERSION = '20261103175050';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40602,6 +40602,55 @@ app.post('/api/produtos-cadastro/mesclar', authMiddleware, async (req, res) => {
     return ok(res, salvo);
   } catch (e) { return err(res, e); }
 });
+// Tempos reais de produção por produto e máquina (03/11) — vêm do Modo Operador (producao_sessoes finalizadas).
+// Cada produção: minutos do início ao fim (inclui o acerto/setup) e caixas feitas → caixas/hora.
+// Melhor = maior caixas/hora; pior = menor; média = total de caixas ÷ total de minutos (vale já com 1 produção).
+app.get('/api/produtos-cadastro/tempos', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const sess = [];
+    for (let off = 0; off < 50000; off += 1000) {
+      const { data, error } = await supabase.from('producao_sessoes').select('of_id,of_numero,maquina,inicio,fim,minutos,quantidade,status').eq('status', 'finalizada').order('inicio', { ascending: true }).range(off, off + 999);
+      if (error) throw error;
+      if (!data || !data.length) break;
+      sess.push(...data);
+      if (data.length < 1000) break;
+    }
+    const ofIds = Array.from(new Set(sess.map((x) => String(x.of_id || '')).filter(Boolean)));
+    const ofMap = new Map();
+    for (let i = 0; i < ofIds.length; i += 200) {
+      const { data } = await supabase.from('ofs').select('id,descricao,cliente_nome,clinome').in('id', ofIds.slice(i, i + 200));
+      (data || []).forEach((o) => ofMap.set(String(o.id), o));
+    }
+    const aliasMap = await _prodAliasMap();
+    const aliases = {}; aliasMap.forEach((v, k) => { aliases[k] = v; });
+    const nMaq = (m) => _prodNorm(m);
+    const grupos = new Map(), maqs = new Map();
+    const add = (mapa, chave, base, x, cxh) => {
+      let g = mapa.get(chave);
+      if (!g) { g = Object.assign({ producoes: 0, caixas: 0, minutos: 0, melhor: null, pior: null, ultima: null }, base); mapa.set(chave, g); }
+      g.producoes += 1; g.caixas += x.qtd; g.minutos += x.min;
+      const reg = { cx_hora: Math.round(cxh), minutos: x.min, caixas: x.qtd, of: x.of, data: x.data };
+      if (!g.melhor || cxh > g.melhor.cx_hora) g.melhor = reg;
+      if (!g.pior || cxh < g.pior.cx_hora) g.pior = reg;
+      if (!g.ultima || x.data > g.ultima.data) g.ultima = reg;
+    };
+    for (const s0 of sess) {
+      const min = Number(s0.minutos) || 0, qtd = Math.trunc(Number(s0.quantidade) || 0);
+      if (!(min > 0) || !(qtd > 0) || !s0.maquina) continue;
+      const o = ofMap.get(String(s0.of_id)) || {};
+      const prod = _prodNomePrincipal(aliasMap, String(o.descricao || '').trim());
+      const x = { min, qtd, of: s0.of_numero || null, data: String(s0.fim || s0.inicio || '').slice(0, 10) };
+      const cxh = qtd / (min / 60);
+      add(maqs, nMaq(s0.maquina), { maquina: String(s0.maquina).trim() }, x, cxh);
+      if (prod) add(grupos, _prodNorm(prod) + '|' + nMaq(s0.maquina), { produto: prod, maquina: String(s0.maquina).trim() }, x, cxh);
+    }
+    const fecha = (g) => Object.assign(g, { media_cx_hora: g.minutos ? Math.round(g.caixas / (g.minutos / 60)) : 0, media_minutos: g.producoes ? Math.round(g.minutos / g.producoes) : 0 });
+    return res.json({ ok: true, criterio: 'Tempo de cada produção do Modo Operador (do início ao fim, contando o acerto). Média = total de caixas ÷ total de horas.',
+      produtos: Array.from(grupos.values()).map(fecha), maquinas: Array.from(maqs.values()).map(fecha), aliases });
+  } catch (e) { return err(res, e); }
+});
+
 // Produtos que cada cliente já pediu (a partir das OFs, sem canceladas/excluídas) — 03/11
 app.get('/api/produtos-cadastro/por-cliente', authMiddleware, async (req, res) => {
   try {
