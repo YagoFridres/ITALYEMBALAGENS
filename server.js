@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103094849';
-const SW_RUNTIME_VERSION = '20261103094849';
+const PATCH_RUNTIME_VERSION = '20261103100214';
+const SW_RUNTIME_VERSION = '20261103100214';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40436,18 +40436,65 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
 });
 
 // ===== PRODUTOS (cadastro para autocompletar "Produto / Descrição" na OF) (28/10/2026) =====
-const _PROD_CAMPOS = ['nome', 'cores', 'clientes', 'largura', 'comprimento', 'altura', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
+const _PROD_CAMPOS = ['nome', 'cores', 'clientes', 'largura', 'comprimento', 'altura', 'valor_unitario', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
 function _prodPayload(b) {
   const o = {};
   _PROD_CAMPOS.forEach((k) => { if (Object.prototype.hasOwnProperty.call(b || {}, k)) o[k] = b[k]; });
   if (o.nome != null) o.nome = String(o.nome).trim().replace(/\s+/g, ' ');
-  ['largura', 'comprimento', 'altura'].forEach((k) => { if (k in o) { const n = Number(String(o[k] ?? '').replace(',', '.')); o[k] = Number.isFinite(n) && n > 0 ? n : null; } });
+  ['largura', 'comprimento', 'altura', 'valor_unitario'].forEach((k) => { if (k in o) { const n = Number(String(o[k] ?? '').replace(',', '.')); o[k] = Number.isFinite(n) && n > 0 ? n : null; } });
   ['cliente_id', 'cliente_nome', 'observacao'].forEach((k) => { if (k in o) o[k] = String(o[k] ?? '').trim() || null; });
   if ('ativo' in o) o.ativo = o.ativo !== false && o.ativo !== 'false';
   if ('clientes' in o) o.clientes = (Array.isArray(o.clientes) ? o.clientes : []).map((c) => ({ id: c && c.id ? String(c.id) : null, nome: String(c && c.nome || c || '').trim() })).filter((c) => c.nome);
   if ('cores' in o) o.cores = (Array.isArray(o.cores) ? o.cores : String(o.cores || '').split(/\s*\+\s*|,\s*/)).map((x) => String(x && x.nome || x || '').trim()).filter(Boolean);
   return o;
 }
+// Produtos que cada cliente já pediu (a partir das OFs, sem canceladas/excluídas) — 03/11
+app.get('/api/produtos-cadastro/por-cliente', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const cid = String(req.query.cliente_id || '').trim();
+    const nome = String(req.query.cliente || '').trim();
+    if (!cid && !nome) return res.status(400).json({ ok: false, error: 'Informe o cliente' });
+    const rows = [];
+    for (let off = 0; off < 20000; off += 1000) {
+      let q = supabase.from('ofs').select('*').is('deleted_at', null).order('created_at', { ascending: false }).range(off, off + 999);
+      if (cid && nome) q = q.or('cliente_id.eq.' + cid + ',cliente_nome.ilike.' + nome.replace(/[,()]/g, ' '));
+      else if (cid) q = q.eq('cliente_id', cid);
+      else q = q.ilike('cliente_nome', nome);
+      const { data, error } = await q;
+      if (error) throw error;
+      if (!data || !data.length) break;
+      rows.push(...data);
+      if (data.length < 1000) break;
+    }
+    const mapa = new Map();
+    const num = (v) => { const n = Number(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
+    for (const o of rows) {
+      if (/^cancel/i.test(String(o.status || ''))) continue;
+      const it = Array.isArray(o.itens) && o.itens[0] && typeof o.itens[0] === 'object' ? o.itens[0] : {};
+      const prod = String(o.produto || o.prodDesc || o.descricao || it.desc || it.descricao || '').trim().replace(/\s+/g, ' ');
+      if (!prod) continue;
+      const k = prod.toUpperCase();
+      let e = mapa.get(k);
+      if (!e) {
+        let cores = o.cores_impressao || it.cores_impressao;
+        if (typeof cores === 'string') { try { cores = JSON.parse(cores); } catch (_) { cores = String(cores).split(/\s*\+\s*|,\s*/); } }
+        cores = (Array.isArray(cores) ? cores : []).map((c) => String(c && c.nome || c || '').trim()).filter((c) => c && !/sem impress/i.test(c));
+        e = { produto: prod, pedidos: 0, concluidas: 0, caixas: 0, ultimo: null, ultima_of: null,
+          largura: num(o.largura || o.dim_largura || o.caixa_largura || o.larg || it.larg || it.largura) || null, comprimento: num(o.comprimento || o.dim_comprimento || o.caixa_comprimento || o.comp || it.comp || it.comprimento) || null,
+          valor_unitario: num(o.valor_unitario || o.preco || it.vunit || it.valor_unitario) || null, cores };
+        mapa.set(k, e);
+      }
+      e.pedidos += 1;
+      if (/conclu/i.test(String(o.status || ''))) e.concluidas += 1;
+      e.caixas += Math.max(0, Math.trunc(num(o.qtd_produzida || o.qtd || o.quantidade)));
+      const d = String(o.data_conclusao || o.dia || o.created_at || '').slice(0, 10);
+      if (d && (!e.ultimo || d > e.ultimo)) { e.ultimo = d; e.ultima_of = o.of || o.numero || null; }
+    }
+    const lista = Array.from(mapa.values()).sort((a, b) => b.pedidos - a.pedidos || String(b.ultimo || '').localeCompare(String(a.ultimo || '')));
+    return res.json({ ok: true, total_ofs: rows.length, produtos: lista });
+  } catch (e) { return err(res, e); }
+});
 app.get('/api/produtos-cadastro', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
