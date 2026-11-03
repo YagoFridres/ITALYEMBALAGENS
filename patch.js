@@ -9096,6 +9096,9 @@ window._compraPapelaoCompraFullscreenBodyHtml = function(compra) {
     + '<div class="ccpx-fs-section">'
     + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Dados da Compra</div><div class="ccpx-fs-section-sub">Cabeçalho compacto para fornecedor, pasta e referência do pedido. O foco visual fica nos itens da planilha logo abaixo.</div></div></div>'
     + '  <div class="ccpx-fs-head-grid">'
+    + '    <div class="ccpx-modal-inline-stack full ccpx-emp-wrap"><label>Empresa da compra <b style="color:#ef4444">*</b></label><div class="ccpx-emp-seg" id="ccpx-empresa" data-val="' + window._compraPapelaoAttr(compra && compra.id ? empId : '') + '">'
+    +        window._compraPapelaoEmpresasBase().map(function(e) { var u = String(e && e.uuid || ''); return '<button type="button" data-emp="' + window._compraPapelaoAttr(u) + '" class="' + (compra && compra.id && u === empId ? 'on' : '') + '">' + window._compraPapelaoEsc(window._compraPapelaoEmpresaNome(u)) + '</button>'; }).join('')
+    + '    </div><small class="ccpx-emp-dica">Por qual empresa esta compra está sendo feita? Sai no pedido impresso e no e-mail.</small></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
@@ -9125,7 +9128,15 @@ window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
     + '</div>';
 };
 window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
-  var empId = String(window._compraPapelaoCurrentEmpId() || compra && compra._emp_id_consulta || window._compraPapelaoEmpresaCriacaoUuid() || '');
+  var segEmp = overlay && overlay.querySelector ? overlay.querySelector('#ccpx-empresa') : null;
+  var empEscolhida = segEmp ? String(segEmp.getAttribute('data-val') || '').trim() : '';
+  if (segEmp && !empEscolhida) {
+    try { segEmp.classList.add('erro'); segEmp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+    var errEmp = new Error('Escolha por qual empresa a compra está sendo feita (Italy Embalagens, Cartoeste ou Oestepack).');
+    try { alert(errEmp.message); } catch (_) {}
+    throw errEmp;
+  }
+  var empId = String(empEscolhida || compra && (compra.emp_id || compra._emp_id_consulta) || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var fornManual = String((overlay.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim();
   var fornecedor = fornManual;
   var itens = window._compraPapelaoCollectModalRows(overlay).map(function(item) {
@@ -9150,6 +9161,7 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
     pasta_id: String((overlay.querySelector('#ccpx-pasta') || {}).value || '').trim() || null,
     observacao: String((overlay.querySelector('#ccpx-obs') || {}).value || '').trim(),
     emp_id: empId,
+    empresa_escolhida: !!empEscolhida,
     data_compra: String((overlay.querySelector('#ccpx-data-compra') || {}).value || '').trim(),
     itens: itens
   };
@@ -9265,15 +9277,16 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     area: (Array.isArray(data.itens) ? data.itens : []).reduce(function(acc, item) { return acc + window._compraPapelaoDeriveItem(item).area_m2; }, 0),
     valor: (Array.isArray(data.itens) ? data.itens : []).reduce(function(acc, item) { return acc + window._compraPapelaoDeriveItem(item).valor_total; }, 0)
   };
-  var empresa = window._compraPapelaoEmpresaNome(data && data._emp_id_consulta || '');
+  var empIdCompra = String((payload && payload.emp_id) || (compra && (compra.emp_id || compra._emp_id_consulta)) || data && data._emp_id_consulta || '').trim();
+  var empresa = window._compraPapelaoEmpresaNome(empIdCompra);
   var empresaInfo = (function(){
+    // 03/11: dados reais vêm do cadastro de empresas (tabela empresas); nada inventado.
     var nome = String(empresa || 'Italy Embalagens').trim();
-    var telefone = '(18) 3221-0000';
-    var endereco = 'Rodovia Raposo Tavares, km 570 — Bairro Industrial';
-    var cidade = 'Assis / SP';
-    if (/cart(o|ô)este/i.test(nome)) { endereco = 'Av. Castelo Branco, s/n — Centro'; cidade = 'Assis / SP'; telefone = '(18) 3222-0000'; }
-    else if (/oestepack/i.test(nome)) { endereco = 'Rua Bahia, 1500 — Industrial'; cidade = 'Maracaí / SP'; telefone = '(18) 3266-0000'; }
-    return { nome: nome, telefone: telefone, endereco: endereco, cidade: cidade };
+    var info = null;
+    try { info = (window.__dsEmpInfo || []).find(function(e) { return String(e.id) === empIdCompra || String(e.codigo || '').toUpperCase() === empIdCompra.toUpperCase() || String(e.nome || '').toLowerCase() === nome.toLowerCase(); }) || null; } catch (_) {}
+    var cidade = info ? [info.cidade, info.uf].filter(Boolean).join(' / ') : '';
+    var linhaEnd = info ? [info.endereco, info.cep ? 'CEP ' + info.cep : '', cidade].filter(Boolean).join(' · ') : '';
+    return { nome: (info && info.razao_social) || (info && info.nome) || nome, fantasia: (info && info.nome) || nome, cnpj: info && info.cnpj || '', telefone: info && info.telefone || '', endereco: linhaEnd, cidade: cidade };
   })();
   var rowsHtml = (Array.isArray(data.itens) ? data.itens : []).map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
@@ -9326,6 +9339,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '.sheet{padding:16mm 12mm;display:grid;gap:14px;position:relative}'
     + '.header{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#1d4ed8 100%);color:#fff;padding:14px 18px;border-radius:14px 14px 4px 4px;display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:stretch;box-shadow:0 2px 14px rgba(30,64,175,.22)}'
     + '.header .brand-mark{display:flex;align-items:center;gap:12px}'
+    + '.header .brand-logo-img{background:#fff;border-radius:12px;padding:8px 12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}.header .brand-logo-img img{height:52px;width:auto;display:block}'
+    + '.header .brand-title .emp{margin:4px 0 0 0;font-size:13px;font-weight:800;color:#fff;letter-spacing:.02em}'
     + '.header .brand-logo{width:44px;height:44px;border-radius:12px;background:#fff;color:#1e3a8a;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:1000;letter-spacing:.04em;box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}'
     + '.header .brand-title h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.02em}'
     + '.header .brand-title p{margin:4px 0 0 0;font-size:12px;color:#dbeafe;letter-spacing:.02em;line-height:1.45}'
@@ -9362,8 +9377,10 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '@media screen{ .sheet{max-width:1400px;margin:0 auto} }'
     + '</style></head><body><div class="sheet">'
     + '<div class="header">'
-    + '  <div class="brand-mark"><div class="brand-logo">' + window._compraPapelaoEsc(String(empresaInfo.nome || 'I').trim().charAt(0).toUpperCase()) + '</div>'
-    + '    <div class="brand-title"><h1>PEDIDO DE CHAPAS DE PAPELÃO</h1><p>' + window._compraPapelaoEsc(empresaInfo.endereco) + ' · ' + window._compraPapelaoEsc(empresaInfo.cidade) + ' · Tel. ' + window._compraPapelaoEsc(empresaInfo.telefone) + '</p></div>'
+    + '  <div class="brand-mark"><div class="brand-logo-img"><img alt="Italy Embalagens" src="' + window._compraPapelaoEsc((location.origin || '') + '/logo-italy.png') + '"></div>'
+    + '    <div class="brand-title"><h1>PEDIDO DE CHAPAS DE PAPELÃO</h1>'
+    + '<p class="emp">' + window._compraPapelaoEsc(empresaInfo.nome) + (empresaInfo.cnpj ? ' · CNPJ ' + window._compraPapelaoEsc(empresaInfo.cnpj) : '') + '</p>'
+    + '<p>' + window._compraPapelaoEsc([empresaInfo.endereco, empresaInfo.telefone ? 'Tel. ' + empresaInfo.telefone : ''].filter(Boolean).join(' · ')) + '</p></div>'
     + '  </div>'
     + '  <div class="infos">'
     + '    <div class="info"><div class="lbl">Nº Pedido</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</div></div>'
@@ -76715,4 +76732,38 @@ window.__perTxt = function (p) {
     };
     render();
   };
+})();
+
+
+/* ===== Compra de papelão: empresa da compra + dados das empresas na impressão (03/11) ===== */
+(function () {
+  if (window.__dsCmpEmp) return; window.__dsCmpEmp = true;
+  function carregarEmp() {
+    try {
+      fetch((window.API_BASE || '') + '/api/empresas-info', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } })
+        .then(function (r) { return r.json(); }).then(function (j) { if (j && Array.isArray(j.empresas)) window.__dsEmpInfo = j.empresas; }).catch(function () {});
+    } catch (_) {}
+  }
+  setTimeout(carregarEmp, 3000); setInterval(function () { if (!window.__dsEmpInfo) carregarEmp(); }, 15000);
+  window.dsRecarregarEmpresasInfo = carregarEmp;
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#ccpx-empresa button[data-emp]'); if (!b) return;
+    e.preventDefault();
+    var seg = b.parentNode, u = b.getAttribute('data-emp');
+    seg.setAttribute('data-val', u); seg.classList.remove('erro');
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
+    // pastas são por empresa: recarrega a lista de pastas da empresa escolhida
+    try {
+      var sel = document.getElementById('ccpx-pasta');
+      if (sel && typeof window._compraPapelaoFolderOptionsHtml === 'function') {
+        var atual = sel.value;
+        sel.innerHTML = window._compraPapelaoFolderOptionsHtml(atual, u);
+        if (!Array.prototype.some.call(sel.options, function (o) { return o.value === atual; })) sel.value = '';
+      }
+    } catch (_) {}
+  });
+  var st = document.createElement('style');
+  st.textContent = '.ccpx-emp-seg{display:flex;gap:8px;flex-wrap:wrap}.ccpx-emp-seg button{flex:1;min-width:120px;min-height:42px;border-radius:10px;border:1.5px solid var(--b2,#334155);background:transparent;color:var(--text2,#94a3b8);font:inherit;font-weight:800;font-size:14px;cursor:pointer}'
+    + '.ccpx-emp-seg button.on{border-color:#22c55e;background:rgba(34,197,94,.15);color:#4ade80}.ccpx-emp-seg.erro button{border-color:#ef4444}.ccpx-emp-dica{font-size:11.5px;color:var(--text3,#64748b)}';
+  document.head.appendChild(st);
 })();

@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103093422';
-const SW_RUNTIME_VERSION = '20261103093422';
+const PATCH_RUNTIME_VERSION = '20261103093659';
+const SW_RUNTIME_VERSION = '20261103093659';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30220,6 +30220,16 @@ app.get('/api/compras-chapas/relatorios/checklist-recebimento', authMiddleware, 
   }
 });
 
+// Dados cadastrais das empresas do grupo (razão social, CNPJ, endereço) para impressões. 03/11
+app.get('/api/empresas-info', authMiddleware, async (req, res) => {
+  try {
+    let { data, error } = await supabase.from('empresas').select('id,nome,codigo,sigla,cnpj,cidade,uf,razao_social,endereco,cep,telefone,email').order('codigo');
+    if (error) ({ data, error } = await supabase.from('empresas').select('id,nome,codigo,sigla,cnpj,cidade,uf').order('codigo'));
+    if (error) throw error;
+    res.json({ ok: true, empresas: data || [] });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+});
+
 app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
   try {
     const empInfo = await _comprasChapasResolveEmpId(req);
@@ -30568,7 +30578,9 @@ app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
     try { console.log('[CMP-SAVE] id=' + id + ' numero=' + String(atual.numero_compra || atual.numero || '?') + ' etapa=' + etapa + ' body_keys=' + Object.keys(body).join(',')); } catch (_) {}
     etapa = 'resolve_emp';
     const empInfo = await _comprasChapasResolveEmpId(req, body);
-    const empId = _comprasChapasStr(atual.emp_id || empInfo.empId);
+    // 03/11: a empresa da compra é escolhida na tela; quando vem escolhida, ela vale (antes ficava sempre a de quando foi criada).
+    const empEscolhida = body.empresa_escolhida === true || body.empresa_escolhida === 'true' || body.empresa_escolhida === 1;
+    const empId = _comprasChapasStr((empEscolhida && empInfo.empId) || atual.emp_id || empInfo.empId);
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || body.emp_id || body.empId) });
     const hasPasta = Object.prototype.hasOwnProperty.call(body, 'pasta_id');
     const pastaId = hasPasta ? (body.pasta_id ? _comprasChapasStr(body.pasta_id) : null) : (_comprasChapasStr(atual.pasta_id) || null);
