@@ -9376,7 +9376,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '@media screen{ .sheet{max-width:1400px;margin:0 auto} }'
     + '</style></head><body><div class="sheet">'
     + '<div class="header">'
-    + '  <div class="brand-mark"><div class="brand-logo-img"><img alt="Italy Embalagens" src="' + window._compraPapelaoEsc((location.origin || '') + '/logo-italy.png') + '"></div>'
+    + '  <div class="brand-mark">'
     + '    <div class="brand-title"><h1>PEDIDO DE CHAPAS DE PAPELÃO</h1>'
     + '<p class="emp">' + window._compraPapelaoEsc(empresaInfo.nome) + (empresaInfo.cnpj ? ' · CNPJ ' + window._compraPapelaoEsc(empresaInfo.cnpj) : '') + '</p>'
     + '<p>' + window._compraPapelaoEsc([empresaInfo.endereco, empresaInfo.telefone ? 'Tel. ' + empresaInfo.telefone : ''].filter(Boolean).join(' · ')) + '</p></div>'
