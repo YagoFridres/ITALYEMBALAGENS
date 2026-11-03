@@ -77357,6 +77357,18 @@ window.__perTxt = function (p) {
   }
   setTimeout(carregar, 3500); setInterval(carregar, 5 * 60 * 1000);
   window.dsTemposRecarregar = carregar;
+  // 03/11: os dados da tela Máquinas (caixas/hora, setup) só eram carregados ao abrir "OFs por Máquina";
+  // no resto do sistema a conta caía no padrão (500 cx/h + 15 min). Agora carregam ao abrir o sistema e se atualizam.
+  function garantirMaquinas(forcar) {
+    try {
+      if (typeof carregarDadosMaquinas !== 'function') return;
+      var c = window._cacheMaquinas, vazio = !c || typeof c !== 'object' || !Object.keys(c).length;
+      if (forcar || vazio) carregarDadosMaquinas(true);
+    } catch (_) {}
+  }
+  setTimeout(function () { garantirMaquinas(true); }, 4000);
+  setInterval(function () { garantirMaquinas(false); }, 30 * 1000);
+  setInterval(function () { garantirMaquinas(true); }, 10 * 60 * 1000);
   function principal(nome) { var k = norm(nome); return norm(T.aliases[k] || nome); }
   function maqDe(of, maqDados) {
     var n = maqDados && (maqDados.nome || maqDados.col || maqDados.maquina);
