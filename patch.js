@@ -74995,7 +74995,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!itens.length) itens = [{ nome: 'Item 1', tipo: String(p.tipo || '201'), comp: has(p.comp) ? p.comp : (o.medidas || '').split('x')[0] || 300, larg: has(p.larg) ? p.larg : (o.medidas || '').split('x')[1] || 200, alt: has(p.alt) ? p.alt : (o.medidas || '').split('x')[2] || 100, qtd: has(p.qtd) ? p.qtd : (o.quantidade || 1000), sob: p.sob || 0, enc: p.enc || 0 }];
     var cn = String(o.cliente_nome || '').trim(); if (/selecione/i.test(cn)) cn = '';
     return { id: o.id || null, numero: o.numero_orcamento || '', cliente_id: o.cliente_id || '', cliente_nome: cn, nome: o.nome || o.nome_orcamento || '', pasta_id: o.pasta_id || '', status: o.status || 'Rascunho',
-      chapa: String(o.chapa_utilizada || p.chapa_utilizada || p.chapaUtilizada || '').trim(), chapa_id: p.chapa_id || '', obs: p.observacoes_orc || o.observacoes || '',
+      chapa: String(o.chapa_utilizada || p.chapa_utilizada || p.chapaUtilizada || '').trim(), chapa_interno: String(p.chapa_interno || '').trim(), chapa_id: p.chapa_id || '', obs: p.observacoes_orc || o.observacoes || '',
       ondas: ONDAS.filter(function (x) { return ondas.indexOf(x) >= 0; }), imp: ONDAS.filter(function (x) { return imp.indexOf(x) >= 0; }),
       vals: { vb: pv('vb', PAD.vb), vc: pv('vc', PAD.vc), vbc: pv('vbc', PAD.vbc) },
       par: { cf: pv('cf', PAD.cf), mg: pv('mg', PAD.mg), cvend: has(p.cvend) ? n(p.cvend) : pv('cv', PAD.cvend), imp: pv('imp', PAD.imp), vkm: pv('vkm', PAD.vkm), km: pv('km', PAD.km) },
@@ -75004,7 +75004,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function ultimosParametros() { try { return JSON.parse(localStorage.getItem('ds_orc_param') || 'null'); } catch (_) { return null; } }
   function novoEstado(ondas) {
     var u = ultimosParametros() || {};
-    return { id: null, numero: '', cliente_id: '', cliente_nome: '', nome: '', pasta_id: '', status: 'Rascunho', chapa: '', chapa_id: '', obs: '', ondas: ondas, imp: ondas.slice(),
+    return { id: null, numero: '', cliente_id: '', cliente_nome: '', nome: '', pasta_id: '', status: 'Rascunho', chapa: '', chapa_interno: '', chapa_id: '', obs: '', ondas: ondas, imp: ondas.slice(),
       vals: { vb: has(u.vb) ? u.vb : PAD.vb, vc: has(u.vc) ? u.vc : PAD.vc, vbc: has(u.vbc) ? u.vbc : PAD.vbc },
       par: { cf: has(u.cf) ? u.cf : PAD.cf, mg: has(u.mg) ? u.mg : PAD.mg, cvend: has(u.cvend) ? u.cvend : PAD.cvend, imp: has(u.imp) ? u.imp : PAD.imp, vkm: has(u.vkm) ? u.vkm : PAD.vkm, km: has(u.km) ? u.km : PAD.km },
       itens: [{ nome: 'Item 1', tipo: '201', comp: '', larg: '', alt: '', qtd: 1000, sob: 0, enc: 0 }] };
@@ -75053,7 +75053,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<div class="doe-bloco"><div class="doe-g doe-g2">'
       + '<label class="doe-f doe-rel"><span>Cliente</span><input class="doe-in" data-k="cliente_nome" value="' + esc(E.cliente_nome) + '" placeholder="Digite o nome do cliente" autocomplete="off"><div class="doe-sug" data-sug="cli" hidden></div></label>'
       + '<label class="doe-f"><span>Nome do orçamento</span><input class="doe-in" data-k="nome" value="' + esc(E.nome) + '" placeholder="Ex.: Caixa Ripke reforçada"></label>'
-      + '<label class="doe-f doe-rel"><span>Papelão utilizado <em>(escreva livre ou digite para buscar no estoque — sai na impressão)</em></span><input class="doe-in" data-k="chapa" value="' + esc(E.chapa) + '" placeholder="Ex.: AB21, chab21, Adami 1660x2620…" autocomplete="off"><div class="doe-sug" data-sug="chapa" hidden></div><small class="doe-dica" data-chapa-dica>' + (E.chapa_id ? '✓ Chapa do estoque' : (E.chapa ? 'Texto livre' : 'Uso interno — não sai na impressão')) + '</small></label>'
+      + '<label class="doe-f"><span>Papelão utilizado <em>(sai na impressão)</em></span><input class="doe-in" data-k="chapa" value="' + esc(E.chapa) + '" placeholder="Ex.: DUPLO KRAFT" autocomplete="off"></label>'
+      + '<label class="doe-f doe-rel"><span>Papelão de uso interno <em>(não sai na impressão — digite para buscar no estoque)</em></span><input class="doe-in" data-k="chapa_interno" value="' + esc(E.chapa_interno) + '" placeholder="Ex.: chab21, AB21, Adami 1660x2620…" autocomplete="off"><div class="doe-sug" data-sug="chapa" hidden></div><small class="doe-dica" data-chapa-dica>' + (E.chapa_id ? '✓ Chapa do estoque' : (E.chapa_interno ? 'Texto livre' : 'Só para uso interno')) + '</small></label>'
       + '<label class="doe-f"><span>Pasta</span><select class="doe-in" data-k="pasta_id"><option value="">Sem pasta</option>' + pastas.map(function (p) { return '<option value="' + esc(p.id) + '"' + (String(p.id) === String(E.pasta_id) ? ' selected' : '') + '>' + esc(p.nome) + '</option>'; }).join('') + '</select></label>'
       + '</div></div>'
       + '<div class="doe-bloco doe-ondas"><div><b>Ondas do orçamento</b><div class="doe-chips">' + chips(E.ondas, 'data-oo') + '</div></div><div><b>Vão para a impressão</b><div class="doe-chips" data-imp-chips>' + chips(E.imp, 'data-oi', E.ondas) + '</div></div></div>'
@@ -75122,9 +75123,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         var q = norm(t.value), l = q ? clientes().filter(function (c) { return norm(nomeCli(c)).indexOf(q) >= 0; }).slice(0, 12) : [];
         sugestoes(ov.querySelector('[data-sug="cli"]'), l.map(function (c) { return { t: nomeCli(c), s: [c.cidade, c.uf].filter(Boolean).join(' / '), c: c }; }), function (x) { E.cliente_id = x.c.id; E.cliente_nome = x.t; t.value = x.t; });
       }
-      if (k === 'chapa') {
-        E.chapa_id = ''; var d = ov.querySelector('[data-chapa-dica]'); if (d) d.textContent = t.value ? 'Texto livre (ou escolha uma chapa da lista)' : 'Uso interno — não sai na impressão';
-        carregarChapas().then(function () { if (t.value !== E.chapa) return; sugestoes(ov.querySelector('[data-sug="chapa"]'), buscarChapas(t.value).map(function (c) { return { t: c.lbl, s: 'Estoque: ' + N(c.q, 0) + ' chapas', c: c }; }), function (x) { E.chapa = x.t; E.chapa_id = x.c.id; t.value = x.t; if (d) d.textContent = '✓ Chapa do estoque'; }); });
+      if (k === 'chapa_interno') {
+        E.chapa_id = ''; var d = ov.querySelector('[data-chapa-dica]'); if (d) d.textContent = t.value ? 'Texto livre (ou escolha uma chapa da lista)' : 'Só para uso interno';
+        carregarChapas().then(function () { if (t.value !== E.chapa_interno) return; sugestoes(ov.querySelector('[data-sug="chapa"]'), buscarChapas(t.value).map(function (c) { return { t: c.lbl, s: 'Estoque: ' + N(c.q, 0) + ' chapas', c: c }; }), function (x) { E.chapa_interno = x.t; E.chapa_id = x.c.id; t.value = x.t; if (d) d.textContent = '✓ Chapa do estoque'; }); });
       }
     });
     ov.addEventListener('focusout', function (e) { var s = e.target.parentNode && e.target.parentNode.querySelector && e.target.parentNode.querySelector('.doe-sug'); if (s) setTimeout(function () { s.hidden = true; }, 150); });
@@ -75141,7 +75142,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         area: rp.area || 0, bruto: rp.bruto || 0, liquida: rp.liquida || 0, comFrete: rp.comFrete || 0, frete: rp.frete || 0, valor_unitario: rp.vunit || 0, valor_total: rp.comFrete || 0, valor_sem_frete: rp.liquida || 0, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '' };
     });
     var p0 = blocos[0].parametros, tp = c.tot[princ] || { subtotal: 0, frete: c.frete, total: c.frete };
-    var parametros = Object.assign({}, p0, { itens: blocos, ondas_orcamento: E.ondas.slice(), ondas_impressao: E.imp.slice(), onda_principal: princ, chapa_utilizada: E.chapa || undefined, chapaUtilizada: E.chapa || undefined, chapa_id: E.chapa_id || null, observacoes_orc: E.obs || '', totais: c.tot, editor: 'ds-2026-10' });
+    var parametros = Object.assign({}, p0, { itens: blocos, ondas_orcamento: E.ondas.slice(), ondas_impressao: E.imp.slice(), onda_principal: princ, chapa_utilizada: E.chapa || undefined, chapaUtilizada: E.chapa || undefined, chapa_id: E.chapa_id || null, chapa_interno: E.chapa_interno || '', observacoes_orc: E.obs || '', totais: c.tot, editor: 'ds-2026-10' });
     if (!E.chapa) { delete parametros.chapa_utilizada; delete parametros.chapaUtilizada; }
     var emp = ''; try { emp = String((window.CURRENT_USER || {}).emp_id || window.EMP_FILTRO || ''); } catch (_) {}
     return { id: E.id, numero_orcamento: E.numero, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '', nome: E.nome || '', nome_orcamento: E.nome || '', pasta_id: E.pasta_id || null,
@@ -75208,7 +75209,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var data = new Date().toLocaleDateString('pt-BR');
     var linhas = (pl.itens || []).map(function (b) {
       return imp.map(function (o) { var r = (b.resultados || []).filter(function (x) { return x.onda === o; })[0]; if (!r) return '';
-        return '<tr><td>' + esc(b.nome_item || '') + '<small>' + esc(b.tipo_nome || nomeTipo(b.tipo)) + '</small></td><td>' + esc(b.medidas) + ' mm</td><td class="c">' + o + '</td><td class="r">' + N(b.quantidade, 0) + '</td><td class="r">' + R(r.vunit, 4) + '</td></tr>'; }).join('');
+        return '<tr><td>' + esc(b.nome_item || '') + '<small>' + esc(b.tipo_nome || nomeTipo(b.tipo)) + '</small></td><td>' + esc(b.medidas) + ' mm</td><td class="c">' + o + '</td><td class="r">' + N(b.quantidade, 0) + '</td><td class="r">' + R(r.vunit, 2) + '</td></tr>'; }).join('');
     }).join('');
     var tots = imp.map(function (o) { var t = tot[o]; if (!t) return ''; return '<tr><td>Onda ' + o + '</td><td class="r">' + R(t.subtotal) + '</td><td class="r">' + R(t.frete) + '</td><td class="r"><b>' + R(t.total) + '</b></td></tr>'; }).join('');
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>Orçamento ' + esc(pl.numero_orcamento || '') + '</title><style>@page{size:A4;margin:14mm}body{font:12px/1.45 Arial,Helvetica,sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0}header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:14px}.meta b{display:inline-block;min-width:70px;color:#555;font-weight:600}table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{border:1px solid #bbb;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee;font-size:11px}td small{display:block;color:#666;font-size:10.5px}.r{text-align:right;white-space:nowrap}.c{text-align:center}h2{font-size:13px;margin:16px 0 6px}.obs{white-space:pre-wrap;border:1px solid #bbb;padding:8px}footer{margin-top:28px;color:#666;font-size:10.5px}</style></head><body>'
