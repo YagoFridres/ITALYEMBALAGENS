@@ -3014,6 +3014,12 @@ try {
   // 03/11: Pizzas e Salgados
   async function rrReportPizzasSalgados() {
     var ref = rrCurrentRange();
+    // 03/11: com período de dia/semana/mês, este relatório usa os 12 meses até o fim desse período (um mês sozinho mostra pouco)
+    if (ref.periodo !== 'ano' && ref.periodo !== 'personalizado') {
+      var fimD = new Date(ref.data_fim + 'T12:00:00'), iniD = new Date(fimD.getFullYear(), fimD.getMonth() - 11, 1);
+      var nm = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      ref = Object.assign({}, ref, { data_inicio: iniD.getFullYear() + '-' + String(iniD.getMonth() + 1).padStart(2, '0') + '-01', titulo: 'Últimos 12 meses (' + nm[iniD.getMonth()] + '/' + String(iniD.getFullYear()).slice(2) + ' a ' + nm[fimD.getMonth()] + '/' + String(fimD.getFullYear()).slice(2) + ')' });
+    }
     var j = await rrFetchJson('/api/relatorios/pizzas-salgados?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
     var T = j.total || {}, PT = (j.por_tipo || {}).Pizza || {}, ST = (j.por_tipo || {}).Salgado || {};
     var M = function (v) { return rrFmtMoney(v || 0); }, Nn = function (v, d) { return rrFmtNum(v || 0, d || 0); };
@@ -3037,7 +3043,7 @@ try {
       summaryRows: [linhaTipo('🍕 Pizza', PT), linhaTipo('🥟 Salgado', ST), linhaTipo('Total', T)],
       detailSections: [
         { title: 'Mês a mês (valor, caixas e clientes)', headers: ['Mês', 'Pizza R$', 'Pizza cx', 'Pizza clientes', 'Salgado R$', 'Salgado cx', 'Salgado clientes', 'Total R$', 'Total clientes', 'Clientes novos'],
-          rows: (j.por_mes || []).map(function (m) { return [mesTxt(m.mes), M(m.pizza.valor), Nn(m.pizza.caixas), Nn(m.pizza.clientes), M(m.salgado.valor), Nn(m.salgado.caixas), Nn(m.salgado.clientes), '<b>' + M(m.total.valor) + '</b>', '<b>' + Nn(m.total.clientes) + '</b>', Nn(m.total.novos)]; }) },
+          rows: (function () { var ms = (j.por_mes || []).slice(); while (ms.length > 1 && !(ms[0].total.ofs > 0)) ms.shift(); return ms; })().map(function (m) { return [mesTxt(m.mes), M(m.pizza.valor), Nn(m.pizza.caixas), Nn(m.pizza.clientes), M(m.salgado.valor), Nn(m.salgado.caixas), Nn(m.salgado.clientes), '<b>' + M(m.total.valor) + '</b>', '<b>' + Nn(m.total.clientes) + '</b>', Nn(m.total.novos)]; }) },
         { title: 'Clientes que compraram no período', headers: ['Cliente', 'Cidade', 'Tipo', 'OFs', 'Caixas', 'Valor', 'Meses c/ compra (12m)', 'Última compra', 'Vendedor'],
           rows: (j.clientes || []).map(function (c) { return [rrEsc(c.nome) + (c.novo ? ' <b style="color:#16a34a">(novo)</b>' : ''), rrEsc(c.cidade || '—'), rrEsc(c.tipos), Nn(c.ofs), Nn(c.caixas), M(c.valor), Nn(c.meses_12m) + ' de 12', dt(c.ultima), rrEsc(c.vendedor || '—')]; }) },
         { title: 'Compravam e não compraram no período (última compra nos 90 dias antes)', headers: ['Cliente', 'Cidade', 'Última compra', 'OFs no histórico', 'Vendedor'],
