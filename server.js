@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103090448';
-const SW_RUNTIME_VERSION = '20261103090448';
+const PATCH_RUNTIME_VERSION = '20261103090737';
+const SW_RUNTIME_VERSION = '20261103090737';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -20062,6 +20062,53 @@ app.get('/api/chapas_estoque/alertas_reposicao', authMiddleware, async (req, res
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // VENDEDORES
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Clientes de cada vendedor com a frequência de compra (03/11). Compras = OFs concluídas (mesma base oficial das Comissões).
+// Recorrente = comprou em 3 ou mais meses diferentes nos últimos 12 meses.
+app.get('/api/vendedores/clientes', authMiddleware, async (req, res) => {
+  try {
+    const hoje = new Date(Date.now() - 3 * 3600 * 1000);
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const ini24 = new Date(hoje); ini24.setUTCMonth(ini24.getUTCMonth() - 24);
+    const ini12 = new Date(hoje); ini12.setUTCMonth(ini12.getUTCMonth() - 12);
+    const fimEx = new Date(hoje); fimEx.setUTCDate(fimEx.getUTCDate() + 1);
+    const range = { inicio: iso(ini24), fim_exclusivo: iso(fimEx) };
+    const corte12 = iso(ini12);
+    const clientes = [];
+    for (let off = 0; off < 20000; off += 1000) {
+      const { data, error } = await supabase.from('clientes').select('id,nome,cidade,uf,vendedor_id').order('nome').range(off, off + 999);
+      if (error) throw error;
+      if (!Array.isArray(data) || !data.length) break;
+      clientes.push(...data);
+      if (data.length < 1000) break;
+    }
+    const porId = new Map(clientes.map((c) => [String(c.id), c]));
+    const porNome = new Map();
+    clientes.forEach((c) => { const n = _relNormTxt(c.nome); if (!n) return; porNome.set(n, porNome.has(n) ? null : c); });
+    let ofs = await _listarOfsVendasOficiais(range, '', ['cli_id', 'cliId', 'cliente_id', 'clinome', 'cliNome', 'cliente_nome']);
+    ofs = _filtrarOfsNaoTesteGlobal(ofs);
+    const est = new Map();
+    for (const of of ofs) {
+      const cid = String(of.cliente_id || of.cli_id || of.cliId || '').trim();
+      let c = cid ? porId.get(cid) : null;
+      if (!c) c = porNome.get(_relNormTxt(of.cliente_nome || of.clinome || of.cliNome || '')) || null;
+      if (!c) continue;
+      const d = _vendasOficialDataRef(of); if (!d) continue;
+      let e = est.get(String(c.id)); if (!e) { e = { ult: '', n12: 0, meses: new Set(), n24: 0 }; est.set(String(c.id), e); }
+      e.n24 += 1;
+      if (d > e.ult) e.ult = d;
+      if (d >= corte12) { e.n12 += 1; e.meses.add(d.slice(0, 7)); }
+    }
+    const lista = clientes.filter((c) => c.vendedor_id).map((c) => {
+      const e = est.get(String(c.id)) || { ult: '', n12: 0, meses: new Set(), n24: 0 };
+      const dias = e.ult ? Math.round((Date.parse(iso(hoje)) - Date.parse(e.ult)) / 86400000) : null;
+      return { id: c.id, nome: c.nome, cidade: c.cidade || '', uf: c.uf || '', vendedor_id: c.vendedor_id, compras_12m: e.n12, meses_12m: e.meses.size, compras_24m: e.n24, ultima_compra: e.ult || null, dias_sem_comprar: dias, recorrente: e.meses.size >= 3 };
+    });
+    res.json({ ok: true, criterio: 'Recorrente = comprou em 3 ou mais meses diferentes nos últimos 12 meses (OFs concluídas).', sem_vendedor: clientes.filter((c) => !c.vendedor_id).length, clientes: lista });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e && e.message || e) });
+  }
+});
+
 app.get('/api/vendedores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';

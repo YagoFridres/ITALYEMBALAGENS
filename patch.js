@@ -73975,8 +73975,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // 28/10: sem agenda de visitas nesta área (filtros do topo e quadro da agenda escondidos)
   try { var stV = document.createElement('style'); stV.textContent = '#page-vendedores > .ptoolbar{display:none!important}#page-vendedores .page-body > #ag-avisos,#page-vendedores .page-body > #ag-avisos ~ .sbox{display:none!important}'; (document.head || document.documentElement).appendChild(stV); } catch (_) {}
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  var ATIVOS = null;
+  var ATIVOS = null, CLID = null;
+  function carregarClientes() {
+    return fetch((window.API_BASE || '') + '/api/vendedores/clientes', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } }).then(function (r) { return r.json(); })
+      .then(function (j) { if (j && j.ok) { CLID = j; render(); } }).catch(function () {});
+  }
   function carregar() {
+    carregarClientes();
     return fetch((window.API_BASE || '') + '/api/vendedores', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } }).then(function (r) { return r.json(); })
       .then(function (j) { var l = Array.isArray(j) ? j : (j.data || []); ATIVOS = l.filter(function (v) { return v.ativo !== false; }); limparGlobal(l); return ATIVOS; }).catch(function () { return ATIVOS || []; });
   }
@@ -73999,17 +74004,92 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var hoje = new Date().toISOString().slice(0, 10);
     var html = '<header class="dsv-head"><div><h1>Vendedores</h1><p>' + ATIVOS.length + ' vendedores ativos</p></div><div class="dsv-bts"><button type="button" class="dsv-b dsv-pri" onclick="abrirModalVendedor()">+ Novo vendedor</button></div></header>'
       + '<div class="dsv-grade">' + ATIVOS.map(function (v, i) {
-        var nCli = clis.filter(function (c) { return String(c.vendId || c.vendedor_id || '') === String(v.id); }).length;
+        var meus = CLID ? CLID.clientes.filter(function (c) { return String(c.vendedor_id) === String(v.id); }) : null;
+        var nCli = meus ? meus.length : clis.filter(function (c) { return String(c.vendId || c.vendedor_id || '') === String(v.id); }).length;
+        var nRec = meus ? meus.filter(function (c) { return c.recorrente; }).length : '…';
         var abertas = ofs.filter(function (o) { return String(o.vendId || o.vendedor_id || '') === String(v.id) && !/conclu|cancel/i.test(String(o.status || '')) && !o.deleted_at; });
         var atr = abertas.filter(function (o) { var e = String(o.ent || o.data_entrega || '').slice(0, 10); return e && e < hoje; }).length;
         var cor = CORES[i % CORES.length], id = esc(v.id);
         return '<article class="dsv-card" style="--c:' + cor + '"><header><span class="dsv-av">' + esc(iniciais(v.nome)) + '</span><div><h3>' + esc(v.nome) + '</h3><span>' + esc(v.codigo || '') + (v.codigo ? ' · ' : '') + 'Comissão ' + String(v.comissao_pct != null ? v.comissao_pct : '—').replace('.', ',') + '%</span></div></header>'
-          + '<div class="dsv-nums"><div><b>' + nCli + '</b><span>clientes na carteira</span></div><div><b>' + abertas.length + '</b><span>OFs em aberto</span></div><div><b class="' + (atr ? 'dsv-atr' : '') + '">' + atr + '</b><span>atrasadas</span></div></div>'
+          + '<div class="dsv-nums"><div><b>' + nCli + '</b><span>clientes na carteira</span></div><div><b class="dsv-rec">' + nRec + '</b><span>clientes recorrentes</span></div><div><b>' + abertas.length + '</b><span>OFs em aberto</span></div><div><b class="' + (atr ? 'dsv-atr' : '') + '">' + atr + '</b><span>atrasadas</span></div></div>'
           + (v.telefone || v.email ? '<div class="dsv-cont">' + (v.telefone ? '📞 ' + esc(v.telefone) : '') + (v.email ? ' ✉️ ' + esc(v.email) : '') + '</div>' : '')
-          + '<footer><button type="button" class="dsv-b" onclick="editarVendedor(\'' + id + '\')">✏ Editar</button></footer></article>';
+          + '<footer><button type="button" class="dsv-b dsv-cli" data-dsv-cli="' + id + '">👥 Clientes</button><button type="button" class="dsv-b" onclick="editarVendedor(\'' + id + '\')">✏ Editar</button></footer></article>';
       }).join('') + '</div>';
     if (r.__h !== html) { r.__h = html; r.innerHTML = html; }
   }
+  // ---- lista de clientes do vendedor ----
+  function dataBR(d) { return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '—'; }
+  function norm(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function abrirClientes(vid) {
+    var v = (ATIVOS || []).find(function (x) { return String(x.id) === String(vid); }) || { nome: 'Vendedor' };
+    if (!CLID) { carregarClientes().then(function () { if (CLID) abrirClientes(vid); }); return; }
+    var meus = CLID.clientes.filter(function (c) { return String(c.vendedor_id) === String(vid); });
+    var cont = { todos: meus.length, rec: 0, parados: 0, ativos: 0, nunca: 0 };
+    meus.forEach(function (c) { if (c.recorrente) cont.rec++; if (c.recorrente && c.dias_sem_comprar != null && c.dias_sem_comprar > 60) cont.parados++; if (c.compras_12m > 0) cont.ativos++; if (!c.compras_24m) cont.nunca++; });
+    var st = { f: 'rec', q: '', ord: 'meses' };
+    if (!cont.rec) st.f = 'todos';
+    var ov = document.createElement('div'); ov.className = 'dsch-ov';
+    try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
+    ov.innerHTML = '<div class="dsch-m lg" role="dialog" aria-modal="true"><div class="dsch-hd azul"><div class="dsch-ic">👥</div><div><h2>Clientes de ' + esc(v.nome) + '</h2><p>' + esc(CLID.criterio || '') + '</p></div><button type="button" class="dsch-x" data-x aria-label="Fechar">✕</button></div>'
+      + '<div class="dsch-bd"><div class="dsch-kpis">'
+      + '<div class="dsch-kpi"><small>Na carteira</small><b>' + cont.todos + '</b><span>Clientes com este vendedor</span></div>'
+      + '<div class="dsch-kpi"><small>Recorrentes</small><b style="color:#4ade80">' + cont.rec + '</b><span>3+ meses com compra em 12 meses</span></div>'
+      + '<div class="dsch-kpi"><small>Compraram em 12 meses</small><b>' + cont.ativos + '</b><span>Pelo menos 1 pedido</span></div>'
+      + '<div class="dsch-kpi"><small>Recorrentes parados</small><b style="color:' + (cont.parados ? '#fbbf24' : 'inherit') + '">' + cont.parados + '</b><span>Sem comprar há mais de 60 dias</span></div></div>'
+      + '<div class="dsch-busca"><input class="dsch-in" data-q placeholder="Buscar cliente ou cidade…"></div>'
+      + '<div class="dsch-chips" data-ch>'
+      + [['rec', 'Recorrentes', cont.rec], ['parados', 'Recorrentes parados', cont.parados], ['ativos', 'Compraram em 12 meses', cont.ativos], ['nunca', 'Sem compra em 2 anos', cont.nunca], ['todos', 'Todos', cont.todos]].map(function (c) { return '<button type="button" data-f="' + c[0] + '">' + c[1] + ' · ' + c[2] + '</button>'; }).join('')
+      + '</div><div class="dsch-tw"><table class="dsch-t no-card"><thead><tr><th data-o="nome">Cliente</th><th class="n" data-o="meses">Meses com compra<br><small style="font-weight:600;text-transform:none">últimos 12</small></th><th class="n mh" data-o="compras">Pedidos<br><small style="font-weight:600;text-transform:none">últimos 12</small></th><th class="n" data-o="ult">Última compra</th></tr></thead><tbody data-tb></tbody></table></div></div>'
+      + '<div class="dsch-ft"><span class="dsch-dica" data-cont style="margin-right:auto"></span><button type="button" class="dsch-bt" data-print>🖨 Imprimir</button><button type="button" class="dsch-bt azul" data-x>Fechar</button></div></div>';
+    document.body.appendChild(ov);
+    var onKey = function (e) { if (e.key === 'Escape') fechar(); };
+    function fechar() { document.removeEventListener('keydown', onKey, true); if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    document.addEventListener('keydown', onKey, true);
+    ov.addEventListener('click', function (e) { if (e.target === ov || (e.target.closest && e.target.closest('[data-x]'))) fechar(); });
+    function filtrados() {
+      var q = norm(st.q);
+      return meus.filter(function (c) {
+        if (st.f === 'rec' && !c.recorrente) return false;
+        if (st.f === 'parados' && !(c.recorrente && c.dias_sem_comprar > 60)) return false;
+        if (st.f === 'ativos' && !(c.compras_12m > 0)) return false;
+        if (st.f === 'nunca' && c.compras_24m) return false;
+        return !q || norm(c.nome + ' ' + c.cidade).indexOf(q) >= 0;
+      }).sort(function (a, b) {
+        if (st.ord === 'nome') return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+        if (st.ord === 'ult') return String(b.ultima_compra || '').localeCompare(String(a.ultima_compra || ''));
+        if (st.ord === 'compras') return (b.compras_12m - a.compras_12m) || (b.meses_12m - a.meses_12m);
+        return (b.meses_12m - a.meses_12m) || (b.compras_12m - a.compras_12m) || String(b.ultima_compra || '').localeCompare(String(a.ultima_compra || ''));
+      });
+    }
+    function rotDias(c) { if (c.dias_sem_comprar == null) return ''; if (c.dias_sem_comprar <= 0) return 'hoje'; return 'há ' + c.dias_sem_comprar + ' dia' + (c.dias_sem_comprar === 1 ? '' : 's'); }
+    function render() {
+      var fs = filtrados();
+      ov.querySelectorAll('[data-ch] button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-f') === st.f); });
+      ov.querySelector('[data-tb]').innerHTML = fs.map(function (c) {
+        var parado = c.recorrente && c.dias_sem_comprar > 60;
+        return '<tr><td><b>' + esc(c.nome) + '</b>' + (c.recorrente ? ' <span class="dsch-tag" style="background:rgba(34,197,94,.15);color:#4ade80">recorrente</span>' : '') + '<small>' + esc([c.cidade, c.uf].filter(Boolean).join(' / ') || '—') + '</small></td>'
+          + '<td class="n"><b>' + c.meses_12m + '</b> de 12</td><td class="n mh">' + c.compras_12m + '</td>'
+          + '<td class="n">' + (c.ultima_compra ? dataBR(c.ultima_compra) + '<small' + (parado ? ' style="color:#fbbf24"' : '') + '>' + rotDias(c) + '</small>' : '<small>sem compra em 2 anos</small>') + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text3)">Nenhum cliente neste filtro.</td></tr>';
+      ov.querySelector('[data-cont]').textContent = fs.length + ' cliente' + (fs.length === 1 ? '' : 's');
+      ov.__fs = fs;
+    }
+    ov.querySelector('[data-q]').oninput = function () { st.q = this.value; render(); };
+    ov.querySelectorAll('[data-ch] button').forEach(function (b) { b.onclick = function () { st.f = b.getAttribute('data-f'); render(); }; });
+    ov.querySelectorAll('th[data-o]').forEach(function (th) { th.style.cursor = 'pointer'; th.onclick = function () { st.ord = th.getAttribute('data-o'); render(); }; });
+    ov.querySelector('[data-print]').onclick = function () {
+      var fs = ov.__fs || [], nomeF = (ov.querySelector('[data-ch] .on') || {}).textContent || '';
+      try {
+        window._openStyledPrintWindow(window._buildStyledPrintHtml({ title: 'Clientes de ' + v.nome, periodo: 'Posição em ' + new Date().toLocaleDateString('pt-BR') + ' · Filtro: ' + nomeF.replace(/ · \d+$/, ''),
+          cards: [{ label: 'Na carteira', value: String(cont.todos), sub: 'Clientes do vendedor' }, { label: 'Recorrentes', value: String(cont.rec), sub: '3+ meses com compra em 12' }, { label: 'Compraram em 12 meses', value: String(cont.ativos), sub: 'Pelo menos 1 pedido' }, { label: 'Recorrentes parados', value: String(cont.parados), sub: 'Sem comprar há 60+ dias' }],
+          summaryTitle: 'Clientes listados', summaryHeaders: ['Cliente', 'Cidade', 'Meses com compra (12m)', 'Pedidos (12m)', 'Última compra', 'Recorrente'],
+          summaryRows: fs.map(function (c) { return [esc(c.nome), esc([c.cidade, c.uf].filter(Boolean).join(' / ') || '—'), c.meses_12m + ' de 12', String(c.compras_12m), c.ultima_compra ? dataBR(c.ultima_compra) + ' (' + rotDias(c) + ')' : '—', c.recorrente ? 'Sim' : 'Não']; }) }));
+      } catch (e) { alert('Não consegui abrir a impressão: ' + (e && e.message || e)); }
+    };
+    render();
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-dsv-cli]'); if (b) { e.preventDefault(); abrirClientes(b.getAttribute('data-dsv-cli')); } });
+  window.dsVendedorClientes = abrirClientes;
   var antes = false;
   setInterval(function () {
     var p = document.getElementById('page-vendedores'); var on = !!(p && (p.classList.contains('active') || p.offsetParent !== null));
@@ -74025,9 +74105,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dsv-b{height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dsv-b:hover{background:var(--s3)}.dsv-pri{background:var(--accent);border-color:var(--accent);color:#fff}'
       + '.dsv-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.dsv-card{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--c);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}'
       + '.dsv-card header{display:flex;gap:12px;align-items:center}.dsv-av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:var(--c);flex:0 0 auto}.dsv-card h3{margin:0;font-size:16px}.dsv-card header span{font-size:12.5px;color:var(--text2)}'
-      + '.dsv-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.dsv-nums div{background:var(--s2);border-radius:10px;padding:8px}.dsv-nums b{display:block;font-size:20px}.dsv-nums span{font-size:11.5px;color:var(--text3)}.dsv-atr{color:var(--red)}.dsv-cont{font-size:12.5px;color:var(--text2)}'
+      + '.dsv-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.dsv-rec{color:#22c55e}.dsv-cli{background:var(--c)!important;border-color:var(--c)!important;color:#fff!important}.dsv-nums div{background:var(--s2);border-radius:10px;padding:8px}.dsv-nums b{display:block;font-size:20px}.dsv-nums span{font-size:11.5px;color:var(--text3)}.dsv-atr{color:var(--red)}.dsv-cont{font-size:12.5px;color:var(--text2)}'
       + '.dsv-card footer{display:flex;gap:6px}.dsv-card footer .dsv-b{flex:1}'
-      + '@media (max-width:700px){#ds-vend{padding:4px 0 12px}.dsv-grade{grid-template-columns:1fr}.dsv-bts{width:100%}.dsv-bts .dsv-b{flex:1;height:40px}.dsv-card footer .dsv-b{height:40px}}';
+      + '@media (max-width:700px){#ds-vend{padding:4px 0 12px}.dsv-nums{grid-template-columns:1fr 1fr}.dsv-grade{grid-template-columns:1fr}.dsv-bts{width:100%}.dsv-bts .dsv-b{flex:1;height:40px}.dsv-card footer .dsv-b{height:40px}}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
 })();
