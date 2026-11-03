@@ -3010,6 +3010,7 @@ try {
     });
   }
 
+  try { window.__rrFichaCliente = function (id) { return rrReportFichaCliente(id); }; } catch (_) {}
   async function rrReportFichaCliente(clienteId) {
     var json = await rrFetchJson('/api/relatorios/cliente-ficha?cliente_id=' + encodeURIComponent(String(clienteId || '').trim()));
     var cliente = json && json.cliente || {};
@@ -76952,4 +76953,132 @@ window.__perTxt = function (p) {
     sel.value = vid; st.auto = vid;
     try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
   }, 350);
+})();
+
+
+/* ===== Cliente: Painel + Ficha Técnica num modal só, no meio da tela (03/11) =====
+ * Tudo do cliente num lugar: cadastro, vendedor, números de compra, OFs em aberto, histórico, produtos,
+ * o que ele costuma usar (gramatura, cores, tamanhos), compras por mês e orçamentos. Imprime a ficha técnica padrão. */
+(function () {
+  if (window.__dsCliFicha) return; window.__dsCliFicha = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function N(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function R(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function D(d) { d = String(d || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(2, 4) : '—'; }
+  function tk() { try { return localStorage.getItem('token') || ''; } catch (_) { return ''; } }
+  function get(url) { return fetch((window.API_BASE || '') + url, { headers: { Authorization: 'Bearer ' + tk() } }).then(function (r) { return r.json(); }); }
+  function cliMem(id) { try { return (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []).find(function (c) { return String(c.id) === String(id); }) || null; } catch (_) { return null; } }
+  function aberta(st) { return !/conclu|cancel|entreg|finaliz/i.test(String(st || '')); }
+  function stCor(st) { st = String(st || ''); if (/cancel/i.test(st)) return '#ef4444'; if (/conclu/i.test(st)) return '#22c55e'; return '#f59e0b'; }
+
+  function abrir(cliId) {
+    var cid = String(cliId || '').trim(); if (!cid) return;
+    var cm = cliMem(cid) || {};
+    var ant = document.getElementById('dscf-ov'); if (ant) ant.remove();
+    var ov = document.createElement('div'); ov.id = 'dscf-ov'; ov.className = 'dsch-ov';
+    try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
+    ov.innerHTML = '<div class="dsch-m lg dscf-m" role="dialog" aria-modal="true"><div class="dsch-hd azul"><div class="dsch-ic">👤</div><div style="min-width:0"><h2 data-nome>' + esc(cm.nome || 'Cliente') + '</h2><p data-sub>Carregando a ficha do cliente…</p></div><button type="button" class="dsch-x" data-x aria-label="Fechar">✕</button></div>'
+      + '<div class="dsch-bd" data-corpo><div class="dscf-load">Carregando…</div></div>'
+      + '<div class="dsch-ft"><button type="button" class="dsch-bt" data-ed>✏ Editar cadastro</button><button type="button" class="dsch-bt" data-print>🖨 Imprimir ficha</button><button type="button" class="dsch-bt azul" data-x>Fechar</button></div></div>';
+    document.body.appendChild(ov);
+    var onKey = function (e) { if (e.key === 'Escape') fechar(); };
+    function fechar() { document.removeEventListener('keydown', onKey, true); if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    document.addEventListener('keydown', onKey, true);
+    ov.addEventListener('mousedown', function (e) { ov.__f = e.target === ov; });
+    ov.addEventListener('click', function (e) { if ((e.target === ov && ov.__f) || (e.target.closest && e.target.closest('[data-x]'))) fechar(); });
+    ov.querySelector('[data-ed]').onclick = function () { fechar(); try { window.editarCliente(cid); } catch (_) {} };
+    ov.querySelector('[data-print]').onclick = function () { var b = this; b.disabled = true; b.textContent = 'Abrindo…'; Promise.resolve().then(function () { return window.__rrFichaCliente ? window.__rrFichaCliente(cid) : window.abrirFichaTecnicaClienteOriginal && window.abrirFichaTecnicaClienteOriginal(cid); }).catch(function (e) { alert('Não consegui imprimir: ' + (e && e.message || e)); }).then(function () { b.disabled = false; b.textContent = '🖨 Imprimir ficha'; }); };
+    get('/api/relatorios/cliente-ficha?cliente_id=' + encodeURIComponent(cid)).then(function (j) {
+      if (!j || j.ok === false) throw new Error(j && j.error || 'falha');
+      desenhar(ov, cid, j, cm);
+    }).catch(function (e) { ov.querySelector('[data-corpo]').innerHTML = '<div class="dscf-load">Não consegui carregar a ficha: ' + esc(e.message || e) + '</div>'; });
+  }
+
+  function desenhar(ov, cid, j, cm) {
+    var c = j.cliente || {}, r = j.resumo || {}, ins = j.insights || {};
+    var hist = Array.isArray(j.historico_ofs) ? j.historico_ofs : [], prods = Array.isArray(j.produtos_mais_pedidos) ? j.produtos_mais_pedidos : [];
+    var orcs = Array.isArray(j.orcamentos) ? j.orcamentos : [], mes = Array.isArray(j.faturamento_mensal) ? j.faturamento_mensal : [];
+    var abertas = hist.filter(function (o) { return aberta(o.status); });
+    var concl = hist.filter(function (o) { return /conclu/i.test(String(o.status || '')) && !/cancel/i.test(String(o.status || '')); });
+    var ultima = concl.reduce(function (m, o) { var d = String(o.data_conclusao || o.data_entrada || ''); return d > m ? d : m; }, '');
+    var ticket = r.ofs_concluidas ? (Number(r.total_comprado) || 0) / r.ofs_concluidas : 0;
+    var hoje = new Date().toISOString().slice(0, 10);
+    ov.querySelector('[data-nome]').textContent = c.nome || cm.nome || 'Cliente';
+    var sub = [c.razao_social && c.razao_social !== c.nome ? c.razao_social : '', c.cnpj ? 'CNPJ ' + c.cnpj : '', [c.cidade, c.uf].filter(Boolean).join(' / '), c.ramo].filter(Boolean).join(' · ');
+    ov.querySelector('[data-sub]').textContent = sub || 'Sem dados de cadastro';
+    function info(l, v) { return v ? '<div><small>' + l + '</small><b>' + esc(v) + '</b></div>' : ''; }
+    function chips(l, key) { l = Array.isArray(l) ? l : []; return l.length ? l.slice(0, 6).map(function (x) { return '<span class="dscf-chip">' + esc(x[key]) + ' <i>' + N(x.total_ofs) + '</i></span>'; }).join('') : '<span class="dscf-mut">—</span>'; }
+    var maxMes = mes.slice(0, 12).reduce(function (m, x) { return Math.max(m, Number(x.valor_total) || 0); }, 0);
+    var html = ''
+      + '<div class="dscf-tabs" role="tablist"><button type="button" class="on" data-tab="res">Resumo</button><button type="button" data-tab="ofs">OFs <i>' + hist.length + '</i></button><button type="button" data-tab="prod">Produtos <i>' + prods.length + '</i></button><button type="button" data-tab="orc">Orçamentos <i>' + orcs.length + '</i></button></div>'
+      // ---- resumo
+      + '<div data-p="res" class="dscf-p">'
+      + '<div class="dsch-kpis dscf-kpis">'
+      + '<div class="dsch-kpi"><small>Total comprado</small><b>' + R(r.total_comprado) + '</b><span>' + N(r.ofs_concluidas) + ' OFs concluídas</span></div>'
+      + '<div class="dsch-kpi"><small>Ticket médio</small><b>' + R(ticket) + '</b><span>Por OF concluída</span></div>'
+      + '<div class="dsch-kpi"><small>OFs em aberto</small><b style="color:#f59e0b">' + N(abertas.length) + '</b><span>' + N(r.ofs_canceladas) + ' canceladas no total</span></div>'
+      + '<div class="dsch-kpi"><small>Última compra</small><b>' + D(ultima) + '</b><span>' + (r.frequencia_media_dias ? 'Compra a cada ~' + N(r.frequencia_media_dias) + ' dias' : 'Frequência ainda sem dados') + '</span></div></div>'
+      + '<section class="dsch-sec"><h3><span>🪪</span>Cadastro</h3><div class="dscf-info">'
+      + info('Vendedor', c.vendedor_nome || 'Sem vendedor') + info('Telefone', c.telefone) + info('E-mail', c.email) + info('Contato', c.contato)
+      + info('Endereço', c.endereco) + info('Cidade', [c.cidade, c.uf].filter(Boolean).join(' / ')) + info('Ramo', c.ramo) + info('CNPJ', c.cnpj)
+      + info('Caixas por mês (média)', r.media_caixas_mes ? N(r.media_caixas_mes) : '') + info('Orçamentos', r.total_orcamentos ? N(r.total_orcamentos) + ' · ' + R(r.valor_orcamentos) : '')
+      + '</div></section>'
+      + '<section class="dsch-sec"><h3><span>📋</span>OFs em aberto (' + abertas.length + ')</h3>' + (abertas.length ? '<div class="dscf-lista">' + abertas.slice(0, 30).map(function (o) { var atr = o.data_entrega && String(o.data_entrega).slice(0, 10) < hoje; return '<div class="dscf-of"><b>OF ' + esc(o.numero) + '</b><span>' + esc(o.produto) + '</span><span>' + N(o.quantidade) + ' cx</span><span' + (atr ? ' style="color:#ef4444;font-weight:700"' : '') + '>Entrega ' + D(o.data_entrega) + (atr ? ' · atrasada' : '') + '</span><span class="dscf-st" style="--c:' + stCor(o.status) + '">' + esc(o.status) + '</span></div>'; }).join('') + '</div>' : '<div class="dscf-mut">Nenhuma OF em aberto.</div>') + '</section>'
+      + '<section class="dsch-sec"><h3><span>🎯</span>O que ele costuma pedir</h3><div class="dscf-ins">'
+      + '<div><small>Gramaturas</small><div>' + chips(ins.gramaturas_mais_utilizadas, 'gramatura') + '</div></div>'
+      + '<div><small>Tipos de caixa</small><div>' + chips(ins.tipos_caixa_mais_pedidos, 'tipo_caixa') + '</div></div>'
+      + '<div><small>Cores</small><div>' + chips(ins.cores_mais_utilizadas, 'cor') + '</div></div>'
+      + '<div><small>Tamanhos</small><div>' + chips(ins.tamanhos_mais_utilizados, 'tamanho') + '</div></div></div></section>'
+      + (mes.length ? '<section class="dsch-sec"><h3><span>📈</span>Compras por mês</h3><div class="dscf-mes">' + mes.slice(0, 12).reverse().map(function (x) { var pct = maxMes ? (Number(x.valor_total) || 0) / maxMes * 100 : 0; var m = String(x.mes_ano || ''); return '<div title="' + esc(R(x.valor_total) + ' · ' + x.qtd_ofs + ' OFs') + '"><i style="height:' + Math.max(3, pct).toFixed(0) + '%"></i><small>' + esc(m.slice(5, 7) + '/' + m.slice(2, 4)) + '</small></div>'; }).join('') + '</div></section>' : '')
+      + '</div>'
+      // ---- OFs
+      + '<div data-p="ofs" class="dscf-p" hidden><div class="dsch-busca"><input class="dsch-in" data-qof placeholder="Buscar OF, produto ou status…"></div><div class="dsch-tw"><table class="dsch-t no-card"><thead><tr><th>OF</th><th>Produto</th><th class="n mh">Qtd</th><th class="n">Valor</th><th class="mh">Entrada</th><th>Situação</th></tr></thead><tbody data-tbof></tbody></table></div></div>'
+      // ---- produtos
+      + '<div data-p="prod" class="dscf-p" hidden>' + (prods.length ? '<div class="dsch-tw"><table class="dsch-t no-card"><thead><tr><th>Produto</th><th class="n">OFs</th><th class="n mh">Caixas</th><th class="n">Valor</th></tr></thead><tbody>' + prods.map(function (p) { return '<tr><td><b>' + esc(p.produto) + '</b></td><td class="n">' + N(p.total_ofs) + '</td><td class="n mh">' + N(p.quantidade_total) + '</td><td class="n">' + R(p.valor_total) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="dscf-mut">Sem produtos ainda.</div>')
+      + '<div style="margin-top:10px"><button type="button" class="dsch-bt" data-verprod>🏷️ Ver medidas, cores e valores em Produtos por cliente</button></div></div>'
+      // ---- orçamentos
+      + '<div data-p="orc" class="dscf-p" hidden>' + (orcs.length ? '<div class="dsch-tw"><table class="dsch-t no-card"><thead><tr><th>Nº</th><th>Orçamento</th><th class="mh">Medidas</th><th class="n">Valor</th><th>Situação</th><th class="mh">Data</th></tr></thead><tbody>' + orcs.map(function (o) { return '<tr><td>' + esc(o.numero) + '</td><td><b>' + esc(o.nome) + '</b></td><td class="mh">' + esc(o.medidas) + '</td><td class="n">' + R(o.valor_total) + '</td><td>' + esc(o.status) + '</td><td class="mh">' + D(o.criado_em) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="dscf-mut">Nenhum orçamento para este cliente.</div>') + '</div>';
+    var corpo = ov.querySelector('[data-corpo]'); corpo.innerHTML = html;
+    function desenharOfs(q) {
+      q = String(q || '').toLowerCase();
+      var l = hist.filter(function (o) { return !q || [o.numero, o.produto, o.status].join(' ').toLowerCase().indexOf(q) >= 0; });
+      corpo.querySelector('[data-tbof]').innerHTML = l.slice(0, 300).map(function (o) { return '<tr><td><b>' + esc(o.numero) + '</b></td><td>' + esc(o.produto) + '</td><td class="n mh">' + N(o.quantidade) + '</td><td class="n">' + R(o.valor_total) + '</td><td class="mh">' + D(o.data_entrada) + '</td><td><span class="dscf-st" style="--c:' + stCor(o.status) + '">' + esc(o.status) + '</span>' + (o.data_conclusao ? '<small>' + D(o.data_conclusao) + '</small>' : '') + '</td></tr>'; }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px">Nenhuma OF.</td></tr>';
+    }
+    desenharOfs('');
+    corpo.querySelector('[data-qof]').oninput = function () { desenharOfs(this.value); };
+    corpo.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-tab'); corpo.querySelectorAll('[data-tab]').forEach(function (x) { x.classList.toggle('on', x === b); }); corpo.querySelectorAll('[data-p]').forEach(function (p) { p.hidden = p.getAttribute('data-p') !== t; }); }; });
+    var vp = corpo.querySelector('[data-verprod]'); if (vp) vp.onclick = function () { var cc = cliMem(cid) || { id: cid, nome: c.nome }; ov.remove(); try { window.dsProdutosPorCliente(cc); } catch (_) {} };
+  }
+
+  // Painel e Ficha Técnica abrem a mesma ficha
+  function instalar() {
+    if (typeof window.abrirFichaTecnicaCliente === 'function' && !window.abrirFichaTecnicaCliente.__dscf) { window.abrirFichaTecnicaClienteOriginal = window.abrirFichaTecnicaCliente; var f = function (id) { return abrir(id); }; f.__dscf = true; window.abrirFichaTecnicaCliente = f; }
+    if (typeof window.abrirPainelCliente === 'function' && !window.abrirPainelCliente.__dscf) { var g = function (id) { return abrir(id); }; g.__dscf = true; window.abrirPainelCliente = g; }
+  }
+  instalar(); setInterval(instalar, 1500);
+  window.dsFichaCliente = abrir;
+  // nos cartões: um botão só ("📋 Ficha do cliente") no lugar de Painel + Ficha Técnica
+  function unificarBotoes() {
+    var bs = document.querySelectorAll('button[onclick*="abrirFichaTecnicaCliente("]:not([data-dscf])');
+    Array.prototype.forEach.call(bs, function (b) {
+      b.setAttribute('data-dscf', '1');
+      var irmao = b.parentNode && b.parentNode.querySelector('button[onclick*="abrirPainelCliente("]');
+      if (irmao) { irmao.innerHTML = '📋 Ficha do cliente'; irmao.classList.add('dscf-bt'); b.style.display = 'none'; }
+    });
+  }
+  new MutationObserver(function () { if (document.querySelector('button[onclick*="abrirFichaTecnicaCliente("]:not([data-dscf])')) unificarBotoes(); }).observe(document.body, { childList: true, subtree: true });
+  unificarBotoes();
+  var st = document.createElement('style');
+  st.textContent = '.dscf-load,.dscf-mut{color:var(--text3,#64748b);font-size:13px;padding:6px 0}.dscf-load{padding:30px;text-align:center}'
+    + '.dscf-tabs{display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:-18px;z-index:2;background:var(--surface,#0f172a);padding:4px 0 8px}.dscf-tabs button{height:38px;padding:0 14px;border-radius:99px;border:1px solid var(--b2,#334155);background:transparent;color:var(--text2,#94a3b8);font:inherit;font-weight:700;cursor:pointer}.dscf-tabs button.on{background:#2563eb;border-color:#2563eb;color:#fff}.dscf-tabs i{font-style:normal;opacity:.7;margin-left:4px}'
+    + '.dscf-p{display:flex;flex-direction:column;gap:14px}.dscf-p[hidden]{display:none!important}'
+    + '.dscf-info{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px}.dscf-info small{display:block;font-size:11px;font-weight:700;color:var(--text3,#64748b);text-transform:uppercase;letter-spacing:.04em}.dscf-info b{display:block;font-size:14px;word-break:break-word}'
+    + '.dscf-lista{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}.dscf-of{display:grid;grid-template-columns:90px 1fr auto auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border,#1e293b);border-radius:10px;font-size:13px}.dscf-of span{color:var(--text2,#94a3b8)}'
+    + '.dscf-st{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:99px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);white-space:nowrap}.dsch-t td .dscf-st+small{display:block}'
+    + '.dscf-ins{display:grid;grid-template-columns:1fr 1fr;gap:12px}.dscf-ins small{display:block;font-size:11px;font-weight:700;color:var(--text3,#64748b);text-transform:uppercase;margin-bottom:6px}.dscf-ins>div>div{display:flex;flex-wrap:wrap;gap:6px}'
+    + '.dscf-chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:99px;background:var(--s2,#1e293b);font-size:12.5px;font-weight:600}.dscf-chip i{font-style:normal;color:var(--text3,#64748b);font-size:11px}'
+    + '.dscf-mes{display:flex;align-items:flex-end;gap:6px;height:130px;padding-top:6px}.dscf-mes>div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0}.dscf-mes i{display:block;width:100%;max-width:38px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#3b82f6,#22c55e)}.dscf-mes small{font-size:10.5px;color:var(--text3,#64748b)}'
+    + '.dscf-bt{font-weight:800!important}'
+    + '@media (max-width:760px){.dscf-info{grid-template-columns:1fr 1fr}.dscf-ins{grid-template-columns:1fr}.dscf-of{grid-template-columns:1fr auto;}.dscf-of span:nth-child(2){grid-column:1/-1;order:3}.dscf-tabs{top:-14px}}';
+  document.head.appendChild(st);
 })();
