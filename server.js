@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103112831';
-const SW_RUNTIME_VERSION = '20261103112831';
+const PATCH_RUNTIME_VERSION = '20261103145156';
+const SW_RUNTIME_VERSION = '20261103145156';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -18156,8 +18156,9 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
     const canceladasHist = historico.filter((of) => _assistIsCancelada(of));
     const totalComprado = concluidasHist.reduce((sum, of) => sum + (Number(of?.valor_total || 0) || 0), 0);
     const produtosMap = new Map();
+    const aliasMapFicha = await _prodAliasMap();
     historico.forEach((of) => {
-      const key = String(of?.produto || 'Produto não informado').trim() || 'Produto não informado';
+      const key = _prodNomePrincipal(aliasMapFicha, String(of?.produto || 'Produto não informado').trim() || 'Produto não informado');
       const cur = produtosMap.get(key) || { produto: key, total_ofs: 0, quantidade_total: 0, valor_total: 0 };
       cur.total_ofs += 1;
       cur.quantidade_total += Number(of?.quantidade || 0) || 0;
@@ -40436,7 +40437,7 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
 });
 
 // ===== PRODUTOS (cadastro para autocompletar "Produto / Descrição" na OF) (28/10/2026) =====
-const _PROD_CAMPOS = ['nome', 'cores', 'clientes', 'largura', 'comprimento', 'altura', 'valor_unitario', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
+const _PROD_CAMPOS = ['nome', 'cores', 'clientes', 'largura', 'comprimento', 'altura', 'valor_unitario', 'aliases', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
 function _prodPayload(b) {
   const o = {};
   _PROD_CAMPOS.forEach((k) => { if (Object.prototype.hasOwnProperty.call(b || {}, k)) o[k] = b[k]; });
@@ -40444,10 +40445,72 @@ function _prodPayload(b) {
   ['largura', 'comprimento', 'altura', 'valor_unitario'].forEach((k) => { if (k in o) { const n = Number(String(o[k] ?? '').replace(',', '.')); o[k] = Number.isFinite(n) && n > 0 ? n : null; } });
   ['cliente_id', 'cliente_nome', 'observacao'].forEach((k) => { if (k in o) o[k] = String(o[k] ?? '').trim() || null; });
   if ('ativo' in o) o.ativo = o.ativo !== false && o.ativo !== 'false';
+  if ('aliases' in o) o.aliases = Array.from(new Set((Array.isArray(o.aliases) ? o.aliases : []).map((x) => String(x || '').trim().replace(/\s+/g, ' ')).filter(Boolean)));
   if ('clientes' in o) o.clientes = (Array.isArray(o.clientes) ? o.clientes : []).map((c) => ({ id: c && c.id ? String(c.id) : null, nome: String(c && c.nome || c || '').trim() })).filter((c) => c.nome);
   if ('cores' in o) o.cores = (Array.isArray(o.cores) ? o.cores : String(o.cores || '').split(/\s*\+\s*|,\s*/)).map((x) => String(x && x.nome || x || '').trim()).filter(Boolean);
   return o;
 }
+// Apelidos de produtos mesclados: nome antigo -> nome do produto principal (03/11)
+let _prodAliasCache = { t: 0, map: new Map() };
+function _prodNorm(v) { return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+async function _prodAliasMap() {
+  if (Date.now() - _prodAliasCache.t < 60000) return _prodAliasCache.map;
+  const map = new Map();
+  try {
+    const { data } = await supabase.from('produtos_cadastro').select('nome,aliases').limit(5000);
+    (data || []).forEach((p) => { (Array.isArray(p.aliases) ? p.aliases : []).forEach((a) => { const k = _prodNorm(a); if (k && k !== _prodNorm(p.nome)) map.set(k, p.nome); }); });
+  } catch (_) {}
+  _prodAliasCache = { t: Date.now(), map };
+  return map;
+}
+function _prodNomePrincipal(map, nome) { const n = String(nome || '').trim().replace(/\s+/g, ' '); return (map && map.get(_prodNorm(n))) || n; }
+// Mescla vários produtos (do cadastro e/ou nomes usados nas OFs) num produto principal.
+// O principal fica com tudo: clientes, cores, medidas/valor que faltarem e os nomes antigos como apelidos
+// (o histórico de pedidos dos nomes antigos passa a contar para o principal). Os cadastros mesclados são guardados em "mesclados".
+app.post('/api/produtos-cadastro/mesclar', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const princ = b.principal || {}, outros = Array.isArray(b.outros) ? b.outros : [];
+    if (!(princ.id || princ.nome) || !outros.length) return res.status(400).json({ ok: false, error: 'Escolha o produto principal e pelo menos um para juntar' });
+    const { data: todos, error: e0 } = await supabase.from('produtos_cadastro').select('*').limit(5000);
+    if (e0) throw e0;
+    const acha = (x) => (x.id && todos.find((p) => String(p.id) === String(x.id))) || todos.find((p) => _prodNorm(p.nome) === _prodNorm(x.nome)) || null;
+    let P = acha(princ);
+    if (!P) {
+      const { data: novo, error: e1 } = await supabase.from('produtos_cadastro').insert({ nome: String(princ.nome).trim().replace(/\s+/g, ' '), criado_por: _opNome(req), updated_at: new Date().toISOString() }).select('*').single();
+      if (e1) throw e1; P = novo;
+    }
+    const lista = (v) => { if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = []; } } return Array.isArray(v) ? v : []; };
+    const clientes = lista(P.clientes).slice(), cores = lista(P.cores).map(String), aliases = lista(P.aliases).map(String), mesclados = lista(P.mesclados);
+    const up = {};
+    ['largura', 'comprimento', 'altura', 'valor_unitario'].forEach((k) => { up[k] = Number(P[k]) > 0 ? P[k] : null; });
+    const apagar = [];
+    for (const o of outros) {
+      const R = acha(o);
+      if (R && String(R.id) === String(P.id)) continue;
+      const nomes = [o.nome, R && R.nome].concat(R ? lista(R.aliases) : []).map((x) => String(x || '').trim()).filter(Boolean);
+      nomes.forEach((n) => { if (_prodNorm(n) !== _prodNorm(P.nome) && !aliases.some((a) => _prodNorm(a) === _prodNorm(n))) aliases.push(n); });
+      if (R) {
+        lista(R.clientes).forEach((c) => { const nm = String(c && c.nome || c || '').trim(); if (nm && !clientes.some((x) => _prodNorm(x && x.nome || x) === _prodNorm(nm))) clientes.push({ id: c && c.id ? String(c.id) : null, nome: nm }); });
+        lista(R.cores).forEach((c) => { const nm = String(c && c.nome || c || '').trim(); if (nm && !cores.some((x) => _prodNorm(x) === _prodNorm(nm))) cores.push(nm); });
+        ['largura', 'comprimento', 'altura', 'valor_unitario'].forEach((k) => { if (!(Number(up[k]) > 0) && Number(R[k]) > 0) up[k] = R[k]; });
+        mesclados.push(Object.assign({}, R, { mesclado_em: new Date().toISOString(), mesclado_por: _opNome(req) }));
+        apagar.push(R.id);
+      }
+    }
+    // dados vindos da tela (medidas/cores tiradas das OFs) completam o que ainda faltar
+    const extra = b.completar || {};
+    ['largura', 'comprimento', 'valor_unitario'].forEach((k) => { if (!(Number(up[k]) > 0) && Number(extra[k]) > 0) up[k] = Number(extra[k]); });
+    (Array.isArray(extra.cores) ? extra.cores : []).forEach((c) => { const nm = String(c || '').trim(); if (nm && !cores.some((x) => _prodNorm(x) === _prodNorm(nm))) cores.push(nm); });
+    (Array.isArray(extra.clientes) ? extra.clientes : []).forEach((c) => { const nm = String(c && c.nome || '').trim(); if (nm && !clientes.some((x) => _prodNorm(x && x.nome || x) === _prodNorm(nm))) clientes.push({ id: c.id ? String(c.id) : null, nome: nm }); });
+    Object.assign(up, { clientes, cores, aliases, mesclados, cliente_nome: clientes.length === 1 ? clientes[0].nome : null, cliente_id: clientes.length === 1 ? clientes[0].id : null, updated_at: new Date().toISOString() });
+    const { data: salvo, error: e2 } = await supabase.from('produtos_cadastro').update(up).eq('id', P.id).select('*').single();
+    if (e2) throw e2;
+    if (apagar.length) { const { error: e3 } = await supabase.from('produtos_cadastro').delete().in('id', apagar); if (e3) throw e3; }
+    _prodAliasCache.t = 0;
+    return ok(res, salvo);
+  } catch (e) { return err(res, e); }
+});
 // Produtos que cada cliente já pediu (a partir das OFs, sem canceladas/excluídas) — 03/11
 app.get('/api/produtos-cadastro/por-cliente', authMiddleware, async (req, res) => {
   try {
@@ -40468,11 +40531,12 @@ app.get('/api/produtos-cadastro/por-cliente', authMiddleware, async (req, res) =
       if (data.length < 1000) break;
     }
     const mapa = new Map();
+    const aliasMap = await _prodAliasMap();
     const num = (v) => { const n = Number(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
     for (const o of rows) {
       if (/^cancel/i.test(String(o.status || ''))) continue;
       const it = Array.isArray(o.itens) && o.itens[0] && typeof o.itens[0] === 'object' ? o.itens[0] : {};
-      const prod = String(o.produto || o.prodDesc || o.descricao || it.desc || it.descricao || '').trim().replace(/\s+/g, ' ');
+      const prod = _prodNomePrincipal(aliasMap, String(o.produto || o.prodDesc || o.descricao || it.desc || it.descricao || '').trim().replace(/\s+/g, ' '));
       if (!prod) continue;
       const k = prod.toUpperCase();
       let e = mapa.get(k);
