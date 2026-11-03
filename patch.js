@@ -9132,9 +9132,7 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
   var empEscolhida = segEmp ? String(segEmp.getAttribute('data-val') || '').trim() : '';
   if (segEmp && !empEscolhida) {
     try { segEmp.classList.add('erro'); segEmp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
-    var errEmp = new Error('Escolha por qual empresa a compra está sendo feita (Italy Embalagens, Cartoeste ou Oestepack).');
-    try { alert(errEmp.message); } catch (_) {}
-    throw errEmp;
+    throw new Error('Escolha por qual empresa a compra está sendo feita (Italy Embalagens, Cartoeste ou Oestepack).');
   }
   var empId = String(empEscolhida || compra && (compra.emp_id || compra._emp_id_consulta) || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var fornManual = String((overlay.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim();
