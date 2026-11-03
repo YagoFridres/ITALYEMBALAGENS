@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103100214';
-const SW_RUNTIME_VERSION = '20261103100214';
+const PATCH_RUNTIME_VERSION = '20261103100551';
+const SW_RUNTIME_VERSION = '20261103100551';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40488,7 +40488,7 @@ app.get('/api/produtos-cadastro/por-cliente', authMiddleware, async (req, res) =
       e.pedidos += 1;
       if (/conclu/i.test(String(o.status || ''))) e.concluidas += 1;
       e.caixas += Math.max(0, Math.trunc(num(o.qtd_produzida || o.qtd || o.quantidade)));
-      const d = String(o.data_conclusao || o.dia || o.created_at || '').slice(0, 10);
+      const d = String(o.created_at || o.data_pedido || o.dia || '').slice(0, 10);
       if (d && (!e.ultimo || d > e.ultimo)) { e.ultimo = d; e.ultima_of = o.of || o.numero || null; }
     }
     const lista = Array.from(mapa.values()).sort((a, b) => b.pedidos - a.pedidos || String(b.ultimo || '').localeCompare(String(a.ultimo || '')));

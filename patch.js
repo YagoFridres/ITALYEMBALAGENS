@@ -75334,7 +75334,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function medida(p) { return coresDe(p).join(' + '); }
   function nBR(v, d) { var n = Number(v) || 0; return n.toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
   function medidasTxt(p) { return (Number(p && p.largura) > 0 && Number(p && p.comprimento) > 0) ? nBR(p.largura) + ' × ' + nBR(p.comprimento) + ' mm' : ''; }
-  function valorTxt(p) { return Number(p && p.valor_unitario) > 0 ? 'R$ ' + nBR(p.valor_unitario, Number(p.valor_unitario) < 1 ? 4 : 2) : ''; }
+  function valorTxt(p) { var v = Number(p && p.valor_unitario) || 0; return v > 0 ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : ''; }
   function numIn(v) { var t = String(v == null ? '' : v).trim(); if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.'); var n = Number(t); return isFinite(n) && n > 0 ? n : null; }
   // 28/10: um produto pode servir para vários clientes
   function clientesDe(p) {
