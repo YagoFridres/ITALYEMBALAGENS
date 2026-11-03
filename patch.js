@@ -34566,7 +34566,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var tonCard = target && target.closest ? target.closest('[data-est-card="tons"]') : null;
         if (tonCard) {
           ev.preventDefault();
-          _estoqueWireOpenTonModal(lista);
+          if (typeof window.dsEstoqueTonModal === 'function') window.dsEstoqueTonModal(lista); else _estoqueWireOpenTonModal(lista);
+          return;
+        }
+        var fornCard = target && target.closest ? target.closest('[data-est-card="forn"]') : null;
+        if (fornCard && typeof window.dsEstoqueFornModal === 'function') {
+          ev.preventDefault();
+          window.dsEstoqueFornModal(lista);
           return;
         }
         var row = target && target.closest ? target.closest('tr[data-chapa-id]') : null;
@@ -35498,6 +35504,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         if (!lista) throw lastErr || new Error('Falha ao carregar chapas do estoque');
         lista = Array.isArray(lista) ? lista : [];
+        try { window.__dsEstoqueLista = lista; window.__dsEstTon = estoqueWireTon; window.__dsEstValor = estoqueWireValor; } catch (_) {}
         window.__estoqueWireLimit = limiteUsado || limiteAtual;
         var sugestoesCompra = [];
         try { sugestoesCompra = await _estoqueFetchSugestoesCompra(false); } catch (_) { sugestoesCompra = []; }
@@ -35551,7 +35558,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      _makeCardEstoque({ label: 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
         + '    <div class="estoque-wire-card-action" data-est-card="tons">' + _makeCardEstoque({ label: 'Toneladas em Estoque', value: num(tonTotal, 3) + ' t', sub: 'Clique para detalhar por chapa' }) + '</div>'
         +      _makeCardEstoque({ label: 'Quantidade de Chapas', value: num(lista.length, 0), sub: 'Itens cadastrados no estoque' })
-        +      _cardBreakdownEstoque('Por Fornecedor', breakdown, money)
+        + '    <div class="estoque-wire-card-action" data-est-card="forn" title="Clique para ver todos os fornecedores">' + _cardBreakdownEstoque('Por Fornecedor', breakdown, money) + '</div>'
         + '  </div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
@@ -35559,6 +35566,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn" id="estoque-wire-mais">Carregar mais</button>'
         + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + badgeSugestoes + '</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
+        + '    <button type="button" class="dsch-nova-btn" id="estoque-wire-nova" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
         + '    <button class="pep-btn' + (filtroRapido === 'baixo200' ? ' primary' : '') + '" id="estoque-wire-fil-baixo" type="button">Abaixo de 200</button>'
@@ -76330,3 +76338,298 @@ window.__perTxt = function (p) {
   if (p.ano) return (p.mes ? String(p.mes).padStart(2, '0') + '/' : '') + p.ano;
   return 'Atual';
 };
+
+// ===================== Estoque de Chapas: Nova Chapa, Toneladas e Fornecedores (03/11) =====================
+(function () {
+  if (window.__dsChapasUI) return; window.__dsChapasUI = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function N(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function R(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function num(t) { var s = String(t == null ? '' : t).trim(); if (!s) return 0; if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.'); var n = Number(s); return isFinite(n) ? n : 0; }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function $(id) { return document.getElementById(id); }
+
+  var css = document.createElement('style'); css.id = 'dsch-css';
+  css.textContent = ''
+    + '.dsch-nova-btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);box-shadow:0 6px 18px rgba(22,163,74,.35);transition:transform .12s,box-shadow .12s;white-space:nowrap}'
+    + '.dsch-nova-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(22,163,74,.45)}'
+    + '[data-est-card]{cursor:pointer;transition:transform .12s}[data-est-card]:hover{transform:translateY(-2px)}[data-est-card="forn"]>*{height:100%;box-sizing:border-box}'
+    + '[data-est-card="forn"]>*:after{content:"Clique para ver todos";display:block;margin-top:8px;font-size:11px;color:#60a5fa;font-weight:700}'
+    + '#modal-nova-chapa.dsch-escondido{visibility:hidden!important;opacity:0!important;pointer-events:none!important}'
+    + '.dsch-ov{position:fixed;inset:0;z-index:10050;background:rgba(2,6,23,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.dsch-m{width:min(860px,100%);max-height:calc(100vh - 32px);background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#1e293b);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}'
+    + '.dsch-m.lg{width:min(1100px,100%)}'
+    + '.dsch-hd{display:flex;align-items:center;gap:14px;padding:18px 22px;background:linear-gradient(135deg,rgba(22,163,74,.22),rgba(37,99,235,.18));border-bottom:1px solid var(--border,#1e293b)}'
+    + '.dsch-hd.azul{background:linear-gradient(135deg,rgba(37,99,235,.25),rgba(14,165,233,.15))}.dsch-hd.roxo{background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(37,99,235,.15))}'
+    + '.dsch-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;flex:0 0 auto;box-shadow:0 6px 16px rgba(0,0,0,.25)}'
+    + '.dsch-hd.azul .dsch-ic{background:linear-gradient(135deg,#2563eb,#0ea5e9)}.dsch-hd.roxo .dsch-ic{background:linear-gradient(135deg,#7c3aed,#2563eb)}'
+    + '.dsch-hd h2{margin:0;font-size:20px;font-weight:800}.dsch-hd p{margin:3px 0 0;font-size:13px;color:var(--text2,#94a3b8)}'
+    + '.dsch-x{margin-left:auto;width:38px;height:38px;border-radius:10px;border:1px solid var(--border,#334155);background:transparent;color:var(--text2,#94a3b8);font-size:18px;cursor:pointer;flex:0 0 auto}.dsch-x:hover{background:rgba(239,68,68,.15);color:#f87171}'
+    + '.dsch-bd{overflow:auto;padding:18px 22px;display:flex;flex-direction:column;gap:16px}'
+    + '.dsch-ft{display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid var(--border,#1e293b);flex-wrap:wrap}.dsch-ft .dsch-dica{margin-right:auto;font-size:12px;color:var(--text3,#64748b)}'
+    + '.dsch-bt{border:1px solid var(--border,#334155);background:transparent;color:var(--text,#e2e8f0);border-radius:11px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;min-height:44px}.dsch-bt:hover{background:var(--s2,#1e293b)}'
+    + '.dsch-bt.ok{border:0;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);font-weight:800;font-size:15px;padding:12px 26px;box-shadow:0 8px 20px rgba(22,163,74,.35)}.dsch-bt.ok:hover{filter:brightness(1.08)}.dsch-bt.ok:disabled{opacity:.6;cursor:wait}'
+    + '.dsch-bt.azul{border:0;color:#fff;background:linear-gradient(135deg,#2563eb,#0ea5e9)}'
+    + '.dsch-sec{border:1px solid var(--border,#1e293b);border-radius:14px;padding:16px;background:var(--s1,rgba(255,255,255,.02))}'
+    + '.dsch-sec>h3{margin:0 0 12px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}.dsch-sec>h3 span{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(37,99,235,.18);font-size:14px}'
+    + '.dsch-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.dsch-g .s2{grid-column:span 2}.dsch-g .s3{grid-column:1/-1}'
+    + '.dsch-f{display:flex;flex-direction:column;gap:6px;min-width:0}.dsch-f>label{font-size:12px;font-weight:700;color:var(--text2,#94a3b8)}.dsch-f>label b{color:#f87171}.dsch-f small{font-size:11px;color:var(--text3,#64748b)}'
+    + '.dsch-in{height:44px;border-radius:10px;border:1px solid var(--b2,#334155);background:var(--bg,#020617);color:var(--text,#e2e8f0);font:inherit;font-size:15px;padding:0 12px;width:100%;box-sizing:border-box;min-width:0}'
+    + '.dsch-in:focus{outline:2px solid #22c55e;outline-offset:-1px;border-color:transparent}.dsch-in.erro{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.2)}'
+    + 'select.dsch-in{cursor:pointer}'
+    + '.dsch-seg{display:flex;gap:6px;flex-wrap:wrap}.dsch-seg button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--b2,#334155);background:transparent;color:var(--text2,#94a3b8);font:inherit;font-weight:700;cursor:pointer;padding:0 10px}'
+    + '.dsch-seg button.on{background:rgba(34,197,94,.16);border-color:#22c55e;color:#4ade80}'
+    + '.dsch-tot{height:44px;border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:18px;font-weight:800;color:#4ade80;background:rgba(34,197,94,.1);border:1px dashed rgba(34,197,94,.4)}'
+    + '.dsch-prev{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(37,99,235,.14),rgba(22,163,74,.1));border:1px solid rgba(96,165,250,.25)}'
+    + '.dsch-prev .ph{width:54px;height:54px;border-radius:12px;background:var(--s2,#1e293b);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;flex:0 0 auto}.dsch-prev .ph img{width:100%;height:100%;object-fit:cover}'
+    + '.dsch-prev b{display:block;font-size:16px}.dsch-prev span{font-size:13px;color:var(--text2,#94a3b8)}.dsch-prev .vl{margin-left:auto;text-align:right}.dsch-prev .vl b{font-size:20px;color:#4ade80}'
+    + '.dsch-mini{display:flex;gap:8px;flex-wrap:wrap}.dsch-mini button{border:1px solid var(--b2,#334155);background:transparent;color:var(--text,#e2e8f0);border-radius:9px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}'
+    + '.dsch-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.dsch-kpi{border:1px solid var(--border,#1e293b);border-radius:14px;padding:12px 14px;background:var(--s1,rgba(255,255,255,.02))}'
+    + '.dsch-kpi small{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2,#94a3b8)}.dsch-kpi b{display:block;font-size:22px;font-weight:800;margin-top:4px}.dsch-kpi span{font-size:12px;color:var(--text3,#64748b)}'
+    + '.dsch-busca{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dsch-busca .dsch-in{flex:1;min-width:200px}'
+    + '.dsch-chips{display:flex;gap:6px;flex-wrap:wrap}.dsch-chips button{border:1px solid var(--b2,#334155);background:transparent;color:var(--text2,#94a3b8);border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}.dsch-chips button.on{background:rgba(37,99,235,.2);border-color:#3b82f6;color:#93c5fd}'
+    + '.dsch-tw{border:1px solid var(--border,#1e293b);border-radius:12px;overflow:auto;max-height:52vh}'
+    + '.dsch-t{width:100%;border-collapse:collapse;font-size:13.5px}.dsch-t th{position:sticky;top:0;background:var(--s2,#1e293b);text-align:left;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text2,#94a3b8);padding:10px 12px;cursor:pointer;white-space:nowrap;z-index:1}'
+    + '.dsch-t td{padding:10px 12px;border-top:1px solid var(--border,#1e293b);vertical-align:middle}.dsch-t .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.dsch-t td small{display:block;font-size:11.5px;color:var(--text3,#64748b)}'
+    + '.dsch-t tr.cl{cursor:pointer}.dsch-t tr.cl:hover td{background:rgba(37,99,235,.08)}.dsch-t tr.sub td{background:rgba(255,255,255,.02);font-size:12.5px;padding:7px 12px 7px 28px}'
+    + '.dsch-bar{height:6px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden;min-width:70px}.dsch-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3b82f6,#22c55e)}'
+    + '.dsch-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(245,158,11,.15);color:#fbbf24}'
+    + '.dsch-tfoot td{font-weight:800;background:var(--s2,#1e293b);position:sticky;bottom:0}'
+    + '@media (max-width:760px){.dsch-ov{padding:0;align-items:stretch}.dsch-m{border-radius:0;max-height:100vh;height:100%}.dsch-g{grid-template-columns:1fr 1fr}.dsch-g .s2{grid-column:1/-1}.dsch-kpis{grid-template-columns:1fr 1fr}.dsch-prev{flex-wrap:wrap}.dsch-ft .dsch-dica{width:100%}.dsch-ft .dsch-bt{flex:1}.dsch-hd{padding:14px 16px}.dsch-bd{padding:14px 16px}.dsch-tw{max-height:none}}'
+    + '@media (max-width:460px){.dsch-g{grid-template-columns:1fr}.dsch-g .s2,.dsch-g .s3{grid-column:auto}}';
+  document.head.appendChild(css);
+
+  function abrirOv(cls, hdCls, ic, titulo, sub, corpo, rodape) {
+    var ov = document.createElement('div'); ov.className = 'dsch-ov';
+    try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
+    ov.innerHTML = '<div class="dsch-m ' + cls + '" role="dialog" aria-modal="true"><div class="dsch-hd ' + hdCls + '"><div class="dsch-ic">' + ic + '</div><div><h2>' + esc(titulo) + '</h2><p>' + sub + '</p></div><button type="button" class="dsch-x" data-x aria-label="Fechar">✕</button></div><div class="dsch-bd">' + corpo + '</div><div class="dsch-ft">' + rodape + '</div></div>';
+    document.body.appendChild(ov);
+    var onKey = function (e) { if (e.key === 'Escape') { e.stopPropagation(); ov.fechar(); } };
+    document.addEventListener('keydown', onKey, true);
+    ov.fechar = function () { document.removeEventListener('keydown', onKey, true); if (ov.parentNode) ov.parentNode.removeChild(ov); if (ov.aoFechar) ov.aoFechar(); };
+    ov.addEventListener('mousedown', function (e) { if (e.target === ov) ov.__fundo = true; });
+    ov.addEventListener('click', function (e) { if ((e.target === ov && ov.__fundo) || (e.target.closest && e.target.closest('[data-x]'))) ov.fechar(); ov.__fundo = false; });
+    return ov;
+  }
+
+  // ---------------- Nova / Editar Chapa ----------------
+  var atual = null;
+  function lerOrig(id) { var e = $(id); return e ? String(e.value == null ? '' : e.value) : ''; }
+  function setOrig(id, v) { var e = $(id); if (!e) return; e.value = v; try { e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} }
+  function fornecedoresConhecidos() {
+    var set = {};
+    try { Array.prototype.forEach.call(document.querySelectorAll('#lista-fornecedores-chapa option'), function (o) { if (o.value) set[o.value.toUpperCase()] = 1; }); } catch (_) {}
+    try { (window.__dsEstoqueLista || []).forEach(function (c) { var f = String(c && c.fornecedor || '').trim().toUpperCase(); if (f) set[f] = 1; }); } catch (_) {}
+    return Object.keys(set).sort();
+  }
+  function campo(id, label, opt) {
+    opt = opt || {};
+    return '<div class="dsch-f ' + (opt.cls || '') + '"><label for="dsch-' + id + '">' + esc(label) + (opt.req ? ' <b>*</b>' : '') + '</label>'
+      + '<input class="dsch-in" id="dsch-' + id + '" data-orig="chapa-' + id + '" autocomplete="off"' + (opt.attrs || '') + ' placeholder="' + esc(opt.ph || '') + '">'
+      + (opt.dica ? '<small>' + opt.dica + '</small>' : '') + '</div>';
+  }
+  function abrirChapa() {
+    var mo = $('modal-nova-chapa'); if (!mo) return;
+    if (atual && atual.parentNode) return;
+    mo.classList.add('dsch-escondido');
+    var edit = !!lerOrig('chapa-edit-id').trim();
+    var cats = Array.prototype.map.call(($('chapa-categoria') || { options: [] }).options, function (o) { return '<option value="' + esc(o.value) + '">' + esc(o.text) + '</option>'; }).join('');
+    var forns = fornecedoresConhecidos().map(function (f) { return '<option value="' + esc(f) + '">'; }).join('');
+    var empSel = lerOrig('chapa-empresa') || 'Italy Embalagens';
+    var corpo = ''
+      + '<div class="dsch-prev"><div class="ph" data-ph>📦</div><div><b data-pv-nome>Nova chapa</b><span data-pv-sub>Preencha os campos abaixo</span></div><div class="vl"><span>Valor em estoque</span><b data-pv-tot>R$ 0,00</b></div></div>'
+      + '<section class="dsch-sec"><h3><span>📦</span>Qual é a chapa?</h3><div class="dsch-g">'
+      +   campo('nome', 'Nome / uso', { req: 1, cls: 's2', ph: 'Ex: ESTOQUE DUPLO, PIZZA 40X40…' })
+      +   '<div class="dsch-f"><label for="dsch-categoria">Categoria <b>*</b></label><select class="dsch-in" id="dsch-categoria" data-orig="chapa-categoria">' + cats + '</select></div>'
+      +   campo('nomenclatura', 'Nomenclatura', { req: 1, ph: 'Ex: ADC21' })
+      +   campo('gramatura', 'Gramatura (g/m²)', { ph: 'Ex: 350', attrs: ' inputmode="decimal"', dica: 'Usada para calcular as toneladas' })
+      +   campo('tamanho', 'Tamanho (mm)', { ph: 'Ex: 1240X980', dica: 'Largura X comprimento' })
+      +   campo('vincos', 'Vincos', { cls: 's3', ph: 'Ex: 1 vinco / 2 vincos / sem vincos' })
+      + '</div></section>'
+      + '<section class="dsch-sec"><h3><span>🏭</span>De onde veio?</h3><div class="dsch-g">'
+      +   '<div class="dsch-f"><label for="dsch-fornecedor">Fornecedor <b>*</b></label><input class="dsch-in" id="dsch-fornecedor" data-orig="chapa-fornecedor" list="dsch-forn-list" autocomplete="off" placeholder="Digite ou escolha"><datalist id="dsch-forn-list">' + forns + '</datalist></div>'
+      +   campo('nf', 'Nota fiscal (NF)', { ph: 'Nº da nota', attrs: ' inputmode="numeric"' })
+      +   campo('data-entrada', 'Data de entrada', { attrs: ' type="date"' })
+      +   '<div class="dsch-f s3"><label>Empresa / CNPJ <b>*</b></label><div class="dsch-seg" data-emp>' + ['Italy Embalagens', 'Cartoeste', 'Oestepack'].map(function (e) { return '<button type="button" data-v="' + e + '" class="' + (e === empSel ? 'on' : '') + '">' + e + '</button>'; }).join('') + '</div></div>'
+      + '</div></section>'
+      + '<section class="dsch-sec"><h3><span>💰</span>Quanto tem e quanto custou?</h3><div class="dsch-g">'
+      +   campo('quantidade', 'Quantidade (chapas)', { req: 1, ph: '0', attrs: ' inputmode="numeric"' })
+      +   campo('valor-unitario', 'Valor unitário (R$)', { ph: '0,00', attrs: ' inputmode="decimal"' })
+      +   '<div class="dsch-f"><label>Total (automático)</label><div class="dsch-tot" data-tot>R$ 0,00</div></div>'
+      +   campo('estoque-minimo', 'Estoque mínimo', { ph: '200', attrs: ' inputmode="numeric"', dica: 'Avisa quando o saldo ficar abaixo' })
+      + '</div></section>'
+      + '<section class="dsch-sec"><h3><span>✏️</span>Acabamento e observações</h3><div class="dsch-g">'
+      +   '<div class="dsch-f"><label>Já vem riscada?</label><div class="dsch-seg" data-ris><button type="button" data-v="0">Não</button><button type="button" data-v="1">Sim</button></div></div>'
+      +   campo('risca-desc', 'Descrição da risca', { cls: 's2', ph: 'Detalhe do padrão da risca' })
+      +   campo('obs', 'Observação', { cls: 's3', ph: 'Opcional' })
+      +   '<div class="dsch-f s3"><div class="dsch-mini"><button type="button" data-foto>📷 Adicionar foto</button><button type="button" data-qr>🔳 QR Code</button></div></div>'
+      + '</div></section>';
+    var ov = abrirOv('', '', edit ? '✎' : '＋', edit ? 'Editar chapa' : 'Nova chapa', edit ? 'Altere o que precisar e salve.' : 'Cadastre a chapa em 4 passos rápidos. Campos com <b style="color:#f87171">*</b> são obrigatórios.', corpo,
+      '<span class="dsch-dica">Enter avança para o próximo campo</span><button type="button" class="dsch-bt" data-x>Cancelar</button><button type="button" class="dsch-bt ok" data-salvar>' + (edit ? '✓ Salvar alterações' : '＋ Criar chapa') + '</button>');
+    atual = ov;
+    // carrega valores do formulário original
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-orig]'), function (el) {
+      var v = lerOrig(el.getAttribute('data-orig'));
+      if (el.id === 'dsch-valor-unitario' && v) v = String(Number(v) || 0).replace('.', ',');
+      if (el.id === 'dsch-quantidade' && (v === '0' || v === '') && !edit) v = '';
+      el.value = v;
+      el.addEventListener('input', function () { el.classList.remove('erro'); var val = el.value; if (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') val = String(num(val)); if (el.id === 'dsch-quantidade' || el.id === 'dsch-estoque-minimo') val = String(Math.max(0, Math.trunc(num(val)))); setOrig(el.getAttribute('data-orig'), (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') && !el.value.trim() ? '' : val); atualizar(); });
+      el.addEventListener('change', function () { el.dispatchEvent(new Event('input')); });
+    });
+    // empresa e riscada
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-emp] button'), function (b) { b.onclick = function () { ov.querySelectorAll('[data-emp] button').forEach(function (x) { x.classList.toggle('on', x === b); }); setOrig('chapa-empresa', b.getAttribute('data-v')); atualizar(); }; });
+    function ris(sim) {
+      ov.querySelectorAll('[data-ris] button').forEach(function (x) { x.classList.toggle('on', (x.getAttribute('data-v') === '1') === sim); });
+      try { if (typeof window.setChapaRiscada === 'function') window.setChapaRiscada(sim); else setOrig('chapa-riscada', sim ? '1' : '0'); } catch (_) {}
+      var d = $('dsch-risca-desc'); if (d) d.closest('.dsch-f').style.display = sim ? '' : 'none';
+    }
+    ov.querySelectorAll('[data-ris] button').forEach(function (b) { b.onclick = function () { ris(b.getAttribute('data-v') === '1'); }; });
+    ris(lerOrig('chapa-riscada') === '1');
+    ov.querySelector('[data-foto]').onclick = function () { try { window.chapaAdicionarFoto ? window.chapaAdicionarFoto() : $('chapa-foto-file').click(); } catch (_) {} };
+    ov.querySelector('[data-qr]').onclick = function () { try { window.abrirModalQRCodeEstoque('chapa', lerOrig('chapa-edit-id'), lerOrig('chapa-nome')); } catch (_) { alert('Salve a chapa primeiro para gerar o QR Code.'); } };
+    // Enter avança
+    var ordem = Array.prototype.slice.call(ov.querySelectorAll('input.dsch-in,select.dsch-in'));
+    ordem.forEach(function (el, i) { el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && el.tagName !== 'TEXTAREA') { e.preventDefault(); var prox = ordem.slice(i + 1).find(function (x) { return x.offsetParent; }); if (prox) prox.focus(); else ov.querySelector('[data-salvar]').click(); } }); });
+    function atualizar() {
+      var q = Math.max(0, Math.trunc(num($('dsch-quantidade').value))), vu = num($('dsch-valor-unitario').value);
+      var tot = q * vu;
+      ov.querySelector('[data-tot]').textContent = R(tot);
+      ov.querySelector('[data-pv-tot]').textContent = R(tot);
+      var nome = $('dsch-nome').value.trim() || (edit ? 'Chapa' : 'Nova chapa');
+      ov.querySelector('[data-pv-nome]').textContent = nome;
+      var partes = [$('dsch-nomenclatura').value.trim(), $('dsch-tamanho').value.trim().toUpperCase(), $('dsch-fornecedor').value.trim().toUpperCase(), q ? N(q) + ' chapas' : ''].filter(Boolean);
+      ov.querySelector('[data-pv-sub]').textContent = partes.join(' · ') || 'Preencha os campos abaixo';
+      var img = $('chapa-foto-prev'), ph = ov.querySelector('[data-ph]');
+      if (img && img.getAttribute('src') && img.style.display !== 'none') { if (!ph.querySelector('img') || ph.querySelector('img').src !== img.src) ph.innerHTML = '<img alt="" src="' + esc(img.src) + '">'; } else if (ph.querySelector('img')) ph.textContent = '📦';
+    }
+    var fotoIv = setInterval(function () { if (!ov.parentNode) return clearInterval(fotoIv); atualizar(); }, 1000);
+    atualizar();
+    ov.querySelector('[data-salvar]').onclick = function () {
+      var falta = [];
+      [['dsch-nome', 'Nome / uso'], ['dsch-nomenclatura', 'Nomenclatura'], ['dsch-fornecedor', 'Fornecedor'], ['dsch-quantidade', 'Quantidade']].forEach(function (p) { var el = $(p[0]); if (!String(el.value || '').trim()) { el.classList.add('erro'); falta.push(p[1]); } });
+      if (falta.length) { var pr = $(falta.length ? ['dsch-nome', 'dsch-nomenclatura', 'dsch-fornecedor', 'dsch-quantidade'].find(function (i) { return $(i).classList.contains('erro'); }) : ''); if (pr) pr.focus(); try { window.toast('Preencha: ' + falta.join(', '), 'var(--red)'); } catch (_) { alert('Preencha: ' + falta.join(', ')); } return; }
+      // garante tudo copiado
+      Array.prototype.forEach.call(ov.querySelectorAll('[data-orig]'), function (el) { el.dispatchEvent(new Event('input')); });
+      var btn = this; btn.disabled = true; btn.textContent = 'Salvando…';
+      var salvarOrig = Array.prototype.find.call(mo.querySelectorAll('button'), function (b) { return /salvarChapa|Criar Chapa|Salvar/i.test((b.getAttribute('onclick') || '') + b.textContent) && !/Cancelar/i.test(b.textContent); });
+      try { if (salvarOrig) salvarOrig.click(); else window.salvarChapa(); } catch (e) { alert('Erro ao salvar: ' + (e && e.message || e)); }
+      setTimeout(function () { if (ov.parentNode) { btn.disabled = false; btn.textContent = edit ? '✓ Salvar alterações' : '＋ Criar chapa'; } }, 6000);
+    };
+    ov.aoFechar = function () {
+      atual = null; clearInterval(fotoIv);
+      if (mo.style.display !== 'none' && !mo.__dschFechando) { try { if (typeof window._fecharModalChapaPatch === 'function') window._fecharModalChapaPatch(); } catch (_) {} mo.style.display = 'none'; }
+      mo.classList.remove('dsch-escondido');
+    };
+    setTimeout(function () { var f = $('dsch-nome'); if (f && window.innerWidth > 760) f.focus(); }, 60);
+  }
+  // acompanha o modal original: abriu -> mostra o novo; fechou (salvou) -> fecha o novo
+  function vigiar() {
+    var mo = $('modal-nova-chapa'); if (!mo) return;
+    var aberto = mo.style.display === 'flex' || mo.style.display === 'block';
+    if (aberto && !atual) abrirChapa();
+    else if (!aberto && atual) { mo.__dschFechando = true; var a = atual; a.fechar(); mo.__dschFechando = false; }
+  }
+  setInterval(vigiar, 300);
+
+  // ---------------- Toneladas por chapa ----------------
+  function qtdDe(c) { return Math.max(0, Math.trunc(Number(c && (c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd)) || 0) || 0)); }
+  function tonDe(c) { if (typeof window.__dsEstTon === 'function') return window.__dsEstTon(c) || 0; var t = Number(c && (c.toneladas_atual != null ? c.toneladas_atual : c.toneladas) || 0) || 0; if (t > 0) return t; var kg = Number(c && c.peso_kg_unidade || 0) || 0; return kg > 0 ? qtdDe(c) * kg / 1000 : 0; }
+  function valorDe(c) { if (typeof window.__dsEstValor === 'function') return window.__dsEstValor(c) || 0; return qtdDe(c) * (Number(c && c.valor_unitario || 0) || 0); }
+  function fornDe(c) { return String(c && (c.fornecedor || c.forn) || '').trim().toUpperCase() || 'SEM FORNECEDOR'; }
+  function empDe(c) { return String(c && (c.qual_cnpj || c.empresa_vinculada || c.qual || c.empresa) || '').trim() || '—'; }
+  function nomeDe(c) { return String(c && (c.nome_uso || c.nome || c.nomenclatura) || '—').trim(); }
+  function imprimir(cfg) { try { window._openStyledPrintWindow(window._buildStyledPrintHtml(cfg)); } catch (e) { alert('Não consegui abrir a impressão: ' + (e && e.message || e)); } }
+
+  window.dsEstoqueTonModal = function (lista) {
+    lista = Array.isArray(lista) ? lista : (window.__dsEstoqueLista || []);
+    var rows = lista.map(function (c) { var kg = Number(c && c.peso_kg_unidade || 0) || 0, t = tonDe(c); return { nome: nomeDe(c), nom: String(c && c.nomenclatura || '').trim(), tam: String(c && c.tamanho || '').trim(), gram: String(c && c.gramatura || '').trim(), forn: fornDe(c), emp: empDe(c), qtd: qtdDe(c), kg: kg, ton: t, ok: t > 0 || qtdDe(c) === 0 }; });
+    var totTon = rows.reduce(function (s, r) { return s + r.ton; }, 0), totQtd = rows.reduce(function (s, r) { return s + r.qtd; }, 0);
+    var semPeso = rows.filter(function (r) { return r.qtd > 0 && r.ton <= 0; }).length;
+    var forns = {}; rows.forEach(function (r) { forns[r.forn] = (forns[r.forn] || 0) + r.ton; });
+    var fornList = Object.keys(forns).sort(function (a, b) { return forns[b] - forns[a]; });
+    var st = { q: '', f: '', ord: 'ton', dir: -1, sem: false };
+    var corpo = '<div class="dsch-kpis">'
+      + '<div class="dsch-kpi"><small>Toneladas</small><b>' + N(totTon, 3) + ' t</b><span>Total em estoque</span></div>'
+      + '<div class="dsch-kpi"><small>Chapas</small><b>' + N(rows.length) + '</b><span>Itens cadastrados</span></div>'
+      + '<div class="dsch-kpi"><small>Quantidade</small><b>' + N(totQtd) + '</b><span>Chapas em saldo</span></div>'
+      + '<div class="dsch-kpi"><small>Sem peso</small><b style="color:' + (semPeso ? '#fbbf24' : '#4ade80') + '">' + N(semPeso) + '</b><span>' + (semPeso ? 'Com saldo e sem gramatura/peso' : 'Todas com peso calculado') + '</span></div></div>'
+      + '<div class="dsch-busca"><input class="dsch-in" data-q placeholder="Buscar chapa, nomenclatura, tamanho…">' + (semPeso ? '<div class="dsch-chips"><button type="button" data-sem>⚠ Só sem peso</button></div>' : '') + '</div>'
+      + '<div class="dsch-chips" data-fchips><button type="button" class="on" data-f="">Todos</button>' + fornList.map(function (f) { return '<button type="button" data-f="' + esc(f) + '">' + esc(f) + ' · ' + N(forns[f], 1) + ' t</button>'; }).join('') + '</div>'
+      + '<div class="dsch-tw"><table class="dsch-t"><thead><tr><th data-o="nome">Chapa</th><th data-o="forn">Fornecedor</th><th data-o="emp">Empresa</th><th class="n" data-o="qtd">Quantidade</th><th class="n" data-o="kg">kg / chapa</th><th class="n" data-o="ton">Toneladas</th><th style="cursor:default">% do total</th></tr></thead><tbody data-tb></tbody><tfoot data-tf></tfoot></table></div>';
+    var ov = abrirOv('lg', 'azul', '⚖️', 'Toneladas em estoque por chapa', 'Quanto pesa o estoque de cada chapa. Clique no título da coluna para ordenar.', corpo,
+      '<span class="dsch-dica" data-cont></span><button type="button" class="dsch-bt" data-print>🖨 Imprimir</button><button type="button" class="dsch-bt azul" data-x>Fechar</button>');
+    function filtrados() {
+      var q = norm(st.q);
+      return rows.filter(function (r) { return (!st.f || r.forn === st.f) && (!st.sem || (r.qtd > 0 && r.ton <= 0)) && (!q || norm([r.nome, r.nom, r.tam, r.gram, r.forn, r.emp].join(' ')).indexOf(q) >= 0); })
+        .sort(function (a, b) { var x = a[st.ord], y = b[st.ord]; if (typeof x === 'string') return st.dir * x.localeCompare(y, 'pt-BR'); return st.dir * (x - y); });
+    }
+    function render() {
+      var fs = filtrados(), t = fs.reduce(function (s, r) { return s + r.ton; }, 0), q = fs.reduce(function (s, r) { return s + r.qtd; }, 0);
+      ov.querySelector('[data-tb]').innerHTML = fs.map(function (r) {
+        var pct = totTon ? r.ton / totTon * 100 : 0;
+        return '<tr><td><b>' + esc(r.nome) + '</b><small>' + esc([r.nom, r.tam, r.gram ? r.gram + ' g' : ''].filter(Boolean).join(' · ')) + '</small></td><td>' + esc(r.forn) + '</td><td>' + esc(r.emp) + '</td><td class="n">' + N(r.qtd) + '</td><td class="n">' + (r.kg ? N(r.kg, 3) : '—') + '</td><td class="n">' + (r.ton > 0 ? '<b>' + N(r.ton, 3) + ' t</b>' : (r.qtd ? '<span class="dsch-tag">sem peso</span>' : '0 t')) + '</td><td><div class="dsch-bar" title="' + N(pct, 1) + '%"><i style="width:' + Math.min(100, pct * 4).toFixed(1) + '%"></i></div><small>' + N(pct, 1) + '%</small></td></tr>';
+      }).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma chapa encontrada.</td></tr>';
+      ov.querySelector('[data-tf]').innerHTML = '<tr class="dsch-tfoot"><td colspan="3">Total (' + N(fs.length) + ' chapas)</td><td class="n">' + N(q) + '</td><td></td><td class="n">' + N(t, 3) + ' t</td><td>' + N(totTon ? t / totTon * 100 : 0, 1) + '%</td></tr>';
+      ov.querySelector('[data-cont]').textContent = fs.length === rows.length ? 'Mostrando todas as ' + N(rows.length) + ' chapas' : 'Mostrando ' + N(fs.length) + ' de ' + N(rows.length) + ' chapas';
+      ov.__fs = fs;
+    }
+    ov.querySelector('[data-q]').oninput = function () { st.q = this.value; render(); };
+    ov.querySelectorAll('[data-fchips] button').forEach(function (b) { b.onclick = function () { st.f = b.getAttribute('data-f'); ov.querySelectorAll('[data-fchips] button').forEach(function (x) { x.classList.toggle('on', x === b); }); render(); }; });
+    var bs = ov.querySelector('[data-sem]'); if (bs) bs.onclick = function () { st.sem = !st.sem; bs.classList.toggle('on', st.sem); render(); };
+    ov.querySelectorAll('th[data-o]').forEach(function (th) { th.onclick = function () { var o = th.getAttribute('data-o'); if (st.ord === o) st.dir *= -1; else { st.ord = o; st.dir = (o === 'nome' || o === 'forn' || o === 'emp') ? 1 : -1; } render(); }; });
+    ov.querySelector('[data-print]').onclick = function () {
+      var fs = ov.__fs || rows, t = fs.reduce(function (s, r) { return s + r.ton; }, 0);
+      var porF = {}; fs.forEach(function (r) { var x = porF[r.forn] = porF[r.forn] || { n: 0, q: 0, t: 0 }; x.n++; x.q += r.qtd; x.t += r.ton; });
+      imprimir({ title: 'Toneladas em Estoque por Chapa', periodo: 'Posição em ' + new Date().toLocaleDateString('pt-BR') + (st.f ? ' · Fornecedor: ' + st.f : ''),
+        cards: [{ label: 'Toneladas', value: N(t, 3) + ' t', sub: 'Total listado' }, { label: 'Chapas', value: N(fs.length), sub: 'Itens listados' }, { label: 'Quantidade', value: N(fs.reduce(function (s, r) { return s + r.qtd; }, 0)), sub: 'Chapas em saldo' }, { label: 'Sem peso', value: N(fs.filter(function (r) { return r.qtd > 0 && r.ton <= 0; }).length), sub: 'Com saldo e sem peso' }],
+        summaryTitle: 'Resumo por fornecedor', summaryHeaders: ['Fornecedor', 'Chapas', 'Quantidade', 'Toneladas', '% do total'],
+        summaryRows: Object.keys(porF).sort(function (a, b) { return porF[b].t - porF[a].t; }).map(function (f) { return [esc(f), N(porF[f].n), N(porF[f].q), N(porF[f].t, 3) + ' t', N(t ? porF[f].t / t * 100 : 0, 1) + '%']; }),
+        detailTitle: 'Detalhamento por chapa', detailHeaders: ['Chapa', 'Nomenclatura', 'Tamanho', 'Fornecedor', 'Empresa', 'Quantidade', 'kg/chapa', 'Toneladas'],
+        detailRows: fs.map(function (r) { return [esc(r.nome), esc(r.nom || '—'), esc(r.tam || '—'), esc(r.forn), esc(r.emp), N(r.qtd), r.kg ? N(r.kg, 3) : '—', r.ton > 0 ? N(r.ton, 3) + ' t' : (r.qtd ? 'sem peso' : '0 t')]; }) });
+    };
+    render();
+  };
+
+  // ---------------- Por fornecedor ----------------
+  window.dsEstoqueFornModal = function (lista) {
+    lista = Array.isArray(lista) ? lista : (window.__dsEstoqueLista || []);
+    var mapa = {};
+    lista.forEach(function (c) {
+      var f = fornDe(c), x = mapa[f] = mapa[f] || { nome: f, itens: [], qtd: 0, ton: 0, valor: 0, emp: {} };
+      var q = qtdDe(c), v = valorDe(c), t = tonDe(c);
+      x.itens.push({ nome: nomeDe(c), nom: String(c && c.nomenclatura || '').trim(), tam: String(c && c.tamanho || '').trim(), emp: empDe(c), qtd: q, valor: v, ton: t, vu: Number(c && (c.valor_unitario != null ? c.valor_unitario : c.val) || 0) || 0 });
+      x.qtd += q; x.ton += t; x.valor += v; x.emp[empDe(c)] = (x.emp[empDe(c)] || 0) + v;
+    });
+    var fs = Object.keys(mapa).map(function (k) { return mapa[k]; }).sort(function (a, b) { return b.valor - a.valor; });
+    var totV = fs.reduce(function (s, f) { return s + f.valor; }, 0), totT = fs.reduce(function (s, f) { return s + f.ton; }, 0), totQ = fs.reduce(function (s, f) { return s + f.qtd; }, 0);
+    var aberto = {};
+    var corpo = '<div class="dsch-kpis">'
+      + '<div class="dsch-kpi"><small>Fornecedores</small><b>' + N(fs.length) + '</b><span>Com chapas no estoque</span></div>'
+      + '<div class="dsch-kpi"><small>Valor do estoque</small><b>' + R(totV) + '</b><span>Soma de todos</span></div>'
+      + '<div class="dsch-kpi"><small>Toneladas</small><b>' + N(totT, 3) + ' t</b><span>Peso total</span></div>'
+      + '<div class="dsch-kpi"><small>Maior fornecedor</small><b style="font-size:18px">' + esc(fs[0] ? fs[0].nome : '—') + '</b><span>' + (fs[0] && totV ? N(fs[0].valor / totV * 100, 1) + '% do valor' : '') + '</span></div></div>'
+      + '<div class="dsch-tw"><table class="dsch-t"><thead><tr><th style="cursor:default">Fornecedor</th><th class="n" style="cursor:default">Chapas</th><th class="n" style="cursor:default">Quantidade</th><th class="n" style="cursor:default">Toneladas</th><th class="n" style="cursor:default">Valor</th><th style="cursor:default">% do valor</th></tr></thead><tbody data-tb></tbody>'
+      + '<tfoot><tr class="dsch-tfoot"><td>Total</td><td class="n">' + N(lista.length) + '</td><td class="n">' + N(totQ) + '</td><td class="n">' + N(totT, 3) + ' t</td><td class="n">' + R(totV) + '</td><td>100%</td></tr></tfoot></table></div>';
+    var ov = abrirOv('lg', 'roxo', '🏭', 'Estoque por fornecedor', 'Valor, peso e chapas de cada fornecedor. Clique num fornecedor para ver as chapas dele.', corpo,
+      '<button type="button" class="dsch-bt" data-print>🖨 Imprimir</button><button type="button" class="dsch-bt azul" data-x>Fechar</button>');
+    function render() {
+      ov.querySelector('[data-tb]').innerHTML = fs.map(function (f, i) {
+        var pct = totV ? f.valor / totV * 100 : 0;
+        var emps = Object.keys(f.emp).filter(function (e) { return f.emp[e] > 0; }).sort(function (a, b) { return f.emp[b] - f.emp[a]; }).map(function (e) { return e + ' ' + R(f.emp[e]); }).join(' · ');
+        var h = '<tr class="cl" data-i="' + i + '"><td><b>' + (aberto[i] ? '▾ ' : '▸ ') + esc(f.nome) + '</b><small>' + esc(emps) + '</small></td><td class="n">' + N(f.itens.length) + '</td><td class="n">' + N(f.qtd) + '</td><td class="n">' + N(f.ton, 3) + ' t</td><td class="n"><b>' + R(f.valor) + '</b></td><td><div class="dsch-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div><small>' + N(pct, 1) + '%</small></td></tr>';
+        if (aberto[i]) h += f.itens.slice().sort(function (a, b) { return b.valor - a.valor; }).map(function (it) { return '<tr class="sub"><td>' + esc(it.nome) + '<small>' + esc([it.nom, it.tam, it.emp].filter(Boolean).join(' · ')) + '</small></td><td class="n">' + (it.vu ? R(it.vu) + '/un' : '') + '</td><td class="n">' + N(it.qtd) + '</td><td class="n">' + (it.ton > 0 ? N(it.ton, 3) + ' t' : '—') + '</td><td class="n">' + R(it.valor) + '</td><td></td></tr>'; }).join('');
+        return h;
+      }).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px">Nenhuma chapa no estoque.</td></tr>';
+    }
+    ov.querySelector('[data-tb]').addEventListener('click', function (e) { var tr = e.target.closest('tr.cl'); if (!tr) return; var i = tr.getAttribute('data-i'); aberto[i] = !aberto[i]; render(); });
+    ov.querySelector('[data-print]').onclick = function () {
+      var det = []; fs.forEach(function (f) { f.itens.slice().sort(function (a, b) { return b.valor - a.valor; }).forEach(function (it) { det.push([esc(f.nome), esc(it.nome), esc(it.nom || '—'), esc(it.tam || '—'), esc(it.emp), N(it.qtd), it.ton > 0 ? N(it.ton, 3) + ' t' : '—', R(it.valor)]); }); });
+      imprimir({ title: 'Estoque de Chapas por Fornecedor', periodo: 'Posição em ' + new Date().toLocaleDateString('pt-BR'),
+        cards: [{ label: 'Fornecedores', value: N(fs.length), sub: 'Com chapas no estoque' }, { label: 'Valor do estoque', value: R(totV), sub: 'Soma de todos' }, { label: 'Toneladas', value: N(totT, 3) + ' t', sub: 'Peso total' }, { label: 'Chapas', value: N(lista.length), sub: 'Itens cadastrados' }],
+        summaryTitle: 'Resumo por fornecedor', summaryHeaders: ['Fornecedor', 'Chapas', 'Quantidade', 'Toneladas', 'Valor', '% do valor'],
+        summaryRows: fs.map(function (f) { return [esc(f.nome), N(f.itens.length), N(f.qtd), N(f.ton, 3) + ' t', R(f.valor), N(totV ? f.valor / totV * 100 : 0, 1) + '%']; }),
+        detailTitle: 'Chapas de cada fornecedor', detailHeaders: ['Fornecedor', 'Chapa', 'Nomenclatura', 'Tamanho', 'Empresa', 'Quantidade', 'Toneladas', 'Valor'], detailRows: det });
+    };
+    render();
+  };
+})();
