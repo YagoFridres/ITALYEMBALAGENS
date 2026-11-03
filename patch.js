@@ -75555,9 +75555,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             + '<td data-l="Pedidos">' + x.pedidos + '</td><td data-l="Último pedido">' + dataBR(x.ultimo) + (x.ultima_of ? ' <span class="dsp-mut">OF ' + esc(x.ultima_of) + '</span>' : '') + '</td>'
             + '<td class="dsp-ac">' + (cad ? '<span class="dsp-ok">✓ cadastrado</span>' : '<button type="button" class="dsp-btn sm" data-pc-cad="' + i + '">＋ Cadastrar</button>') + '</td></tr>';
         }).join('')
-        + extras.map(function (p) { return '<tr><td class="dsp-ck"></td><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Medidas">' + (esc(medidasTxt(p)) || '—') + '</td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Valor un.">' + (esc(valorTxt(p)) || '—') + '</td><td data-l="Pedidos">0</td><td data-l="Último pedido">—</td><td class="dsp-ac"><span class="dsp-ok">✓ cadastrado</span></td></tr>'; }).join('')
+        + extras.map(function (p, k) { return '<tr><td class="dsp-ck"><input type="checkbox" data-mex="' + k + '"' + (SEL.pc[p.nome] ? ' checked' : '') + ' aria-label="Selecionar para mesclar"></td><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Medidas">' + (esc(medidasTxt(p)) || '—') + '</td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Valor un.">' + (esc(valorTxt(p)) || '—') + '</td><td data-l="Pedidos">0</td><td data-l="Último pedido">—</td><td class="dsp-ac"><span class="dsp-ok">✓ cadastrado</span></td></tr>'; }).join('')
         + '</tbody></table></div>' : '<div class="dsp-vazio">Este cliente ainda não tem OFs com produto preenchido.</div>');
-    res.__l = l;
+    res.__l = l; res.__ex = extras;
     var bp = res.querySelector('[data-pc-print]');
     if (bp) bp.onclick = function () {
       var todos = l.map(function (x) { return { nome: x.produto, medidas: medidasTxt(x), cores: (x.cores || []).join(' + '), valor: valorTxt(x), pedidos: x.pedidos, caixas: x.caixas || 0, ultimo: x.ultimo, of: x.ultima_of }; })
@@ -75579,8 +75579,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function itensSelecionados() {
     var aba = (document.querySelector('#dsp-raiz [data-aba].on') || {}).getAttribute ? document.querySelector('#dsp-raiz [data-aba].on').getAttribute('data-aba') : 'cad';
     if (aba === 'cli') {
-      var res = document.querySelector('#dsp-raiz .dsp-pc-res'), l = (res && res.__l) || [];
-      return l.filter(function (x) { return SEL.pc[x.produto]; }).map(function (x) { var c = cadastrado(x.produto); return { id: c ? c.id : null, nome: x.produto, largura: (c && c.largura) || x.largura, comprimento: (c && c.comprimento) || x.comprimento, valor_unitario: (c && c.valor_unitario) || x.valor_unitario, cores: c ? coresDe(c) : (x.cores || []), pedidos: x.pedidos, aliases: c ? aliasesDe(c) : [] }; });
+      var res = document.querySelector('#dsp-raiz .dsp-pc-res'), l = (res && res.__l) || [], ex = (res && res.__ex) || [];
+      return l.filter(function (x) { return SEL.pc[x.produto]; }).map(function (x) { var c = cadastrado(x.produto); return { id: c ? c.id : null, nome: x.produto, largura: (c && c.largura) || x.largura, comprimento: (c && c.comprimento) || x.comprimento, valor_unitario: (c && c.valor_unitario) || x.valor_unitario, cores: c && coresDe(c).length ? coresDe(c) : (x.cores || []), pedidos: x.pedidos, aliases: c ? aliasesDe(c) : [] }; })
+        .concat(ex.filter(function (p) { return SEL.pc[p.nome]; }).map(function (p) { return { id: p.id, nome: p.nome, largura: p.largura, comprimento: p.comprimento, valor_unitario: p.valor_unitario, cores: coresDe(p), pedidos: 0, aliases: aliasesDe(p) }; }));
     }
     return P.lista.filter(function (p) { return SEL.cad[p.id]; }).map(function (p) { return { id: p.id, nome: p.nome, largura: p.largura, comprimento: p.comprimento, valor_unitario: p.valor_unitario, cores: coresDe(p), clientes: clientesDe(p), aliases: aliasesDe(p) }; });
   }
@@ -75626,6 +75627,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('change', function (e) {
     var t = e.target; if (!t || !t.closest || !t.closest('#dsp-raiz')) return;
     if (t.hasAttribute('data-mck')) { var id = t.getAttribute('data-mck'); if (t.checked) SEL.cad[id] = 1; else delete SEL.cad[id]; barraMesclar(); }
+    if (t.hasAttribute('data-mex')) { var res2 = document.querySelector('#dsp-raiz .dsp-pc-res'), p2 = res2 && res2.__ex && res2.__ex[+t.getAttribute('data-mex')]; if (p2) { if (t.checked) SEL.pc[p2.nome] = 1; else delete SEL.pc[p2.nome]; } barraMesclar(); }
     if (t.hasAttribute('data-mpc')) { var res = document.querySelector('#dsp-raiz .dsp-pc-res'), x = res && res.__l && res.__l[+t.getAttribute('data-mpc')]; if (x) { if (t.checked) SEL.pc[x.produto] = 1; else delete SEL.pc[x.produto]; } barraMesclar(); }
   });
   document.addEventListener('click', function (e) {
