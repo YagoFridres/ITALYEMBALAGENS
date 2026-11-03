@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103150644';
-const SW_RUNTIME_VERSION = '20261103150644';
+const PATCH_RUNTIME_VERSION = '20261103151215';
+const SW_RUNTIME_VERSION = '20261103151215';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40674,6 +40674,7 @@ app.put('/api/produtos-cadastro/:id', authMiddleware, async (req, res) => {
     up.updated_at = new Date().toISOString();
     const { data, error } = await supabase.from('produtos_cadastro').update(up).eq('id', String(req.params.id)).select('*').maybeSingle();
     if (error) throw error;
+    try { _prodAliasCache.t = 0; } catch (_) {}
     return ok(res, data);
   } catch (e) { return err(res, e); }
 });

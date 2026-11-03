@@ -75441,11 +75441,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<label class="dsp-f"><span>Comprimento (mm)</span><input class="dsp-in" name="comprimento" inputmode="decimal" value="' + esc(p && p.comprimento ? String(p.comprimento) : '') + '" placeholder="Ex.: 1020"></label>'
       + '<label class="dsp-f"><span>Valor unitário (R$)</span><input class="dsp-in" name="valor_unitario" inputmode="decimal" value="' + esc(p && p.valor_unitario ? String(p.valor_unitario).replace('.', ',') : '') + '" placeholder="0,00"></label></div>'
       + '<p class="dsp-dica">Ao escolher este produto na OF, as medidas, as cores e o valor unitário já vêm preenchidos.</p>'
+      + (p && p.id && aliasesDe(p).length ? '<div class="dsp-f"><span>Nomes juntados neste produto (os pedidos com esses nomes contam como dele — tire um nome para separá-lo de novo)</span><div class="dsp-clis dsp-als"></div></div>' : '')
       + '<div class="dsp-f"><span>Cores (opcional)</span><div class="dsp-cores">' + coresDisp().map(function (c) { var on = coresDe(p).some(function (x) { return norm(x) === norm(c.nome); }); return '<button type="button" class="dsp-cor' + (on ? ' on' : '') + '" data-cor="' + esc(c.nome) + '"><i style="background:' + esc(c.hex || 'transparent') + '"></i>' + esc(c.nome) + '</button>'; }).join('') + '</div></div>'
       + '<div class="dsp-f"><span>Clientes (opcional — vazio serve para qualquer cliente)</span><div class="dsp-clis"></div><input class="dsp-in" name="cli_add" list="dsp-cli-list" placeholder="Digite o cliente e tecle Enter para adicionar" autocomplete="off"><datalist id="dsp-cli-list">' + clientes().slice(0, 3000).map(function (c) { return '<option value="' + esc(c.nome || c.rs || '') + '">'; }).join('') + '</datalist></div>'
       + '<footer><button type="button" class="dsp-btn" data-x="1">Cancelar</button><button type="submit" class="dsp-btn dsp-pri">Salvar</button></footer></form>';
     document.body.appendChild(ov);
     E.clis = clientesDe(p || {}).slice();
+    E.als = aliasesDe(p || {}).slice();
+    function desenharAls() { var b = ov.querySelector('.dsp-als'); if (b) b.innerHTML = E.als.map(function (a, i) { return '<span class="dsp-chip">' + esc(a) + '<button type="button" data-rmal="' + i + '" aria-label="Tirar">×</button></span>'; }).join('') || '<span class="dsp-mut">Nenhum</span>'; }
+    desenharAls();
+    ov.addEventListener('click', function (e) { var ra = e.target.closest && e.target.closest('[data-rmal]'); if (ra) { E.als.splice(+ra.getAttribute('data-rmal'), 1); desenharAls(); } });
     function desenharClis() { ov.querySelector('.dsp-clis').innerHTML = E.clis.map(function (c, i) { return '<span class="dsp-chip">' + esc(c.nome) + '<button type="button" data-rmcli="' + i + '" aria-label="Remover">×</button></span>'; }).join(''); }
     function addCli(inp) {
       var v = String(inp.value || '').trim(); if (!v) return;
@@ -75466,6 +75471,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var f = e.target.closest('form'); if (!f || !f.closest('#dsp-ov')) return; e.preventDefault();
     var d = { nome: f.querySelector('[name="nome"]').value };
     ['largura', 'comprimento', 'valor_unitario'].forEach(function (k) { var i = f.querySelector('[name="' + k + '"]'); if (i) d[k] = numIn(i.value); });
+    if (E.ed && E.ed.id && Array.isArray(E.als)) d.aliases = E.als.slice();
     var pend = f.querySelector('[name="cli_add"]'); if (pend && String(pend.value || '').trim()) { var cp = clientes().find(function (x) { return norm(x.nome || x.rs) === norm(pend.value); }); var nm = cp ? (cp.nome || cp.rs) : String(pend.value).trim(); if (!E.clis.some(function (x) { return norm(x.nome) === norm(nm); })) E.clis.push({ id: cp ? String(cp.id) : null, nome: nm }); }
     d.clientes = (E.clis || []).slice(); d.cliente_nome = d.clientes.length === 1 ? d.clientes[0].nome : null; d.cliente_id = d.clientes.length === 1 ? d.clientes[0].id : null;
     d.cores = Array.prototype.map.call(f.querySelectorAll('.dsp-cor.on'), function (b) { return b.getAttribute('data-cor'); });
@@ -75474,7 +75480,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (dup) { try { window.toast('Já existe um produto com esse nome', 'var(--yellow)'); } catch (_) {} return; }
     var b = f.querySelector('[type="submit"]'); b.disabled = true; b.textContent = 'Salvando…';
     (E.ed && E.ed.id ? req('PUT', '/api/produtos-cadastro/' + E.ed.id, d) : req('POST', '/api/produtos-cadastro', d))
-      .then(function () { document.getElementById('dsp-ov').remove(); return carregar(true); }).then(function () { desenharLista(); try { desenharPC(); } catch (_) {} })
+      .then(function () { document.getElementById('dsp-ov').remove(); return carregar(true); }).then(function () { desenharLista(); try { if (PC.cli && document.querySelector('#dsp-raiz [data-aba="cli"].on')) escolherCli(PC.cli); else desenharPC(); } catch (_) {} })
       .catch(function (er) { b.disabled = false; b.textContent = 'Salvar'; try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} });
   }
   function importar() {
@@ -75553,9 +75559,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           var cad = cadastrado(x.produto);
           return '<tr><td class="dsp-ck"><input type="checkbox" data-mpc="' + i + '"' + (SEL.pc[x.produto] ? ' checked' : '') + ' aria-label="Selecionar para mesclar"></td><td data-l="Produto"><b>' + esc(x.produto) + '</b></td><td data-l="Medidas">' + (esc(medidasTxt(x)) || '—') + '</td><td data-l="Cores">' + (esc((x.cores || []).join(' + ')) || '—') + '</td><td data-l="Último valor un.">' + (esc(valorTxt(x)) || '—') + '</td>'
             + '<td data-l="Pedidos">' + x.pedidos + '</td><td data-l="Último pedido">' + dataBR(x.ultimo) + (x.ultima_of ? ' <span class="dsp-mut">OF ' + esc(x.ultima_of) + '</span>' : '') + '</td>'
-            + '<td class="dsp-ac">' + (cad ? '<span class="dsp-ok">✓ cadastrado</span>' : '<button type="button" class="dsp-btn sm" data-pc-cad="' + i + '">＋ Cadastrar</button>') + '</td></tr>';
+            + '<td class="dsp-ac">' + (cad ? '<span class="dsp-ok">✓ cadastrado</span> <button type="button" class="dsp-btn sm" data-pc-ed="' + esc(cad.id) + '">✏ Editar</button>' : '<button type="button" class="dsp-btn sm" data-pc-cad="' + i + '">＋ Cadastrar</button>') + '</td></tr>';
         }).join('')
-        + extras.map(function (p, k) { return '<tr><td class="dsp-ck"><input type="checkbox" data-mex="' + k + '"' + (SEL.pc[p.nome] ? ' checked' : '') + ' aria-label="Selecionar para mesclar"></td><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Medidas">' + (esc(medidasTxt(p)) || '—') + '</td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Valor un.">' + (esc(valorTxt(p)) || '—') + '</td><td data-l="Pedidos">0</td><td data-l="Último pedido">—</td><td class="dsp-ac"><span class="dsp-ok">✓ cadastrado</span></td></tr>'; }).join('')
+        + extras.map(function (p, k) { return '<tr><td class="dsp-ck"><input type="checkbox" data-mex="' + k + '"' + (SEL.pc[p.nome] ? ' checked' : '') + ' aria-label="Selecionar para mesclar"></td><td data-l="Produto"><b>' + esc(p.nome) + '</b></td><td data-l="Medidas">' + (esc(medidasTxt(p)) || '—') + '</td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Valor un.">' + (esc(valorTxt(p)) || '—') + '</td><td data-l="Pedidos">0</td><td data-l="Último pedido">—</td><td class="dsp-ac"><span class="dsp-ok">✓ cadastrado</span> <button type="button" class="dsp-btn sm" data-pc-ed="' + esc(p.id) + '">✏ Editar</button></td></tr>'; }).join('')
         + '</tbody></table></div>' : '<div class="dsp-vazio">Este cliente ainda não tem OFs com produto preenchido.</div>');
     res.__l = l; res.__ex = extras;
     var bp = res.querySelector('[data-pc-print]');
@@ -75646,6 +75652,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var a = e.target.closest && e.target.closest('#dsp-raiz [data-aba]'); if (a) { abaProd(a.getAttribute('data-aba')); return; }
     var s1 = e.target.closest && e.target.closest('#dsp-raiz [data-pci]'); if (s1) { var box = s1.parentNode; escolherCli(box.__l[+s1.getAttribute('data-pci')]); return; }
     var cb = e.target.closest && e.target.closest('#dsp-raiz [data-pc-cad]'); if (cb) { cadastrarDoCliente(+cb.getAttribute('data-pc-cad')); return; }
+    var ce = e.target.closest && e.target.closest('#dsp-raiz [data-pc-ed]'); if (ce) { var pe = P.lista.find(function (x) { return String(x.id) === ce.getAttribute('data-pc-ed'); }); if (pe) formulario(pe); return; }
   });
   function clique(e) {
     var b = e.target.closest('[data-a]'); if (!b || !b.closest('#page-produtos')) return;
