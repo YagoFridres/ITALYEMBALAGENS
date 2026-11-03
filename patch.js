@@ -77082,3 +77082,97 @@ window.__perTxt = function (p) {
     + '@media (max-width:760px){.dscf-info{grid-template-columns:1fr 1fr}.dscf-ins{grid-template-columns:1fr}.dscf-of{grid-template-columns:1fr auto;}.dscf-of span:nth-child(2){grid-column:1/-1;order:3}.dscf-tabs{top:-14px}}';
   document.head.appendChild(st);
 })();
+
+/* ===== Vendedores: planilha dos clientes sem vendedor (baixar e importar preenchida) (03/11) ===== */
+(function () {
+  if (window.__dsVendPlan) return; window.__dsVendPlan = true;
+  var EXCELJS = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function tk() { try { return localStorage.getItem('token') || ''; } catch (_) { return ''; } }
+  function api(m, url, body) { return fetch((window.API_BASE || '') + url, { method: m, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() }, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().then(function (j) { if (!r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); return j; }); }); }
+  function lib() { if (window.ExcelJS) return Promise.resolve(window.ExcelJS); return new Promise(function (ok, er) { var s = document.createElement('script'); s.src = EXCELJS; s.onload = function () { ok(window.ExcelJS); }; s.onerror = function () { er(new Error('Não consegui carregar o gerador de planilhas')); }; document.head.appendChild(s); }); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function vendedoresAtivos() { return api('GET', '/api/vendedores').then(function (j) { var l = Array.isArray(j) ? j : (j.data || []); return l.filter(function (v) { return v.ativo !== false; }); }); }
+  function clientes() { return api('GET', '/api/clientes?limit=10000').then(function (j) { return Array.isArray(j) ? j : (j.data || j.clientes || []); }); }
+
+  async function baixar(btn) {
+    var t0 = btn && btn.textContent; if (btn) { btn.disabled = true; btn.textContent = 'Gerando…'; }
+    try {
+      var EJ = await lib(), vs = await vendedoresAtivos(), cl = await clientes();
+      var sem = cl.filter(function (c) { return !String(c.vendId || c.vendedor_id || '').trim(); }).sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); });
+      var wb = new EJ.Workbook(); wb.creator = 'PCP Pro';
+      var ws = wb.addWorksheet('Clientes sem vendedor', { views: [{ state: 'frozen', ySplit: 1 }] });
+      ws.columns = [
+        { header: 'VENDEDOR (escolha)', key: 'vend', width: 24 }, { header: 'Cliente', key: 'nome', width: 40 }, { header: 'Razão social', key: 'rs', width: 36 },
+        { header: 'CNPJ / CPF', key: 'cnpj', width: 20 }, { header: 'Cidade', key: 'cidade', width: 22 }, { header: 'UF', key: 'uf', width: 6 },
+        { header: 'Telefone', key: 'tel', width: 18 }, { header: 'Ramo', key: 'ramo', width: 16 }, { header: 'OFs', key: 'ofs', width: 7 }, { header: 'ID (não alterar)', key: 'id', width: 38 }
+      ];
+      sem.forEach(function (c) { ws.addRow({ vend: '', nome: c.nome || '', rs: c.rs || '', cnpj: c.cnpj || '', cidade: c.cidade || '', uf: c.uf || '', tel: c.tel || c.telefone || '', ramo: c.ramo || '', ofs: Number(c.total_ofs || 0) || 0, id: String(c.id) }); });
+      var h = ws.getRow(1); h.height = 22;
+      h.eachCell(function (cell, i) { cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i === 1 ? 'FF16A34A' : 'FF1E3A8A' } }; cell.alignment = { vertical: 'middle' }; });
+      // aba com os vendedores e lista suspensa
+      var wv = wb.addWorksheet('Vendedores'); wv.columns = [{ header: 'Vendedor', key: 'n', width: 26 }, { header: 'Código', key: 'c', width: 10 }];
+      vs.forEach(function (v) { wv.addRow({ n: v.nome, c: v.codigo || '' }); });
+      wv.getRow(1).font = { bold: true };
+      var lst = "Vendedores!$A$2:$A$" + (vs.length + 1);
+      for (var r = 2; r <= sem.length + 1; r++) {
+        ws.getCell('A' + r).dataValidation = { type: 'list', allowBlank: true, formulae: [lst], showErrorMessage: true, errorTitle: 'Vendedor', error: 'Escolha um vendedor da lista' };
+        ws.getCell('A' + r).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
+        ws.getCell('J' + r).font = { color: { argb: 'FF94A3B8' } };
+      }
+      ws.autoFilter = { from: 'A1', to: 'J1' };
+      var buf = await wb.xlsx.writeBuffer();
+      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      a.download = 'clientes-sem-vendedor-' + new Date().toISOString().slice(0, 10) + '.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+      try { window.toast && window.toast(sem.length + ' clientes sem vendedor na planilha', 'var(--green)'); } catch (_) {}
+    } catch (e) { alert('Erro ao gerar a planilha: ' + (e && e.message || e)); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = t0; } }
+  }
+
+  async function importar(file) {
+    try {
+      var EJ = await lib(), vs = await vendedoresAtivos();
+      var wb = new EJ.Workbook(); await wb.xlsx.load(await file.arrayBuffer());
+      var ws = wb.getWorksheet('Clientes sem vendedor') || wb.worksheets[0];
+      var porNome = {}; vs.forEach(function (v) { porNome[norm(v.nome)] = v; if (v.codigo) porNome[norm(v.codigo)] = v; });
+      var mud = [], ruins = [];
+      ws.eachRow(function (row, n) {
+        if (n === 1) return;
+        var vtxt = String((row.getCell(1).text || '')).trim(), id = String(row.getCell(10).text || '').trim(), nome = String(row.getCell(2).text || '').trim();
+        if (!vtxt) return;
+        var v = porNome[norm(vtxt)];
+        if (!v || !id) { ruins.push((nome || 'linha ' + n) + ' → "' + vtxt + '"'); return; }
+        mud.push({ id: id, nome: nome, vid: v.id, vnome: v.nome });
+      });
+      var cont = {}; mud.forEach(function (m) { cont[m.vnome] = (cont[m.vnome] || 0) + 1; });
+      var ov = document.createElement('div'); ov.className = 'dsch-ov';
+      try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
+      ov.innerHTML = '<div class="dsch-m" role="dialog" aria-modal="true"><div class="dsch-hd"><div class="dsch-ic">📤</div><div><h2>Importar vendedores da planilha</h2><p>Confira antes de gravar nos clientes.</p></div><button type="button" class="dsch-x" data-x>✕</button></div>'
+        + '<div class="dsch-bd"><div class="dsch-kpis">' + Object.keys(cont).map(function (k) { return '<div class="dsch-kpi"><small>' + esc(k) + '</small><b>' + cont[k] + '</b><span>clientes</span></div>'; }).join('') + '</div>'
+        + (ruins.length ? '<section class="dsch-sec"><h3><span>⚠️</span>' + ruins.length + ' linha(s) com vendedor que não existe (não serão gravadas)</h3><div style="font-size:12.5px;color:var(--text2)">' + ruins.slice(0, 30).map(esc).join('<br>') + '</div></section>' : '')
+        + (mud.length ? '' : '<div class="dscf-mut">Nenhuma linha com vendedor preenchido.</div>') + '<div class="dsce-msg" data-msg style="font-size:13px"></div></div>'
+        + '<div class="dsch-ft"><button type="button" class="dsch-bt" data-x>Cancelar</button><button type="button" class="dsch-bt ok" data-ok' + (mud.length ? '' : ' disabled') + '>Gravar ' + mud.length + ' vendedores</button></div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', function (e) { if (e.target === ov || (e.target.closest && e.target.closest('[data-x]'))) ov.remove(); });
+      ov.querySelector('[data-ok]').onclick = async function () {
+        var b = this; b.disabled = true; var feitos = 0, erros = 0;
+        for (var i = 0; i < mud.length; i++) {
+          b.textContent = 'Gravando ' + (i + 1) + ' de ' + mud.length + '…';
+          try { await api('PUT', '/api/clientes/' + encodeURIComponent(mud[i].id), { vendedor_id: mud[i].vid, vendId: mud[i].vid }); feitos++; } catch (_) { erros++; }
+        }
+        b.textContent = 'Pronto';
+        ov.querySelector('[data-msg]').innerHTML = '✓ ' + feitos + ' clientes atualizados' + (erros ? ' · ' + erros + ' com erro' : '') + '. Recarregue a página para ver nas listas.';
+        try { if (typeof carregarClientes === 'function') carregarClientes(true); } catch (_) {}
+      };
+    } catch (e) { alert('Erro ao ler a planilha: ' + (e && e.message || e)); }
+  }
+  window.dsPlanilhaClientesSemVendedor = baixar;
+  // botões no topo da tela de Vendedores
+  setInterval(function () {
+    var bts = document.querySelector('#ds-vend .dsv-bts'); if (!bts || bts.querySelector('[data-plan]')) return;
+    var b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'dsv-b'; b1.setAttribute('data-plan', '1'); b1.textContent = '📥 Planilha: clientes sem vendedor'; b1.onclick = function () { baixar(b1); };
+    var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.xlsx'; inp.hidden = true; inp.onchange = function () { if (inp.files[0]) importar(inp.files[0]); inp.value = ''; };
+    var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'dsv-b'; b2.textContent = '📤 Importar planilha preenchida'; b2.onclick = function () { inp.click(); };
+    bts.insertBefore(b2, bts.firstChild); bts.insertBefore(b1, b2); bts.appendChild(inp);
+  }, 800);
+})();
