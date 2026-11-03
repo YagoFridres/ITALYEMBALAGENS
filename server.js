@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103151310';
-const SW_RUNTIME_VERSION = '20261103151310';
+const PATCH_RUNTIME_VERSION = '20261103151347';
+const SW_RUNTIME_VERSION = '20261103151347';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -19076,9 +19076,12 @@ app.get('/api/relatorios/pizzas-salgados', authMiddleware, async (req, res) => {
       if (l.data >= ini && l.data < fimEx) { c.ofs += 1; c.caixas += l.qtd; c.valor += l.valor; c.tipos.add(l.tipo); }
     });
     const clientes = Array.from(mapaCli.values()).filter((c) => c.ofs > 0).sort((a, b) => b.valor - a.valor).map((c) => ({ nome: c.nome, cidade: c.cidade, vendedor: c.vendedor, tipos: Array.from(c.tipos).join(' + '), ofs: c.ofs, caixas: c.caixas, valor: Math.round(c.valor * 100) / 100, meses_12m: c.meses12.size, ultima: c.ultima, novo: c.primeira >= ini }));
-    // compravam nos 90 dias antes do período e não compraram no período
-    const p90 = new Date(dIni.getTime() - 90 * 86400000).toISOString().slice(0, 10);
-    const pararam = Array.from(mapaCli.values()).filter((c) => c.ofs === 0 && c.ultima >= p90 && c.ultima < ini).sort((a, b) => b.ultima.localeCompare(a.ultima)).map((c) => ({ nome: c.nome, cidade: c.cidade, vendedor: c.vendedor, ultima: c.ultima, ofs_total: c.ofs_total }));
+    // pararam: compraram no último ano, mas estão há mais de 60 dias sem pedido (contando até o fim do período / hoje)
+    const hojeIso = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    const refFim = fimEx <= hojeIso ? fimEx : hojeIso;
+    const dRef = new Date(refFim + 'T12:00:00Z');
+    const c60 = new Date(dRef.getTime() - 60 * 86400000).toISOString().slice(0, 10), c365 = new Date(dRef.getTime() - 365 * 86400000).toISOString().slice(0, 10);
+    const pararam = Array.from(mapaCli.values()).filter((c) => c.ultima >= c365 && c.ultima < c60 && c.ofs_total >= 2).sort((a, b) => b.ofs_total - a.ofs_total).map((c) => ({ nome: c.nome, cidade: c.cidade, vendedor: c.vendedor, ultima: c.ultima, ofs_total: c.ofs_total, dias: Math.round((dRef - new Date(c.ultima + 'T12:00:00Z')) / 86400000) }));
     // produtos, vendedores e cidades no período
     const agrupa = (fnKey, fnExtra) => { const m = new Map(); noPer.forEach((l) => { const k = fnKey(l); let x = m.get(k); if (!x) { x = Object.assign({ nome: k, ofs: 0, caixas: 0, valor: 0, cli: new Set() }, fnExtra ? fnExtra(l) : {}); m.set(k, x); } x.ofs++; x.caixas += l.qtd; x.valor += l.valor; x.cli.add(l.cliKey); }); return Array.from(m.values()).map((x) => Object.assign(x, { clientes: x.cli.size, cli: undefined, valor: Math.round(x.valor * 100) / 100 })).sort((a, b) => b.valor - a.valor); };
     const produtos = agrupa((l) => l.produto, (l) => ({ tipo: l.tipo })).slice(0, 60);

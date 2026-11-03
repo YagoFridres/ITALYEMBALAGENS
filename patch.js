@@ -3035,7 +3035,7 @@ try {
       cards: [
         { label: 'Vendido (pizza + salgado)', value: M(T.valor), sub: rrFmtNum(T.pct_vendas_empresa || 0, 1) + '% das vendas da empresa · ' + varPct(T.valor, (T.anterior || {}).valor) + ' vs anterior' },
         { label: 'Caixas', value: Nn(T.caixas), sub: Nn(T.ofs) + ' OFs concluídas' },
-        { label: 'Clientes', value: Nn(T.clientes), sub: Nn((j.clientes || []).filter(function (c) { return c.novo; }).length) + ' novos · ' + Nn((j.pararam || []).length) + ' pararam' },
+        { label: 'Clientes', value: Nn(T.clientes), sub: Nn((j.clientes || []).filter(function (c) { return c.novo; }).length) + ' novos · ' + Nn((j.pararam || []).length) + ' há +60 dias sem pedido' },
         { label: 'Pizza / Salgado', value: M(PT.valor) + ' / ' + M(ST.valor), sub: Nn(PT.caixas) + ' cx pizza · ' + Nn(ST.caixas) + ' cx salgado' }
       ],
       summaryTitle: 'Resumo por tipo de caixa no período',
@@ -3046,8 +3046,8 @@ try {
           rows: (function () { var ms = (j.por_mes || []).slice(); while (ms.length > 1 && !(ms[0].total.ofs > 0)) ms.shift(); return ms; })().map(function (m) { return [mesTxt(m.mes), M(m.pizza.valor), Nn(m.pizza.caixas), Nn(m.pizza.clientes), M(m.salgado.valor), Nn(m.salgado.caixas), Nn(m.salgado.clientes), '<b>' + M(m.total.valor) + '</b>', '<b>' + Nn(m.total.clientes) + '</b>', Nn(m.total.novos)]; }) },
         { title: 'Clientes que compraram no período', headers: ['Cliente', 'Cidade', 'Tipo', 'OFs', 'Caixas', 'Valor', 'Meses c/ compra (12m)', 'Última compra', 'Vendedor'],
           rows: (j.clientes || []).map(function (c) { return [rrEsc(c.nome) + (c.novo ? ' <b style="color:#16a34a">(novo)</b>' : ''), rrEsc(c.cidade || '—'), rrEsc(c.tipos), Nn(c.ofs), Nn(c.caixas), M(c.valor), Nn(c.meses_12m) + ' de 12', dt(c.ultima), rrEsc(c.vendedor || '—')]; }) },
-        { title: 'Compravam e não compraram no período (última compra nos 90 dias antes)', headers: ['Cliente', 'Cidade', 'Última compra', 'OFs no histórico', 'Vendedor'],
-          rows: (j.pararam || []).map(function (c) { return [rrEsc(c.nome), rrEsc(c.cidade || '—'), dt(c.ultima), Nn(c.ofs_total), rrEsc(c.vendedor || '—')]; }) },
+        { title: 'Clientes que compravam e estão há mais de 60 dias sem pedido', headers: ['Cliente', 'Cidade', 'Última compra', 'Dias sem comprar', 'OFs no histórico', 'Vendedor'],
+          rows: (j.pararam || []).map(function (c) { return [rrEsc(c.nome), rrEsc(c.cidade || '—'), dt(c.ultima), Nn(c.dias), Nn(c.ofs_total), rrEsc(c.vendedor || '—')]; }) },
         { title: 'Produtos mais vendidos', headers: ['Produto', 'Tipo', 'OFs', 'Caixas', 'Valor', 'Clientes'],
           rows: (j.produtos || []).map(function (p) { return [rrEsc(p.nome), rrEsc(p.tipo), Nn(p.ofs), Nn(p.caixas), M(p.valor), Nn(p.clientes)]; }) },
         { title: 'Por vendedor', headers: ['Vendedor', 'OFs', 'Caixas', 'Valor', 'Clientes'], rows: (j.vendedores || []).map(function (v) { return [rrEsc(v.nome), Nn(v.ofs), Nn(v.caixas), M(v.valor), Nn(v.clientes)]; }) },
