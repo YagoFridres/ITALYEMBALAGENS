@@ -74880,7 +74880,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * Grava por XMLHttpRequest para que os ajustes antigos de fetch não troquem os itens. */
 (function () {
   if (window.__dsOrcEd) return; window.__dsOrcEd = true;
-  var ONDAS = ['B', 'C', 'BC'], IDX = { B: 0, C: 1, BC: 2 };
+  var ONDAS = ['B', 'C', 'BC', 'TT'], IDX = { B: 0, C: 1, BC: 2, TT: 2 };  // 03/11: TT é a mesma conta da BC, só muda o nome
   var TIPOS = [['Normal', [['200', 'Meia Caixa'], ['201', 'Normal 8 Tampas'], ['202', 'Semi-Sobreposta'], ['203', 'Sobreposta Total'], ['205', 'Internas Iguais'], ['209', 'Abas Curtas']]],
     ['Telescópica', [['300', 'Telesc. Tampo'], ['301', 'Telesc. Fundo'], ['320', 'Tampo e Fundo (2 meias caixas)'], ['325', 'Total Tampo'], ['326', 'Total Fundo'], ['340', 'Testeiras Tampo'], ['341', 'Testeiras Fundo'], ['360', 'Laterais Tampo'], ['361', 'Laterais Fundo']]],
     ['Envoltório', [['402', 'Env. Fundo Int.'], ['409', 'Env. 5 Painéis'], ['415', 'Env. Abas Seg.'], ['417', 'Env. Abas Sobr.']]]];
@@ -74990,7 +74990,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var blocos = Array.isArray(p.itens) && p.itens.length ? p.itens : (Array.isArray(o.itens) && o.itens.some(function (x) { return x && (x.comp || (x.parametros && x.parametros.comp)); }) ? o.itens : []);
     function pv(k, d) { if (has(p[k])) return n(p[k]); var b = blocos[0] && blocos[0].parametros; if (b && has(b[k])) return n(b[k]); return d; }
     var ondas = Array.isArray(p.ondas_orcamento) && p.ondas_orcamento.length ? p.ondas_orcamento : String(o.onda || '').split('/').map(function (x) { return x.trim().toUpperCase(); }).filter(function (x) { return IDX[x] != null; });
-    if (!ondas.length) ondas = ONDAS.slice();
+    if (!ondas.length) ondas = ['B', 'C', 'BC'];
     var imp = Array.isArray(p.ondas_impressao) ? p.ondas_impressao.filter(function (x) { return ondas.indexOf(x) >= 0; }) : ondas.slice();
     var itens = blocos.map(function (b, i) { var bp = b.parametros || {}; return { nome: b.nome_item || b.nome || ('Item ' + (i + 1)), tipo: String(b.tipo || bp.tipo || p.tipo || '201'), comp: b.comp != null ? b.comp : bp.comp, larg: b.larg != null ? b.larg : bp.larg, alt: b.alt != null ? b.alt : bp.alt, qtd: b.quantidade != null ? b.quantidade : bp.qtd, sob: has(b.sob) ? b.sob : (bp.sob || 0), enc: has(b.enc) ? b.enc : (bp.enc || 0) }; });
     if (!itens.length) itens = [{ nome: 'Item 1', tipo: String(p.tipo || '201'), comp: has(p.comp) ? p.comp : (o.medidas || '').split('x')[0] || 300, larg: has(p.larg) ? p.larg : (o.medidas || '').split('x')[1] || 200, alt: has(p.alt) ? p.alt : (o.medidas || '').split('x')[2] || 100, qtd: has(p.qtd) ? p.qtd : (o.quantidade || 1000), sob: p.sob || 0, enc: p.enc || 0 }];
@@ -75069,7 +75069,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '</div><footer><button type="button" class="doe-btn" data-fechar>Fechar</button><button type="button" class="doe-btn" data-print>🖨 Imprimir</button><button type="button" class="doe-btn" data-salvar-email>📧 Salvar e enviar e-mail</button><button type="button" class="doe-btn doe-pri" data-salvar>💾 Salvar</button></footer>', 'doe-ed');
     ligar(ov); recalcular();
   }
-  function htmlVals() { return E.ondas.map(function (o) { var k = o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc'; return campo('Valor onda ' + o + ' (R$/m²)', 'data-v="' + k + '"', E.vals[k]); }).join(''); }
+  function htmlVals() {
+    var grupos = {}, ordem = [];
+    E.ondas.forEach(function (o) { var k = o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc'; if (!grupos[k]) { grupos[k] = []; ordem.push(k); } grupos[k].push(o); });
+    return ordem.map(function (k) { return campo('Valor onda ' + grupos[k].join(' / ') + ' (R$/m²)', 'data-v="' + k + '"', E.vals[k]); }).join('');
+  }
   function recalcular() {
     var ov = document.getElementById('ds-orc-ov'); if (!ov || !E) return;
     var c = calcTudo();
