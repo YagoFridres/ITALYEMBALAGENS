@@ -35571,6 +35571,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         if (!lista) throw lastErr || new Error('Falha ao carregar chapas do estoque');
         lista = Array.isArray(lista) ? lista : [];
+        // Abas Chapas / Retalhos: retalho = categoria que começa com "Retalho"
+        var _ehRet = function(c) { return /^retalho/i.test(String(c && c.categoria || '').trim()); };
+        var abaRet = String(window.__estoqueWireAba || '') === 'retalhos';
+        var qtdRetalhos = lista.filter(_ehRet).length, qtdChapasInt = lista.length - qtdRetalhos;
+        lista = lista.filter(function(c) { return _ehRet(c) === abaRet; });
+        var catsAba = lista.map(function(c) { return String(c && c.categoria || '').trim() || 'Estoque Simples'; }).filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+        var catFil = String(window.__estoqueWireCat || '');
+        if (catFil && catsAba.indexOf(catFil) < 0) catFil = '';
+        if (catFil) lista = lista.filter(function(c) { return (String(c && c.categoria || '').trim() || 'Estoque Simples') === catFil; });
         try { window.__dsEstoqueLista = lista; window.__dsEstTon = estoqueWireTon; window.__dsEstValor = estoqueWireValor; } catch (_) {}
         window.__estoqueWireLimit = limiteUsado || limiteAtual;
         var sugestoesCompra = [];
@@ -35621,10 +35630,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         page.innerHTML = ''
         + '<div class="pep-wrap">'
+        + '  <div class="dsest-abas"><button type="button" data-est-aba=""' + (abaRet ? '' : ' class="on"') + '>🧱 Chapas<span>' + num(qtdChapasInt, 0) + '</span></button><button type="button" data-est-aba="retalhos"' + (abaRet ? ' class="on"' : '') + '>✂️ Retalhos<span>' + num(qtdRetalhos, 0) + '</span></button></div>'
         + '  <div class="pep-cards estoque-wire-cards">'
-        +      _makeCardEstoque({ label: 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
+        +      _makeCardEstoque({ label: abaRet ? 'Valor dos Retalhos' : 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
         + '    <div class="estoque-wire-card-action" data-est-card="tons">' + _makeCardEstoque({ label: 'Toneladas em Estoque', value: num(tonTotal, 3) + ' t', sub: 'Clique para detalhar por chapa' }) + '</div>'
-        +      _makeCardEstoque({ label: 'Quantidade de Chapas', value: num(lista.length, 0), sub: 'Itens cadastrados no estoque' })
+        +      _makeCardEstoque({ label: abaRet ? 'Quantidade de Retalhos' : 'Quantidade de Chapas', value: num(lista.length, 0), sub: catFil ? ('Categoria: ' + catFil) : 'Itens cadastrados no estoque' })
         + '    <div class="estoque-wire-card-action" data-est-card="forn" title="Clique para ver todos os fornecedores">' + _cardBreakdownEstoque('Por Fornecedor', breakdown, money) + '</div>'
         + '  </div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
@@ -35633,11 +35643,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn" id="estoque-wire-mais">Carregar mais</button>'
         + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + badgeSugestoes + '</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
-        + '    <button type="button" class="dsch-nova-btn" id="estoque-wire-nova" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>'
+        + (abaRet ? '    <button type="button" class="dsch-nova-btn" id="estoque-wire-nova" onclick="window.__dschTipoInicial=\'retalho\';abrirModalNovaChapa()">＋ Novo Retalho</button>' : '    <button type="button" class="dsch-nova-btn" id="estoque-wire-nova" onclick="window.__dschTipoInicial=\'\';abrirModalNovaChapa()">＋ Nova Chapa</button>')
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
         + '    <button class="pep-btn' + (filtroRapido === 'baixo200' ? ' primary' : '') + '" id="estoque-wire-fil-baixo" type="button">Abaixo de 200</button>'
         + '    <button class="pep-btn' + (filtroRapido === 'zeradas' ? ' primary' : '') + '" id="estoque-wire-fil-zeradas" type="button">Zeradas</button>'
+        + '    <select class="pep-input" id="estoque-wire-cat" style="min-width:200px;max-width:100%"><option value="">Todas as categorias</option>' + catsAba.map(function(c) { return '<option value="' + esc(c) + '"' + (c === catFil ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>'
         + '  </div></div>'
         + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr>'
         +      _estoqueWireHeaderSortHtml('FORNECEDOR', 'fornecedor', 'col-text')
@@ -35695,6 +35706,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           resumoFornecedor: resumoFornecedorPrint
         });
       };
+      Array.prototype.slice.call(page.querySelectorAll('[data-est-aba]')).forEach(function(b) {
+        b.onclick = function() { window.__estoqueWireAba = String(b.getAttribute('data-est-aba') || ''); window.__estoqueWireCat = ''; renderEstoqueWireframePage(); };
+      });
+      var selCatEst = document.getElementById('estoque-wire-cat');
+      if (selCatEst) selCatEst.onchange = function() { window.__estoqueWireCat = String(selCatEst.value || ''); renderEstoqueWireframePage(); };
       var btnFilBaixo = document.getElementById('estoque-wire-fil-baixo');
       if (btnFilBaixo) btnFilBaixo.onclick = function() {
         window.__estoqueWireFiltroRapido = (String(window.__estoqueWireFiltroRapido || '') === 'baixo200') ? '' : 'baixo200';
@@ -76765,6 +76781,13 @@ window.__perTxt = function (p) {
     + '.dsch-t td{padding:10px 12px;border-top:1px solid var(--border,#1e293b);vertical-align:middle}.dsch-t .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.dsch-t td small{display:block;font-size:11.5px;color:var(--text3,#64748b)}'
     + '.dsch-t tr.cl{cursor:pointer}.dsch-t tr.cl:hover td{background:rgba(37,99,235,.08)}.dsch-t tr.sub td{background:rgba(255,255,255,.02);font-size:12.5px;padding:7px 12px 7px 28px}'
     + '.dsch-bar{height:6px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden;min-width:70px}.dsch-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3b82f6,#22c55e)}'
+    + '.dsch-cat{position:relative}.dsch-cat .dsch-in{padding-right:34px}.dsch-cat-seta{position:absolute;right:12px;top:12px;color:var(--text2,#94a3b8);cursor:pointer}'
+    + '.dsch-cat-dd{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:var(--surface,#0f172a);border:1px solid var(--b2,#334155);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.45);max-height:260px;overflow:auto;padding:4px}'
+    + '.dsch-cat-dd button{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--text,#e2e8f0);font:inherit;font-size:14px;padding:10px 12px;border-radius:8px;cursor:pointer;min-height:40px}.dsch-cat-dd button:hover{background:rgba(37,99,235,.18)}.dsch-cat-dd button.on{color:#4ade80;font-weight:800}'
+    + '.dsch-cat-dd button.nova{color:#60a5fa;font-weight:800;border-top:1px solid var(--border,#1e293b);border-radius:0 0 8px 8px}.dsch-cat-dd .vz{padding:10px 12px;font-size:13px;color:var(--text3,#64748b)}'
+    + '.dsest-abas{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}.dsest-abas button{flex:0 1 auto;min-height:44px;border-radius:12px;border:1px solid var(--border,#334155);background:var(--s1,rgba(255,255,255,.02));color:var(--text2,#94a3b8);font:inherit;font-weight:800;font-size:14px;padding:0 18px;cursor:pointer}'
+    + '.dsest-abas button span{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:rgba(148,163,184,.18);font-size:12px}.dsest-abas button.on{background:linear-gradient(135deg,rgba(37,99,235,.25),rgba(14,165,233,.15));border-color:#3b82f6;color:#fff}'
+    + '@media (max-width:760px){.dsest-abas button{flex:1}}'
     + '.dsch-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(245,158,11,.15);color:#fbbf24}'
     + '.dsch-tfoot td{font-weight:800;background:var(--s2,#1e293b);position:sticky;bottom:0}'
     + '.dsch-t{display:table!important}.dsch-t thead{display:table-header-group!important}.dsch-t tbody{display:table-row-group!important}.dsch-t tfoot{display:table-footer-group!important}.dsch-t tr{display:table-row!important}.dsch-t td,.dsch-t th{display:table-cell!important}.dsch-t td:before{content:none!important;display:none!important}'
@@ -76814,8 +76837,9 @@ window.__perTxt = function (p) {
     var corpo = ''
       + '<div class="dsch-prev"><div class="ph" data-ph>📦</div><div><b data-pv-nome>Nova chapa</b><span data-pv-sub>Preencha os campos abaixo</span></div><div class="vl"><span>Valor em estoque</span><b data-pv-tot>R$ 0,00</b></div></div>'
       + '<section class="dsch-sec"><h3><span>📦</span>Qual é a chapa?</h3><div class="dsch-g">'
+      +   '<div class="dsch-f s3"><label>Tipo</label><div class="dsch-seg" data-tipo><button type="button" data-v="chapa">🧱 Chapa inteira</button><button type="button" data-v="retalho">✂️ Retalho</button></div><small data-tipo-dica></small></div>'
       +   campo('nome', 'Nome / uso', { req: 1, cls: 's2', ph: 'Ex: ESTOQUE DUPLO, PIZZA 40X40…' })
-      +   '<div class="dsch-f"><label for="dsch-categoria">Categoria <b>*</b></label><select class="dsch-in" id="dsch-categoria" data-orig="chapa-categoria">' + cats + '</select></div>'
+      +   '<div class="dsch-f"><label for="dsch-cat-busca">Categoria <b>*</b></label><div class="dsch-cat"><input class="dsch-in" id="dsch-cat-busca" autocomplete="off" placeholder="Buscar ou criar categoria…"><span class="dsch-cat-seta">▾</span><div class="dsch-cat-dd" hidden></div></div><select id="dsch-categoria" data-orig="chapa-categoria" hidden>' + cats + '</select></div>'
       +   campo('nomenclatura', 'Nomenclatura', { req: 1, ph: 'Ex: ADC21' })
       +   campo('gramatura', 'Gramatura (g/m²)', { ph: 'Ex: 350', attrs: ' inputmode="decimal"', dica: 'Usada para calcular as toneladas' })
       +   campo('tamanho', 'Tamanho (mm)', { ph: 'Ex: 1240X980', dica: 'Largura X comprimento' })
@@ -76851,6 +76875,75 @@ window.__perTxt = function (p) {
       el.addEventListener('input', function () { el.classList.remove('erro'); var val = el.value; if (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') val = String(num(val)); if (el.id === 'dsch-quantidade' || el.id === 'dsch-estoque-minimo') val = String(Math.max(0, Math.trunc(num(val)))); setOrig(el.getAttribute('data-orig'), (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') && !el.value.trim() ? '' : val); atualizar(); });
       el.addEventListener('change', function () { el.dispatchEvent(new Event('input')); });
     });
+    // ---- categoria: buscar / criar + tipo (chapa inteira ou retalho) ----
+    var catSel = $('dsch-categoria'), catIn = $('dsch-cat-busca'), catDD = ov.querySelector('.dsch-cat-dd');
+    function ehRet(nome) { return /^retalho/i.test(String(nome || '').trim()); }
+    var tipo = ehRet(catSel.value) ? 'retalho' : 'chapa';
+    if (!edit && window.__dschTipoInicial === 'retalho') tipo = 'retalho';
+    window.__dschTipoInicial = '';
+    function nomesCats() { return Array.prototype.map.call(catSel.options, function (o) { return o.value; }).filter(Boolean); }
+    function catsDoTipo() { return nomesCats().filter(function (n) { return ehRet(n) === (tipo === 'retalho'); }); }
+    function nomeNovo(t) { t = String(t || '').trim().replace(/\s+/g, ' '); if (tipo === 'retalho' && t && !ehRet(t)) t = 'Retalho ' + t; return t; }
+    function garantirOpcao(sel, nome) { if (sel && !Array.prototype.some.call(sel.options, function (o) { return o.value === nome; })) { var o = document.createElement('option'); o.value = nome; o.textContent = nome; sel.appendChild(o); } }
+    function escolherCat(nome) {
+      garantirOpcao(catSel, nome); garantirOpcao($('chapa-categoria'), nome);
+      catSel.value = nome; catIn.value = nome; catDD.hidden = true; catIn.classList.remove('erro');
+      catSel.dispatchEvent(new Event('input'));
+    }
+    function montarDD() {
+      var q = norm(catIn.value).trim(), l = catsDoTipo();
+      if (q && norm(catSel.value) === q) q = '';
+      var m = q ? l.filter(function (n) { return norm(n).indexOf(q) >= 0; }) : l;
+      var exato = l.some(function (n) { return norm(n) === norm(catIn.value).trim(); });
+      var h = m.map(function (n) { return '<button type="button" data-c="' + esc(n) + '"' + (n === catSel.value ? ' class="on"' : '') + '>' + esc(n) + '</button>'; }).join('');
+      if (catIn.value.trim() && !exato) h += '<button type="button" class="nova" data-nova>＋ Criar categoria “' + esc(nomeNovo(catIn.value)) + '”</button>';
+      if (!h) h = '<div class="vz">Nenhuma categoria' + (tipo === 'retalho' ? ' de retalho' : '') + '. Digite um nome para criar.</div>';
+      catDD.innerHTML = h; catDD.hidden = false;
+    }
+    async function criarCat(nome) {
+      nome = nomeNovo(nome); if (!nome) return;
+      var existe = nomesCats().filter(function (n) { return norm(n) === norm(nome); })[0];
+      if (existe) return escolherCat(existe);
+      catIn.disabled = true;
+      try {
+        var ordem = 0; try { ordem = (CHAPAS_CATEGORIAS || []).reduce(function (m, c) { return Math.max(m, Number(c && c.ordem) || 0); }, 0) + 1; } catch (_) {}
+        var r = await window.apiFetch('/api/chapas_categorias', { method: 'POST', body: { nome: nome, ordem: ordem } });
+        var j = r ? await r.json().catch(function () { return {}; }) : {};
+        if (!r || !r.ok || (j && j.error)) throw new Error((j && (j.error || j.message)) || 'falha ao criar');
+        try { if (typeof window.carregarCategoriasChapas === 'function') await window.carregarCategoriasChapas(); } catch (_) {}
+        escolherCat(nome);
+        try { window.toast('Categoria “' + nome + '” criada', 'var(--green)'); } catch (_) {}
+      } catch (e) { try { window.toast('Não consegui criar a categoria: ' + e.message, 'var(--red)'); } catch (_) { alert('Não consegui criar a categoria: ' + e.message); } }
+      finally { catIn.disabled = false; }
+    }
+    catIn.value = catSel.value || '';
+    catIn.addEventListener('focus', function () { catIn.select(); montarDD(); });
+    catIn.addEventListener('input', montarDD);
+    catIn.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || catDD.hidden) return;
+      var b = catDD.querySelector('button[data-c]') || catDD.querySelector('[data-nova]');
+      if (b) b.click();
+    }, true);
+    catIn.addEventListener('blur', function () { setTimeout(function () { if (!catDD.contains(document.activeElement)) { catDD.hidden = true; if (catSel.value && norm(catIn.value) !== norm(catSel.value)) { var l = catsDoTipo().filter(function (n) { return norm(n) === norm(catIn.value); })[0]; if (l) escolherCat(l); } } }, 180); });
+    catDD.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    catDD.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.hasAttribute('data-nova')) criarCat(catIn.value); else escolherCat(b.getAttribute('data-c'));
+    });
+    ov.querySelector('.dsch-cat-seta').onclick = function () { catIn.focus(); };
+    function aplicarTipo(t, auto) {
+      tipo = t;
+      ov.querySelectorAll('[data-tipo] button').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === t); });
+      ov.querySelector('[data-tipo-dica]').textContent = t === 'retalho' ? 'Vai para a aba Retalhos do Estoque de Chapas. Use uma categoria que comece com “Retalho”.' : 'Vai para a aba Chapas do Estoque de Chapas.';
+      if (!auto) return;
+      if (ehRet(catSel.value) === (t === 'retalho') && catSel.value) return;
+      var l = catsDoTipo();
+      if (l.length) escolherCat(t === 'chapa' && l.indexOf('Estoque Simples') >= 0 ? 'Estoque Simples' : l[0]);
+      else if (t === 'retalho') criarCat('Retalhos');
+      else { catSel.value = ''; catIn.value = ''; }
+    }
+    ov.querySelectorAll('[data-tipo] button').forEach(function (b) { b.onclick = function () { aplicarTipo(b.getAttribute('data-v'), true); }; });
+    aplicarTipo(tipo, tipo === 'retalho' && !ehRet(catSel.value));
     // empresa e riscada
     Array.prototype.forEach.call(ov.querySelectorAll('[data-emp] button'), function (b) { b.onclick = function () { ov.querySelectorAll('[data-emp] button').forEach(function (x) { x.classList.toggle('on', x === b); }); setOrig('chapa-empresa', b.getAttribute('data-v')); atualizar(); }; });
     function ris(sim) {
@@ -76881,6 +76974,7 @@ window.__perTxt = function (p) {
     atualizar();
     ov.querySelector('[data-salvar]').onclick = function () {
       var falta = [];
+      if (!catSel.value || norm(catIn.value).trim() !== norm(catSel.value)) { catIn.classList.add('erro'); falta.push('Categoria (escolha ou crie na lista)'); }
       [['dsch-nome', 'Nome / uso'], ['dsch-nomenclatura', 'Nomenclatura'], ['dsch-fornecedor', 'Fornecedor'], ['dsch-quantidade', 'Quantidade']].forEach(function (p) { var el = $(p[0]); if (!String(el.value || '').trim()) { el.classList.add('erro'); falta.push(p[1]); } });
       if (falta.length) { var pr = $(falta.length ? ['dsch-nome', 'dsch-nomenclatura', 'dsch-fornecedor', 'dsch-quantidade'].find(function (i) { return $(i).classList.contains('erro'); }) : ''); if (pr) pr.focus(); try { window.toast('Preencha: ' + falta.join(', '), 'var(--red)'); } catch (_) { alert('Preencha: ' + falta.join(', ')); } return; }
       // garante tudo copiado
