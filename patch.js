@@ -77660,6 +77660,13 @@ window.__perTxt = function (p) {
         { label: 'Ranking por', value: ({ caixas: 'Caixas', ton: 'Toneladas', ofs: 'Nº de OFs', gramatura: 'Gramatura' })[ST.ord] }
       ],
       introHtml: '<p style="margin:0">Preços do m² conforme o cadastro de gramaturas. Uso calculado pelas OFs concluídas no período.</p>',
+      summaryTitle: 'Resumo por fornecedor',
+      summaryHeaders: ['Fornecedor', 'Gramaturas', 'Usadas no período', 'OFs', 'Caixas', 'Toneladas', 'Mais usada'],
+      summaryRows: ks.map(function (k) {
+        var l = lista(k); var t = l.reduce(function (a, x) { a.o += x.ofs; a.c += x.caixas; a.t += x.ton; if (x.ofs) a.u += 1; return a; }, { o: 0, c: 0, t: 0, u: 0 });
+        var top = l.slice().sort(function (a, b) { return b.caixas - a.caixas; })[0];
+        return [fornNome(k), String(l.length), String(t.u), N(t.o), N(t.c), N(t.t, 3) + ' t', top && top.caixas ? top.cod : '—'].map(esc);
+      }),
       detailSections: secs
     });
     window._openStyledPrintWindow(html);
