@@ -77732,11 +77732,11 @@ window.__perTxt = function (p) {
   document.head.appendChild(css);
   function marcar() {
     var pg = document.getElementById('page-gramaturas'); if (!pg) return;
-    pg.querySelectorAll('.pep-card').forEach(function (c) {
-      var lb = c.querySelector('.pep-card-label');
+    pg.querySelectorAll('.pep-cards > div, .pep-card').forEach(function (c) {
+      var lb = c.firstElementChild;
       if (!lb || !/gramaturas por fornecedor/i.test(lb.textContent || '') || c.hasAttribute('data-gram-forn-card')) return;
       c.setAttribute('data-gram-forn-card', '1'); c.setAttribute('title', 'Ver gramaturas de cada fornecedor');
-      c.querySelectorAll('.pep-card-sub > div').forEach(function (l) { var s = l.querySelector('span'); if (s) l.setAttribute('data-gfk', s.textContent.trim()); });
+      c.querySelectorAll('div').forEach(function (l) { var sp = l.children; if (sp.length === 2 && sp[0].tagName === 'SPAN') l.setAttribute('data-gfk', sp[0].textContent.trim()); });
     });
   }
   document.addEventListener('click', function (e) {
