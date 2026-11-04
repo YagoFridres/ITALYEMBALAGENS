@@ -77544,3 +77544,210 @@ window.__perTxt = function (p) {
   });
   try { obs.observe(document.body, { childList: true }); } catch (_) {}
 })();
+
+// Gramaturas: card "Gramaturas por Fornecedor" clicável → ranking por fornecedor + impressão + planilha
+(function __dsGramForn() {
+  if (window.__dsGramForn) return; window.__dsGramForn = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function N(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function M4(v) { return 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
+  function R(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function D(s) { s = String(s || ''); return s.length >= 10 ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : '—'; }
+  function hojeIso() { var d = new Date(Date.now() - 3 * 3600000); return d.toISOString().slice(0, 10); }
+  function menos12m() { var d = new Date(Date.now() - 3 * 3600000); d.setUTCFullYear(d.getUTCFullYear() - 1); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); }
+  async function api(url) {
+    var tk = ''; try { tk = localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) {}
+    var r = await fetch(url, { headers: { Authorization: 'Bearer ' + tk } });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || ('Erro ' + r.status));
+    return j;
+  }
+  var ST = { ini: menos12m(), fim: hojeIso(), forn: '', ord: 'caixas', gram: [], forns: [], uso: {}, usoInfo: null };
+  // código da gramatura = parte antes de " - " (ex.: "CHAB21 - 367g - Adami" → CHAB21)
+  function codigo(g) { var n = String(g.nome || '').trim(); var i = n.indexOf(' - '); return i > 0 ? n.slice(0, i) : n; }
+  function lista(fornKey) {
+    return ST.gram.filter(function (g) { return (String(g.fornecedor_id || '') || ('nome:' + (g.fornecedor_nome || ''))) === fornKey; }).map(function (g) {
+      var u = ST.uso[String(g.id)] || {};
+      return { g: g, cod: codigo(g), ofs: u.ofs || 0, caixas: u.caixas || 0, ton: u.toneladas || 0, valor: u.valor_vendido || 0, clientes: u.clientes || 0, ultima: u.ultima_data || '' };
+    }).sort(function (a, b) {
+      var k = ST.ord === 'ton' ? 'ton' : (ST.ord === 'ofs' ? 'ofs' : (ST.ord === 'gramatura' ? null : 'caixas'));
+      if (!k) return (Number(a.g.gramatura) || 0) - (Number(b.g.gramatura) || 0);
+      return (b[k] - a[k]) || (b.caixas - a.caixas) || String(a.cod).localeCompare(String(b.cod), 'pt-BR', { numeric: true });
+    });
+  }
+  async function carregar() {
+    var r = await Promise.all([
+      api('/api/gramaturas?_=' + Date.now()),
+      api('/api/fornecedores').catch(function () { return []; }),
+      api('/api/gramaturas/uso?data_inicio=' + ST.ini + '&data_fim=' + ST.fim)
+    ]);
+    ST.gram = (r[0] && (r[0].data || r[0].gramaturas)) || (Array.isArray(r[0]) ? r[0] : []);
+    var fl = Array.isArray(r[1]) ? r[1] : ((r[1] && r[1].data) || []);
+    var map = {};
+    fl.forEach(function (f) { map[String(f.id)] = { key: String(f.id), nome: String(f.nome || f.razao_social || '—'), qtd: 0 }; });
+    ST.gram.forEach(function (g) {
+      var k = String(g.fornecedor_id || '') || ('nome:' + (g.fornecedor_nome || 'Sem fornecedor'));
+      if (!map[k]) map[k] = { key: k, nome: String(g.fornecedor_nome || 'Sem fornecedor'), qtd: 0 };
+      map[k].qtd += 1;
+    });
+    ST.forns = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return (b.qtd - a.qtd) || a.nome.localeCompare(b.nome, 'pt-BR'); });
+    ST.uso = {}; (r[2].rows || []).forEach(function (u) { ST.uso[String(u.gramatura_id)] = u; });
+    ST.usoInfo = r[2];
+    if (!ST.forn || !map[ST.forn]) ST.forn = (ST.forns[0] || {}).key || '';
+  }
+  function fornNome(k) { var f = ST.forns.filter(function (x) { return x.key === k; })[0]; return f ? f.nome : '—'; }
+  function fechar() { var o = document.getElementById('ds-gramforn-ov'); if (o) o.remove(); document.removeEventListener('keydown', escKey); }
+  function escKey(e) { if (e.key === 'Escape') fechar(); }
+  function render() {
+    var ov = document.getElementById('ds-gramforn-ov'); if (!ov) return;
+    var itens = lista(ST.forn);
+    var max = itens.reduce(function (m, x) { return Math.max(m, x[ST.ord === 'ton' ? 'ton' : (ST.ord === 'ofs' ? 'ofs' : 'caixas')]); }, 0) || 1;
+    var tot = itens.reduce(function (a, x) { a.ofs += x.ofs; a.caixas += x.caixas; a.ton += x.ton; return a; }, { ofs: 0, caixas: 0, ton: 0 });
+    var usadas = itens.filter(function (x) { return x.ofs > 0; }).length;
+    var bd = ov.querySelector('.dsch-bd');
+    bd.innerHTML = ''
+      + '<div class="dsch-chips" id="dsgf-forns">' + ST.forns.map(function (f) { return '<button type="button" data-k="' + esc(f.key) + '" class="' + (f.key === ST.forn ? 'on' : '') + '">' + esc(f.nome) + ' · ' + f.qtd + '</button>'; }).join('') + '</div>'
+      + '<div class="dsch-busca">'
+      + '<div class="dsch-f" style="flex:1;min-width:140px"><label>De</label><input class="dsch-in" type="date" id="dsgf-ini" value="' + esc(ST.ini) + '"></div>'
+      + '<div class="dsch-f" style="flex:1;min-width:140px"><label>Até</label><input class="dsch-in" type="date" id="dsgf-fim" value="' + esc(ST.fim) + '"></div>'
+      + '<div class="dsch-f" style="flex:1;min-width:160px"><label>Ordenar ranking por</label><select class="dsch-in" id="dsgf-ord">'
+      + [['caixas', 'Caixas produzidas'], ['ton', 'Toneladas'], ['ofs', 'Nº de OFs'], ['gramatura', 'Gramatura (g/m²)']].map(function (o) { return '<option value="' + o[0] + '"' + (ST.ord === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+      + '</select></div></div>'
+      + '<div class="dsch-kpis">'
+      + '<div class="dsch-kpi"><small>Gramaturas</small><b>' + itens.length + '</b><span>' + usadas + ' usadas no período</span></div>'
+      + '<div class="dsch-kpi"><small>OFs</small><b>' + N(tot.ofs) + '</b><span>concluídas no período</span></div>'
+      + '<div class="dsch-kpi"><small>Caixas</small><b>' + N(tot.caixas) + '</b><span>produzidas</span></div>'
+      + '<div class="dsch-kpi"><small>Toneladas</small><b>' + N(tot.ton, 3) + '</b><span>t de papelão</span></div>'
+      + '</div>'
+      + (itens.length ? '<div class="dsch-tw"><table class="dsch-t"><thead><tr><th>#</th><th>Código</th><th class="n">Gramatura</th><th class="n">Preço m²</th><th class="n mh">Preço por mil</th><th class="n">OFs</th><th class="n">Caixas</th><th class="n mh">Toneladas</th><th class="mh">Uso</th><th class="mh">Último uso</th></tr></thead><tbody>'
+        + itens.map(function (x, i) {
+          var val = ST.ord === 'ton' ? x.ton : (ST.ord === 'ofs' ? x.ofs : x.caixas);
+          return '<tr><td>' + (i + 1) + 'º</td><td><b>' + esc(x.cod) + '</b>' + (x.g.nome !== x.cod ? '<small>' + esc(x.g.nome) + '</small>' : '') + '</td>'
+            + '<td class="n">' + N(x.g.gramatura) + ' g/m²</td><td class="n">' + M4(x.g.valor_unitario) + '</td><td class="n mh">' + R((Number(x.g.valor_unitario) || 0) * 1000) + '</td>'
+            + '<td class="n">' + N(x.ofs) + '</td><td class="n">' + N(x.caixas) + '</td><td class="n mh">' + N(x.ton, 3) + ' t</td>'
+            + '<td class="mh"><div class="dsch-bar"><i style="width:' + Math.round(val / max * 100) + '%"></i></div></td>'
+            + '<td class="mh">' + (x.ultima ? D(x.ultima) : '<span class="dsch-tag">Sem uso</span>') + '</td></tr>';
+        }).join('')
+        + '</tbody><tfoot class="dsch-tfoot"><tr><td colspan="2">Total</td><td class="n"></td><td class="n"></td><td class="n mh"></td><td class="n">' + N(tot.ofs) + '</td><td class="n">' + N(tot.caixas) + '</td><td class="n mh">' + N(tot.ton, 3) + ' t</td><td class="mh"></td><td class="mh"></td></tr></tfoot></table></div>'
+        : '<div class="dsch-sec" style="text-align:center;color:var(--text2,#94a3b8)">Nenhuma gramatura cadastrada para ' + esc(fornNome(ST.forn)) + '. Cadastre em <b>Criar Gramaturas</b>.</div>')
+      + '<div style="font-size:12px;color:var(--text3,#64748b)">Uso = OFs concluídas no período (mesma base do relatório de vendas). ' + (ST.usoInfo && ST.usoInfo.ofs_sem_gramatura ? N(ST.usoInfo.ofs_sem_gramatura) + ' OFs do período não têm gramatura vinculada e não entram no ranking.' : '') + '</div>';
+    ov.querySelector('#dsgf-tit').textContent = 'Gramaturas — ' + fornNome(ST.forn);
+    bd.querySelectorAll('#dsgf-forns button').forEach(function (b) { b.onclick = function () { ST.forn = b.getAttribute('data-k'); render(); }; });
+    bd.querySelector('#dsgf-ord').onchange = function () { ST.ord = this.value; render(); };
+    var per = function () {
+      var i = bd.querySelector('#dsgf-ini').value, f = bd.querySelector('#dsgf-fim').value; if (!i || !f) return;
+      ST.ini = i; ST.fim = f; bd.style.opacity = '.5';
+      carregar().then(render).catch(function (e) { alert('Erro: ' + e.message); }).then(function () { bd.style.opacity = ''; });
+    };
+    bd.querySelector('#dsgf-ini').onchange = per; bd.querySelector('#dsgf-fim').onchange = per;
+  }
+  function linhasTabela(k) {
+    return lista(k).map(function (x, i) {
+      return [String(i + 1) + 'º', x.cod, x.g.nome, N(x.g.gramatura), M4(x.g.valor_unitario), R((Number(x.g.valor_unitario) || 0) * 1000), N(x.ofs), N(x.caixas), N(x.ton, 3), x.ultima ? D(x.ultima) : 'Sem uso'];
+    });
+  }
+  function imprimir(todos) {
+    var ks = todos ? ST.forns.filter(function (f) { return f.qtd > 0; }).map(function (f) { return f.key; }) : [ST.forn];
+    var heads = ['#', 'Código', 'Descrição', 'Gramatura (g/m²)', 'Preço m²', 'Preço por mil', 'OFs', 'Caixas', 'Toneladas', 'Último uso'];
+    var secs = ks.map(function (k) { return { title: 'Fornecedor: ' + fornNome(k) + ' (' + lista(k).length + ' gramaturas)', headers: heads, rows: linhasTabela(k).map(function (r) { return r.map(esc); }) }; });
+    var totG = ks.reduce(function (a, k) { return a + lista(k).length; }, 0);
+    var html = window._buildStyledPrintHtml({
+      title: todos ? 'Tabela de Gramaturas por Fornecedor' : ('Tabela de Gramaturas — ' + fornNome(ks[0])),
+      periodo: 'Uso de ' + D(ST.ini) + ' a ' + D(ST.fim),
+      cards: [
+        { label: 'Fornecedores', value: String(ks.length) },
+        { label: 'Gramaturas', value: String(totG) },
+        { label: 'Ranking por', value: ({ caixas: 'Caixas', ton: 'Toneladas', ofs: 'Nº de OFs', gramatura: 'Gramatura' })[ST.ord] }
+      ],
+      introHtml: '<p style="margin:0">Preços do m² conforme o cadastro de gramaturas. Uso calculado pelas OFs concluídas no período.</p>',
+      detailSections: secs
+    });
+    window._openStyledPrintWindow(html);
+  }
+  function lib() { if (window.ExcelJS) return Promise.resolve(window.ExcelJS); return new Promise(function (ok, er) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'; s.onload = function () { ok(window.ExcelJS); }; s.onerror = function () { er(new Error('Não consegui carregar o gerador de planilhas')); }; document.head.appendChild(s); }); }
+  async function planilha(todos) {
+    var X = await lib();
+    var wb = new X.Workbook();
+    var ks = todos ? ST.forns.filter(function (f) { return f.qtd > 0; }).map(function (f) { return f.key; }) : [ST.forn];
+    ks.forEach(function (k) {
+      var nm = fornNome(k).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 30) || 'Fornecedor';
+      var ws = wb.addWorksheet(nm);
+      ws.mergeCells('A1:J1'); ws.getCell('A1').value = 'TABELA DE GRAMATURAS — ' + fornNome(k).toUpperCase();
+      ws.getCell('A1').font = { bold: true, size: 14 }; ws.getCell('A1').alignment = { horizontal: 'center' };
+      ws.mergeCells('A2:J2'); ws.getCell('A2').value = 'Italy Embalagens · uso de ' + D(ST.ini) + ' a ' + D(ST.fim) + ' · gerado em ' + new Date().toLocaleString('pt-BR');
+      ws.getCell('A2').alignment = { horizontal: 'center' }; ws.getCell('A2').font = { size: 10, color: { argb: 'FF555555' } };
+      var hd = ws.addRow(['#', 'Código', 'Descrição', 'Gramatura (g/m²)', 'Preço m² (R$)', 'Preço por mil (R$)', 'OFs', 'Caixas', 'Toneladas', 'Último uso']);
+      hd.eachCell(function (c) { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }; });
+      lista(k).forEach(function (x, i) {
+        var r = ws.addRow([i + 1, x.cod, x.g.nome, Number(x.g.gramatura) || 0, Number(x.g.valor_unitario) || 0, (Number(x.g.valor_unitario) || 0) * 1000, x.ofs, x.caixas, Math.round(x.ton * 1000) / 1000, x.ultima ? D(x.ultima) : 'Sem uso']);
+        r.getCell(5).numFmt = '#,##0.0000'; r.getCell(6).numFmt = '#,##0.00'; r.getCell(8).numFmt = '#,##0'; r.getCell(9).numFmt = '#,##0.000';
+        r.eachCell(function (c) { c.border = { top: { style: 'thin', color: { argb: 'FFBBBBBB' } }, bottom: { style: 'thin', color: { argb: 'FFBBBBBB' } }, left: { style: 'thin', color: { argb: 'FFBBBBBB' } }, right: { style: 'thin', color: { argb: 'FFBBBBBB' } } }; });
+        if (i % 2) r.eachCell(function (c) { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; });
+      });
+      [6, 14, 30, 14, 14, 16, 8, 12, 12, 13].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+      ws.views = [{ state: 'frozen', ySplit: 3 }];
+      ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    });
+    var buf = await wb.xlsx.writeBuffer();
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'gramaturas-' + (todos ? 'todos-fornecedores' : fornNome(ks[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '.xlsx';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  async function abrir(fornNomeInicial) {
+    fechar();
+    var ov = document.createElement('div'); ov.id = 'ds-gramforn-ov'; ov.className = 'dsch-ov';
+    ov.innerHTML = '<div class="dsch-m lg" role="dialog" aria-modal="true">'
+      + '<div class="dsch-hd azul"><div class="dsch-ic">⚖️</div><div><h2 id="dsgf-tit">Gramaturas por fornecedor</h2><p>Ranking das gramaturas mais usadas de cada fornecedor</p></div><button type="button" class="dsch-x" title="Fechar">✕</button></div>'
+      + '<div class="dsch-bd"><div style="padding:30px;text-align:center;color:var(--text2,#94a3b8)">Carregando…</div></div>'
+      + '<div class="dsch-ft"><span class="dsch-dica">Imprime e gera planilha no formato da tabela do fornecedor</span>'
+      + '<button type="button" class="dsch-bt" data-a="xls-todos">📥 Planilha de todos</button>'
+      + '<button type="button" class="dsch-bt" data-a="xls">📥 Planilha deste fornecedor</button>'
+      + '<button type="button" class="dsch-bt" data-a="pdf-todos">🖨 Imprimir todos</button>'
+      + '<button type="button" class="dsch-bt azul" data-a="pdf">🖨 Imprimir este fornecedor</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov) fechar(); });
+    ov.querySelector('.dsch-x').onclick = fechar;
+    document.addEventListener('keydown', escKey);
+    ov.querySelectorAll('[data-a]').forEach(function (b) {
+      b.onclick = function () {
+        var a = b.getAttribute('data-a');
+        try {
+          if (a === 'pdf') imprimir(false); else if (a === 'pdf-todos') imprimir(true);
+          else { var t = b.textContent; b.disabled = true; b.textContent = 'Gerando…'; planilha(a === 'xls-todos').catch(function (e) { alert(e.message); }).then(function () { b.disabled = false; b.textContent = t; }); }
+        } catch (e) { alert('Erro: ' + e.message); }
+      };
+    });
+    try {
+      await carregar();
+      if (fornNomeInicial) { var f = ST.forns.filter(function (x) { return x.nome.toUpperCase() === String(fornNomeInicial).toUpperCase(); })[0]; if (f) ST.forn = f.key; }
+      render();
+    } catch (e) { ov.querySelector('.dsch-bd').innerHTML = '<div style="padding:30px;color:#f87171">Erro ao carregar: ' + esc(e.message) + '</div>'; }
+  }
+  window.dsAbrirGramaturasFornecedor = abrir;
+  var css = document.createElement('style');
+  css.textContent = '[data-gram-forn-card]{cursor:pointer;transition:transform .12s}[data-gram-forn-card]:hover{transform:translateY(-2px);border-color:#3b82f6!important}'
+    + '[data-gram-forn-card]:after{content:"Clique para ver todos e o ranking";display:block;margin-top:8px;font-size:11px;color:#60a5fa;font-weight:700}'
+    + '[data-gram-forn-card] [data-gfk]{cursor:pointer}[data-gram-forn-card] [data-gfk]:hover{color:#93c5fd}';
+  document.head.appendChild(css);
+  function marcar() {
+    var pg = document.getElementById('page-gramaturas'); if (!pg) return;
+    pg.querySelectorAll('.pep-card').forEach(function (c) {
+      var lb = c.querySelector('.pep-card-label');
+      if (!lb || !/gramaturas por fornecedor/i.test(lb.textContent || '') || c.hasAttribute('data-gram-forn-card')) return;
+      c.setAttribute('data-gram-forn-card', '1'); c.setAttribute('title', 'Ver gramaturas de cada fornecedor');
+      c.querySelectorAll('.pep-card-sub > div').forEach(function (l) { var s = l.querySelector('span'); if (s) l.setAttribute('data-gfk', s.textContent.trim()); });
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var c = e.target && e.target.closest ? e.target.closest('[data-gram-forn-card]') : null;
+    if (!c) return;
+    var l = e.target.closest('[data-gfk]');
+    abrir(l ? l.getAttribute('data-gfk') : '');
+  });
+  var obs = new MutationObserver(function () { marcar(); });
+  function ligar() { var pg = document.getElementById('page-gramaturas'); if (pg && !pg.__dsGF) { pg.__dsGF = 1; obs.observe(pg, { childList: true, subtree: true }); marcar(); } }
+  try { new MutationObserver(ligar).observe(document.body, { childList: true }); } catch (_) {}
+  setInterval(ligar, 2000);
+  ligar();
+})();

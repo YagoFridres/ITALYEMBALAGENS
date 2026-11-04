@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261104093901';
-const SW_RUNTIME_VERSION = '20261104093901';
+const PATCH_RUNTIME_VERSION = '20261104094722';
+const SW_RUNTIME_VERSION = '20261104094722';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -23322,6 +23322,48 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     }
     return res.json({ ok: true, data });
   } catch (e) { return err(res, e); }
+});
+
+// Uso de cada gramatura nas OFs concluídas (mesma base oficial de vendas, sem clientes TESTE)
+app.get('/api/gramaturas/uso', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    let range = _relatoriosResolveDateRange(req.query, {});
+    if (!range) {
+      const hoje = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+      const ini = new Date(Date.now() - 3 * 3600 * 1000); ini.setUTCFullYear(ini.getUTCFullYear() - 1); ini.setUTCDate(ini.getUTCDate() + 1);
+      range = _relatoriosResolveDateRange({ data_inicio: ini.toISOString().slice(0, 10), data_fim: hoje }, {});
+    }
+    let ofs = await _listarOfsVendasOficiais(range, '', ['gramatura_id', 'gramatura', 'cliente_nome', 'clinome', 'cliNome', 'qtd_produzida', 'qtd', 'quantidade', 'tonelada_vendida', 'toneladas_utilizadas', 'descricao', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura']);
+    ofs = _filtrarOfsNaoTesteGlobal(ofs);
+    await _relEnriquecerTon(ofs);
+    const uso = new Map();
+    let semGramatura = 0;
+    ofs.forEach((of) => {
+      const gid = String(of?.gramatura_id || '').trim();
+      if (!gid) { semGramatura += 1; return; }
+      if (!uso.has(gid)) uso.set(gid, { gramatura_id: gid, ofs: 0, caixas: 0, toneladas: 0, valor_vendido: 0, ultima_data: '', _cli: new Set() });
+      const u = uso.get(gid);
+      u.ofs += 1;
+      u.caixas += _relatoriosPickQtdOf(of);
+      u.toneladas += Number(of._ton_calc || 0) || 0;
+      u.valor_vendido += _vendasOficialValor(of);
+      const d = String(_vendasOficialDataRef(of) || '').slice(0, 10);
+      if (d > u.ultima_data) u.ultima_data = d;
+      const cli = String(of?.cliente_nome || of?.clinome || of?.cliNome || '').trim();
+      if (cli) u._cli.add(cli.toUpperCase());
+    });
+    const rows = Array.from(uso.values()).map((u) => ({
+      gramatura_id: u.gramatura_id, ofs: u.ofs, caixas: u.caixas,
+      toneladas: Math.round(u.toneladas * 1000) / 1000,
+      valor_vendido: Math.round(u.valor_vendido * 100) / 100,
+      clientes: u._cli.size, ultima_data: u.ultima_data || null,
+    }));
+    return res.json({ ok: true, data_inicio: range.inicio, data_fim: range.fim, total_ofs: ofs.length, ofs_sem_gramatura: semGramatura, rows });
+  } catch (e) {
+    console.error('[GRAMATURAS][USO]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.put('/api/gramaturas/:id', authMiddleware, async (req, res) => {
