@@ -48091,15 +48091,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return window.dsChapaCasaBusca ? window.dsChapaCasaBusca(chapa, busca) : (_entradaEstoqueBuscaTexto(chapa).indexOf(termo) >= 0);
       });
     }
-    if (selected) {
-      var jaTemSelecionada = lista.some(function(chapa) { return String(chapa && chapa.id || '').trim() === selected; });
-      if (!jaTemSelecionada) {
-        var fallback = _entradaEstoqueFindChapa(chapas, selected);
-        if (fallback) lista.unshift(fallback);
-      }
+    var selChapa = selected ? _entradaEstoqueFindChapa(chapas, selected) : null;
+    // texto da busca é o rótulo da chapa já escolhida → mostra só ela
+    if (selChapa && termo && _entradaEstoqueBuscaNorm(_entradaEstoqueChapaLabel(selChapa)) === termo) lista = [selChapa];
+    var paraSelect = lista.slice();
+    if (selChapa && !paraSelect.some(function(chapa) { return String(chapa && chapa.id || '').trim() === selected; })) {
+      if (termo) paraSelect.unshift(selChapa); else lista.unshift(selChapa), paraSelect = lista.slice();
     }
     return {
-      html: _entradaEstoqueOptions(lista),
+      html: _entradaEstoqueOptions(paraSelect),
       lista: lista
     };
   }
