@@ -77516,25 +77516,34 @@ window.__perTxt = function (p) {
     var t = ev.target; var ov = overlayDe(t);
     if (!ov || !t.getAttribute || t.getAttribute('data-field') !== 'po') return;
     t.setAttribute('list', 'ccpx-po-gram-forn');
-    aplicar(ov).catch(function() {});
+    aplicar(ov).then(function(minhas) {
+      if (t.__dsGramAplicada === undefined) { var g0 = minhas.filter(function(x) { return norm(x.nome) === norm(t.value); })[0]; t.__dsGramAplicada = g0 ? g0.id : null; }
+    }).catch(function() {});
   }, true);
   document.addEventListener('change', function(ev) {
     var t = ev.target; var ov = overlayDe(t); if (!ov) return;
     if (t.id === 'ccpx-fornecedor-manual') { aplicar(ov).catch(function() {}); return; }
-    if (t.getAttribute && t.getAttribute('data-field') === 'po') {
-      aplicar(ov).then(function(minhas) {
-        var g = minhas.filter(function(x) { return norm(x.nome) === norm(t.value); })[0];
-        if (!g) return;
-        var row = t.closest('[data-ccpx-item-row]'); var vm = row && row.querySelector('[data-field="valor_m2"]');
-        if (vm && !String(vm.value || '').trim() && Number(g.valor_unitario) > 0) {
-          vm.value = String(Number(g.valor_unitario));
-          try { vm.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
-        }
-      }).catch(function() {});
-    }
+    if (t.getAttribute && t.getAttribute('data-field') === 'po') precoDaGramatura(t, ov);
   }, true);
+  // ao trocar a gramatura (PO), o valor do m² passa a ser o preço cadastrado dela
+  function precoDaGramatura(t, ov) {
+    aplicar(ov).then(function(minhas) {
+      var g = minhas.filter(function(x) { return norm(x.nome) === norm(t.value); })[0];
+      if (!g || !(Number(g.valor_unitario) > 0)) return;
+      if (t.__dsGramAplicada === g.id) return;
+      t.__dsGramAplicada = g.id;
+      var row = t.closest('[data-ccpx-item-row]'); var vm = row && row.querySelector('[data-field="valor_m2"]');
+      if (!vm) return;
+      vm.value = String(Number(g.valor_unitario));
+      var tot = row.querySelector('[data-field="valor_total"]'); if (tot) { tot.dataset.ccpxManual = ''; }
+      try { vm.dispatchEvent(new Event('input', { bubbles: true })); vm.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      try { if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(ov); } catch (_) {}
+    }).catch(function() {});
+  }
   document.addEventListener('input', function(ev) {
-    var t = ev.target; if (!t || t.id !== 'ccpx-fornecedor-manual') return;
+    var t = ev.target;
+    if (t && t.getAttribute && t.getAttribute('data-field') === 'po') { var ovp = overlayDe(t); if (ovp) { clearTimeout(t.__dsPT); t.__dsPT = setTimeout(function() { precoDaGramatura(t, ovp); }, 250); } return; }
+    if (!t || t.id !== 'ccpx-fornecedor-manual') return;
     var ov = overlayDe(t); if (ov) { clearTimeout(t.__dsGT); t.__dsGT = setTimeout(function() { aplicar(ov).catch(function() {}); }, 300); }
   }, true);
   // ao abrir o modal da compra
