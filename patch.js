@@ -1927,7 +1927,7 @@ try {
           + '  <div class="rr-modal-field"><label>Data inicial</label><input id="rr-lmq-inicio" type="date" value="' + rrEsc(dataInicioPadrao) + '"></div>'
           + '  <div class="rr-modal-field"><label>Data final</label><input id="rr-lmq-fim" type="date" value="' + rrEsc(dataFimPadrao) + '"></div>'
           + '</div>'
-          + '<div class="rr-period-help" style="margin-top:10px">Fonte canônica: <strong>ofs.passagens_maquina</strong>, com perdas cruzadas em <strong>ofs.perdas_por_maquina</strong>.</div>'
+          + '<div class="rr-period-help" style="margin-top:10px">Considera só OFs concluídas (mesma base do relatório de vendas, sem clientes TESTE). Máquina da OF: passagens do Modo Operador; se não houver, o fluxo de máquinas da OF. Perdas vêm do registro oficial de Caixas Perdidas.</div>'
           + '<div class="rr-modal-actions">'
           + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
           + '  <button type="button" class="rr-btn" id="rr-lmq-run">Gerar relatório</button>'
