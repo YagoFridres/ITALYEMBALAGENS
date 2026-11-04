@@ -74842,6 +74842,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       // status agora é um botão "Status" junto dos botões de ações (Editar, Pasta, Imprimir…)
       var i = info(c.status), acoes = b.parentElement; if (!acoes) return;
       var velho = tr.children[1] && tr.children[1].querySelector('.dcs-pill'); if (velho) velho.remove();
+      var stOld = tr.children[1] && tr.children[1].querySelector('.cmpx-stack > span'); if (stOld && stOld.style.display !== 'none') stOld.style.display = 'none';
       var txt = i[2] + ' Status: ' + i[1] + (i[0] === 'a_caminho' && c.previsao_chegada ? ' · chega ' + dBR(c.previsao_chegada) : '') + (i[0] === 'concluida' && c.data_chegada ? ' · ' + dBR(c.data_chegada) : '');
       var pill = acoes.querySelector('.dcs-pill');
       if (pill && pill.textContent === txt) return;
