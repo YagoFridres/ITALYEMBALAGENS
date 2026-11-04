@@ -78401,3 +78401,47 @@ window.__perTxt = function (p) {
   var t = null;
   new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = null; document.querySelectorAll('.dsf-modal input[name="email"]').forEach(function (i) { if (i.type !== 'hidden') melhorar(i); }); }, 120); }).observe(document.body, { childList: true, subtree: true });
 })();
+
+// OFs lançadas por outra pessoa aparecem sozinhas (verifica a cada 20s; atualiza a tela sem atrapalhar quem está digitando)
+(function __dsOfsNovas() {
+  if (window.__dsOfsNovas) return; window.__dsOfsNovas = true;
+  var ultimo = '', rodando = false, pendente = false;
+  function listaAtual() { try { if (typeof OFs !== 'undefined' && Array.isArray(OFs) && OFs.length) return OFs; } catch (_) {} return Array.isArray(window.OFS) ? window.OFS : []; }
+  function maxCriada(l) { var m = ''; l.forEach(function (o) { var c = String(o && (o.created_at || o.criado_em) || ''); if (c > m) m = c; }); return m; }
+  function ocupado() {
+    var a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable)) return true;
+    return !!document.querySelector('.dsch-ov, .dcs-ov, .dsce-ov, .sol-ov, .estoque-modal-overlay[style*="flex"], [id$="-modal"][style*="display: flex"], [id$="-modal"][style*="display:flex"], .modal.show, .modal-overlay.show');
+  }
+  function redesenhar() {
+    var pg = String(window._PAGE_ATUAL || '');
+    try {
+      if ((pg === 'pcp' || pg === 'central') && window.dsCentral && typeof window.dsCentral.render === 'function') { window.dsCentral.render(); return; }
+      var b = document.querySelector('#page-' + pg + ' [data-a="atualizar"]'); if (b) { b.click(); return; }
+      if (/^(pcp|ofmaq|hub|dashboard|agenda)$/.test(pg) && typeof window.go === 'function') window.go(pg);
+    } catch (_) {}
+  }
+  async function checar() {
+    if (rodando || document.hidden) return; rodando = true;
+    try {
+      var tk = ''; try { tk = localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) {}
+      if (!tk) return;
+      if (!ultimo) ultimo = maxCriada(listaAtual()) || new Date(Date.now() - 60000).toISOString();
+      var r = await fetch('/api/ofs?after=' + encodeURIComponent(ultimo) + '&limit=50&t=' + Date.now(), { headers: { Authorization: 'Bearer ' + tk }, cache: 'no-store' });
+      if (!r.ok) return;
+      var j = await r.json().catch(function () { return {}; });
+      var rows = Array.isArray(j) ? j : (j.data || []);
+      var ids = {}; listaAtual().forEach(function (o) { ids[String(o && o.id || '')] = 1; });
+      var novas = rows.filter(function (o) { return o && o.id && !ids[String(o.id)] && String(o.created_at || '') > ultimo; });
+      var m = maxCriada(rows); if (m > ultimo) ultimo = m;
+      if (!novas.length && !pendente) return;
+      if (typeof window.carregarOFsUnico === 'function') await window.carregarOFsUnico(true);
+      if (novas.length) { try { window.toast('🆕 ' + (novas.length === 1 ? 'OF ' + (novas[0].numero || novas[0].of) + ' lançada' : novas.length + ' OFs novas lançadas') + ' — lista atualizada', 'var(--accent)'); } catch (_) {} }
+      if (ocupado()) { pendente = true; return; }
+      pendente = false; redesenhar();
+    } catch (_) {} finally { rodando = false; }
+  }
+  setInterval(checar, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(checar, 500); });
+  setInterval(function () { if (pendente && !ocupado()) { pendente = false; redesenhar(); } }, 3000);
+})();
