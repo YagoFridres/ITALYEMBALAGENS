@@ -74839,12 +74839,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       // 1ª coluna: dia do pedido e, se chegou, o dia que chegou
       var c0 = tr.children[0], sp0 = c0 && c0.querySelector('.cmpx-stack > span');
       if (sp0) { var t0 = 'Pedido ' + dBR(c.data_compra || String(c.criado_em || '').slice(0, 10)) + (chave(c.status) === 'concluida' && c.data_chegada ? ' · Chegou ' + dBR(c.data_chegada) : ''); if (sp0.textContent !== t0) sp0.textContent = t0; }
-      var i = info(c.status), cel = tr.children[1]; if (!cel) return;
-      var txt = i[2] + ' ' + i[1] + (i[0] === 'a_caminho' && c.previsao_chegada ? ' · chega ' + dBR(c.previsao_chegada) : '') + (i[0] === 'concluida' && c.data_chegada ? ' · ' + dBR(c.data_chegada) : '');
-      var pill = cel.querySelector('.dcs-pill');
-      if (pill && pill.textContent === txt + ' ▾') return;
-      if (!pill) { var sp = cel.querySelector('.cmpx-stack > span'); pill = document.createElement('button'); pill.type = 'button'; pill.className = 'dcs-pill'; if (sp) sp.replaceWith(pill); else cel.appendChild(pill); }
-      pill.setAttribute('data-dcs', id); pill.setAttribute('data-k', i[0]); pill.textContent = txt + ' ▾'; pill.title = 'Mudar o andamento da compra';
+      // status agora é um botão "Status" junto dos botões de ações (Editar, Pasta, Imprimir…)
+      var i = info(c.status), acoes = b.parentElement; if (!acoes) return;
+      var velho = tr.children[1] && tr.children[1].querySelector('.dcs-pill'); if (velho) velho.remove();
+      var txt = i[2] + ' Status: ' + i[1] + (i[0] === 'a_caminho' && c.previsao_chegada ? ' · chega ' + dBR(c.previsao_chegada) : '') + (i[0] === 'concluida' && c.data_chegada ? ' · ' + dBR(c.data_chegada) : '');
+      var pill = acoes.querySelector('.dcs-pill');
+      if (pill && pill.textContent === txt) return;
+      if (!pill) { pill = document.createElement('button'); pill.type = 'button'; pill.className = (b.className || '') + ' dcs-pill dcs-pill-acao'; acoes.insertBefore(pill, b); }
+      pill.setAttribute('data-dcs', id); pill.setAttribute('data-k', i[0]); pill.textContent = txt; pill.title = 'Mudar o status da compra (Pedido feito → A caminho → Chegou)';
     });
   }
   function modal(html) {
@@ -74935,7 +74937,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var prox = campos[i + 1]; if (!prox) return;
     prox.focus(); try { if (prox.select && /^(text|number|search|tel|email|)$/i.test(prox.type || '')) prox.select(); } catch (_) {}
   }, true);
-  var css = '.dcs-pill{margin-top:3px;display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}.dcs-pill:hover{background:var(--s3)}'
+  var css = '.dcs-pill.dcs-pill-acao{margin-top:0;border-radius:10px;font-size:inherit;font-weight:700;padding:inherit;white-space:nowrap}'
+    + '.dcs-pill{margin-top:3px;display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}.dcs-pill:hover{background:var(--s3)}'
     + '.dcs-pill[data-k="pedido_feito"]{border-color:color-mix(in srgb,var(--yellow) 45%,transparent);color:var(--yellow)}.dcs-pill[data-k="a_caminho"]{border-color:color-mix(in srgb,var(--accent) 50%,transparent);color:var(--accent)}.dcs-pill[data-k="concluida"]{border-color:color-mix(in srgb,var(--green) 50%,transparent);color:var(--green)}.dcs-pill[data-k="cancelada"]{color:var(--text3);text-decoration:line-through}'
     + '.dcs-ov{position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}'
     + '.dcs-m{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}.dcs-g{width:min(1200px,100%)}'
@@ -76289,7 +76292,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       conta: 'compras', titulo: 'Enviar compra Nº ' + numero + ' por e-mail', rotulo: 'Fornecedor',
       partes: forns, sel: acharParte(forns, String(dados.fornecedor || '').trim(), dados.fornecedor_id),
       assunto: 'Pedido de compra Nº ' + numero + ' — Italy Embalagens',
-      mensagem: 'Bom dia!\n\nSegue em anexo o nosso pedido de compra Nº ' + numero + '.\nPor favor, confirme o recebimento e a previsão de entrega.\n\nObrigado,\n{{NOME}}',
+      mensagem: 'Segue em anexo o nosso pedido de compra Nº ' + numero + '.\nPor favor, confirme o recebimento e a previsão de entrega.\n\nAtenciosamente,\nSidnei Santos\nItaly Embalagens — Compras',
       arquivo: 'Pedido-de-compra-' + String(numero).replace(/[^\w-]+/g, '') + '.pdf',
       htmlFn: function () { return window._compraPapelaoBuildCompraPrintHtmlFromPayload ? window._compraPapelaoBuildCompraPrintHtmlFromPayload(dados, compra) : window._compraPapelaoBuildCompraPrintHtml(dados); },
       enviar: function (body) { return api('/api/compras-chapas/' + encodeURIComponent(compra.id) + '/enviar-email', { method: 'POST', body: body }); },
