@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261104154029';
-const SW_RUNTIME_VERSION = '20261104154029';
+const PATCH_RUNTIME_VERSION = '20261104172228';
+const SW_RUNTIME_VERSION = '20261104172228';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -26756,6 +26756,8 @@ function _chapasEntradaObs(cabecalho, item) {
   const obsItem = String(item?.observacoes || '').trim();
   if (dataEntrada) partes.push(dataEntrada);
   if (responsavel) partes.push('Responsavel: ' + responsavel);
+  const placa = String(cabecalho?.placa_veiculo || '').trim();
+  if (placa) partes.push('Placa: ' + placa);
   if (observacoes) partes.push(observacoes);
   if (obsItem) partes.push(obsItem);
   return partes.filter(Boolean).join(' · ').trim();
@@ -28241,6 +28243,8 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
     const observacoesCab = String(b.observacoes ?? b.obs ?? '').trim();
     const empIdCab = String(b.emp_id ?? b.empId ?? req.query.empId ?? 'E1').trim() || 'E1';
     const empresaVinculadaCab = String((b.empresa_vinculada ?? b.empresaVinculada ?? qualCnpjCab) || '').trim();
+    const placaCab = String(b.placa_veiculo ?? b.placa ?? '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!placaCab) return res.status(400).json({ ok: false, error: 'Informe a placa do veículo' });
     const itensIn = Array.isArray(b.itens) ? b.itens : [];
 
     if (!dataEntrada) return res.status(400).json({ ok: false, error: 'Data da entrada obrigatória' });
@@ -28306,6 +28310,7 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
       nf: nfCab,
       responsavel,
       observacoes: observacoesCab,
+      placa_veiculo: placaCab,
     };
 
     for (const item of itens) {
@@ -28418,8 +28423,37 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
     }
 
     try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
-    await _chapasLogAcao(req, 'estoque_entrada_lote', `Entrada em lote registrada com ${itens.length} item(ns) · criadas=${criadas} · reaproveitadas=${reaproveitadas} · fornecedor=${fornecedorCab} · nf=${nfCab || '—'}`);
-    return res.json({ ok: true, criadas, reaproveitadas, itens_processados: resultados.length, resultados });
+    await _chapasLogAcao(req, 'estoque_entrada_lote', `Entrada em lote registrada com ${itens.length} item(ns) · criadas=${criadas} · reaproveitadas=${reaproveitadas} · fornecedor=${fornecedorCab} · nf=${nfCab || '—'} · placa=${placaCab}`);
+    // Checklist de Recebimento: uma linha por item, agrupável pela placa do veículo
+    let checklistCriados = 0; let checklistErro = null;
+    for (const r of resultados) {
+      let payload = {
+        data_recebimento: dataEntrada || new Date().toISOString().slice(0, 10),
+        placa_veiculo: placaCab,
+        nota_fiscal: nfCab || null,
+        produto: [r.nomenclatura, r.tamanho, r.nome].filter(Boolean).join(' · ') || 'Chapa',
+        fornecedor: fornecedorCab || r.fornecedor || null,
+        quantidade: Math.trunc(Number(r.quantidade_entrada || 0) || 0),
+        responsavel: responsavel || req?.usuario?.nome || null,
+        devolucao: false,
+        origem: 'entrada_estoque',
+        chapa_id: r.chapa_id || null,
+      };
+      if (/^[0-9a-f-]{36}$/i.test(empIdCab)) payload.emp_id = empIdCab;
+      try {
+        for (let t = 0; t < 10; t++) {
+          const ins = await supabase.from('recebimento_insumos').insert([payload]);
+          if (!ins.error) { checklistCriados += 1; break; }
+          const msg = String(ins.error.message || ins.error);
+          const m1 = msg.match(/Could not find the '([^']+)' column/i);
+          const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+          const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+          if (col && Object.prototype.hasOwnProperty.call(payload, col)) { delete payload[col]; continue; }
+          throw ins.error;
+        }
+      } catch (e) { checklistErro = String(e?.message || e); console.error('[chapas/entrada-lote][checklist]', checklistErro); }
+    }
+    return res.json({ ok: true, criadas, reaproveitadas, itens_processados: resultados.length, resultados, placa_veiculo: placaCab, checklist_criados: checklistCriados, checklist_erro: checklistErro });
   } catch (e) {
     console.error('[chapas/entrada-lote]', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });

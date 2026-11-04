@@ -33942,22 +33942,42 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<div class="pep-wrap">'
         + '  <div class="pep-head"><div><div class="pep-title">📋 Checklist de Recebimento</div><div class="pep-sub">Registro manual do recebimento com os campos finais definidos para o estoque.</div></div><button class="pep-btn primary" id="ck-novo">Novo Checklist</button></div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-        + '    <input class="pep-input" id="ck-busca" placeholder="Buscar por produto, fornecedor, NF, cliente ou responsavel..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
+        + '    <input class="pep-input" id="ck-busca" placeholder="Buscar por placa, produto, fornecedor, NF, cliente ou responsável..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
         + '    <input class="pep-input" id="ck-fil-forn" placeholder="Fornecedor" value="' + esc(st.fornecedor || '') + '" style="max-width:220px">'
         + '    <input class="pep-input" id="ck-fil-nf" placeholder="NF" value="' + esc(st.nf || '') + '" style="max-width:160px">'
         + '    <input class="pep-input" id="ck-fil-data" type="date" value="' + esc(st.data || '') + '" style="max-width:180px">'
         + '    <input class="pep-input" id="ck-fil-cliente" placeholder="Cliente" value="' + esc(st.cliente || '') + '" style="max-width:220px">'
         + '    <button class="pep-btn" id="ck-aplicar">Filtrar</button>'
         + '    <button class="pep-btn" id="ck-exportar">Exportar Excel</button>'
+        + '    <button class="pep-btn' + (st.agrupar !== false ? ' primary' : '') + '" id="ck-agrupar" type="button">🚚 Agrupar por placa</button>'
         + '  </div></div>'
         + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data de Rec.</th><th>Placa do Veiculo</th><th>N Nota Fiscal</th><th>Produto</th><th>Fornecedor</th><th>Quantidade Recebida</th><th>Ordem de Compra</th><th>Data de Validade</th><th>Resp. pelo Recebimento</th><th>Devolucao</th><th>Cliente</th><th>Acoes</th></tr></thead><tbody>'
-        + (filtrada.length ? filtrada.map(function(r) {
-          return '<tr data-cid="' + esc(r.id || '') + '"><td>' + esc(checklistFmtDate(r.data_recebimento)) + '</td><td>' + esc(r.placa_veiculo || '—') + '</td><td>' + esc(r.nota_fiscal || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td style="text-align:right">' + num(r.quantidade || 0, 0) + '</td><td>' + esc(r.ordem_compra || '—') + '</td><td>' + esc(checklistFmtDate(r.data_validade)) + '</td><td>' + esc(r.responsavel || '—') + '</td><td>' + esc(r.devolucao ? 'Sim' : 'Nao') + '</td><td>' + esc(r.cliente || '—') + '</td><td><button class="pep-btn" data-ck-edit="' + esc(r.id || '') + '">Editar</button> <button class="pep-btn danger" data-ck-del="' + esc(r.id || '') + '">Excluir</button></td></tr>';
-        }).join('') : '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhum checklist encontrado.</td></tr>')
+        + (filtrada.length ? (function() {
+          // agrupa por placa do veículo + data (cada caminhão recebido vira um bloco)
+          var porPlaca = st.agrupar !== false;
+          var linha = function(r) {
+          return '<tr data-cid="' + esc(r.id || '') + '"><td>' + esc(checklistFmtDate(r.data_recebimento)) + '</td><td><b>' + esc(r.placa_veiculo || '—') + '</b></td><td>' + esc(r.nota_fiscal || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td style="text-align:right">' + num(r.quantidade || 0, 0) + '</td><td>' + esc(r.ordem_compra || '—') + '</td><td>' + esc(checklistFmtDate(r.data_validade)) + '</td><td>' + esc(r.responsavel || '—') + '</td><td>' + esc(r.devolucao ? 'Sim' : 'Nao') + '</td><td>' + esc(r.cliente || '—') + '</td><td><button class="pep-btn" data-ck-edit="' + esc(r.id || '') + '">Editar</button> <button class="pep-btn danger" data-ck-del="' + esc(r.id || '') + '">Excluir</button></td></tr>';
+          };
+          if (!porPlaca) return filtrada.map(linha).join('');
+          var grupos = {}, ordem = [];
+          filtrada.forEach(function(r) { var k = (r.placa_veiculo || 'SEM PLACA').toUpperCase() + '|' + String(r.data_recebimento || '').slice(0, 10); if (!grupos[k]) { grupos[k] = []; ordem.push(k); } grupos[k].push(r); });
+          ordem.sort(function(a, b) { return b.split('|')[1].localeCompare(a.split('|')[1]) || a.localeCompare(b); });
+          return ordem.map(function(k) {
+            var g = grupos[k], p = k.split('|');
+            var forns = g.map(function(r) { return r.fornecedor; }).filter(function(v, i, a) { return v && a.indexOf(v) === i; }).join(', ');
+            var nfs = g.map(function(r) { return r.nota_fiscal; }).filter(function(v, i, a) { return v && a.indexOf(v) === i; }).join(', ');
+            var tot = g.reduce(function(acc, r) { return acc + (Number(r.quantidade) || 0); }, 0);
+            return '<tr class="ck-grupo"><td colspan="12" style="background:linear-gradient(90deg,rgba(37,99,235,.22),rgba(37,99,235,.04));border-top:2px solid #3b82f6;padding:12px 14px">'
+              + '<span style="display:inline-block;padding:4px 12px;border-radius:8px;background:#f8fafc;color:#0f172a;font-family:var(--mono,monospace);font-weight:900;font-size:16px;letter-spacing:.08em;border:2px solid #1e3a8a;margin-right:12px">🚚 ' + esc(p[0]) + '</span>'
+              + '<b>' + esc(checklistFmtDate(p[1])) + '</b> · ' + esc(forns || 'Sem fornecedor') + (nfs ? ' · NF ' + esc(nfs) : '') + ' · <b>' + g.length + ' item(ns)</b> · <b>' + num(tot, 0) + '</b> unidade(s)</td></tr>'
+              + g.map(linha).join('');
+          }).join('');
+        })() : '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhum checklist encontrado.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('ck-novo').onclick = function() { openChecklistModal(null, renderChecklistPage); };
       document.getElementById('ck-exportar').onclick = function() { checklistCsv(filtrada); };
+      document.getElementById('ck-agrupar').onclick = function() { st.agrupar = st.agrupar === false; renderChecklistPage(); };
       document.getElementById('ck-aplicar').onclick = function() {
         st.q = String((document.getElementById('ck-busca') || {}).value || '').trim();
         st.fornecedor = String((document.getElementById('ck-fil-forn') || {}).value || '').trim();
@@ -48542,6 +48562,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       nf: String(nfEl && nfEl.value || '').trim(),
       responsavel: String(respEl && respEl.value || '').trim(),
       observacoes: String(obsEl && obsEl.value || '').trim(),
+      placa_veiculo: String((document.getElementById('estoque-entrada-real-placa') || {}).value || '').trim().toUpperCase(),
       emp_id: _estoqueAtualEmpId() || 'E1',
       itens: []
     };
@@ -48552,6 +48573,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     if (!payload.fornecedor) {
       try { window.toast('Informe o fornecedor', 'var(--red)'); } catch (_) {}
+      return;
+    }
+    if (!payload.placa_veiculo || payload.placa_veiculo.replace(/-/g, '').length < 7) {
+      try { window.toast('Informe a placa do veículo (ex: ABC1D23)', 'var(--red)'); } catch (_) {}
+      try { var _pl = document.getElementById('estoque-entrada-real-placa'); if (_pl) { _pl.focus(); _pl.style.borderColor = '#ef4444'; } } catch (_) {}
       return;
     }
 
@@ -48605,7 +48631,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!out.resp || !out.resp.ok || (out.data && out.data.ok === false)) {
         throw new Error(String(out.data && out.data.error || 'Falha ao registrar entrada'));
       }
-      try { window.toast('Entradas registradas com sucesso', 'var(--green)'); } catch (_) {}
+      try {
+        var _ck = Number(out.data && out.data.checklist_criados || 0);
+        window.toast('Entradas registradas com sucesso' + (_ck ? ' · ' + _ck + ' item(ns) no Checklist de Recebimento (placa ' + payload.placa_veiculo + ')' : ''), 'var(--green)');
+        if (out.data && out.data.checklist_erro) window.toast('Entrada salva, mas o Checklist de Recebimento não foi gerado: ' + out.data.checklist_erro, 'var(--red)');
+      } catch (_) {}
       _entradaEstoqueFecharModal();
       try { if (typeof chapasForcarReload === 'function') await chapasForcarReload(); } catch (_) {}
       try {
@@ -48644,6 +48674,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
         + '    <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
         + '    <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
+        + '    <label class="estoque-modal-label"><span>Placa do veículo <b style="color:#f87171">*</b></span><input id="estoque-entrada-real-placa" class="estoque-modal-input estoque-modal-mono" type="text" maxlength="8" autocomplete="off" placeholder="Ex: ABC1D23" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,\'\')"></label>'
         + '    <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
         + '    <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
         + '  </div>'
@@ -78230,6 +78261,22 @@ window.__perTxt = function (p) {
     window.addEventListener('scroll', function () { if (!dd.hidden) pos(); }, true);
     window.addEventListener('resize', function () { if (!dd.hidden) pos(); });
   };
+  var GRAMS = null, gramsCarregando = false;
+  function carregarGrams() {
+    if (GRAMS || gramsCarregando) return; gramsCarregando = true;
+    var tk = ''; try { tk = localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) {}
+    fetch('/api/gramaturas', { headers: { Authorization: 'Bearer ' + tk } }).then(function (r) { return r.json(); }).then(function (j) { GRAMS = (j && j.data) || (Array.isArray(j) ? j : []); montarNomDL(); }).catch(function () { GRAMS = []; }).then(function () { gramsCarregando = false; });
+  }
+  function codigoDe(g) { return String(g && g.nome || '').split(' - ')[0].trim(); }
+  function gramPorCodigo(v) { var k = String(v || '').trim().toUpperCase(); if (!k || !GRAMS) return null; var forn = String((document.getElementById('estoque-entrada-real-fornecedor') || {}).value || '').trim().toUpperCase(); var l = GRAMS.filter(function (g) { return codigoDe(g).toUpperCase() === k || String(g.nome || '').trim().toUpperCase() === k; }); return l.filter(function (g) { return forn && String(g.fornecedor_nome || '').toUpperCase().indexOf(forn) === 0; })[0] || l[0] || null; }
+  function montarNomDL() {
+    carregarGrams(); if (!GRAMS) return;
+    var dl = document.getElementById('ds-ent-nom-dl'); if (!dl) { dl = document.createElement('datalist'); dl.id = 'ds-ent-nom-dl'; document.body.appendChild(dl); }
+    var forn = String((document.getElementById('estoque-entrada-real-fornecedor') || {}).value || '').trim().toUpperCase();
+    var l = GRAMS.filter(function (g) { return !forn || String(g.fornecedor_nome || '').toUpperCase().indexOf(forn) === 0 || forn.indexOf(String(g.fornecedor_nome || '').toUpperCase()) === 0; });
+    if (!l.length) l = GRAMS;
+    dl.innerHTML = l.map(function (g) { return '<option value="' + esc(codigoDe(g)) + '">' + esc((Number(g.gramatura) || '') + ' g/m² · ' + (g.fornecedor_nome || '')) + '</option>'; }).join('');
+  }
   function rotulo(c) { return [ret(c) ? '✂️ RETALHO' : '', c.nomenclatura, c.tamanho || c.tam, c.nome_uso || c.nome, c.fornecedor || c.forn].filter(Boolean).join(' · '); }
   // Saídas: liga o autocomplete em cada linha nova
   var _acT = null;
@@ -78246,6 +78293,19 @@ window.__perTxt = function (p) {
         }
       });
     }
+    // Entrada "Nova": nomenclatura puxada das gramaturas cadastradas (do fornecedor da entrada) e gramatura preenchida sozinha
+    document.querySelectorAll('.est-ent-nomenclatura').forEach(function (inp) {
+      if (inp.__dsNom) return; inp.__dsNom = true;
+      inp.setAttribute('list', 'ds-ent-nom-dl'); inp.setAttribute('autocomplete', 'off');
+      var preencher = function () {
+        var g = gramPorCodigo(inp.value); if (!g) return;
+        var tr = inp.closest('tr'), ge = tr && tr.querySelector('.est-ent-gramatura');
+        var cod = String(g.nome || '').split(' - ')[0].trim(); if (cod && inp.value !== cod) inp.value = cod;
+        if (ge && Number(g.gramatura) > 0 && String(ge.value) !== String(g.gramatura)) { ge.value = String(g.gramatura); try { ge.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {} }
+      };
+      inp.addEventListener('change', preencher); inp.addEventListener('input', function () { if (gramPorCodigo(inp.value)) preencher(); });
+      inp.addEventListener('focus', montarNomDL);
+    });
     document.querySelectorAll('.est-ent-search').forEach(function (inp) {
       if (inp.__dsac) return;
       var tr = inp.closest('tr'), sel = tr && tr.querySelector('.est-ent-chapa');
@@ -78286,4 +78346,54 @@ window.__perTxt = function (p) {
     });
   }
   try { obs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+})();
+
+// Fornecedores: vários e-mails, um por linha, com "+ Adicionar outro e-mail" (todos recebem a compra)
+(function __dsFornEmails() {
+  if (window.__dsFornEmails) return; window.__dsFornEmails = true;
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var css = document.createElement('style');
+  css.textContent = '.dsfe{display:grid;gap:8px;margin-top:6px}.dsfe-l{display:flex;gap:8px;align-items:center}.dsfe-l input{flex:1;min-width:0}'
+    + '.dsfe-l button{flex:0 0 auto;min-width:44px;min-height:40px;border-radius:9px;border:1px solid rgba(239,68,68,.4);background:transparent;color:#f87171;cursor:pointer;font-size:16px}'
+    + '.dsfe-add{justify-self:start;border:1px dashed #3b82f6;background:rgba(59,130,246,.08);color:#93c5fd;border-radius:9px;padding:9px 14px;font:inherit;font-weight:700;cursor:pointer;min-height:40px}'
+    + '.dsfe-h{font-size:12px;color:#94a3b8;font-weight:400}.dsfe-l input.ruim{border-color:#ef4444!important}';
+  document.head.appendChild(css);
+  function melhorar(inp) {
+    if (!inp || inp.__dsfe) return; inp.__dsfe = true;
+    var lab = inp.closest('label'); if (!lab) return;
+    var hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = 'email'; hidden.value = inp.value;
+    inp.removeAttribute('name'); inp.style.display = 'none';
+    var box = document.createElement('div'); box.className = 'dsfe';
+    lab.appendChild(hidden); lab.appendChild(box);
+    try { lab.firstChild.nodeValue = 'E-mails (todos recebem as compras)'; } catch (_) {}
+    var lista = String(inp.value || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!lista.length) lista = [''];
+    function sync() {
+      var vs = Array.prototype.map.call(box.querySelectorAll('.dsfe-l input'), function (x) { var v = x.value.trim().toLowerCase(); x.classList.toggle('ruim', !!v && !RE.test(v)); return v; }).filter(Boolean);
+      hidden.value = vs.filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ');
+    }
+    function render() {
+      box.innerHTML = lista.map(function (e, i) { return '<div class="dsfe-l"><input type="email" inputmode="email" autocomplete="off" placeholder="' + (i ? 'outro@fornecedor.com' : 'compras@fornecedor.com') + '" value="' + esc(e) + '" data-i="' + i + '">' + (lista.length > 1 ? '<button type="button" data-rm="' + i + '" title="Tirar este e-mail">✕</button>' : '') + '</div>'; }).join('')
+        + '<button type="button" class="dsfe-add">＋ Adicionar outro e-mail</button><span class="dsfe-h">Ao enviar uma compra para este fornecedor, todos os e-mails acima já vêm marcados.</span>';
+      sync();
+    }
+    box.addEventListener('input', function (e) { var i = e.target.getAttribute && e.target.getAttribute('data-i'); if (i != null) { lista[Number(i)] = e.target.value; sync(); } });
+    box.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.matches && e.target.matches('.dsfe-l input')) { e.preventDefault(); lista.push(''); render(); var ins = box.querySelectorAll('.dsfe-l input'); ins[ins.length - 1].focus(); } });
+    box.addEventListener('click', function (e) {
+      var rm = e.target.closest('[data-rm]');
+      if (rm) { lista.splice(Number(rm.getAttribute('data-rm')), 1); if (!lista.length) lista = ['']; render(); return; }
+      if (e.target.closest('.dsfe-add')) { lista.push(''); render(); var ins = box.querySelectorAll('.dsfe-l input'); ins[ins.length - 1].focus(); }
+    });
+    // impede salvar com e-mail inválido
+    var form = inp.closest('form');
+    if (form) form.addEventListener('submit', function (e) {
+      sync();
+      var ruim = box.querySelector('input.ruim');
+      if (ruim) { e.preventDefault(); e.stopImmediatePropagation(); ruim.focus(); try { window.toast('E-mail inválido: ' + ruim.value, 'var(--red)'); } catch (_) { alert('E-mail inválido: ' + ruim.value); } }
+    }, true);
+    render();
+  }
+  var t = null;
+  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = null; document.querySelectorAll('.dsf-modal input[name="email"]').forEach(function (i) { if (i.type !== 'hidden') melhorar(i); }); }, 120); }).observe(document.body, { childList: true, subtree: true });
 })();
