@@ -77437,3 +77437,110 @@ window.__perTxt = function (p) {
   css.textContent = '.dstr-vazio{font-size:12.5px;color:var(--text3);padding:8px 10px;border:1px dashed var(--border);border-radius:10px}.dstr-tw{overflow:auto;border:1px solid var(--border);border-radius:10px}.dstr-t{width:100%;border-collapse:collapse;font-size:12.5px}.dstr-t th{background:var(--s2);text-align:left;padding:6px 8px;font-size:11px;color:var(--text2)}.dstr-t td{padding:6px 8px;border-top:1px solid var(--border);vertical-align:top}.dstr-t small{display:block;color:var(--text3);font-size:11px}';
   document.head.appendChild(css);
 })();
+
+// Compra de papelão: o campo PO (gramatura) só oferece as gramaturas do fornecedor escolhido
+(function __dsCmpGramForn() {
+  if (window.__dsCmpGramForn) return; window.__dsCmpGramForn = true;
+  var CACHE = null, CACHE_TS = 0, FORN = null;
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim(); }
+  function attr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  async function api(url) {
+    if (typeof window._compraPapelaoApi === 'function') return window._compraPapelaoApi(url, { method: 'GET' });
+    var tk = ''; try { tk = localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) {}
+    var r = await fetch(url, { headers: { Authorization: 'Bearer ' + tk } }); return r.json();
+  }
+  async function carregar() {
+    if (CACHE && Date.now() - CACHE_TS < 60000) return CACHE;
+    var j = await api('/api/gramaturas');
+    CACHE = Array.isArray(j) ? j : ((j && (j.data || j.gramaturas)) || []);
+    CACHE_TS = Date.now();
+    if (!FORN) { try { var f = await api('/api/fornecedores'); FORN = Array.isArray(f) ? f : ((f && f.data) || []); } catch (_) { FORN = []; } }
+    return CACHE;
+  }
+  window.__dsCmpGramFornLimpar = function() { CACHE = null; };
+  function fornecedorAtual(ov) { return String((ov.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim(); }
+  function doFornecedor(lista, fornNome) {
+    var k = norm(fornNome); if (!k) return [];
+    var ids = {};
+    (FORN || []).forEach(function(f) {
+      var n = norm(f.nome || f.nome_fantasia || f.razao_social);
+      if (n && (n === k || n.indexOf(k) === 0 || k.indexOf(n) === 0)) ids[String(f.id)] = 1;
+    });
+    return lista.filter(function(g) {
+      var n = norm(g.fornecedor_nome);
+      return ids[String(g.fornecedor_id || '')] || (n && (n === k || n.indexOf(k) === 0 || k.indexOf(n) === 0));
+    }).sort(function(a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { numeric: true }); });
+  }
+  function dl() {
+    var d = document.getElementById('ccpx-po-gram-forn');
+    if (!d) { d = document.createElement('datalist'); d.id = 'ccpx-po-gram-forn'; document.body.appendChild(d); }
+    return d;
+  }
+  function hint(ov, txt) {
+    var h = ov.querySelector('#ds-cmpgram-hint');
+    var forn = ov.querySelector('#ccpx-fornecedor-manual');
+    if (!h && forn && forn.parentNode) { h = document.createElement('div'); h.id = 'ds-cmpgram-hint'; h.style.cssText = 'font-size:11px;margin-top:4px;color:#64748b;line-height:1.3'; forn.parentNode.appendChild(h); }
+    if (h) h.textContent = txt;
+  }
+  async function aplicar(ov) {
+    if (!ov) return [];
+    var lista = await carregar();
+    var forn = fornecedorAtual(ov);
+    var minhas = doFornecedor(lista, forn);
+    dl().innerHTML = minhas.map(function(g) {
+      var v = Number(g.valor_unitario || 0);
+      return '<option value="' + attr(g.nome) + '">' + attr((Number(g.gramatura) || 0) + ' g/m² · R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '/m²') + '</option>';
+    }).join('');
+    Array.prototype.slice.call(ov.querySelectorAll('[data-field="po"]')).forEach(function(inp) { if (inp.getAttribute('list') !== 'ccpx-po-gram-forn') inp.setAttribute('list', 'ccpx-po-gram-forn'); validar(inp, minhas, forn); });
+    // lista de fornecedores no campo fornecedor
+    var fi = ov.querySelector('#ccpx-fornecedor-manual');
+    if (fi && !fi.getAttribute('list')) {
+      var df = document.getElementById('ds-cmpgram-forn-dl');
+      if (!df) { df = document.createElement('datalist'); df.id = 'ds-cmpgram-forn-dl'; document.body.appendChild(df); }
+      df.innerHTML = (FORN || []).map(function(f) { return '<option value="' + attr(f.nome || f.razao_social || '') + '">'; }).join('');
+      fi.setAttribute('list', 'ds-cmpgram-forn-dl'); fi.setAttribute('autocomplete', 'off');
+    }
+    if (!forn) hint(ov, 'Escolha o fornecedor para ver as gramaturas dele no campo PO.');
+    else if (!minhas.length) hint(ov, 'Nenhuma gramatura cadastrada para "' + forn + '". Cadastre em Cadastros › Gramaturas.');
+    else hint(ov, minhas.length + ' gramatura(s) de ' + forn + ' disponíveis no campo PO.');
+    return minhas;
+  }
+  function validar(inp, minhas, forn) {
+    var v = String(inp.value || '').trim();
+    var ok = !v || !forn || minhas.some(function(g) { return norm(g.nome) === norm(v); });
+    inp.style.borderColor = ok ? '' : '#f59e0b';
+    inp.title = ok ? '' : 'Esta gramatura não está cadastrada para o fornecedor ' + forn;
+  }
+  function overlayDe(el) { return el && el.closest ? el.closest('#ccpx-compra-fullscreen') : null; }
+  document.addEventListener('focusin', function(ev) {
+    var t = ev.target; var ov = overlayDe(t);
+    if (!ov || !t.getAttribute || t.getAttribute('data-field') !== 'po') return;
+    t.setAttribute('list', 'ccpx-po-gram-forn');
+    aplicar(ov).catch(function() {});
+  }, true);
+  document.addEventListener('change', function(ev) {
+    var t = ev.target; var ov = overlayDe(t); if (!ov) return;
+    if (t.id === 'ccpx-fornecedor-manual') { aplicar(ov).catch(function() {}); return; }
+    if (t.getAttribute && t.getAttribute('data-field') === 'po') {
+      aplicar(ov).then(function(minhas) {
+        var g = minhas.filter(function(x) { return norm(x.nome) === norm(t.value); })[0];
+        if (!g) return;
+        var row = t.closest('[data-ccpx-item-row]'); var vm = row && row.querySelector('[data-field="valor_m2"]');
+        if (vm && !String(vm.value || '').trim() && Number(g.valor_unitario) > 0) {
+          vm.value = String(Number(g.valor_unitario));
+          try { vm.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+        }
+      }).catch(function() {});
+    }
+  }, true);
+  document.addEventListener('input', function(ev) {
+    var t = ev.target; if (!t || t.id !== 'ccpx-fornecedor-manual') return;
+    var ov = overlayDe(t); if (ov) { clearTimeout(t.__dsGT); t.__dsGT = setTimeout(function() { aplicar(ov).catch(function() {}); }, 300); }
+  }, true);
+  // ao abrir o modal da compra
+  var obs = new MutationObserver(function() {
+    var ov = document.getElementById('ccpx-compra-fullscreen');
+    if (ov && !ov.__dsGram) { ov.__dsGram = 1; setTimeout(function() { aplicar(ov).catch(function() {}); }, 400); }
+  });
+  try { obs.observe(document.body, { childList: true }); } catch (_) {}
+})();
