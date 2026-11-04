@@ -2620,6 +2620,7 @@ try {
 
   window.rrOpenControleVendasVendedorModal = rrOpenControleVendasVendedorModal;
   window.rrOpenMaquinasPeriodoModal = rrOpenMaquinasPeriodoModal;
+  window.rrOpenLucratividadeMaquinaModal = rrOpenLucratividadeMaquinaModal;
 
   async function rrReportChapasAbaixo200() {
     var ref = rrCurrentRange();
@@ -3937,7 +3938,7 @@ try {
     { id: 'papelao-por-fornecedor', label: 'Papelão: Compras por Fornecedor', icon: '🏭', desc: 'Consolida quantidade, área e valor comprado por fornecedor no período com ticket médio.', run: rrReportPapelaoFornecedor },
     { id: 'papelao-resumo-mes', label: 'Papelão: Quantidade e Valor do Mês', icon: '📊', desc: 'Resumo consolidado do período com total de compras, quantidade em chapas, área e valor financeiro.', run: rrReportPapelaoResumoMes },
     { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
-    { id: 'lucratividade-por-maquina', label: 'Lucratividade por Máquina', icon: '🏭', desc: 'Consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina usando ofs.passagens_maquina.', run: rrOpenLucratividadeMaquinaModal },
+    { id: 'lucratividade-por-maquina', label: 'Lucratividade por Máquina', icon: '🏭', desc: 'Consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina com a mesma base oficial de vendas (inclui Riscador e Acabamento).', run: rrOpenLucratividadeMaquinaModal },
     { id: 'pizzas-salgados', label: 'Pizzas e Salgados', icon: '🍕', desc: 'Vendas das caixas de pizza e de salgado: valor, caixas e clientes por mês, clientes novos, quem parou de comprar, produtos, vendedores e cidades.', run: rrReportPizzasSalgados },
     { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
     { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
