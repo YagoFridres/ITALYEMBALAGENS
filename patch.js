@@ -70665,12 +70665,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   };
   var GRUPOS = [
     { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens'] },
-    { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'operadores', 'vendedores', 'mapa-clientes'] },
+    { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'gramaturas', 'operadores', 'vendedores', 'mapa-clientes'] },
     { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
-    { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'gramaturas', 'toneladas-vendidas', 'simd'] },
+    { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'simd'] },
     { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
     { id: 'ng-ds-fabrica', nome: 'Máquinas', ico: 'maquina', itens: ['maquinas', 'tempos-reais'] },
-    { id: 'ng-ds-gestao', nome: 'Financeiro', ico: 'carteira', itens: ['orcamentos', 'comissoes', 'central-custos', 'relatorios'] },
+    { id: 'ng-ds-gestao', nome: 'Financeiro', ico: 'carteira', itens: ['orcamentos', 'comissoes', 'toneladas-vendidas', 'central-custos', 'relatorios'] },
     { id: 'ng-ds-comunicacao', nome: 'Comunicação', ico: 'chat', itens: ['@chat', 'agenda'] },
     { id: 'ng-ds-sistema', nome: 'Sistema', ico: 'ajustes', itens: ['usuarios', 'configuracoes'] }
   ];
@@ -70734,7 +70734,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
     });
     // itens que não existem no menu antigo (Entradas / Saídas de chapas) são criados aqui
-    ['entradas-estoque', 'saidas-estoque', 'almoxarifado'].forEach(function (k) {
+    ['entradas-estoque', 'saidas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento'].forEach(function (k) {
       if (porChave[k]) return;
       var it = document.createElement('div');
       it.className = 'nav-item'; it.setAttribute('onclick', "go('" + k + "')"); it.setAttribute('data-ds-criado', '1');
