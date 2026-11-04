@@ -78434,7 +78434,7 @@ window.__perTxt = function (p) {
       var ids = {}; listaAtual().forEach(function (o) { ids[String(o && o.id || '')] = 1; });
       var novas = rows.filter(function (o) { return o && o.id && !ids[String(o.id)] && String(o.created_at || '') > ultimo; });
       var m = maxCriada(rows); if (m > ultimo) ultimo = m;
-      if (!novas.length && !pendente) return;
+      if (!novas.length) return;
       if (typeof window.carregarOFsUnico === 'function') await window.carregarOFsUnico(true);
       if (novas.length) { try { window.toast('🆕 ' + (novas.length === 1 ? 'OF ' + (novas[0].numero || novas[0].of) + ' lançada' : novas.length + ' OFs novas lançadas') + ' — lista atualizada', 'var(--accent)'); } catch (_) {} }
       if (ocupado()) { pendente = true; return; }
