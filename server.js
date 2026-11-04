@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261103182454';
-const SW_RUNTIME_VERSION = '20261103182454';
+const PATCH_RUNTIME_VERSION = '20261104085243';
+const SW_RUNTIME_VERSION = '20261104085243';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -17137,10 +17137,8 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
 
     // AA3: catálogo de máquinas + bucket extra "Sem Máquina Definida" para
     // OFs concluídas sem nenhuma passagem nas máquinas catálogadas.
-    const BASE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.filter((m) => {
-      const nm = String(m?.nome || '').trim().toLowerCase();
-      return nm !== 'acabamento' && nm !== 'riscador';
-    });
+    // Riscador e Acabamento também são máquinas do catálogo (antes ficavam de fora e caíam em "Sem Máquina Definida").
+    const BASE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.slice();
     const MAQUINA_SEM = { nome: 'Sem Máquina Definida' };
     const LUCRATIVIDADE_MAQUINAS = BASE_MAQUINAS.concat([MAQUINA_SEM]);
     const machineOrder = new Map(BASE_MAQUINAS.map((item, idx) => [String(item?.nome || '').trim(), idx]));
@@ -17244,95 +17242,18 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       'valor_total','valor_venda','total','passagens_maquina','perdas_por_maquina',
       'data_faturamento','data_conclusao','dia','gramatura_id',
     ];
-    let ofsColsAtual = ofsCols.split(',').filter(Boolean);
-    const tryColLevels = [ofsColsAtual, OFS_COLS_MIN, OFS_COLS_CONSERVADOR, OFS_COLS_BARE];
-    let levelCursor = 0;
-    const extractBadCol = (msg) => {
-      const m = String(msg || '').match(/column\s+(?:["`\[]?)([a-zA-Z0-9_]+)(?:["`\]]?)\s+does not exist/i)
-             || String(msg || '').match(/Could not find (?:a|the|) column.*?named\s+["`\[]?([a-zA-Z0-9_]+)/i)
-             || String(msg || '').match(/column.*?"([a-zA-Z0-9_]+)".*?does not exist/i);
-      if (m && m[1]) return m[1];
-      return null;
-    };
-    const batch = 2000;
-    const ofs = [];
-    let globalCursor = 0;
-    const TENTATIVAS_COLS_MAX = 40;
-    let tentativasCols = 0;
-    RESTART_FROM_ZERO: while (true) {
-      if (tentativasCols++ > TENTATIVAS_COLS_MAX) break;
-      ofs.length = 0;
-      globalCursor = 0;
-      while (true) {
-        const cols = ofsColsAtual.join(',');
-        let q = supabase.from('ofs').select(cols)
-          .ilike('status', '%conclu%')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .range(globalCursor, globalCursor + batch - 1);
-        if (empresaId && _isUuid(empresaId)) {
-          q = q.or([
-            'emp_id.eq.' + empresaId,
-            'empresa_id.eq.' + empresaId,
-          ].join(','));
-        }
-        const r = await q;
-        if (r?.error) {
-          const msg = String(r.error.message || r.error || '');
-          const bad = extractBadCol(msg);
-          if (bad) {
-            ofsColsAtual = ofsColsAtual.filter(c => c !== bad);
-            if (ofsColsAtual.length === 0) {
-              levelCursor++;
-              if (levelCursor < tryColLevels.length) { ofsColsAtual = tryColLevels[levelCursor].slice(); continue RESTART_FROM_ZERO; }
-              throw r.error;
-            }
-            continue RESTART_FROM_ZERO;
-          }
-          if ((msg.includes('column') || msg.includes('Could not find')) && (msg.includes('emp_id') || msg.includes('deleted_at'))) {
-            let q2 = supabase.from('ofs').select(cols)
-              .ilike('status', '%conclu%')
-              .order('created_at', { ascending: false })
-              .range(globalCursor, globalCursor + batch - 1);
-            if (empresaId && _isUuid(empresaId)) q2 = q2.eq('empresa_id', empresaId);
-            const r2 = await q2;
-            if (r2?.error) {
-              const bad2 = extractBadCol(r2.error.message || r2.error);
-              if (bad2) {
-                ofsColsAtual = ofsColsAtual.filter(c => c !== bad2);
-                if (ofsColsAtual.length === 0) {
-                  levelCursor++;
-                  if (levelCursor < tryColLevels.length) { ofsColsAtual = tryColLevels[levelCursor].slice(); continue RESTART_FROM_ZERO; }
-                  throw r2.error;
-                }
-                continue RESTART_FROM_ZERO;
-              }
-              throw r2.error;
-            }
-            if (!Array.isArray(r2?.data)) break;
-            r2.data.forEach((row) => ofs.push(row));
-            const p2 = r2.data.length;
-            const mp2 = Math.min(batch, 1000);
-            if (p2 < mp2) break;
-            globalCursor += p2;
-            if (globalCursor > 20000) break;
-            continue;
-          }
-          throw r.error;
-        }
-        if (!Array.isArray(r?.data)) break;
-        r.data.forEach((row) => ofs.push(row));
-        const pageLen = r.data.length;
-        const maxPage = Math.min(batch, 1000);
-        if (pageLen < maxPage) break;
-        globalCursor += pageLen;
-        if (globalCursor > 20000) break;
-      }
-      break;
-    }
-
+    // Mesma base oficial de vendas (status concluído + regra de data COALESCE + sem clientes TESTE)
+    const ofsColsExtras = ofsCols.split(',').filter(Boolean).concat([
+      'tipo_caixa', 'tipo_caixa_id', 'cores_impressao', 'fluxo_maquinas', 'maq', 'maquina_agendada', 'maquina',
+      'gramatura', 'tonelada_vendida', 'toneladas_utilizadas',
+    ]);
+    let ofs = await _listarOfsVendasOficiais(range, (empresaId && _isUuid(empresaId)) ? empresaId : '', ofsColsExtras);
+    const _brutoOficial = ofs.length;
+    ofs = _filtrarOfsNaoTesteGlobal(ofs);
+    const _semTeste = ofs.length;
     const dbg = {
-      raw_ofs_total: ofs.length,
+      raw_ofs_total: _brutoOficial,
+      removidas_teste: _brutoOficial - _semTeste,
       after_status_deleted: 0,
       after_periodo: 0,
       after_cancelado: 0,
@@ -17348,10 +17269,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       if (_assistIsCancelada(of)) return false;
       dbg.after_cancelado += 1;
       if (empresaId && _isUuid(empresaId)) {
-        const e1 = String(of?.emp_id || '').trim();
-        const e2 = String(of?.empresa_id || '').trim();
-        const hit = (e1 && e1 === empresaId) || (e2 && e2 === empresaId);
-        if (!hit) return false;
+        if (String(_relatoriosPickEmpresaId(of) || '').trim() !== empresaId) return false;
       }
       dbg.after_empresa += 1;
       return true;
@@ -17393,6 +17311,11 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       return 0;
     };
 
+    const tiposMap = new Map();
+    try {
+      const { data: tiposData } = await supabase.from('tipos_caixa').select('id,nome');
+      (tiposData || []).forEach((t) => tiposMap.set(String(t.id || '').trim(), String(t.nome || '').trim()));
+    } catch (_) {}
     const clientesMap = await _relatoriosLoadClientesDetails(ofsFiltradas.map((of) => _assistPickOfClienteId(of)));
     const buckets = new Map();
     LUCRATIVIDADE_MAQUINAS.forEach((machine) => {
@@ -17417,6 +17340,11 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     const detalhamento = [];
     const totalOfsDistintas = new Set();
     const semMaquina = 'Sem Máquina Definida';
+    const totaisOfs = { valor_vendido: 0, caixas_produzidas: 0, toneladas_produzidas: 0, custos_totais: 0 };
+    const origemMaquina = { passagens: 0, fluxo: 0, agendada: 0, sem: 0 };
+    const nomesDe = (lista) => _parseMaybeJsonArray(lista).map((p) => String(p && typeof p === 'object'
+      ? (p.maquina_nome ?? p.maquina ?? p.nome ?? p.name ?? p.id ?? '')
+      : (p ?? '')).trim()).filter(Boolean);
 
     const atribuirOfMaquina = (of, machineNameCanon, passagemIndex) => {
       const bucket = buckets.get(machineNameCanon);
@@ -17428,15 +17356,15 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       const gramIdTon = String(of?.gramatura_id || '').trim();
       const gramTon = gramIdTon ? (gramMap.get(gramIdTon) || null) : null;
       const gramaturaValorGramas = Number(gramTon?.gramatura ?? gramTon?.gramatura_gm2 ?? gramTon?.valor ?? 0) || 0;
-      let tonOf = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+      // Toneladas: mesma regra do relatório oficial "Toneladas Vendidas"
+      let tonOf = _relTonOf(of, gramMap) || 0;
       if (!(tonOf > 0) && comp > 0 && larg > 0 && gramaturaValorGramas > 0 && qtdOf > 0) {
-        const areaM2Ton = (comp / 1000) * (larg / 1000);
-        tonOf = (areaM2Ton * gramaturaValorGramas * qtdOf) / 1000000;
+        tonOf = (((comp / 1000) * (larg / 1000)) * gramaturaValorGramas * qtdOf) / 1000000;
         if (!(tonOf > 0)) tonOf = 0;
       }
       const custoOf = pickCustoOf(of);
       const clienteNome = _relatoriosPickClienteNomeOf(of, clientesMap) || 'Sem cliente';
-      const tipoCaixa = String(of?.tipo_caixa || 'Sem tipo').trim() || 'Sem tipo';
+      const tipoCaixa = String(tiposMap.get(String(of?.tipo_caixa_id || '').trim()) || of?.tipo_caixa || 'Sem tipo').trim() || 'Sem tipo';
       const cores = canonicalColors(of?.cores_impressao);
       const perdas = buildLossForMachine(of, machineNameCanon, qtdOf, tonOf, valorOf);
       const ofNumero = _assistPickOfNumber(of) || '—';
@@ -17451,7 +17379,14 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       bucket.toneladas_perdidas += perdas.toneladas_perdidas;
       bucket.custos_totais += custoOf;
       bucket._ofs.add(String(of?.id || '').trim());
-      totalOfsDistintas.add(String(of?.id || '').trim());
+      const _idOf = String(of?.id || '').trim();
+      if (!totalOfsDistintas.has(_idOf)) {
+        totalOfsDistintas.add(_idOf);
+        totaisOfs.valor_vendido += valorOf;
+        totaisOfs.caixas_produzidas += qtdOf;
+        totaisOfs.toneladas_produzidas += tonOf;
+        totaisOfs.custos_totais += custoOf;
+      }
 
       if (!bucket._clientes.has(clienteNome)) {
         bucket._clientes.set(clienteNome, { cliente_nome: clienteNome, total_passagens: 0, total_caixas: 0, valor_vendido: 0, _ofs: new Set() });
@@ -17488,22 +17423,25 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       });
     };
 
+    // Máquina da OF: passagens registradas no Modo Operador; se não houver,
+    // o fluxo de máquinas da OF; por último a máquina agendada.
     ofsFiltradas.forEach((of) => {
-      const passagens = _parseMaybeJsonArray(of?.passagens_maquina);
       const atribuida = new Set();
-      passagens.forEach((p) => {
-        const nome = String(p && typeof p === 'object'
-          ? (p.maquina_nome ?? p.maquina ?? p.nome ?? p.name ?? p.id ?? '')
-          : (p ?? '')).trim();
-        const canon = _canonMaqNome(nome) || nome;
-        if (!canon || !machineNames.has(canon)) return;
-        if (atribuida.has(canon)) return;
-        atribuida.add(canon);
-        atribuirOfMaquina(of, canon, 0);
-      });
-      if (atribuida.size === 0) {
-        atribuirOfMaquina(of, semMaquina, 0);
-      }
+      const tentar = (nomes) => {
+        nomes.forEach((nome) => {
+          const canon = _canonMaqNome(nome) || nome;
+          if (!canon || !machineNames.has(canon) || atribuida.has(canon)) return;
+          atribuida.add(canon);
+          atribuirOfMaquina(of, canon, 0);
+        });
+        return atribuida.size > 0;
+      };
+      if (tentar(nomesDe(of?.passagens_maquina))) { origemMaquina.passagens += 1; return; }
+      const fluxo = nomesDe(of?.fluxo_maquinas);
+      if (tentar(fluxo.length ? fluxo : nomesDe(of?.maq))) { origemMaquina.fluxo += 1; return; }
+      if (tentar([String(of?.maquina_agendada || of?.maquina || '').trim()].filter(Boolean))) { origemMaquina.agendada += 1; return; }
+      origemMaquina.sem += 1;
+      atribuirOfMaquina(of, semMaquina, 0);
     });
 
     // Perdas por máquina = tabela oficial de perdas do período (a mesma do relatório "Caixas Perdidas"),
@@ -17612,6 +17550,15 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       toneladas_perdidas: 0,
     });
 
+    // Cards do resumo contam cada OF uma vez só (uma OF que passa em 2 máquinas aparece nas 2 linhas, mas não soma 2x no total)
+    resumo.soma_por_maquina_valor = resumo.valor_vendido;
+    resumo.valor_vendido = Math.round(totaisOfs.valor_vendido * 100) / 100;
+    resumo.caixas_produzidas = totaisOfs.caixas_produzidas;
+    resumo.toneladas_produzidas = totaisOfs.toneladas_produzidas;
+    resumo.custos_totais = Math.round(totaisOfs.custos_totais * 100) / 100;
+    resumo.lucro_total = Math.round((totaisOfs.valor_vendido - totaisOfs.custos_totais) * 100) / 100;
+    resumo.origem_maquina = origemMaquina;
+
     detalhamento.sort((a, b) => {
       const ordemA = machineOrder.get(String(a?.maquina || '').trim());
       const ordemB = machineOrder.get(String(b?.maquina || '').trim());
@@ -17634,7 +17581,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         ofs_filtradas_length: ofsFiltradas.length,
         empresa_filter_todas: empresaFilter?.todas === true,
       },
-      fonte_passagens: 'ofs.passagens_maquina (fallback Sem Máquina Definida)',
+      fonte_passagens: 'ofs.passagens_maquina > fluxo_maquinas > maquina_agendada (fallback Sem Máquina Definida)',
       fonte_perdas: 'tabela caixas_perdidas (período)',
       logica_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
       logica_custo: 'gramatura.valor_unitario * (dim/1000)^2 * qtd (fallback custo_m2_venda*area ou custo_total)',

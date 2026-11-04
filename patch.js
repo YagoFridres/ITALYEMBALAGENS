@@ -1868,10 +1868,10 @@ try {
       cards: [
         { label: 'Máquinas com movimento', value: rrFmtNum(resumo.maquinas_com_movimento || 0, 0), sub: rrFmtNum(resumo.total_maquinas || rows.length, 0) + ' máquinas no catálogo' },
         { label: 'Passagens', value: rrFmtNum(resumo.total_passagens || 0, 0), sub: rrFmtNum(resumo.total_ofs_distintas || 0, 0) + ' OFs distintas' },
-        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Somado por máquina via ofs.passagens_maquina' },
+        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Cada OF contada uma vez · lucro est. ' + rrFmtMoney(resumo.lucro_total || 0) },
         { label: 'Caixas Produzidas', value: rrFmtNum(resumo.caixas_produzidas || 0, 0), sub: fmtTon(resumo.toneladas_produzidas || 0) },
         { label: 'Perdas', value: rrFmtNum(resumo.caixas_perdidas || 0, 0) + ' cx', sub: rrFmtMoney(resumo.valor_perdido || 0) + ' | ' + fmtTon(resumo.toneladas_perdidas || 0) },
-        { label: 'Custos Totais', value: rrFmtMoney(resumo.custos_totais || 0), sub: 'Custo estimado = custo_m2_venda × area_total_m2; zera se área faltar' }
+        { label: 'Custos Totais', value: rrFmtMoney(resumo.custos_totais || 0), sub: 'Papelão estimado: área × valor do m² da gramatura × qtd' }
       ],
       summaryTitle: 'Resumo por máquina',
       summaryHeaders: ['Máquina', 'Passagens', 'OFs', 'Venda', 'Caixas', 'Toneladas', 'Cx Perdidas', 'Valor Perdido', 'Custos', 'Cliente Top', 'Tipo Top', 'Cores Top'],
