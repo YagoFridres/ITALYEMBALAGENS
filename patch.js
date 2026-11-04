@@ -35575,10 +35575,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var _ehRet = function(c) { return /^retalho/i.test(String(c && c.categoria || '').trim()); };
         var abaRet = String(window.__estoqueWireAba || '') === 'retalhos';
         var qtdRetalhos = lista.filter(_ehRet).length, qtdChapasInt = lista.length - qtdRetalhos;
-        lista = lista.filter(function(c) { return _ehRet(c) === abaRet; });
-        var catsAba = lista.map(function(c) { return String(c && c.categoria || '').trim() || 'Estoque Simples'; }).filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+        // todas as categorias (cadastradas + usadas no estoque), de chapa e de retalho, com a contagem de itens
+        var _catDe = function(c) { return String(c && c.categoria || '').trim() || 'Estoque Simples'; };
+        var catCont = {};
+        try { (typeof CHAPAS_CATEGORIAS !== 'undefined' && Array.isArray(CHAPAS_CATEGORIAS) ? CHAPAS_CATEGORIAS : []).forEach(function(c) { var n = String(c && c.nome || '').trim(); if (n) catCont[n] = 0; }); } catch (_) {}
+        lista.forEach(function(c) { var n = _catDe(c); catCont[n] = (catCont[n] || 0) + 1; });
+        var catsTodas = Object.keys(catCont).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
         var catFil = String(window.__estoqueWireCat || '');
-        if (catFil && catsAba.indexOf(catFil) < 0) catFil = '';
+        if (catFil && catsTodas.indexOf(catFil) < 0) catFil = '';
+        if (catFil && (/^retalho/i.test(catFil) !== abaRet)) { abaRet = /^retalho/i.test(catFil); window.__estoqueWireAba = abaRet ? 'retalhos' : ''; }
+        lista = lista.filter(function(c) { return _ehRet(c) === abaRet; });
+        var catsAba = catsTodas;
         if (catFil) lista = lista.filter(function(c) { return (String(c && c.categoria || '').trim() || 'Estoque Simples') === catFil; });
         try { window.__dsEstoqueLista = lista; window.__dsEstTon = estoqueWireTon; window.__dsEstValor = estoqueWireValor; } catch (_) {}
         window.__estoqueWireLimit = limiteUsado || limiteAtual;
@@ -35648,7 +35655,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
         + '    <button class="pep-btn' + (filtroRapido === 'baixo200' ? ' primary' : '') + '" id="estoque-wire-fil-baixo" type="button">Abaixo de 200</button>'
         + '    <button class="pep-btn' + (filtroRapido === 'zeradas' ? ' primary' : '') + '" id="estoque-wire-fil-zeradas" type="button">Zeradas</button>'
-        + '    <select class="pep-input" id="estoque-wire-cat" style="min-width:200px;max-width:100%"><option value="">Todas as categorias</option>' + catsAba.map(function(c) { return '<option value="' + esc(c) + '"' + (c === catFil ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>'
+        + '    <select class="pep-input" id="estoque-wire-cat" title="Filtrar por categoria (chapas e retalhos)" style="flex:0 1 340px !important;width:auto !important;min-width:220px;max-width:100% !important"><option value="">Todas as categorias</option>'
+        + [['🧱 Chapas', catsTodas.filter(function(c) { return !/^retalho/i.test(c); })], ['✂️ Retalhos', catsTodas.filter(function(c) { return /^retalho/i.test(c); })]].map(function(g) {
+            return g[1].length ? '<optgroup label="' + esc(g[0]) + '">' + g[1].map(function(c) { return '<option value="' + esc(c) + '"' + (c === catFil ? ' selected' : '') + '>' + esc(c) + ' (' + num(catCont[c] || 0, 0) + ')</option>'; }).join('') + '</optgroup>' : '';
+          }).join('')
+        + '</select>'
         + '  </div></div>'
         + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr>'
         +      _estoqueWireHeaderSortHtml('FORNECEDOR', 'fornecedor', 'col-text')
@@ -47473,7 +47484,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   async function _excluirChapaEstoquePatched(id) {
     var sid = String(id || '').trim();
     if (!sid) return false;
-    if (!confirm('Excluir esta chapa do estoque?')) return false;
+    if (typeof window.dsConfirmarExclusaoChapa === 'function') { if (!(await window.dsConfirmarExclusaoChapa(sid))) return false; }
+    else { if (!confirm('Excluir esta chapa do estoque?')) return false; if (!confirm('Tem certeza? A exclusão não pode ser desfeita.')) return false; }
     var resp = await window._apiAuthFetch('/api/chapas_estoque/' + encodeURIComponent(sid), {
       method: 'DELETE'
     });
@@ -77901,5 +77913,46 @@ window.__perTxt = function (p) {
     var hay = norm(partes.join(' | '));
     var hayCompacto = hay.replace(/\s+/g, '');
     return q.split(' ').every(function (tk) { return hay.indexOf(tk) >= 0 || hayCompacto.indexOf(tk) >= 0; });
+  };
+})();
+
+
+// Exclusão de chapa/retalho: pede confirmação duas vezes
+(function __dsConfirmaExcluirChapa() {
+  if (window.dsConfirmarExclusaoChapa) return;
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function acharChapa(id) {
+    var fontes = [window.__dsEstoqueLista, window.__estoqueWireChapasCache, window.__estoqueChapasCacheGlobal, window.__simdAllChapasCache];
+    for (var i = 0; i < fontes.length; i++) { var l = fontes[i]; if (!Array.isArray(l)) continue; for (var j = 0; j < l.length; j++) if (String(l[j] && l[j].id || '') === String(id)) return l[j]; }
+    return null;
+  }
+  function passo(opts) {
+    return new Promise(function (ok) {
+      var ov = document.createElement('div'); ov.className = 'dsch-ov'; ov.style.zIndex = '10080';
+      try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
+      ov.innerHTML = '<div class="dsch-m" role="alertdialog" aria-modal="true" style="width:min(520px,100%);height:auto;max-height:calc(100vh - 32px);border-radius:18px">'
+        + '<div class="dsch-hd" style="background:linear-gradient(135deg,rgba(239,68,68,.25),rgba(127,29,29,.2))"><div class="dsch-ic" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">' + opts.ic + '</div><div><h2>' + esc(opts.titulo) + '</h2><p>' + esc(opts.sub) + '</p></div></div>'
+        + '<div class="dsch-bd">' + opts.corpo + '</div>'
+        + '<div class="dsch-ft"><button type="button" class="dsch-bt" data-n>Cancelar</button><button type="button" class="dsch-bt" data-s style="border:0;color:#fff;background:linear-gradient(135deg,#ef4444,#b91c1c);font-weight:800">' + esc(opts.botao) + '</button></div></div>';
+      document.body.appendChild(ov);
+      function fim(v) { document.removeEventListener('keydown', tecla, true); ov.remove(); ok(v); }
+      function tecla(e) { if (e.key === 'Escape') { e.stopPropagation(); fim(false); } }
+      document.addEventListener('keydown', tecla, true);
+      ov.addEventListener('click', function (e) { if (e.target === ov) fim(false); });
+      ov.querySelector('[data-n]').onclick = function () { fim(false); };
+      ov.querySelector('[data-s]').onclick = function () { fim(true); };
+      setTimeout(function () { try { ov.querySelector('[data-n]').focus(); } catch (_) {} }, 30);
+    });
+  }
+  window.dsConfirmarExclusaoChapa = async function (id) {
+    var c = acharChapa(id) || {};
+    var ret = /^retalho/i.test(String(c.categoria || '').trim());
+    var oque = ret ? 'retalho' : 'chapa';
+    var qtd = Number(c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd)) || 0;
+    var info = [c.nomenclatura, c.tamanho, c.fornecedor, c.categoria].filter(Boolean).join(' · ');
+    var corpo = '<div class="dsch-prev"><div class="ph">' + (ret ? '✂️' : '🧱') + '</div><div><b>' + esc(c.nome_uso || c.nome || c.nomenclatura || ('Esta ' + oque)) + '</b><span>' + esc(info || '—') + '</span></div><div class="vl"><span>Saldo</span><b style="color:#f87171">' + qtd.toLocaleString('pt-BR') + '</b></div></div>';
+    var p1 = await passo({ ic: '🗑', titulo: 'Excluir ' + oque + '?', sub: 'Passo 1 de 2', corpo: corpo + '<p style="margin:0;font-size:14px">Você quer excluir ' + (ret ? 'este retalho' : 'esta chapa') + ' do estoque?</p>', botao: 'Sim, quero excluir' });
+    if (!p1) return false;
+    return passo({ ic: '⚠️', titulo: 'Tem certeza?', sub: 'Passo 2 de 2 — confirmação final', corpo: corpo + '<p style="margin:0;font-size:14px;color:#fca5a5"><b>A exclusão é definitiva e não pode ser desfeita.</b>' + (qtd > 0 ? ' O saldo de ' + qtd.toLocaleString('pt-BR') + ' unidade(s) sairá do estoque.' : '') + '</p>', botao: 'Excluir definitivamente' });
   };
 })();
