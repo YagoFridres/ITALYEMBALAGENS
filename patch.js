@@ -48057,6 +48057,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _entradaEstoqueChapaLabel(chapa) {
     return [
+      /^retalho/i.test(String(chapa && chapa.categoria || '').trim()) ? '✂️ RETALHO' : '',
       String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
       String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
       String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
@@ -48087,7 +48088,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var selected = String(selectedId || '').trim();
     if (termo) {
       lista = lista.filter(function(chapa) {
-        return _entradaEstoqueBuscaTexto(chapa).indexOf(termo) >= 0;
+        return window.dsChapaCasaBusca ? window.dsChapaCasaBusca(chapa, busca) : (_entradaEstoqueBuscaTexto(chapa).indexOf(termo) >= 0);
       });
     }
     if (selected) {
@@ -48420,7 +48421,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:240px">'
       + '  <div class="est-ent-picker-wrap" style="display:grid;gap:6px;position:relative;overflow:visible">'
-      + '    <input class="est-ent-search estoque-modal-input" type="text" placeholder="Buscar por gramatura, nomenclatura, tamanho ou nome" style="width:100%">'
+      + '    <input class="est-ent-search estoque-modal-input" type="text" placeholder="Buscar por qualquer informação da chapa (nome, fornecedor, gramatura, tamanho, NF…)" style="width:100%">'
       + '    <select class="est-ent-chapa estoque-modal-select" style="width:100%">' + _entradaEstoqueOptions(chapas) + '</select>'
       + '  </div>'
       + '</td>'
@@ -48780,6 +48781,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var id = String(chapa && chapa.id || '').trim();
       var saldo = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
       var label = [
+        /^retalho/i.test(String(chapa && chapa.categoria || '').trim()) ? '✂️ RETALHO' : '',
         String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
         String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
         String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
@@ -48847,8 +48849,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!tbody) return;
     var tr = document.createElement('tr');
     tr.innerHTML = ''
-      + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:320px">'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:320px"><div style="display:grid;gap:6px">'
+      + '  <input class="est-sai-search estoque-modal-input" type="text" autocomplete="off" placeholder="Buscar por qualquer informação da chapa (nome, fornecedor, gramatura, tamanho, NF…)" style="width:100%">'
       + '  <select class="est-sai-chapa estoque-modal-select" style="width:100%">' + _saidaEstoqueOptions(chapas) + '</select>'
+      + '  <small class="est-sai-achou" style="font-size:11px;color:#94a3b8"></small></div>'
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900"><span class="est-sai-saldo">0</span></td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-sai-qtd estoque-modal-input" type="number" min="1" value="1" style="width:100px;font-family:var(--mono);font-weight:800;text-align:right"></td>'
@@ -48863,6 +48867,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var chapaEl = tr.querySelector('.est-sai-chapa');
     var qtdEl = tr.querySelector('.est-sai-qtd');
     var btnRem = tr.querySelector('.est-sai-remover');
+    var buscaSaiEl = tr.querySelector('.est-sai-search');
+    var achouEl = tr.querySelector('.est-sai-achou');
+    if (buscaSaiEl && chapaEl) {
+      var filtrarSaida = function() {
+        var termo = String(buscaSaiEl.value || '').trim();
+        var atual = String(chapaEl.value || '').trim();
+        var lista = !termo ? (Array.isArray(chapas) ? chapas : []) : (Array.isArray(chapas) ? chapas : []).filter(function(c) { return window.dsChapaCasaBusca ? window.dsChapaCasaBusca(c, termo) : true; });
+        chapaEl.innerHTML = _saidaEstoqueOptions(lista);
+        var manter = lista.some(function(c) { return String(c && c.id || '').trim() === atual; });
+        chapaEl.value = manter ? atual : (termo && lista.length ? String(lista[0].id || '') : '');
+        if (achouEl) achouEl.textContent = termo ? (lista.length ? (lista.length + ' chapa(s) encontrada(s)' + (lista.length > 1 ? ' — escolha na lista acima' : '')) : 'Nenhuma chapa encontrada') : '';
+        sync();
+      };
+      buscaSaiEl.addEventListener('input', filtrarSaida);
+      buscaSaiEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') { ev.preventDefault(); try { (qtdEl || chapaEl).focus(); if (qtdEl) qtdEl.select(); } catch (_) {} } });
+    }
     if (chapaEl) {
       chapaEl.addEventListener('change', sync);
       chapaEl.addEventListener('input', sync);
@@ -61776,7 +61796,7 @@ function _ocultarGraficoComissoes() {
     if (!dims) {
       return {
         ok: false,
-        nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+        nome: (/^retalho/i.test(String(chapa && chapa.categoria || '').trim()) ? '✂️ Retalho · ' : '') + String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
         fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
         tamanho: String(chapa && (chapa.tamanho || chapa.tam || 'Sem tamanho') || 'Sem tamanho').trim() || 'Sem tamanho',
         motivo: 'Sem dimensões válidas na ficha da chapa.'
@@ -61808,7 +61828,7 @@ function _ocultarGraficoComissoes() {
       return {
         ok: false,
         id: chapa && chapa.id,
-        nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+        nome: (/^retalho/i.test(String(chapa && chapa.categoria || '').trim()) ? '✂️ Retalho · ' : '') + String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
         fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
         tamanho: String(chapa && (chapa.tamanho || chapa.tam || (sheetWidth + ' x ' + sheetHeight)) || (sheetWidth + ' x ' + sheetHeight)).trim(),
         motivo: 'A chapa não comporta a peça nem no sentido normal nem rotacionado.'
@@ -61835,7 +61855,7 @@ function _ocultarGraficoComissoes() {
       ok: true,
       id: chapa && chapa.id,
       __row_key: String(chapa && chapa.id || [chapa && chapa.nome_uso, chapa && chapa.tamanho, best.label, best.cols, best.rows].join('|')).trim(),
-      nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+      nome: (/^retalho/i.test(String(chapa && chapa.categoria || '').trim()) ? '✂️ Retalho · ' : '') + String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
       nomenclatura: String(chapa && (chapa.nomenclatura || chapa.nom || '') || '').trim(),
       fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
       empresa: sEmpresa(chapa),
@@ -62101,7 +62121,7 @@ function _ocultarGraficoComissoes() {
   }
 
   async function sFetchChapas() {
-    if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length) {
+    if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length && (Date.now() - (window.__simdAllChapasTs || 0)) < 60000) {
       try { console.log('[SIMD-DIAG] fetch chapas cache-hit', { total: window.__simdAllChapasCache.length }); } catch (_) {}
       return window.__simdAllChapasCache.slice();
     }
@@ -62118,6 +62138,7 @@ function _ocultarGraficoComissoes() {
     if (!resp.ok) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar chapas do estoque'));
     var rows = sExtractRows(data);
     window.__simdAllChapasCache = rows.slice();
+    window.__simdAllChapasTs = Date.now();
     sLog('chapas carregadas', rows.length);
     return rows;
   }
@@ -62130,7 +62151,7 @@ function _ocultarGraficoComissoes() {
       resultados.innerHTML = '';
       return;
     }
-    var lista = (Array.isArray(chapas) ? chapas : []).slice(0, 12);
+    var lista = (Array.isArray(chapas) ? chapas : []).slice(0, 40);
     if (!lista.length) {
       resultados.style.display = 'block';
       resultados.innerHTML = '<div class="simd-search-item" style="cursor:default">Nenhuma chapa encontrada.</div>';
@@ -62141,7 +62162,8 @@ function _ocultarGraficoComissoes() {
       var dims = sSheetDims(chapa);
       var tamanho = dims ? (sFmtNum(dims.width, 0) + ' × ' + sFmtNum(dims.height, 0) + ' mm') : String(chapa && (chapa.tamanho || chapa.tam || 'Sem tamanho') || 'Sem tamanho');
       var payload = encodeURIComponent(JSON.stringify(chapa || {}));
-      return '<button type="button" class="simd-search-item" data-simd-chapa="' + payload + '"><strong>' + sEsc(String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim()) + '</strong><span>' + sEsc([String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—', tamanho, 'Estoque: ' + String(sInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd))))].join(' · ')) + '</span></button>';
+      var _ret = /^retalho/i.test(String(chapa && chapa.categoria || '').trim());
+      return '<button type="button" class="simd-search-item" data-simd-chapa="' + payload + '"><strong>' + (_ret ? '<span style="display:inline-block;margin-right:6px;padding:1px 8px;border-radius:99px;background:rgba(245,158,11,.18);color:#fbbf24;font-size:11px">✂️ Retalho</span>' : '') + sEsc(String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim()) + '</strong><span>' + sEsc([String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—', String(chapa && chapa.nomenclatura || '').trim(), chapa && chapa.gramatura ? (String(chapa.gramatura) + ' g/m²') : '', tamanho, String(chapa && chapa.categoria || '').trim(), 'Estoque: ' + String(sInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd))))].filter(Boolean).join(' · ')) + '</span></button>';
     }).join('');
   }
 
@@ -62157,9 +62179,7 @@ function _ocultarGraficoComissoes() {
     }
     try {
       var chapas = await sFetchChapas();
-      var filtradas = chapas.filter(function(row) {
-        return [row && row.nome_uso, row && row.nome, row && row.nomenclatura, row && row.fornecedor, row && row.tamanho, row && row.tam, sEmpresa(row)].join(' ').toLowerCase().includes(term);
-      });
+      var filtradas = chapas.filter(function(row) { return window.dsChapaCasaBusca(row, term); });
       sRenderSearchResults(filtradas, term);
     } catch (e) {
       sErr('erro busca chapa', e);
@@ -77861,4 +77881,25 @@ window.__perTxt = function (p) {
   try { new MutationObserver(ligar).observe(document.body, { childList: true }); } catch (_) {}
   setInterval(ligar, 2000);
   ligar();
+})();
+
+
+// Busca de chapa/retalho por qualquer informação (usada no Simulador de Desperdício, Entradas e Saídas)
+(function __dsChapaBusca() {
+  if (window.dsChapaCasaBusca) return;
+  function norm(t) { var s = String(t == null ? '' : t).toLowerCase(); try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {} return s; }
+  window.dsChapaCasaBusca = function (chapa, termo) {
+    var q = norm(termo).replace(/\s+/g, ' ').trim(); if (!q) return true;
+    if (!chapa) return false;
+    var c = chapa, partes = [];
+    Object.keys(c).forEach(function (k) { var v = c[k]; if (v == null || typeof v === 'object') return; if (/^(id|.*_id|created_at|updated_at|foto.*|url.*)$/i.test(k)) return; partes.push(String(v)); });
+    var cat = String(c.categoria || '').trim();
+    partes.push(/^retalho/i.test(cat) ? 'retalho retalhos' : 'chapa chapas inteira');
+    var g = Number(c.gramatura); if (g > 0) partes.push(g + 'g ' + g + ' g/m2 ' + g + 'g/m2');
+    var vu = Number(c.valor_unitario); if (vu > 0) partes.push(vu.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
+    var tam = String(c.tamanho || c.tam || ''); if (tam) partes.push(tam.replace(/\s+/g, '').replace(/[x×*]/ig, 'x') + ' ' + tam.replace(/[x×*]/ig, ' '));
+    var hay = norm(partes.join(' | '));
+    var hayCompacto = hay.replace(/\s+/g, '');
+    return q.split(' ').every(function (tk) { return hay.indexOf(tk) >= 0 || hayCompacto.indexOf(tk) >= 0; });
+  };
 })();
