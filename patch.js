@@ -35651,6 +35651,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn" id="estoque-wire-mais">Carregar mais</button>'
         + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + badgeSugestoes + '</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
+        + '    <button class="pep-btn" id="estoque-wire-compras" type="button" title="Ir para a Compra de Papelão" onclick="(function(){try{if(typeof window.papelaoAbrirCompras===\'function\'){window.papelaoAbrirCompras();return;}}catch(e){}var it=document.querySelector(\'.nav-item[data-ds-key=&quot;@papelao&quot;]\');if(it)it.click();})()">🛒 Compra de Papelão</button>'
         + (abaRet ? '    <button type="button" class="dsch-nova-btn" id="estoque-wire-nova" onclick="window.__dschTipoInicial=\'retalho\';abrirModalNovaChapa()">＋ Novo Retalho</button>' : '    <button type="button" class="dsch-nova-btn" id="estoque-wire-nova" onclick="window.__dschTipoInicial=\'\';abrirModalNovaChapa()">＋ Nova Chapa</button>')
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
