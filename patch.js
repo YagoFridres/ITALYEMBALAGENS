@@ -78441,7 +78441,37 @@ window.__perTxt = function (p) {
       pendente = false; redesenhar();
     } catch (_) {} finally { rodando = false; }
   }
-  setInterval(checar, 20000);
+  setInterval(checar, 10000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(checar, 500); });
   setInterval(function () { if (pendente && !ocupado()) { pendente = false; redesenhar(); } }, 3000);
+})();
+
+
+// OF Rápida: garantia — salvou com sucesso, a tela de lançar fecha e as travas de "salvando" são liberadas
+(function __dsOfrFechaAoSalvar() {
+  if (window.__dsOfrFechaAoSalvar) return; window.__dsOfrFechaAoSalvar = true;
+  function registrar() {
+    if (typeof window._salvarOfRapidaRegisterHook !== 'function') return false;
+    return window._salvarOfRapidaRegisterHook('__ds_fecha_apos_salvar__', 'after', function (meta) {
+      var r = meta && meta.result, editando = meta && meta.editandoIdAntes;
+      var ok = !!(r && typeof r === 'object' && r.ok === true && r.duplicata !== true && Number(r._httpStatus || 200) !== 409 && r._httpOk !== false);
+      try { window.__OF_SALVANDO_RAPIDA__ = false; window.__P1_OF_SALVANDO__ = false; } catch (_) {}
+      if (!ok) return;
+      setTimeout(function () {
+        if (document.getElementById('modal-of-rapida') && !editando) {
+          try { window.fecharNovaOfRapida(); } catch (_) { try { document.getElementById('modal-of-rapida').remove(); var ov = document.getElementById('modal-of-rapida-ov'); if (ov) ov.remove(); } catch (__) {} }
+        }
+        try { if (typeof window.carregarOFsUnico === 'function') window.carregarOFsUnico(true).then(function () { try { if (window.dsCentral && String(window._PAGE_ATUAL || '') === 'pcp') window.dsCentral.render(); } catch (_) {} }); } catch (_) {}
+      }, 300);
+    }, 999);
+  }
+  if (!registrar()) { var n = 0, t = setInterval(function () { if (registrar() || ++n > 40) clearInterval(t); }, 500); }
+  // trava esquecida (ex.: validação que saiu no meio) não pode bloquear o próximo salvar
+  var desde = 0;
+  setInterval(function () {
+    var travado = window.__OF_SALVANDO_RAPIDA__ || window.__P1_OF_SALVANDO__;
+    var b = document.getElementById('btn-salvar-of-rapida'), salvando = b && /Salvando/i.test(b.textContent || '');
+    if (travado && !salvando) { if (!desde) desde = Date.now(); else if (Date.now() - desde > 4000) { window.__OF_SALVANDO_RAPIDA__ = false; window.__P1_OF_SALVANDO__ = false; desde = 0; } }
+    else desde = 0;
+  }, 1000);
 })();
