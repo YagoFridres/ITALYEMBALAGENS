@@ -78978,7 +78978,7 @@ window.__perTxt = function (p) {
   if (document.getElementById('ds-cmp-cores-css')) return;
   var css = ''
     // janela "Itens da compra": maior e com letras maiores
-    + '.dcs-ov .dcs-m.dcs-g{width:min(1500px,96vw)!important;max-width:96vw!important;max-height:calc(100vh - 24px);padding:22px;gap:14px}'
+    + '.dcs-ov .dcs-m.dcs-g{width:min(1800px,96vw)!important;max-width:96vw!important;max-height:calc(100vh - 24px);padding:22px;gap:14px}'
     + '.dcs-g h2{font-size:22px}.dcs-hd-ac{display:flex;gap:8px;align-items:center}.dcs-g .dcs-x{width:40px;height:40px;font-size:16px}'
     + '.dcs-g .dcs-res span{font-size:17px;padding:10px 14px}.dcs-g .dcs-res b{font-size:12.5px}'
     + '.dcs-g .dcs-t{font-size:15.5px}.dcs-g .dcs-t th{font-size:13.5px;padding:10px 12px}.dcs-g .dcs-t td{padding:11px 12px}.dcs-g .dcs-t tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--s2) 60%,transparent)}.dcs-g .dcs-t tbody tr:hover td{background:color-mix(in srgb,var(--accent) 10%,transparent)}'
