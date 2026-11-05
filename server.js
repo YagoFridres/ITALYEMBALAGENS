@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105164643';
-const SW_RUNTIME_VERSION = '20261105164643';
+const PATCH_RUNTIME_VERSION = '20261105165042';
+const SW_RUNTIME_VERSION = '20261105165042';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30735,7 +30735,10 @@ async function _emailEnviarPdf(conta, b) {
   const idMsg = mc.messageId();
   let raw;
   try { raw = await new Promise((ok, no) => mc.build((e, m) => (e ? no(e) : ok(m)))); } catch (e) { throw falha(500, 'Falha ao montar o e-mail: ' + String(e && e.message || e).slice(0, 200)); }
-  const envelope = { from: c.user, to: para.concat(cc, b.copia_para_mim ? [c.user] : []) };
+  // compras: sempre manda uma cópia oculta para a própria conta (o Outlook em POP não vê a pasta Enviados do servidor;
+  // com a cópia, uma regra do Outlook move o pedido para "Itens Enviados")
+  const copiaPropria = !!b.copia_para_mim || conta === 'compras';
+  const envelope = { from: c.user, to: [...new Set(para.concat(cc, copiaPropria ? [c.user] : []))] };
   try { await t.sendMail({ envelope, raw }); } catch (e) { throw falha(500, 'Falha ao enviar: ' + String(e && (e.response || e.message) || e).slice(0, 300)); }
   // cópia na pasta "Enviados" da conta (para aparecer no webmail / Outlook)
   let enviados = { ok: false };
