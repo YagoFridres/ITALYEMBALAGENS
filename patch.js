@@ -74966,6 +74966,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * Grava por XMLHttpRequest para que os ajustes antigos de fetch não troquem os itens. */
 (function () {
   if (window.__dsOrcEd) return; window.__dsOrcEd = true;
+  try { var _cssPar = document.createElement('style'); _cssPar.textContent = '.doe-par-item{margin:12px 0 4px;padding:12px;border:1px solid rgba(59,130,246,.35);border-radius:12px;background:rgba(59,130,246,.05)}.doe-par-item h3{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;margin:0 0 8px}.doe-par-item .doe-g+.doe-g{margin-top:8px}.doe-dica-par{margin:4px 0 12px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);font-size:13px}'; document.head.appendChild(_cssPar); } catch (_) {}
   var ONDAS = ['B', 'C', 'BC', 'TT'], IDX = { B: 0, C: 1, BC: 2, TT: 2 };  // 03/11: TT é a mesma conta da BC, só muda o nome
   var TIPOS = [['Normal', [['200', 'Meia Caixa'], ['201', 'Normal 8 Tampas'], ['202', 'Semi-Sobreposta'], ['203', 'Sobreposta Total'], ['205', 'Internas Iguais'], ['209', 'Abas Curtas']]],
     ['Telescópica', [['300', 'Telesc. Tampo'], ['301', 'Telesc. Fundo'], ['320', 'Tampo e Fundo (2 meias caixas)'], ['325', 'Total Tampo'], ['326', 'Total Fundo'], ['340', 'Testeiras Tampo'], ['341', 'Testeiras Fundo'], ['360', 'Laterais Tampo'], ['361', 'Laterais Fundo']]],
@@ -75057,18 +75058,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
     return res;
   }
+  // 05/11: cada item tem os seus próprios valores e parâmetros (valor das ondas, custo fixo, margem, comissão, impostos, frete)
+  function prDe(it) { if (!it.pr) it.pr = Object.assign({}, E.vals, E.par); return it.pr; }
+  function w3De(pr) { return 100 - n(pr.cf) - n(pr.mg) - n(pr.cvend) - n(pr.imp); }
   function calcTudo() {
-    var frete = n(E.par.vkm) * n(E.par.km), w3 = 100 - n(E.par.cf) - n(E.par.mg) - n(E.par.cvend) - n(E.par.imp);
-    var porItem = E.itens.map(function (it) { return calcItem(it, E.par, E.vals, E.ondas); });
+    var porItem = E.itens.map(function (it) { var pr = prDe(it); return calcItem(it, pr, pr, E.ondas); });
+    var w3s = E.itens.map(function (it) { return w3De(prDe(it)); });
+    var fretes = E.itens.map(function (it) { var pr = prDe(it); return n(pr.vkm) * n(pr.km); });
     var tot = {}; E.ondas.forEach(function (o) {
-      var s = porItem.reduce(function (a, r) { return a + (r[o] ? r[o].liquida : 0); }, 0);
-      // Como na planilha (base de 1.000 caixas, tudo ÷ 1000): preço da caixa = venda por caixa + frete ÷ 1000,
-      // valendo para qualquer quantidade; o valor do item = preço da caixa × quantidade.
-      var fr = 0;
-      porItem.forEach(function (r) { var x = r[o]; if (!x) return; x.frete = frete * x.qtd / 1000; x.comFrete = x.liquida + x.frete; x.vunit = (x.qtd ? x.liquida / x.qtd : 0) + frete / 1000; fr += x.frete; });
+      // Como na planilha (base de 1.000 caixas, tudo ÷ 1000): preço da caixa = venda por caixa + frete do item ÷ 1000.
+      var s = 0, fr = 0;
+      porItem.forEach(function (r) { var x = r[o]; if (!x) return; s += x.liquida; fr += x.frete; });
       tot[o] = { subtotal: s, frete: fr, total: s + fr };
     });
-    return { w3: w3, frete: frete, porItem: porItem, tot: tot };
+    return { w3: w3s.length ? Math.min.apply(null, w3s) : 0, w3s: w3s, frete: fretes[0] || 0, fretes: fretes, porItem: porItem, tot: tot };
   }
   // ---------- a partir de um orçamento salvo ----------
   function deOrc(o) {
@@ -75078,7 +75081,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var ondas = Array.isArray(p.ondas_orcamento) && p.ondas_orcamento.length ? p.ondas_orcamento : String(o.onda || '').split('/').map(function (x) { return x.trim().toUpperCase(); }).filter(function (x) { return IDX[x] != null; });
     if (!ondas.length) ondas = ['B', 'C', 'BC'];
     var imp = Array.isArray(p.ondas_impressao) ? p.ondas_impressao.filter(function (x) { return ondas.indexOf(x) >= 0; }) : ondas.slice();
-    var itens = blocos.map(function (b, i) { var bp = b.parametros || {}; return { nome: b.nome_item || b.nome || ('Item ' + (i + 1)), tipo: String(b.tipo || bp.tipo || p.tipo || '201'), comp: b.comp != null ? b.comp : bp.comp, larg: b.larg != null ? b.larg : bp.larg, alt: b.alt != null ? b.alt : bp.alt, qtd: b.quantidade != null ? b.quantidade : bp.qtd, sob: has(b.sob) ? b.sob : (bp.sob || 0), enc: has(b.enc) ? b.enc : (bp.enc || 0) }; });
+    var itens = blocos.map(function (b, i) { var bp = b.parametros || {}; var pi = function (k, d) { return has(bp[k]) ? n(bp[k]) : d; }; return { nome: b.nome_item || b.nome || ('Item ' + (i + 1)), tipo: String(b.tipo || bp.tipo || p.tipo || '201'), comp: b.comp != null ? b.comp : bp.comp, larg: b.larg != null ? b.larg : bp.larg, alt: b.alt != null ? b.alt : bp.alt, qtd: b.quantidade != null ? b.quantidade : bp.qtd, sob: has(b.sob) ? b.sob : (bp.sob || 0), enc: has(b.enc) ? b.enc : (bp.enc || 0),
+      pr: { vb: pi('vb', pv('vb', PAD.vb)), vc: pi('vc', pv('vc', PAD.vc)), vbc: pi('vbc', pv('vbc', PAD.vbc)), cf: pi('cf', pv('cf', PAD.cf)), mg: pi('mg', pv('mg', PAD.mg)), cvend: has(bp.cvend) ? n(bp.cvend) : (has(p.cvend) ? n(p.cvend) : pv('cv', PAD.cvend)), imp: pi('imp', pv('imp', PAD.imp)), vkm: pi('vkm', pv('vkm', PAD.vkm)), km: pi('km', pv('km', PAD.km)) } }; });
     if (!itens.length) itens = [{ nome: 'Item 1', tipo: String(p.tipo || '201'), comp: has(p.comp) ? p.comp : (o.medidas || '').split('x')[0] || 300, larg: has(p.larg) ? p.larg : (o.medidas || '').split('x')[1] || 200, alt: has(p.alt) ? p.alt : (o.medidas || '').split('x')[2] || 100, qtd: has(p.qtd) ? p.qtd : (o.quantidade || 1000), sob: p.sob || 0, enc: p.enc || 0 }];
     var cn = String(o.cliente_nome || '').trim(); if (/selecione/i.test(cn)) cn = '';
     return { id: o.id || null, numero: o.numero_orcamento || '', cliente_id: o.cliente_id || '', cliente_nome: cn, nome: o.nome || o.nome_orcamento || '', pasta_id: o.pasta_id || '', status: o.status || 'Rascunho',
@@ -75131,6 +75135,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + (t === '202' ? campo('Sobreposição (mm)', 'data-it="' + i + '|sob"', it.sob, 'inputmode="numeric"') : t === '209' ? campo('Encurtar abas (mm)', 'data-it="' + i + '|enc"', it.enc, 'inputmode="numeric"') : '<span></span>')
       + '</div>' + ((DESENHOS[t] || []).length ? '<details class="doe-des"><summary>📐 Desenho da caixa ' + esc(t) + ' (da planilha)</summary>' + DESENHOS[t].map(function (d) { return '<img src="/img/caixas/' + d + '.png" alt="Desenho da caixa ' + esc(t) + '" loading="lazy">'; }).join('') + '</details>' : '')
       + (CAIXAS[t] ? '<div class="doe-tit-cx">' + esc(CAIXAS[t].titulo) + '</div>' : '')
+      + htmlParItem(it, i)
       + '<div class="doe-res" data-res="' + i + '"></div></section>';
   }
   function abrirEditor() {
@@ -75145,15 +75150,23 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<label class="doe-f"><span>Pasta</span><select class="doe-in" data-k="pasta_id"><option value="">Sem pasta</option>' + pastas.map(function (p) { return '<option value="' + esc(p.id) + '"' + (String(p.id) === String(E.pasta_id) ? ' selected' : '') + '>' + esc(p.nome) + '</option>'; }).join('') + '</select></label>'
       + '</div></div>'
       + '<div class="doe-bloco doe-ondas"><div><b>Ondas do orçamento</b><div class="doe-chips">' + chips(E.ondas, 'data-oo') + '</div></div><div><b>Vão para a impressão</b><div class="doe-chips" data-imp-chips>' + chips(E.imp, 'data-oi', E.ondas) + '</div></div></div>'
-      + '<div class="doe-bloco"><h3>Valores e parâmetros</h3><div class="doe-g doe-g4" data-vals>' + htmlVals() + '</div>'
-      + '<div class="doe-g doe-g4">' + campo('Custo fixo %', 'data-p="cf"', E.par.cf) + campo('Margem %', 'data-p="mg"', E.par.mg) + campo('Comissão %', 'data-p="cvend"', E.par.cvend) + campo('Impostos %', 'data-p="imp"', E.par.imp)
-      + '<label class="doe-f"><span>Custo mercadoria %</span><output class="doe-out" data-w3></output></label>' + campo('Vl. km frete (R$)', 'data-p="vkm"', E.par.vkm) + campo('Km entrega', 'data-p="km"', E.par.km) + '<label class="doe-f"><span>Frete (por 1.000 cx)</span><output class="doe-out" data-frete></output></label></div></div>'
+      + '<div class="doe-dica-par">💡 Os valores e parâmetros (valor das ondas, custo fixo, margem, comissão, impostos e frete) ficam dentro de cada item, porque cada item pode usar os seus.</div>'
       + '<div data-itens>' + E.itens.map(htmlItem).join('') + '</div>'
       + '<button type="button" class="doe-btn doe-add" data-add>＋ Adicionar outro item</button>'
       + '<div class="doe-bloco"><h3>Total do orçamento</h3><div class="doe-tots" data-tots></div></div>'
       + '<label class="doe-f doe-bloco"><span>Observações (saem na impressão)</span><textarea class="doe-in doe-ta" data-k="obs" rows="2" placeholder="Prazo, condições de pagamento, validade…">' + esc(E.obs) + '</textarea></label>'
       + '</div><footer><button type="button" class="doe-btn" data-fechar>Fechar</button><button type="button" class="doe-btn" data-print>🖨 Imprimir</button><button type="button" class="doe-btn" data-salvar-email>📧 Salvar e enviar e-mail</button><button type="button" class="doe-btn doe-pri" data-salvar>💾 Salvar</button></footer>', 'doe-ed');
     ligar(ov); recalcular();
+  }
+  function htmlParItem(it, i) {
+    var pr = prDe(it), grupos = {}, ordem = [];
+    E.ondas.forEach(function (o) { var k = o === 'B' ? 'vb' : o === 'C' ? 'vc' : 'vbc'; if (!grupos[k]) { grupos[k] = []; ordem.push(k); } grupos[k].push(o); });
+    var f = function (lbl, k) { return campo(lbl, 'data-ip="' + i + '|' + k + '"', pr[k]); };
+    return '<div class="doe-bloco doe-par-item"><h3>Valores e parâmetros deste item' + (E.itens.length > 1 ? '<button type="button" class="doe-btn doe-mini" data-copiar-par="' + i + '" title="Usar estes mesmos valores em todos os itens">⧉ Usar em todos os itens</button>' : '') + '</h3>'
+      + '<div class="doe-g doe-g4">' + ordem.map(function (k) { return f('Valor onda ' + grupos[k].join(' / ') + ' (R$/m²)', k); }).join('') + '</div>'
+      + '<div class="doe-g doe-g4">' + f('Custo fixo %', 'cf') + f('Margem %', 'mg') + f('Comissão %', 'cvend') + f('Impostos %', 'imp')
+      + '<label class="doe-f"><span>Custo mercadoria %</span><output class="doe-out" data-w3i="' + i + '"></output></label>' + f('Vl. km frete (R$)', 'vkm') + f('Km entrega', 'km')
+      + '<label class="doe-f"><span>Frete (por 1.000 cx)</span><output class="doe-out" data-fretei="' + i + '"></output></label></div></div>';
   }
   function htmlVals() {
     var grupos = {}, ordem = [];
@@ -75163,8 +75176,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function recalcular() {
     var ov = document.getElementById('ds-orc-ov'); if (!ov || !E) return;
     var c = calcTudo();
-    var w = ov.querySelector('[data-w3]'); if (w) { w.textContent = N(c.w3, 2) + '%'; w.classList.toggle('doe-erro', c.w3 <= 0); }
-    var f = ov.querySelector('[data-frete]'); if (f) f.textContent = R(c.frete);
+    E.itens.forEach(function (it, i) {
+      var w = ov.querySelector('[data-w3i="' + i + '"]'); if (w) { w.textContent = N(c.w3s[i], 2) + '%'; w.classList.toggle('doe-erro', c.w3s[i] <= 0); }
+      var f = ov.querySelector('[data-fretei="' + i + '"]'); if (f) f.textContent = R(c.fretes[i]);
+    });
     E.itens.forEach(function (it, i) {
       var box = ov.querySelector('[data-res="' + i + '"]'); if (!box) return;
       var r = c.porItem[i];
@@ -75180,7 +75195,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function redesenharOndas(ov) {
     ov.querySelector('[data-imp-chips]').innerHTML = chips(E.imp, 'data-oi', E.ondas);
-    ov.querySelector('[data-vals]').innerHTML = htmlVals();
+    E.itens.forEach(function (it, i) { var sec = ov.querySelector('.doe-item[data-i="' + i + '"] .doe-par-item'); if (sec) { var tmp = document.createElement('div'); tmp.innerHTML = htmlParItem(it, i); sec.replaceWith(tmp.firstChild); } });
     recalcular();
   }
   function sugestoes(box, itens, onPick) {
@@ -75196,7 +75211,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (oo) { var o = oo.getAttribute('data-oo'), i = E.ondas.indexOf(o); if (i >= 0 && E.ondas.length === 1) return aviso('Deixe ao menos uma onda'); if (i >= 0) { E.ondas.splice(i, 1); E.imp = E.imp.filter(function (x) { return x !== o; }); } else { E.ondas.push(o); E.imp.push(o); } E.ondas = ONDAS.filter(function (x) { return E.ondas.indexOf(x) >= 0; }); E.imp = ONDAS.filter(function (x) { return E.imp.indexOf(x) >= 0; }); oo.classList.toggle('on', i < 0); return redesenharOndas(ov); }
       var oi = e.target.closest('[data-oi]');
       if (oi) { var w = oi.getAttribute('data-oi'), j = E.imp.indexOf(w); if (j >= 0) E.imp.splice(j, 1); else E.imp.push(w); E.imp = ONDAS.filter(function (x) { return E.imp.indexOf(x) >= 0; }); oi.classList.toggle('on', j < 0); return recalcular(); }
-      if (e.target.closest('[data-add]')) { var u = E.itens[E.itens.length - 1] || {}; E.itens.push({ nome: 'Item ' + (E.itens.length + 1), tipo: u.tipo || '201', comp: '', larg: '', alt: '', qtd: u.qtd || 1000, sob: 0, enc: 0 }); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); recalcular(); var ul = ov.querySelectorAll('.doe-item'); ul[ul.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      if (e.target.closest('[data-add]')) { var u = E.itens[E.itens.length - 1] || {}; E.itens.push({ nome: 'Item ' + (E.itens.length + 1), tipo: u.tipo || '201', comp: '', larg: '', alt: '', qtd: u.qtd || 1000, sob: 0, enc: 0, pr: Object.assign({}, prDe(u)) }); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); recalcular(); var ul = ov.querySelectorAll('.doe-item'); ul[ul.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      var cp = e.target.closest('[data-copiar-par]');
+      if (cp) { var base = prDe(E.itens[+cp.getAttribute('data-copiar-par')]); E.itens.forEach(function (it) { it.pr = Object.assign({}, base); }); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); recalcular(); try { window.toast('Valores e parâmetros aplicados em todos os itens', 'var(--green)'); } catch (_) {} return; }
       var rm = e.target.closest('[data-rm]'); if (rm) { E.itens.splice(+rm.getAttribute('data-rm'), 1); ov.querySelector('[data-itens]').innerHTML = E.itens.map(htmlItem).join(''); return recalcular(); }
       if (e.target.closest('[data-print]')) { if (!E.imp.length) return aviso('Escolha ao menos uma onda para a impressão'); return imprimir(paraSalvar()); }
       if (e.target.closest('[data-salvar]')) return salvar(e.target.closest('[data-salvar]'));
@@ -75204,6 +75221,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
     ov.addEventListener('input', function (e) {
       var t = e.target;
+      if (t.hasAttribute('data-ip')) { var ip = t.getAttribute('data-ip').split('|'), itp = E.itens[+ip[0]]; prDe(itp)[ip[1]] = t.value; if (+ip[0] === 0) { if (ip[1] in E.vals) E.vals[ip[1]] = t.value; else E.par[ip[1]] = t.value; } return recalcular(); }
       if (t.hasAttribute('data-p')) { E.par[t.getAttribute('data-p')] = t.value; return recalcular(); }
       if (t.hasAttribute('data-v')) { E.vals[t.getAttribute('data-v')] = t.value; return recalcular(); }
       if (t.hasAttribute('data-it')) { var a = t.getAttribute('data-it').split('|'); E.itens[+a[0]][a[1]] = t.value; if (a[1] === 'tipo') { var sec = t.closest('.doe-item'); var tmp = document.createElement('div'); tmp.innerHTML = htmlItem(E.itens[+a[0]], +a[0]); sec.replaceWith(tmp.firstChild); } return recalcular(); }
@@ -75227,7 +75245,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var c = calcTudo(), princ = E.ondas[0];
     var blocos = E.itens.map(function (it, i) {
       var r = c.porItem[i], rp = r[princ] || {};
-      var par = { tipo: String(it.tipo), comp: n(it.comp), larg: n(it.larg), alt: n(it.alt), qtd: n(it.qtd), vb: n(E.vals.vb), vc: n(E.vals.vc), vbc: n(E.vals.vbc), cm: c.w3, cf: n(E.par.cf), mg: n(E.par.mg), cvend: n(E.par.cvend), imp: n(E.par.imp), vkm: n(E.par.vkm), km: n(E.par.km), sob: n(it.sob), enc: n(it.enc) };
+      var pr = prDe(it);
+      var par = { tipo: String(it.tipo), comp: n(it.comp), larg: n(it.larg), alt: n(it.alt), qtd: n(it.qtd), vb: n(pr.vb), vc: n(pr.vc), vbc: n(pr.vbc), cm: c.w3s[i], cf: n(pr.cf), mg: n(pr.mg), cvend: n(pr.cvend), imp: n(pr.imp), vkm: n(pr.vkm), km: n(pr.km), frete_1000: c.fretes[i], sob: n(it.sob), enc: n(it.enc) };
       return { indice: i + 1, nome: it.nome || ('Item ' + (i + 1)), nome_item: it.nome || ('Item ' + (i + 1)), descricao: it.nome, tipo: String(it.tipo), tipo_nome: nomeTipo(it.tipo), comp: par.comp, larg: par.larg, alt: par.alt, sob: par.sob, enc: par.enc, medidas: medidas(it), quantidade: par.qtd,
         parametros: par, resultados: E.ondas.map(function (o) { return r[o]; }).filter(Boolean), onda_selecionada: princ, onda: E.ondas.join(' / '), chapa_utilizada: E.chapa || null,
         area: rp.area || 0, bruto: rp.bruto || 0, liquida: rp.liquida || 0, comFrete: rp.comFrete || 0, frete: rp.frete || 0, valor_unitario: rp.vunit || 0, valor_total: rp.comFrete || 0, valor_sem_frete: rp.liquida || 0, cliente_id: E.cliente_id || null, cliente_nome: E.cliente_nome || '' };
@@ -75243,7 +75262,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function validar() {
     if (!E.ondas.length) return 'Escolha ao menos uma onda';
-    var c = calcTudo(); if (c.w3 <= 0) return 'Custo fixo + margem + comissão + impostos passa de 100%';
+    var c = calcTudo(); for (var k = 0; k < c.w3s.length; k++) if (c.w3s[k] <= 0) return 'No ' + (E.itens[k].nome || 'item ' + (k + 1)) + ': custo fixo + margem + comissão + impostos passa de 100%';
     for (var i = 0; i < E.itens.length; i++) { var it = E.itens[i]; if (!(n(it.comp) && n(it.larg) && n(it.alt))) return 'Preencha as medidas do ' + (it.nome || 'item ' + (i + 1)); if (!n(it.qtd)) return 'Preencha a quantidade do ' + (it.nome || 'item ' + (i + 1)); }
     return '';
   }
@@ -75252,7 +75271,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var pl = paraSalvar(), id = pl.id; delete pl.id; delete pl.numero_orcamento; delete pl.criado_em;
     btn.disabled = true; btn.textContent = 'Salvando…';
     xhr(id ? 'PUT' : 'POST', '/api/orcamentos' + (id ? '/' + encodeURIComponent(id) : ''), pl).then(function (d) {
-      try { localStorage.setItem('ds_orc_param', JSON.stringify(Object.assign({}, E.par, E.vals))); } catch (_) {}
+      try { localStorage.setItem('ds_orc_param', JSON.stringify(Object.assign({}, E.par, E.vals, E.itens[0] ? prDe(E.itens[0]) : {}))); } catch (_) {}
       var num = (d && d.numero_orcamento) || E.numero;
       E.id = (d && d.id) || id; E.numero = num;
       pop((id ? 'Orçamento Nº ' + num + ' salvo' : 'Orçamento Nº ' + num + ' criado'), [E.cliente_nome, E.nome, 'Total ' + R(pl.total) + ' (onda ' + E.ondas[0] + ')'].filter(Boolean).join(' · '));
@@ -75278,11 +75297,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var html = '<header><h2>Itens do orçamento Nº ' + esc(S.numero) + '</h2><button type="button" class="doe-x" data-fechar aria-label="Fechar">✕</button></header><div class="doe-corpo">'
         + '<div class="doe-resumo"><span><b>Cliente</b>' + esc(cli) + '</span><span><b>Nome</b>' + esc(S.nome || '—') + '</span><span><b>Papelão utilizado</b>' + esc(S.chapa || '—') + '</span><span><b>Status</b>' + esc(S.status) + '</span>'
         + '<span><b>Ondas do orçamento</b>' + S.ondas.join(', ') + '</span><span><b>Na impressão</b>' + (S.imp.join(', ') || '—') + '</span><span><b>Criado</b>' + esc(o.criado_em ? new Date(o.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—') + (o.criado_por ? ' por ' + esc(o.criado_por) : '') + '</span><span><b>Itens</b>' + S.itens.length + '</span></div>'
-        + '<div class="doe-bloco"><h3>Parâmetros usados</h3><div class="doe-resumo doe-resumo-p">'
-        + S.ondas.map(function (x) { var k = x === 'B' ? 'vb' : x === 'C' ? 'vc' : 'vbc'; return '<span><b>Valor onda ' + x + '</b>' + R(S.vals[k]) + '/m²</span>'; }).join('')
-        + '<span><b>Custo fixo</b>' + N(S.par.cf) + '%</span><span><b>Margem</b>' + N(S.par.mg) + '%</span><span><b>Comissão</b>' + N(S.par.cvend) + '%</span><span><b>Impostos</b>' + N(S.par.imp) + '%</span><span><b>Custo mercadoria</b>' + N(c.w3) + '%</span><span><b>Vl. km frete</b>' + R(S.par.vkm) + '</span><span><b>Km entrega</b>' + N(S.par.km) + '</span><span><b>Frete</b>' + R(c.frete) + '</span></div></div>'
+        + ''
         + S.itens.map(function (it, i) { var r = c.porItem[i];
           return '<div class="doe-bloco"><h3>' + esc(it.nome || 'Item ' + (i + 1)) + ' — ' + esc(nomeTipo(it.tipo)) + '</h3><p class="doe-sub">Medidas ' + esc(medidas(it)) + ' mm · Quantidade ' + N(n(it.qtd), 0) + (n(it.sob) ? ' · Sobreposição ' + N(n(it.sob)) : '') + (n(it.enc) ? ' · Encurtar ' + N(n(it.enc)) : '') + '</p>'
+            + (function () { var pr = it.pr || Object.assign({}, S.vals, S.par); return '<div class="doe-resumo doe-resumo-p">' + S.ondas.map(function (x) { var k = x === 'B' ? 'vb' : x === 'C' ? 'vc' : 'vbc'; return '<span><b>Valor onda ' + x + '</b>' + R(pr[k]) + '/m²</span>'; }).join('') + '<span><b>Custo fixo</b>' + N(pr.cf) + '%</span><span><b>Margem</b>' + N(pr.mg) + '%</span><span><b>Comissão</b>' + N(pr.cvend) + '%</span><span><b>Impostos</b>' + N(pr.imp) + '%</span><span><b>Custo mercadoria</b>' + N(c.w3s[i]) + '%</span><span><b>Vl. km frete</b>' + R(pr.vkm) + '</span><span><b>Km entrega</b>' + N(pr.km) + '</span><span><b>Frete (1.000 cx)</b>' + R(c.fretes[i]) + '</span></div>'; })()
             + '<div class="doe-tw"><table class="doe-t"><thead><tr><th>Onda</th><th>Chapa (largura)</th><th>Chapa (comprimento)</th><th>Área m²</th><th>Valor m²</th><th>Total bruto</th><th>Venda líquida</th><th>Venda c/ frete</th><th>Unitário c/ frete</th></tr></thead><tbody>'
             + S.ondas.map(function (x) { var y = r[x]; if (!y) return ''; return '<tr><td data-l="Onda"><b>' + x + '</b>' + (S.imp.indexOf(x) >= 0 ? ' 🖨' : '') + '</td><td data-l="Chapa (largura)">' + esc(y.largura) + '</td><td data-l="Chapa (comprimento)">' + esc(y.comprimento) + '</td><td data-l="Área m²">' + N(y.area, 6) + '</td><td data-l="Valor m²">' + R(y.val) + '</td><td data-l="Total bruto">' + R(y.bruto) + '</td><td data-l="Venda líquida">' + R(y.liquida) + '</td><td data-l="Venda c/ frete"><b>' + R(y.comFrete) + '</b></td><td data-l="Unitário c/ frete"><b>' + R(y.vunit, 4) + '</b></td></tr>'; }).join('')
             + '</tbody></table></div></div>'; }).join('')
