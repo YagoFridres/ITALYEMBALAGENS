@@ -79012,6 +79012,15 @@ window.__perTxt = function (p) {
     + '[data-theme="light"] .cmpx-folder-pill .meta,body.light .cmpx-folder-pill .meta{color:#475569!important}'
     + '@media (max-width:760px){.dcs-m.dcs-g{padding:14px}.dcs-g .dcs-t{font-size:15px}.dcs-amp{display:none}}';
   var st = document.createElement('style'); st.id = 'ds-cmp-cores-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
+  // outro trecho do sistema põe a cor do texto direto no botão (ex.: Excluir vermelho sobre vermelho); aqui a cor do texto vence
+  var COR = { 'data-dcs': '#1f1300', 'data-cmpx-edit': '#fff', 'data-cmpx-folder-move': '#fff', 'data-cmpx-print': '#fff', 'data-dsce-email': '#fff', 'data-cmpx-excel': '#fff', 'data-cmpx-clone': '#fff', 'data-cmpx-delete': '#fff' };
+  function corTexto() {
+    var pg = document.getElementById('page-compras'); if (!pg || !pg.classList.contains('active')) return;
+    pg.querySelectorAll('.cmpx-actions-row button').forEach(function (b) {
+      for (var k in COR) { if (b.hasAttribute(k)) { if (b.style.getPropertyValue('color') !== COR[k] || b.style.getPropertyPriority('color') !== 'important') { b.style.setProperty('color', COR[k], 'important'); b.style.setProperty('-webkit-text-fill-color', COR[k], 'important'); b.style.setProperty('opacity', '1', 'important'); } break; } }
+    });
+  }
+  setInterval(corTexto, 700);
 })();
 
 /* ===== Compra de Papelão: busca acha qualquer coisa da compra (nº, fornecedor, pasta, empresa, itens, status, datas...) ===== */
