@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105164418';
-const SW_RUNTIME_VERSION = '20261105164418';
+const PATCH_RUNTIME_VERSION = '20261105164513';
+const SW_RUNTIME_VERSION = '20261105164513';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -29619,6 +29619,29 @@ app.post('/api/sugestoes-compra', authMiddleware, async (req, res) => {
   }
 });
 
+// exclui de vez uma sugestão de compra (e tira o 📌 da chapa, se não sobrar outra pendente)
+app.delete('/api/sugestoes-compra/:id', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const atual = await supabase.from('sugestoes_compra').select('*').eq('id', id).maybeSingle();
+    if (atual?.error) throw atual.error;
+    if (!atual?.data) return res.status(404).json({ ok: false, error: 'Sugestão não encontrada' });
+    const del = await supabase.from('sugestoes_compra').delete().eq('id', id);
+    if (del?.error) throw del.error;
+    const chapaId = String(atual.data.chapa_id || '').trim();
+    if (chapaId) {
+      let outras = 0;
+      try { const r = await supabase.from('sugestoes_compra').select('id').eq('chapa_id', chapaId).eq('status', 'pendente'); outras = (r.data || []).length; } catch (_) {}
+      if (!outras) await _sugestoesCompraMarkChapa(chapaId, '', String(req.usuario?.nome || req.usuario?.email || 'Usuário'));
+    }
+    try { await logAuditoria('sugestoes_compra', 'DELETE', id, atual.data, null, req); } catch (_) {}
+    return res.json({ ok: true, id });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 app.put('/api/sugestoes-compra/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);

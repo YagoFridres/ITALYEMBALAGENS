@@ -9423,6 +9423,18 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '@page{size:A4 landscape;margin:6mm}'
     + '@media print{ body{margin:0;font-size:12px} .sheet{padding:4mm!important} table.planilha{min-width:100%!important;table-layout:fixed;width:100%!important} table.planilha thead th{font-size:10px} table.planilha td{font-size:11px} .header{border-radius:0!important} }'
     + '@media screen{ .sheet{max-width:1400px;margin:0 auto} }'
+    // 05/11: layout compacto (cabe numa folha): cabeçalho azul, quadrados e linhas menores
+    + '.sheet{padding:6mm 8mm!important;gap:7px!important}'
+    + '.header{padding:7px 12px!important;border-radius:8px!important;gap:10px!important;box-shadow:none!important}'
+    + '.header .brand-title h1{font-size:17px!important}.header .brand-title p{font-size:10.5px!important;margin-top:1px!important;line-height:1.3!important}.header .brand-title .emp{font-size:11.5px!important;margin-top:2px!important}'
+    + '.header .infos{gap:4px 8px!important}.header .info{padding:3px 8px!important;border-radius:6px!important}.header .info .lbl{font-size:8.5px!important;margin-bottom:0!important}.header .info .val{font-size:12px!important}.header .info.comprador .val{font-size:13px!important}.header .info.comprador .cnpj{font-size:9.5px!important;margin-top:0!important;display:inline!important;margin-left:8px}'
+    + '.meta4{gap:6px!important}.meta-card{min-height:0!important;padding:4px 10px!important;border-radius:6px!important}.meta-card .lbl{font-size:8.5px!important}.meta-card .vl{font-size:12px!important;margin-top:1px!important}'
+    + 'table.planilha thead th{padding:4px 5px!important;font-size:9px!important}table.planilha td{padding:3px 6px!important;font-size:10.5px!important;line-height:1.25!important}'
+    + 'table.planilha td > div > div{padding:1px 2px!important;border-radius:4px!important}'
+    + '.totais{gap:8px!important;margin-top:0!important}.total-chip{min-width:140px!important;padding:4px 10px!important;border-radius:6px!important}.total-chip .lbl{font-size:8.5px!important}.total-chip .val{font-size:14px!important;margin-top:1px!important}'
+    + '.obs{min-height:0!important;padding:5px 10px!important;font-size:11px!important;border-radius:6px!important}'
+    + '.foot-sig{padding-top:18px!important;margin-top:0!important;gap:18px!important}.sig{padding-top:4px!important}.foot{margin-top:0!important;padding-top:4px!important;font-size:9.5px!important}'
+    + '@media print{ .sheet{padding:0!important} }'
     + '</style></head><body><div class="sheet">'
     + '<div class="header">'
     + '  <div class="brand-mark">'
@@ -10001,7 +10013,7 @@ window._compraPapelaoOpenPinsModal = function() {
         return '<div style="display:grid;gap:8px;padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.72)">'
           + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
           + '<div style="display:grid;gap:4px"><div style="font-size:14px;font-weight:900;color:#f8fafc">' + window._compraPapelaoEsc(pin && pin.chapa_nome || chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Chapa') + '</div><div style="font-size:12px;color:#94a3b8">' + window._compraPapelaoEsc([pin && pin.fornecedor || chapa.fornecedor || 'Sem fornecedor', pin && pin.tamanho || chapa.tamanho || 'Sem tamanho', pin && pin.gramatura || chapa.gramatura || 'Sem gramatura'].join(' · ')) + '</div><div style="font-size:12px;color:#fcd34d;line-height:1.45">' + window._compraPapelaoEsc(texto || 'Sem texto') + '</div></div>'
-          + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-accent" data-ccpx-pin-buy="' + window._compraPapelaoAttr(pinId) + '">✓ OK, vou comprar</button><button type="button" class="btn btn-ghost btn-sm" data-ccpx-pin-cancel="' + window._compraPapelaoAttr(pinId) + '">✗ Ignorar</button></div>'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-accent" data-ccpx-pin-buy="' + window._compraPapelaoAttr(pinId) + '">✓ OK, vou comprar</button><button type="button" class="btn btn-ghost btn-sm" data-ccpx-pin-cancel="' + window._compraPapelaoAttr(pinId) + '">✗ Ignorar</button><button type="button" class="btn btn-ghost btn-sm" style="color:#f87171" data-sug-del="' + window._compraPapelaoAttr(pinId) + '">🗑 Excluir</button></div>'
           + '</div>'
           + '</div>';
       }).join('') + '</div>';
@@ -34864,7 +34876,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Texto</th>'
           + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Status</th>'
           + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Motivo</th>'
-          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Data</th>'
+          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Data</th><th style="padding:12px;background:#0f172a"></th>'
           + '      </tr></thead>'
           + '      <tbody>' + rows.map(function(item, idx) {
                 var chapa = item && item.chapa || {};
@@ -34879,6 +34891,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + '">' + _estoqueStatusSugestaoCompraBadgeHtml(item && item.status) + '</td>'
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1">' + esc(String(item && item.motivo_ignorado || '').trim() || '—') + '</td>'
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;font-family:var(--mono,inherit)">' + esc(window._fmtDateEstoque(item && item.decidido_em || item && item.criado_em || '')) + '</td>'
+                  + '<td style="padding:8px 12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';text-align:right"><button type="button" class="pep-btn danger" data-sug-del="' + esc(String(item && item.id || '')) + '">🗑 Excluir</button></td>'
                   + '</tr>';
               }).join('') + '</tbody>'
           + '    </table>'
@@ -35486,6 +35499,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               + '  <div style="display:flex;gap:8px;flex-wrap:wrap">'
               + '    <button class="pep-btn primary" type="button" data-sug-buy="' + esc(String(item && item.id || '')) + '">✓ OK, vou comprar</button>'
               + '    <button class="pep-btn" type="button" data-sug-ignore="' + esc(String(item && item.id || '')) + '" style="background:#1f2937">✗ Ignorar</button>'
+              + '    <button class="pep-btn danger" type="button" data-sug-del="' + esc(String(item && item.id || '')) + '">🗑 Excluir</button>'
               + '  </div>'
               + '</div>';
           }).join('') + '</div>'
@@ -78934,4 +78948,25 @@ window.__perTxt = function (p) {
   amarrar(); setInterval(amarrar, 1000);
   // fechar pelo fundo escuro / tecla Esc também limpa
   document.addEventListener('click', function (e) { if (e.target && e.target.id === 'modal-of-rapida-ov') setTimeout(limpar, 0); }, true);
+})();
+
+/* ===== Sugestão de compra: botão 🗑 Excluir (apaga de vez, com confirmação) ===== */
+(function () {
+  if (window.__dsSugDel) return; window.__dsSugDel = true;
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-sug-del]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    var id = String(b.getAttribute('data-sug-del') || '').trim(); if (!id) return;
+    if (!confirm('Excluir esta sugestão de compra? Ela será apagada e a chapa deixa de ficar marcada com 📌.')) return;
+    b.disabled = true;
+    window._apiAuthFetch('/api/sugestoes-compra/' + encodeURIComponent(id), { method: 'DELETE' }).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (j) { if (!r.ok || (j && j.ok === false)) throw new Error((j && j.error) || ('HTTP ' + r.status)); });
+    }).then(function () {
+      try { window.toast('Sugestão de compra excluída', 'var(--green)'); } catch (_) {}
+      var card = b.closest('tr') || b.parentNode && b.parentNode.parentNode; if (card && card.parentNode && !card.matches('body,html')) card.parentNode.removeChild(card);
+      try { window.__estoqueSugestoesCompraPromise = {}; } catch (_) {}
+      try { if (typeof window.__estoqueEntradasRefresh === 'function') window.__estoqueEntradasRefresh(); } catch (_) {}
+      try { if (typeof window._compraPapelaoRenderPage === 'function' && document.querySelector('#page-compras-papelao.active, #page-compra-papelao.active')) window._compraPapelaoRenderPage(); } catch (_) {}
+    }).catch(function (er) { b.disabled = false; alert('Não consegui excluir a sugestão: ' + (er && er.message || er)); });
+  }, true);
 })();
