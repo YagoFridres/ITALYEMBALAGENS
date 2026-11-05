@@ -489,6 +489,17 @@ app.set('etag', false);
 app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+// 05/11: o cache curto (30s) da lista de orçamentos e de compras de chapas era servido mesmo depois de salvar/mover
+// para pasta, e a tela voltava a mostrar o estado antigo. Qualquer gravação nessas rotas limpa o cache.
+app.use((req, res, next) => {
+  try {
+    if (req.method !== 'GET' && /^\/api\/(orcamentos|compras-chapas|compras_chapas|compras-papelao)/.test(req.path)) {
+      const limpar = () => { try { _FF3_CACHE.clear(); } catch (_) {} };
+      limpar(); res.on('finish', limpar);
+    }
+  } catch (_) {}
+  next();
+});
 
 const DEBUG_RUNTIME_SESSION_ID = 'erp-runtime-regressions';
 const DEBUG_RUNTIME_DIR = path.join(__dirname, '.dbg');
@@ -1321,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105100335';
-const SW_RUNTIME_VERSION = '20261105100335';
+const PATCH_RUNTIME_VERSION = '20261105100523';
+const SW_RUNTIME_VERSION = '20261105100523';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
