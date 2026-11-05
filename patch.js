@@ -75349,6 +75349,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<tfoot>' + imp.map(function (o) { var t = tot[o]; if (!t) return ''; return '<tr class="tot"><td colspan="4">Valor total do orçamento' + (imp.length > 1 ? ' — Onda ' + o : '') + '</td><td class="r" colspan="2">' + R(t.total) + '</td></tr>'; }).join('') + '</tfoot></table>'
       // (tabela de totais removida da impressão: o frete já está dentro do valor de cada item)
       + (p.observacoes_orc ? '<h2>Observações</h2><div class="obs">' + esc(p.observacoes_orc) + '</div>' : '')
+      + '<div class="var5" style="margin:4px 0 0;font-size:12.5px;font-weight:bold">* A quantidade pode variar 5% para mais ou para menos.</div>'
       + '<div class="ass" style="margin-top:30px;font-size:12.5px;line-height:1.55;page-break-inside:avoid">Atenciosamente,<br><b>Eleomar Fridres</b><br>(49) 9 9998-0203 (WhatsApp)<br>(49) 3622-8512<br>atendimento@italyembalagens.com.br</div>'
       + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
     return html;
