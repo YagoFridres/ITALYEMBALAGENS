@@ -76412,14 +76412,17 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       try {
         var b64 = await gerarPdf(await o.htmlFn(), o.pdfOpts);
         bt.textContent = 'Enviando…';
-        await o.enviar({ para: para, assunto: ov.querySelector('[data-assunto]').value, mensagem: ov.querySelector('[data-msg]').value, pdf_base64: b64, nome_arquivo: o.arquivo, copia_para_mim: ov.querySelector('[data-copia]').checked });
+        var resEnv = await o.enviar({ para: para, assunto: ov.querySelector('[data-assunto]').value, mensagem: ov.querySelector('[data-msg]').value, pdf_base64: b64, nome_arquivo: o.arquivo, copia_para_mim: ov.querySelector('[data-copia]').checked });
+        var dEnv = (resEnv && (resEnv.data || resEnv)) || {};
         var novos = novosParaParte();
         if (o.salvarEmails && fSel && fSel.id && novos.length && ov.querySelector('[data-salvar-parte]').checked) {
           var todos = uniq(lista(fSel.email).concat(novos)).join(', ');
           try { await o.salvarEmails(fSel, todos); fSel.email = todos; } catch (_) {}
         }
         ov.fechar();
-        var okm = modal('E-mail enviado ✓', '<div style="font-size:15px;line-height:1.5">' + o.descricaoOk + ' foi enviado com o PDF para:<br><b>' + esc(para.join(', ')) + '</b></div>', '<button type="button" class="dsce-btn pri" data-f>OK</button>');
+        var okm = modal('E-mail enviado ✓', '<div style="font-size:15px;line-height:1.5">' + o.descricaoOk + ' foi enviado com o PDF para:<br><b>' + esc(para.join(', ')) + '</b>'
+          + (dEnv.salvo_em_enviados ? '<br><span style="color:var(--green)">📁 Cópia salva em Itens Enviados.</span>' : (dEnv.erro_enviados ? '<br><span style="color:#f59e0b">⚠️ Enviado, mas não consegui salvar a cópia em Itens Enviados.</span>' : ''))
+          + (dEnv.pediu_confirmacao ? '<br><span style="color:var(--text2)">📨 Foi pedida a confirmação de recebimento ao destinatário.</span>' : '') + '</div>', '<button type="button" class="dsce-btn pri" data-f>OK</button>');
         setTimeout(function () { var b = okm.querySelector('footer [data-f]'); if (b) b.focus(); }, 30);
       } catch (e) { msg(ov, String(e && e.message || e)); bt.disabled = false; bt.textContent = '📧 Enviar'; }
     };
