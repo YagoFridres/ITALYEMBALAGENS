@@ -78884,3 +78884,51 @@ window.__perTxt = function (p) {
   }
   trocar(); setInterval(trocar, 2000);
 })();
+
+/* ===== OF Rápida: nunca salvar uma OF NOVA por cima de uma OF existente (05/11/2026) =====
+ * Causa: ao abrir uma OF para editar e fechar no ✕, o "modo edição" (id da OF) ficava guardado; a próxima
+ * "Nova OF" salvava como ALTERAÇÃO daquela OF antiga (ex.: OF 4309 sobrescrita). Agora:
+ *  - fechar a tela limpa o modo edição;
+ *  - ao salvar, só é alteração se a tela estiver de fato em "✏️ Editar OF"; senão é sempre OF nova. */
+(function () {
+  if (window.__dsOfrGuardaEdicao) return; window.__dsOfrGuardaEdicao = true;
+  function limpar() {
+    try { if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext(); } catch (_) {}
+    try { window._ofRapidaEditandoId = null; window._ofRapidaEditandoNumero = null; window.__ofRapidaPendingEditId = null; } catch (_) {}
+  }
+  function telaEmEdicao() {
+    var m = document.getElementById('modal-of-rapida'); if (!m) return false;
+    var t = String(m.textContent || '').slice(0, 400);
+    var btn = document.getElementById('btn-salvar-of-rapida');
+    return /Editar OF/i.test(t) || (btn && /Salvar Altera/i.test(btn.textContent || ''));
+  }
+  function idEdicao() { try { return String(window.__getOfRapidaEditingId ? window.__getOfRapidaEditingId() : (window._ofRapidaEditandoId || '')).trim(); } catch (_) { return ''; } }
+  function amarrar() {
+    var f = window.fecharNovaOfRapida;
+    if (typeof f === 'function' && !f.__dsLimpa) { var g = function () { var r = f.apply(this, arguments); limpar(); return r; }; try { Object.assign(g, f); } catch (_) {} g.__dsLimpa = true; window.fecharNovaOfRapida = g; }
+    if (!window.__dsOfrGuardaHook && typeof window._salvarOfRapidaRegisterHook === 'function') {
+      try {
+        window._salvarOfRapidaRegisterHook('__ds_guarda_edicao__', 'override', function () {
+          var id = idEdicao();
+          if (id && !telaEmEdicao()) {
+            try { console.warn('[OF-GUARDA] modo edição antigo (' + id + ') ignorado: a tela é de OF NOVA'); } catch (_) {}
+            limpar();
+          }
+          return null;
+        }, -100000);
+        window.__dsOfrGuardaHook = true;
+      } catch (_) {}
+    }
+    var se = window.salvarEdicaoOf;
+    if (typeof se === 'function' && !se.__dsGuarda) {
+      var he = function () {
+        if (!telaEmEdicao()) { limpar(); try { window.toast('⚠️ Esta tela é de OF nova — salvando como OF nova.', 'rgba(245,158,11,.95)', 3500); } catch (_) {} return window.salvarOfRapida(); }
+        return se.apply(this, arguments);
+      };
+      try { Object.assign(he, se); } catch (_) {} he.__dsGuarda = true; window.salvarEdicaoOf = he;
+    }
+  }
+  amarrar(); setInterval(amarrar, 1000);
+  // fechar pelo fundo escuro / tecla Esc também limpa
+  document.addEventListener('click', function (e) { if (e.target && e.target.id === 'modal-of-rapida-ov') setTimeout(limpar, 0); }, true);
+})();
