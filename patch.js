@@ -70747,10 +70747,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     'relatorios': ['grafico', 'Relatórios'], 'toneladas-vendidas': ['peso', 'Toneladas Vendidas'], 'central-custos': ['carteira', 'Central de Custos'],
     '@chat': ['chat', 'Chat'], 'agenda': ['agenda', 'Agenda'], 'compras': ['carrinho', 'Compra de Papelão'],
     'usuarios': ['usuario', 'Usuários'], 'configuracoes': ['ajustes', 'Configurações'],
-    'dashboard': ['painel', 'Painel'], 'lancamento': ['arquivo', 'Armazenamento de OFs'], 'historico-passagens': ['historico', 'Passagens']
+    'dashboard': ['painel', 'Painel'], 'lancamento': ['arquivo', 'Armazenamento de OFs'], 'historico-passagens': ['historico', 'Passagens'],
+    'roteiro-entrega': ['caminhao', 'Roteiro de Entrega']
   };
   var GRUPOS = [
-    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens'] },
+    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens', 'roteiro-entrega'] },
     { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'gramaturas', 'operadores', 'vendedores', 'mapa-clientes'] },
     { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
     { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'simd'] },
@@ -70820,7 +70821,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
     });
     // itens que não existem no menu antigo (Entradas / Saídas de chapas) são criados aqui
-    ['entradas-estoque', 'saidas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento'].forEach(function (k) {
+    ['entradas-estoque', 'saidas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento', 'roteiro-entrega'].forEach(function (k) {
       if (porChave[k]) return;
       var it = document.createElement('div');
       it.className = 'nav-item'; it.setAttribute('onclick', "go('" + k + "')"); it.setAttribute('data-ds-criado', '1');
@@ -72225,7 +72226,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var cx = lm.reduce(function (s2, x) { return s2 + qtdOf(x.o); }, 0), min = lm.reduce(function (s2, x) { return s2 + minutosPrevistos(x.o, m); }, 0);
       return (ehRiscador(m) && !E.busca ? blocoAmostras() : '') + '<section class="dom-bloco"><div class="dom-fila-head"><h2>' + esc(m) + ' <small>' + (E.dia ? 'dia ' + fmtData(E.dia) : 'fila completa') + ' · sequência ajustável</small></h2>'
         + '<div class="dom-pilulas"><span>OFs <b>' + lm.length + '</b></span><span>Caixas <b>' + cx.toLocaleString('pt-BR') + '</b></span><span>Tempo <b>' + fmtMin(min) + '</b></span>'
-        + (podeOrdenar && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="autoordem" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button>' : '')
+        + (podeOrdenar && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="autoordem" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button><button type="button" class="dom-btn dom-btn-p" data-a="ordemroteiro" data-maq-alvo="' + esc(m) + '" title="Pela data de entrega e, em cada dia, na ordem das cidades do roteiro (da primeira para a última)">🚚 Ordenar pelo roteiro</button>' : '')
         + (E.setup && !E.busca && !E.dia && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="aplicarsetup" data-maq-alvo="' + esc(m) + '" title="Grava na fila desta máquina a ordem agrupada por setup">Usar esta ordem na fila</button>' : '') + '</div></div>'
         + (lm.length ? tabelaMaquina(m, lm, podeOrdenar) : '<div class="dom-vazio">Nenhuma OF ' + (E.busca ? 'encontrada.' : (E.dia ? 'para este dia.' : 'na fila desta máquina.')) + '</div>')
         + '</section>';
@@ -72326,6 +72327,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (a === 'operador') { abrirOperador(); return; }
     if (a === 'antiga') { return; E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); document.documentElement.removeAttribute('data-ds-ofmaq-nova'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
     if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA); salvarSeq(mA, l1); render(); return; }
+    if (a === 'ordemroteiro') {
+      var mR = b.getAttribute('data-maq-alvo') || E.maq;
+      if (typeof window.dsRoteiroOrdenar !== 'function') return;
+      b.disabled = true; b.textContent = 'Ordenando…';
+      window.dsRoteiroOrdenar(filaAtual(mR)).then(function (lr) { E.seq[mR] = {}; return salvarSeq(mR, lr); }).then(function () { render(); }).catch(function (e) { toast('Não foi possível ordenar pelo roteiro: ' + e.message, 'var(--red)'); render(); });
+      return;
+    }
     var tr = b.closest('tr[data-id]'); if (!tr) return;
     var mT = tr.getAttribute('data-maq') || E.maq;
     var id = tr.getAttribute('data-id'), l = filaAtual(mT), i = l.findIndex(function (o) { return o.id === id; });
@@ -78497,4 +78505,231 @@ window.__perTxt = function (p) {
     if (travado && !salvando) { if (!desde) desde = Date.now(); else if (Date.now() - desde > 4000) { window.__OF_SALVANDO_RAPIDA__ = false; window.__P1_OF_SALVANDO__ = false; desde = 0; } }
     else desde = 0;
   }, 1000);
+})();
+
+/* ===== Roteiro de Entrega (05/11) =====
+ * - Tela: para cada dia da semana, as cidades em ordem (da primeira para a última entrega).
+ * - OF Rápida: campo "Cidade de entrega", puxado do cliente; se mudar, fica salvo no cadastro do cliente.
+ * - OFs por Máquina: botão "Ordenar pelo roteiro" usa window.dsRoteiroOrdenar. */
+(function __dsRoteiro() {
+  if (window.__dsRoteiro) return; window.__dsRoteiro = true;
+  var DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, 'Sexta'], [6, 'Sábado']];
+  var ROT = null, ROT_TS = 0;
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(t) { var x = String(t || '').toUpperCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x.replace(/[^A-Z0-9]+/g, ' ').trim(); }
+  function bonito(t) { return String(t || '').trim().toLowerCase().replace(/(^|\s|-)(\S)/g, function (m, a, b) { return a + b.toUpperCase(); }).replace(/\b(Do|Da|De|Dos|Das|E)\b/g, function (m) { return m.toLowerCase(); }); }
+  function tk() { try { return localStorage.getItem('token') || localStorage.getItem('access_token') || ''; } catch (_) { return ''; } }
+  function api(m, u, b) {
+    return fetch(u, { method: m, headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined, cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || (j && (j.ok === false || j.error))) throw new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); return j && j.data !== undefined ? j.data : j; }); });
+  }
+  function toast(m, c) { try { window.toast(m, c || 'var(--green)'); } catch (_) {} }
+  function clientes() { try { return (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : (window.CLIENTES || []); } catch (_) { return window.CLIENTES || []; } }
+  function ofs() { try { return (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
+  function carregar(forcar) {
+    if (ROT && !forcar && Date.now() - ROT_TS < 60000) return Promise.resolve(ROT);
+    return api('GET', '/api/roteiro_entrega?_=' + Date.now()).then(function (l) { ROT = Array.isArray(l) ? l : []; ROT_TS = Date.now(); return ROT; });
+  }
+  function cliDe(o) { var id = String(o && (o.cli_id || o.cliId || o.cliente_id) || ''); if (!id) return null; var l = clientes(); for (var i = 0; i < l.length; i++) if (String(l[i].id) === id) return l[i]; return null; }
+  function cidadeDaOF(o) { var c = String(o && o.cidade_entrega || '').trim(); if (c) return c; var cl = cliDe(o); return String(cl && (cl.cidade || cl.municipio) || '').trim(); }
+  function aberta(o) { return !o.deleted_at && !/conclu|cancel|entreg|finaliz/i.test(String(o.status || '')); }
+  function todasCidades() {
+    var m = {};
+    clientes().forEach(function (c) { var n = String(c.cidade || '').trim(); if (n) { var k = norm(n); if (!m[k]) m[k] = { nome: bonito(n), cli: 0 }; m[k].cli++; } });
+    (ROT || []).forEach(function (r) { var k = norm(r.cidade); if (!m[k]) m[k] = { nome: r.cidade, cli: 0 }; });
+    return Object.keys(m).map(function (k) { return { k: k, nome: m[k].nome, cli: m[k].cli }; }).sort(function (a, b) { return b.cli - a.cli || a.nome.localeCompare(b.nome, 'pt-BR'); });
+  }
+  function ofsPorCidade() { var m = {}; ofs().forEach(function (o) { if (!aberta(o)) return; var k = norm(cidadeDaOF(o)); if (k) m[k] = (m[k] || 0) + 1; }); return m; }
+
+  // ---------- ordenação das OFs pelo roteiro ----------
+  function posicaoNoRoteiro(o) {
+    var k = norm(cidadeDaOF(o)); if (!k) return { dia: 99, ord: 9999 };
+    var ent = String(o.data_entrega || o.ent || '').slice(0, 10), diaEnt = 0;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ent)) { var d = new Date(ent + 'T12:00:00'); diaEnt = d.getDay(); }
+    var da = (ROT || []).filter(function (r) { return r.ativo !== false && norm(r.cidade) === k; });
+    if (!da.length) return { dia: 98, ord: 9999 };
+    var r = da.filter(function (x) { return Number(x.dia_semana) === diaEnt; })[0] || da[0];
+    return { dia: Number(r.dia_semana) || 97, ord: Number(r.ordem) || 9999 };
+  }
+  window.dsRoteiroOrdenar = function (lista) {
+    return carregar(true).then(function () {
+      return (lista || []).slice().sort(function (a, b) {
+        var pa = /produ/i.test(String(a.status || '')) ? 0 : 1, pb = /produ/i.test(String(b.status || '')) ? 0 : 1; if (pa !== pb) return pa - pb;
+        var ea = String(a.data_entrega || a.ent || '9999').slice(0, 10), eb = String(b.data_entrega || b.ent || '9999').slice(0, 10); if (ea !== eb) return ea < eb ? -1 : 1;
+        var ra = posicaoNoRoteiro(a), rb = posicaoNoRoteiro(b);
+        if (ra.dia !== rb.dia) return ra.dia - rb.dia; if (ra.ord !== rb.ord) return ra.ord - rb.ord;
+        var ca = norm(cidadeDaOF(a)), cb = norm(cidadeDaOF(b)); if (ca !== cb) return ca < cb ? -1 : 1;
+        return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+      });
+    });
+  };
+  window.dsCidadeDaOF = cidadeDaOF;
+
+  // ---------- tela do roteiro ----------
+  var css = document.createElement('style');
+  css.textContent = '#ds-rot{padding:4px 0 24px}#ds-rot h1{font-size:22px;margin:0 0 4px}#ds-rot .sub{color:var(--text2,#94a3b8);font-size:13px;margin:0 0 14px}'
+    + '.drt-g{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}'
+    + '.drt-dia{background:var(--s1,#111827);border:1px solid var(--border,#1f2937);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:200px}'
+    + '.drt-dia h2{font-size:15px;margin:0;display:flex;justify-content:space-between;align-items:center}.drt-dia h2 small{font-size:11px;color:var(--text3,#64748b);font-weight:600}'
+    + '.drt-c{display:grid;grid-template-columns:26px 1fr auto;gap:6px;align-items:center;background:var(--s2,#0f172a);border:1px solid var(--border,#1f2937);border-radius:10px;padding:8px}'
+    + '.drt-c .n{width:24px;height:24px;border-radius:99px;background:#2563eb;color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center}'
+    + '.drt-c b{font-size:13.5px;line-height:1.2}.drt-c small{display:block;font-size:11px;color:var(--text3,#94a3b8)}'
+    + '.drt-c .bt{display:flex;gap:2px}.drt-c .bt button{min-width:30px;min-height:30px;border-radius:8px;border:1px solid var(--border,#334155);background:transparent;color:var(--text,#e2e8f0);cursor:pointer;font-size:13px}'
+    + '.drt-c .bt button.x{color:#f87171;border-color:rgba(239,68,68,.4)}.drt-c .bt button:disabled{opacity:.3;cursor:default}'
+    + '.drt-add{position:relative}.drt-add input{width:100%;box-sizing:border-box;min-height:40px;border-radius:10px;border:1px dashed #3b82f6;background:transparent;color:var(--text,#e2e8f0);padding:8px 10px;font:inherit;font-size:13.5px}'
+    + '.drt-dd{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:#0b1220;border:2px solid #3b82f6;border-radius:12px;max-height:280px;overflow:auto;padding:4px;box-shadow:0 18px 40px rgba(0,0,0,.55)}'
+    + '.drt-dd button{display:block;width:100%;text-align:left;border:0;background:transparent;color:#f1f5f9;font:inherit;font-size:15px;padding:10px 12px;border-radius:8px;cursor:pointer}.drt-dd button small{color:#cbd5e1;font-size:12px;margin-left:6px}.drt-dd button.on,.drt-dd button:hover{background:rgba(37,99,235,.35)}'
+    + '.drt-vazio{font-size:12px;color:var(--text3,#64748b);text-align:center;padding:10px 4px}'
+    + '.drt-sem{margin-top:16px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px}.drt-sem h3{margin:0 0 8px;font-size:14px}.drt-sem span{display:inline-block;margin:3px;padding:4px 10px;border-radius:99px;background:rgba(245,158,11,.15);font-size:12.5px}'
+    + '@media (max-width:900px){.drt-g{grid-template-columns:1fr;overflow:visible}.drt-dia{min-width:0}}';
+  document.head.appendChild(css);
+  var ST = { dd: null };
+  function render() {
+    var pg = document.getElementById('page-roteiro-entrega'); if (!pg) return;
+    var box = document.getElementById('ds-rot');
+    if (!box) { Array.prototype.forEach.call(pg.children, function (c) { c.style.display = 'none'; }); box = document.createElement('div'); box.id = 'ds-rot'; pg.insertBefore(box, pg.firstChild); box.addEventListener('click', clique); box.addEventListener('input', digitou); box.addEventListener('keydown', tecla); box.addEventListener('focusout', function () { setTimeout(function () { if (!box.contains(document.activeElement)) fecharDD(); }, 180); }); }
+    var porCid = ofsPorCidade();
+    var noRot = {}; (ROT || []).forEach(function (r) { noRot[norm(r.cidade)] = 1; });
+    var semRot = Object.keys(porCid).filter(function (k) { return !noRot[k]; }).sort(function (a, b) { return porCid[b] - porCid[a]; });
+    box.innerHTML = '<h1>🚚 Roteiro de Entrega</h1><p class="sub">Coloque as cidades de cada dia na ordem da entrega (da primeira para a última). Em <b>OFs por Máquina</b>, o botão <b>🚚 Ordenar pelo roteiro</b> organiza a fila nessa ordem.</p>'
+      + '<div class="drt-g">' + DIAS.map(function (d) {
+        var l = (ROT || []).filter(function (r) { return Number(r.dia_semana) === d[0] && r.ativo !== false; });
+        return '<section class="drt-dia" data-dia="' + d[0] + '"><h2>' + d[1] + '<small>' + l.length + ' cidade' + (l.length === 1 ? '' : 's') + '</small></h2>'
+          + (l.length ? l.map(function (r, i) {
+            var q = porCid[norm(r.cidade)] || 0;
+            return '<div class="drt-c"><span class="n">' + (i + 1) + '</span><div><b>' + esc(r.cidade) + '</b><small>' + (q ? q + ' OF' + (q > 1 ? 's' : '') + ' em aberto' : 'sem OF em aberto') + '</small></div>'
+              + '<div class="bt"><button type="button" data-mv="-1" data-id="' + esc(r.id) + '" title="Subir"' + (i ? '' : ' disabled') + '>↑</button><button type="button" data-mv="1" data-id="' + esc(r.id) + '" title="Descer"' + (i < l.length - 1 ? '' : ' disabled') + '>↓</button><button type="button" class="x" data-rm="' + esc(r.id) + '" title="Tirar do dia">✕</button></div></div>';
+          }).join('') : '<div class="drt-vazio">Nenhuma cidade neste dia</div>')
+          + '<div class="drt-add"><input type="text" data-add="' + d[0] + '" placeholder="＋ Adicionar cidade…" autocomplete="off"><div class="drt-dd" hidden></div></div></section>';
+      }).join('') + '</div>'
+      + (semRot.length ? '<div class="drt-sem"><h3>⚠️ Cidades com OF em aberto que ainda não estão no roteiro</h3>' + semRot.map(function (k) { var c = todasCidades().filter(function (x) { return x.k === k; })[0]; return '<span>' + esc(c ? c.nome : k) + ' · ' + porCid[k] + ' OF' + (porCid[k] > 1 ? 's' : '') + '</span>'; }).join('') + '</div>' : '');
+  }
+  function fecharDD() { if (!ST.dd) return; ST.dd.hidden = true; ST.dd = null; }
+  function digitou(e) {
+    var inp = e.target; if (!inp.hasAttribute('data-add')) return;
+    var dd = inp.parentNode.querySelector('.drt-dd'), q = norm(inp.value), dia = Number(inp.getAttribute('data-add'));
+    var ja = {}; (ROT || []).forEach(function (r) { if (Number(r.dia_semana) === dia) ja[norm(r.cidade)] = 1; });
+    var l = todasCidades().filter(function (c) { return !ja[c.k] && (!q || c.k.indexOf(q) >= 0); }).slice(0, 25);
+    var h = l.map(function (c, i) { return '<button type="button" data-pick="' + esc(c.nome) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(c.nome) + (c.cli ? '<small>' + c.cli + ' cliente' + (c.cli > 1 ? 's' : '') + '</small>' : '') + '</button>'; }).join('');
+    if (q && !l.some(function (c) { return c.k === q; })) h += '<button type="button" data-pick="' + esc(bonito(inp.value)) + '">＋ Usar “' + esc(bonito(inp.value)) + '”</button>';
+    dd.innerHTML = h || '<div class="drt-vazio">Digite o nome da cidade</div>'; dd.hidden = false; ST.dd = dd;
+  }
+  function tecla(e) {
+    var inp = e.target; if (!inp.hasAttribute || !inp.hasAttribute('data-add')) return;
+    var dd = inp.parentNode.querySelector('.drt-dd'); if (dd.hidden) return;
+    var bs = dd.querySelectorAll('button'), i = Array.prototype.findIndex.call(bs, function (b) { return b.classList.contains('on'); });
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!bs.length) return; i = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach(function (b, j) { b.classList.toggle('on', j === i); }); bs[i].scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'Enter') { e.preventDefault(); var b = bs[i >= 0 ? i : 0]; if (b) adicionar(Number(inp.getAttribute('data-add')), b.getAttribute('data-pick')); }
+    else if (e.key === 'Escape') fecharDD();
+  }
+  function adicionar(dia, cidade) {
+    cidade = String(cidade || '').trim(); if (!cidade) return;
+    var l = (ROT || []).filter(function (r) { return Number(r.dia_semana) === dia; });
+    fecharDD();
+    api('POST', '/api/roteiro_entrega', { cidade: cidade, dia_semana: dia, ordem: l.length + 1, ativo: true })
+      .then(function () { return carregar(true); }).then(function () { render(); toast(cidade + ' adicionada'); var inp = document.querySelector('#ds-rot [data-add="' + dia + '"]'); if (inp) inp.focus(); })
+      .catch(function (e) { toast('Erro: ' + e.message, 'var(--red)'); });
+  }
+  function clique(e) {
+    var p = e.target.closest('[data-pick]');
+    if (p) { var inp = p.closest('.drt-add').querySelector('input'); adicionar(Number(inp.getAttribute('data-add')), p.getAttribute('data-pick')); return; }
+    var mv = e.target.closest('[data-mv]');
+    if (mv) {
+      var id = mv.getAttribute('data-id'), r = (ROT || []).filter(function (x) { return String(x.id) === id; })[0]; if (!r) return;
+      var dia = Number(r.dia_semana), l = (ROT || []).filter(function (x) { return Number(x.dia_semana) === dia && x.ativo !== false; });
+      var i = l.indexOf(r), j = i + Number(mv.getAttribute('data-mv')); if (j < 0 || j >= l.length) return;
+      l.splice(i, 1); l.splice(j, 0, r); l.forEach(function (x, k) { x.ordem = k + 1; });
+      ROT.sort(function (a, b) { return (a.dia_semana - b.dia_semana) || (a.ordem - b.ordem); }); render();
+      api('POST', '/api/roteiro_entrega/ordem', { dia_semana: dia, ids: l.map(function (x) { return x.id; }) }).catch(function (er) { toast('Não salvou a ordem: ' + er.message, 'var(--red)'); carregar(true).then(render); });
+      return;
+    }
+    var rm = e.target.closest('[data-rm]');
+    if (rm) {
+      var r2 = (ROT || []).filter(function (x) { return String(x.id) === rm.getAttribute('data-rm'); })[0]; if (!r2) return;
+      if (!confirm('Tirar ' + r2.cidade + ' do roteiro de ' + (DIAS.filter(function (d) { return d[0] === Number(r2.dia_semana); })[0] || [0, ''])[1] + '?')) return;
+      api('DELETE', '/api/roteiro_entrega/' + encodeURIComponent(r2.id)).then(function () { return carregar(true); }).then(function () {
+        var l2 = (ROT || []).filter(function (x) { return Number(x.dia_semana) === Number(r2.dia_semana); });
+        if (l2.length) api('POST', '/api/roteiro_entrega/ordem', { dia_semana: Number(r2.dia_semana), ids: l2.map(function (x) { return x.id; }) }).catch(function () {});
+        render(); toast(r2.cidade + ' retirada');
+      }).catch(function (er) { toast('Erro: ' + er.message, 'var(--red)'); });
+    }
+  }
+  function ativa() { var p = document.getElementById('page-roteiro-entrega'); return !!(p && (p.classList.contains('active') || p.offsetParent !== null)); }
+  var ultimoAtivo = false;
+  setInterval(function () { var a = ativa(); if (a && !ultimoAtivo) carregar(true).then(render).catch(function (e) { toast('Erro ao carregar o roteiro: ' + e.message, 'var(--red)'); }); ultimoAtivo = a; }, 700);
+  window.dsRoteiro = { render: function () { return carregar(true).then(render); } };
+
+  // ---------- OF Rápida: cidade de entrega ----------
+  var cidOF = '';
+  function campoCidade() {
+    var modal = document.getElementById('modal-of-rapida'); if (!modal || modal.querySelector('#of-r-cidade')) return;
+    var cli = document.getElementById('of-r-cliente'); if (!cli) return;
+    var alvo = cli.closest('.form-group, .ofr-field, .ds-ofr-f, label, div') || cli.parentNode;
+    var w = document.createElement('div'); w.className = (alvo.className || '') + ' ds-ofr-cidade'; w.style.cssText = 'margin-top:8px;position:relative';
+    w.innerHTML = '<label for="of-r-cidade" style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--text2,#94a3b8)">Cidade de entrega</label><input id="of-r-cidade" class="' + esc(cli.className || '') + '" type="text" autocomplete="off" placeholder="Cidade do cliente (fica salva no cadastro)" style="width:100%;box-sizing:border-box"><small id="of-r-cidade-dica" style="display:block;font-size:11px;color:var(--text3,#64748b);margin-top:3px"></small><div class="drt-dd" hidden></div>';
+    alvo.parentNode.insertBefore(w, alvo.nextSibling);
+    var inp = w.querySelector('input'), dd = w.querySelector('.drt-dd'), dica = w.querySelector('small');
+    function dicaRot() {
+      var k = norm(inp.value); if (!k) { dica.textContent = ''; return; }
+      var r = (ROT || []).filter(function (x) { return norm(x.cidade) === k; });
+      dica.textContent = r.length ? '🚚 No roteiro: ' + r.map(function (x) { return (DIAS.filter(function (d) { return d[0] === Number(x.dia_semana); })[0] || [0, '?'])[1] + ' (' + (x.ordem || '?') + 'ª cidade)'; }).join(', ') : '⚠️ Esta cidade ainda não está no Roteiro de Entrega';
+    }
+    function puxar() {
+      var c = null; try { c = window.__dsOfrCliente && window.__dsOfrCliente(); } catch (_) {}
+      var cid = String(c && !c._so && c.cidade || '').trim();
+      if (cid && !inp.dataset.manual) { inp.value = bonito(cid); }
+      inp.dataset.cliCidade = cid; dicaRot();
+    }
+    cli.addEventListener('change', function () { inp.dataset.manual = ''; setTimeout(puxar, 250); });
+    cli.addEventListener('input', function () { setTimeout(puxar, 400); });
+    inp.addEventListener('input', function () {
+      inp.dataset.manual = '1';
+      var q = norm(inp.value), l = todasCidades().filter(function (c) { return !q || c.k.indexOf(q) >= 0; }).slice(0, 15);
+      dd.innerHTML = l.map(function (c, i) { return '<button type="button" data-cid="' + esc(c.nome) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(c.nome) + '</button>'; }).join(''); dd.hidden = !l.length || !q; dicaRot();
+    });
+    inp.addEventListener('keydown', function (e) {
+      if (dd.hidden) return; var bs = dd.querySelectorAll('button'), i = Array.prototype.findIndex.call(bs, function (b) { return b.classList.contains('on'); });
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); i = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach(function (b, j) { b.classList.toggle('on', j === i); }); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); var b = bs[i >= 0 ? i : 0]; if (b) { inp.value = b.getAttribute('data-cid'); dd.hidden = true; dicaRot(); } }
+      else if (e.key === 'Escape') { e.stopPropagation(); dd.hidden = true; }
+    });
+    dd.addEventListener('mousedown', function (e) { e.preventDefault(); var b = e.target.closest('[data-cid]'); if (b) { inp.value = b.getAttribute('data-cid'); dd.hidden = true; dicaRot(); } });
+    inp.addEventListener('blur', function () { setTimeout(function () { dd.hidden = true; }, 150); });
+    carregar().then(function () { puxar(); }).catch(function () { puxar(); });
+  }
+  new MutationObserver(function () { if (document.getElementById('modal-of-rapida') && !document.getElementById('of-r-cidade')) setTimeout(campoCidade, 50); }).observe(document.body, { childList: true });
+  // grava a cidade na OF criada (cidade_entrega) e no cadastro do cliente
+  (function () {
+    var orig = window.apiFetch;
+    if (typeof orig !== 'function' || orig.__dsCidade) return;
+    var novo = function (url, opts) {
+      try {
+        var u = String(url || ''), m = String(opts && opts.method || 'GET').toUpperCase();
+        var el = document.getElementById('of-r-cidade');
+        if (el && m === 'POST' && /^\/?api\/ofs\/?(\?|$)/.test(u.replace(/^https?:\/\/[^/]+/, '')) && opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+          var cid = String(el.value || '').trim(); if (cid) { opts.body.cidade_entrega = cid; cidOF = cid; }
+        }
+      } catch (_) {}
+      return orig.apply(this, arguments);
+    };
+    novo.__dsCidade = true; Object.keys(orig).forEach(function (k) { try { novo[k] = orig[k]; } catch (_) {} });
+    window.apiFetch = novo;
+  })();
+  function registrarHook() {
+    if (typeof window._salvarOfRapidaRegisterHook !== 'function') return false;
+    window._salvarOfRapidaRegisterHook('__ds_cidade_cliente__', 'before', function () {
+      var el = document.getElementById('of-r-cidade'); cidOF = el ? String(el.value || '').trim() : '';
+      try { var c = window.__dsOfrCliente && window.__dsOfrCliente(); window.__dsCidCli = (c && !c._so) ? c : null; } catch (_) { window.__dsCidCli = null; }
+    }, 5);
+    window._salvarOfRapidaRegisterHook('__ds_cidade_cliente_salvar__', 'after', function (meta) {
+      var r = meta && meta.result; if (!(r && r.ok === true)) return;
+      var c = window.__dsCidCli, cid = cidOF; if (!c || !c.id || !cid) return;
+      if (norm(c.cidade) === norm(cid)) return;
+      api('PUT', '/api/clientes/' + encodeURIComponent(c.id), { cidade: cid }).then(function () {
+        c.cidade = cid; toast('Cidade ' + cid + ' salva no cadastro de ' + (c.nome || 'cliente'));
+      }).catch(function (e) { toast('A OF foi salva, mas a cidade não foi gravada no cliente: ' + e.message, 'var(--red)'); });
+    }, 50);
+    return true;
+  }
+  if (!registrarHook()) { var n = 0, t = setInterval(function () { if (registrarHook() || ++n > 40) clearInterval(t); }, 500); }
 })();

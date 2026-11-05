@@ -1321,8 +1321,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105094640';
-const SW_RUNTIME_VERSION = '20261105094640';
+const PATCH_RUNTIME_VERSION = '20261105095853';
+const SW_RUNTIME_VERSION = '20261105095853';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -15606,7 +15606,8 @@ app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
       .order('dia_semana', { ascending: true })
       .order('cidade', { ascending: true });
     if (error) throw error;
-    return ok(res, data || []);
+    const l = (data || []).slice().sort((a, b) => (Number(a.dia_semana) - Number(b.dia_semana)) || ((Number(a.ordem) || 9999) - (Number(b.ordem) || 9999)) || String(a.cidade || '').localeCompare(String(b.cidade || ''), 'pt-BR'));
+    return ok(res, l);
   } catch (e) { return err(res, e); }
 });
 
@@ -15620,7 +15621,9 @@ app.post('/api/roteiro_entrega', authMiddleware, async (req, res) => {
       observacao: observacao || null,
       ativo: req.body?.ativo !== false,
     };
-    const { data, error } = await supabase.from('roteiro_entrega').insert([payload]).select().single();
+    if (req.body?.ordem != null) payload.ordem = parseInt(req.body.ordem) || 0;
+    let { data, error } = await supabase.from('roteiro_entrega').insert([payload]).select().single();
+    if (error && /ordem/.test(String(error.message || ''))) { delete payload.ordem; ({ data, error } = await supabase.from('roteiro_entrega').insert([payload]).select().single()); }
     if (error) throw error;
     return ok(res, data);
   } catch (e) { return err(res, e); }
@@ -15628,17 +15631,32 @@ app.post('/api/roteiro_entrega', authMiddleware, async (req, res) => {
 
 app.put('/api/roteiro_entrega/:id', authMiddleware, async (req, res) => {
   try {
-    const { cidade, dia_semana, ativo, observacao } = req.body || {};
+    const { cidade, dia_semana, ativo, observacao, ordem } = req.body || {};
     const payload = {
       cidade: cidade != null ? String(cidade).trim() : undefined,
       dia_semana: dia_semana != null ? parseInt(dia_semana) : undefined,
       ativo: ativo != null ? !!ativo : undefined,
       observacao: observacao != null ? observacao : undefined,
+      ordem: ordem != null ? (parseInt(ordem) || 0) : undefined,
     };
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
     const { data, error } = await supabase.from('roteiro_entrega').update(payload).eq('id', req.params.id).select().single();
     if (error) throw error;
     return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+// grava a ordem das cidades de um dia de uma vez: { dia_semana, ids: [id1, id2, ...] }
+app.post('/api/roteiro_entrega/ordem', authMiddleware, async (req, res) => {
+  try {
+    const dia = parseInt(req.body?.dia_semana);
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map((x) => String(x || '').trim()).filter(Boolean) : [];
+    if (!dia || !ids.length) return bad(res, 'Informe o dia e a lista de cidades');
+    for (let i = 0; i < ids.length; i++) {
+      const { error } = await supabase.from('roteiro_entrega').update({ ordem: i + 1, dia_semana: dia }).eq('id', ids[i]);
+      if (error) throw error;
+    }
+    return ok(res, { atualizados: ids.length });
   } catch (e) { return err(res, e); }
 });
 
