@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105172053';
-const SW_RUNTIME_VERSION = '20261105172053';
+const PATCH_RUNTIME_VERSION = '20261105172458';
+const SW_RUNTIME_VERSION = '20261105172458';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40653,6 +40653,29 @@ app.patch('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
       try { await supabase.from('chapas_estoque_v2').update({ pinned_compra: false, pinned_status: up.status === 'Recusada' ? 'ignorado' : 'comprado' }).eq('id', s.chapa_id); } catch (_) {}
     }
     return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+// exclui de vez uma sugestão/solicitação de compra (tira também o 📌 da chapa e a sugestão antiga pendente dela)
+app.delete('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => {
+  try {
+    const { data: s, error: e0 } = await supabase.from('papelao_solicitacoes').select('*').eq('id', String(req.params.id)).maybeSingle();
+    if (e0) throw e0;
+    if (!s) return res.status(404).json({ ok: false, error: 'Solicitação não encontrada' });
+    const { error } = await supabase.from('papelao_solicitacoes').delete().eq('id', s.id);
+    if (error) throw error;
+    const chapaId = String(s.chapa_id || '').trim();
+    if (chapaId && !chapaId.startsWith('manual-')) {
+      let outras = 0;
+      try { const r = await supabase.from('papelao_solicitacoes').select('id').eq('chapa_id', chapaId).in('status', _SOL_ABERTAS); outras = (r.data || []).length; } catch (_) {}
+      if (!outras) {
+        try { await supabase.from('sugestoes_compra').delete().eq('chapa_id', chapaId).eq('status', 'pendente'); } catch (_) {}
+        try { await supabase.from('chapas_estoque_v2').update({ pinned_compra: false, pinned_status: null }).eq('id', chapaId); } catch (_) {}
+        try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+      }
+    }
+    try { await logAuditoria('papelao_solicitacoes', 'DELETE', s.id, s, null, req); } catch (_) {}
+    return ok(res, { id: s.id, excluida: true });
   } catch (e) { return err(res, e); }
 });
 

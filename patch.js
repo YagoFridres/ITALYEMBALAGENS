@@ -73155,6 +73155,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       } else if (modo !== 'compra' && s.status === 'Solicitada') {
         acoes = '<div class="sol-c-bt"><button type="button" class="sol-btn sol-no" data-a="cancelar" data-id="' + esc(s.id) + '">Cancelar pedido</button></div>';
       }
+      acoes += '<div class="sol-c-bt" style="justify-content:flex-end"><button type="button" class="sol-btn sol-no" data-a="excluir" data-id="' + esc(s.id) + '" title="Apagar esta sugestão de vez">🗑 Excluir</button></div>';
       return '<article class="sol-card"><div class="sol-c-top"><div class="sol-c-tit"><b>' + esc(tit) + '</b>'
         + '<small>Pedido por ' + esc(s.solicitante || '—') + ' · ' + dataHora(s.created_at) + (s.qtd_sugerida ? ' · Qtd. ' + Number(s.qtd_sugerida).toLocaleString('pt-BR') : '') + (s.compra_ref ? ' · Compra ' + esc(s.compra_ref) : '') + '</small></div>' + chip(s.status) + '</div>'
         + corpo + resp + acoes + '</article>';
@@ -73230,6 +73231,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var b = ev.target.closest('[data-a]'); if (!b) return; var a = b.getAttribute('data-a');
     if (a === 'todas') { host.setAttribute('data-todas', host.getAttribute('data-todas') === '1' ? '0' : '1'); host.__forcar = true; return painel(host.parentNode, host.getAttribute('data-modo')); }
     if (a === 'chapa' || a === 'nova') return modalNova();
+    if (a === 'excluir') {
+      if (!window.confirm('Excluir esta sugestão de compra? Ela será apagada de vez.')) return;
+      b.disabled = true;
+      req('DELETE', '/api/papelao/solicitacoes/' + b.getAttribute('data-id')).then(function () { toast('Sugestão excluída', 'var(--green)'); host.__forcar = true; return carregar(true); }).catch(function (e) { b.disabled = false; toast('Erro ao excluir: ' + e.message, 'var(--red)'); });
+      return;
+    }
     if (a === 'cancelar') {
       if (!window.confirm('Cancelar este pedido de compra?')) return;
       req('PATCH', '/api/papelao/solicitacoes/' + b.getAttribute('data-id'), { status: 'Recusada', nota: 'Cancelada por quem pediu' }).then(function () { host.__forcar = true; return carregar(true); }).catch(function (e) { toast(e.message, 'var(--red)'); });
