@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105153948';
-const SW_RUNTIME_VERSION = '20261105153948';
+const PATCH_RUNTIME_VERSION = '20261105162620';
+const SW_RUNTIME_VERSION = '20261105162620';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30637,6 +30637,47 @@ function _emailPutCfg(conta) {
     } catch (e) { return err(res, e); }
   };
 }
+// ---- IMAP mínimo: grava uma cópia do e-mail enviado na pasta "Enviados" da conta (SMTP não faz isso sozinho) ----
+function _imapGuardarEnviado(c, raw) {
+  return new Promise((resolve) => {
+    const tls = require('tls');
+    const host = String(c.imap_host || c.host || '').trim();
+    const port = Number(c.imap_port || 993);
+    let sock; let buf = ''; let fim = false; let n = 0; let espera = null;
+    const acabar = (r) => { if (fim) return; fim = true; try { sock && sock.end(); } catch (_) {} clearTimeout(tm); resolve(r); };
+    const tm = setTimeout(() => acabar({ ok: false, erro: 'tempo esgotado' }), 25000);
+    const proximo = () => { if (!espera) return; const linhas = buf.split('\r\n'); for (let i = 0; i < linhas.length - 1; i++) { const l = linhas[i]; espera.linhas.push(l); if (espera.mais && l.startsWith('+')) { buf = linhas.slice(i + 1).join('\r\n'); const e = espera; espera = null; return e.ok({ mais: true, linhas: e.linhas }); } if (espera.tag && l.startsWith(espera.tag + ' ')) { buf = linhas.slice(i + 1).join('\r\n'); const e = espera; espera = null; return e.ok({ fim: l, okk: / OK/i.test(l.slice(e.tag.length)), linhas: e.linhas }); } } buf = linhas[linhas.length - 1]; };
+    const esperar = (tag, mais) => new Promise((ok) => { espera = { tag, mais, ok, linhas: [] }; proximo(); });
+    const cmd = (linha, mais) => { const tag = 'A' + (++n); sock.write(tag + ' ' + linha + '\r\n'); return esperar(tag, mais).then((r) => Object.assign(r, { tag })); };
+    const q = (x) => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    try {
+      sock = tls.connect({ host, port, servername: host, rejectUnauthorized: false }, async () => {
+        try {
+          await esperar('*'); // saudação
+          const r = await cmd('LOGIN ' + q(c.user) + ' ' + q(c.pass));
+          if (!r.okk) return acabar({ ok: false, erro: 'login IMAP recusado' });
+          const lst = await cmd('LIST "" "*"');
+          const pastas = lst.linhas.filter((l) => /^\* LIST/i.test(l)).map((l) => { const m = l.match(/^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (.+)$/i); return m ? { flags: m[1], nome: m[2].replace(/^"|"$/g, '') } : null; }).filter(Boolean);
+          const pasta = (pastas.find((p) => /\\Sent/i.test(p.flags))
+            || pastas.find((p) => /^(INBOX[./])?(Sent|Enviados|Itens Enviados|Sent Items|Sent Messages)$/i.test(p.nome))
+            || pastas.find((p) => /sent|enviad/i.test(p.nome)) || {}).nome || 'INBOX.Sent';
+          const corpo = Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw));
+          const tagA = 'A' + (++n);
+          sock.write(tagA + ' APPEND ' + q(pasta) + ' (\\Seen) {' + corpo.length + '}\r\n');
+          const cont = await esperar(tagA, true);
+          if (!cont.mais) return acabar({ ok: false, erro: 'APPEND recusado: ' + String(cont.fim || '').slice(0, 120) });
+          sock.write(corpo); sock.write('\r\n');
+          const fimA = await esperar(tagA);
+          try { sock.write('A' + (++n) + ' LOGOUT\r\n'); } catch (_) {}
+          acabar(fimA.okk ? { ok: true, pasta } : { ok: false, erro: String(fimA.fim || '').slice(0, 150), pasta });
+        } catch (e) { acabar({ ok: false, erro: String(e && e.message || e) }); }
+      });
+      sock.on('data', (d) => { buf += d.toString('utf8'); proximo(); });
+      sock.on('error', (e) => acabar({ ok: false, erro: String(e && e.message || e) }));
+      sock.on('close', () => acabar({ ok: false, erro: 'conexão fechada' }));
+    } catch (e) { acabar({ ok: false, erro: String(e && e.message || e) }); }
+  });
+}
 // envia; devolve { para, cc, id_mensagem } ou lança Error com .status
 async function _emailEnviarPdf(conta, b) {
   const c = _emailCmpLer(conta);
@@ -30653,20 +30694,31 @@ async function _emailEnviarPdf(conta, b) {
   const nomeArq = (String(b.nome_arquivo || 'documento.pdf').replace(/[^\w.\- ]+/g, '').trim() || 'documento.pdf').replace(/(\.pdf)?$/i, '.pdf');
   const msg = String(b.mensagem || '').slice(0, 10000);
   const htmlMsg = msg.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch])).replace(/\n/g, '<br>');
-  let info;
-  try {
-    info = await t.sendMail({
-      from: { name: c.nome || 'Italy Embalagens', address: c.user },
-      replyTo: c.user,
-      to: para, cc: cc.length ? cc : undefined,
-      bcc: b.copia_para_mim ? c.user : undefined,
-      subject: String(b.assunto || 'Italy Embalagens').slice(0, 200),
-      text: msg,
-      html: '<div style="font-family:Arial,sans-serif;font-size:14px;color:#0f172a">' + htmlMsg + '</div>',
-      attachments: [{ filename: nomeArq, content: Buffer.from(pdf, 'base64'), contentType: 'application/pdf' }],
-    });
-  } catch (e) { throw falha(500, 'Falha ao enviar: ' + String(e && (e.response || e.message) || e).slice(0, 300)); }
-  return { enviado: true, para, cc, id_mensagem: info && info.messageId || null };
+  // compras: pede confirmação de recebimento/leitura ao fornecedor
+  const pedeConfirmacao = conta === 'compras' || !!b.pedir_confirmacao;
+  const opts = {
+    from: { name: c.nome || 'Italy Embalagens', address: c.user },
+    replyTo: c.user,
+    to: para, cc: cc.length ? cc : undefined,
+    subject: String(b.assunto || 'Italy Embalagens').slice(0, 200),
+    text: msg,
+    html: '<div style="font-family:Arial,sans-serif;font-size:14px;color:#0f172a">' + htmlMsg + '</div>',
+    attachments: [{ filename: nomeArq, content: Buffer.from(pdf, 'base64'), contentType: 'application/pdf' }],
+    headers: pedeConfirmacao ? { 'Disposition-Notification-To': c.user, 'Return-Receipt-To': c.user, 'X-Confirm-Reading-To': c.user } : undefined,
+    date: new Date(),
+  };
+  const MailComposer = require('nodemailer/lib/mail-composer');
+  const mc = new MailComposer(opts).compile();
+  const idMsg = mc.messageId();
+  let raw;
+  try { raw = await new Promise((ok, no) => mc.build((e, m) => (e ? no(e) : ok(m)))); } catch (e) { throw falha(500, 'Falha ao montar o e-mail: ' + String(e && e.message || e).slice(0, 200)); }
+  const envelope = { from: c.user, to: para.concat(cc, b.copia_para_mim ? [c.user] : []) };
+  try { await t.sendMail({ envelope, raw }); } catch (e) { throw falha(500, 'Falha ao enviar: ' + String(e && (e.response || e.message) || e).slice(0, 300)); }
+  // cópia na pasta "Enviados" da conta (para aparecer no webmail / Outlook)
+  let enviados = { ok: false };
+  try { enviados = await _imapGuardarEnviado(c, raw); } catch (e) { enviados = { ok: false, erro: String(e && e.message || e) }; }
+  if (!enviados.ok) console.warn('[EMAIL][enviados]', conta, enviados.erro || '');
+  return { enviado: true, para, cc, id_mensagem: idMsg || null, salvo_em_enviados: !!enviados.ok, pasta_enviados: enviados.pasta || null, erro_enviados: enviados.ok ? null : (enviados.erro || null), pediu_confirmacao: pedeConfirmacao };
 }
 app.get('/api/email-compras/config', authMiddleware, _emailGetCfg('compras'));
 app.put('/api/email-compras/config', authMiddleware, _emailPutCfg('compras'));
