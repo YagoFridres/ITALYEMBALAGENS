@@ -78978,13 +78978,13 @@ window.__perTxt = function (p) {
   if (document.getElementById('ds-cmp-cores-css')) return;
   var css = ''
     // janela "Itens da compra": maior e com letras maiores
-    + '.dcs-m.dcs-g{width:min(1500px,98vw);max-height:calc(100vh - 24px);padding:22px;gap:14px}'
+    + '.dcs-ov .dcs-m.dcs-g{width:min(1500px,96vw)!important;max-width:96vw!important;max-height:calc(100vh - 24px);padding:22px;gap:14px}'
     + '.dcs-g h2{font-size:22px}.dcs-hd-ac{display:flex;gap:8px;align-items:center}.dcs-g .dcs-x{width:40px;height:40px;font-size:16px}'
     + '.dcs-g .dcs-res span{font-size:17px;padding:10px 14px}.dcs-g .dcs-res b{font-size:12.5px}'
     + '.dcs-g .dcs-t{font-size:15.5px}.dcs-g .dcs-t th{font-size:13.5px;padding:10px 12px}.dcs-g .dcs-t td{padding:11px 12px}.dcs-g .dcs-t tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--s2) 60%,transparent)}.dcs-g .dcs-t tbody tr:hover td{background:color-mix(in srgb,var(--accent) 10%,transparent)}'
     + '.dcs-g footer .dcs-btn{height:42px;font-size:14.5px}.dcs-g footer [data-st]{background:#f59e0b;border-color:#f59e0b;color:#111}'
     + '.dcs-amp{height:40px!important;background:color-mix(in srgb,var(--accent) 14%,var(--s2))!important;border-color:color-mix(in srgb,var(--accent) 45%,transparent)!important;color:var(--accent)!important;font-weight:700!important}'
-    + '.dcs-m.dcs-full{width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}.dcs-ov:has(.dcs-full){padding:0}'
+    + '.dcs-ov .dcs-m.dcs-g.dcs-full{position:fixed!important;inset:0!important;width:auto!important;max-width:none!important;height:auto!important;max-height:none!important;border-radius:0!important;margin:0!important}'
     + '.dcs-full .dcs-tw{flex:1 1 auto}.dcs-full .dcs-t{font-size:17px}.dcs-full .dcs-t th{font-size:14.5px}.dcs-full .dcs-res span{font-size:19px}.dcs-full h2{font-size:24px}'
     // botões das ações de cada compra: cores fortes, legíveis no escuro e no claro
     + 'html[data-ds] body #page-compras td .cmpx-actions-row button{font-weight:700!important;border-width:1px!important;border-style:solid!important;transition:filter .15s}.cmpx-actions-row button:hover{filter:brightness(1.1)}'
