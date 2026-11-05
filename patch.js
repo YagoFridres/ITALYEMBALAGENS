@@ -75042,7 +75042,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var cols = CAMPOS.filter(function (cc) { return it.some(function (x) { return x[cc[0]] != null && x[cc[0]] !== ''; }); }).concat(extras.map(function (k) { return [k, k.replace(/_/g, ' ')]; }));
       var tot = it.reduce(function (a, x) { a.q += Number(x.quantidade) || 0; a.a += Number(x.area_m2) || 0; a.v += Number(x.valor_total) || 0; return a; }, { q: 0, a: 0, v: 0 });
       var i = info(c.status);
-      ov.querySelector('.dcs-m').innerHTML = '<header><h2>Itens da compra ' + esc(num(c)) + '</h2><button type="button" class="dcs-x" data-fechar aria-label="Fechar">✕</button></header>'
+      ov.querySelector('.dcs-m').innerHTML = '<header><h2>Itens da compra ' + esc(num(c)) + '</h2><span class="dcs-hd-ac"><button type="button" class="dcs-btn dcs-amp" data-dcs-full title="Abrir em tela cheia / voltar">⛶ Tela cheia</button><button type="button" class="dcs-x" data-fechar aria-label="Fechar">✕</button></span></header>'
         + '<div class="dcs-res"><span><b>Fornecedor</b>' + esc(c.fornecedor || '—') + '</span><span><b>Pedido do fornecedor</b>' + esc(c.ped_fornecedor || '—') + '</span><span><b>Data da compra</b>' + esc(dBR(c.data_compra || c.criado_em) || '—') + '</span><span><b>Andamento</b>' + i[2] + ' ' + esc(i[1]) + (c.previsao_chegada && i[0] === 'a_caminho' ? ' · chega ' + dBR(c.previsao_chegada) : '') + '</span>'
         + '<span><b>Itens</b>' + it.length + '</span><span><b>Quantidade</b>' + tot.q.toLocaleString('pt-BR') + '</span><span><b>Área</b>' + tot.a.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + ' m²</span><span><b>Valor</b>' + tot.v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '</span></div>'
         + (c.observacao ? '<p class="dcs-sub">Obs.: ' + esc(c.observacao) + '</p>' : '')
@@ -75050,6 +75050,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           + it.map(function (x) { return '<tr>' + cols.map(function (cc) { return '<td data-l="' + esc(cc[1]) + '">' + esc(fmt(cc[0], x[cc[0]])) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>' : '<div class="dcs-vazio">Esta compra não tem itens.</div>')
         + '<footer><button type="button" class="dcs-btn" data-st="' + esc(id) + '">Mudar andamento</button><button type="button" class="dcs-btn dcs-pri" data-fechar>Fechar</button></footer>';
       ov.querySelector('[data-st]').addEventListener('click', function () { ov.remove(); abrirStatus(id); });
+      var mm = ov.querySelector('.dcs-m'), bf = ov.querySelector('[data-dcs-full]');
+      var aplicaFull = function (on) { mm.classList.toggle('dcs-full', on); bf.textContent = on ? '🗗 Janela menor' : '⛶ Tela cheia'; try { localStorage.setItem('ds_cmp_itens_full', on ? '1' : '0'); } catch (_) {} };
+      var pref = false; try { pref = localStorage.getItem('ds_cmp_itens_full') === '1'; } catch (_) {}
+      aplicaFull(pref);
+      bf.addEventListener('click', function () { aplicaFull(!mm.classList.contains('dcs-full')); });
     }).catch(function (e) { ov.querySelector('.dcs-vazio').textContent = 'Erro ao carregar: ' + e.message; });
   }
   document.addEventListener('click', function (e) {
@@ -78964,4 +78969,43 @@ window.__perTxt = function (p) {
       try { if (typeof window._compraPapelaoRenderPage === 'function' && document.querySelector('#page-compras-papelao.active, #page-compra-papelao.active')) window._compraPapelaoRenderPage(); } catch (_) {}
     }).catch(function (er) { b.disabled = false; alert('Não consegui excluir a sugestão: ' + (er && er.message || er)); });
   }, true);
+})();
+
+/* ===== Compra de Papelão: botões coloridos, janela de itens maior e leitura no modo claro (05/11/2026) ===== */
+(function () {
+  if (document.getElementById('ds-cmp-cores-css')) return;
+  var css = ''
+    // janela "Itens da compra": maior e com letras maiores
+    + '.dcs-m.dcs-g{width:min(1500px,98vw);max-height:calc(100vh - 24px);padding:22px;gap:14px}'
+    + '.dcs-g h2{font-size:22px}.dcs-hd-ac{display:flex;gap:8px;align-items:center}.dcs-g .dcs-x{width:40px;height:40px;font-size:16px}'
+    + '.dcs-g .dcs-res span{font-size:17px;padding:10px 14px}.dcs-g .dcs-res b{font-size:12.5px}'
+    + '.dcs-g .dcs-t{font-size:15.5px}.dcs-g .dcs-t th{font-size:13.5px;padding:10px 12px}.dcs-g .dcs-t td{padding:11px 12px}.dcs-g .dcs-t tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--s2) 60%,transparent)}.dcs-g .dcs-t tbody tr:hover td{background:color-mix(in srgb,var(--accent) 10%,transparent)}'
+    + '.dcs-g footer .dcs-btn{height:42px;font-size:14.5px}.dcs-g footer [data-st]{background:#f59e0b;border-color:#f59e0b;color:#111}'
+    + '.dcs-amp{height:40px!important;background:color-mix(in srgb,var(--accent) 14%,var(--s2))!important;border-color:color-mix(in srgb,var(--accent) 45%,transparent)!important;color:var(--accent)!important;font-weight:700!important}'
+    + '.dcs-m.dcs-full{width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}.dcs-ov:has(.dcs-full){padding:0}'
+    + '.dcs-full .dcs-tw{flex:1 1 auto}.dcs-full .dcs-t{font-size:17px}.dcs-full .dcs-t th{font-size:14.5px}.dcs-full .dcs-res span{font-size:19px}.dcs-full h2{font-size:24px}'
+    // botões das ações de cada compra: cores fortes, legíveis no escuro e no claro
+    + '.cmpx-actions-row button{font-weight:700!important;border-width:1px!important;border-style:solid!important;transition:filter .15s}.cmpx-actions-row button:hover{filter:brightness(1.1)}'
+    + '.cmpx-actions-row [data-dcs]{background:#f59e0b!important;border-color:#d97706!important;color:#1f1300!important}'
+    + '.cmpx-actions-row [data-cmpx-edit]{background:#2563eb!important;border-color:#1d4ed8!important;color:#fff!important}'
+    + '.cmpx-actions-row [data-cmpx-folder-move]{background:#7c3aed!important;border-color:#6d28d9!important;color:#fff!important}'
+    + '.cmpx-actions-row [data-cmpx-print]{background:#475569!important;border-color:#334155!important;color:#fff!important}'
+    + '.cmpx-actions-row [data-dsce-email]{background:#0891b2!important;border-color:#0e7490!important;color:#fff!important}'
+    + '.cmpx-actions-row [data-cmpx-excel]{background:#16a34a!important;border-color:#15803d!important;color:#fff!important}'
+    + '.cmpx-actions-row [data-cmpx-clone]{background:#db2777!important;border-color:#be185d!important;color:#fff!important}'
+    + '.cmpx-actions-row [data-cmpx-delete]{background:#dc2626!important;border-color:#b91c1c!important;color:#fff!important}'
+    + '[data-cmpx-toggle-items]{background:color-mix(in srgb,var(--accent) 14%,var(--s2))!important;border-color:color-mix(in srgb,var(--accent) 45%,transparent)!important;color:var(--accent)!important;font-weight:700!important}'
+    // botões ✎ / 🗑 das pastas (ficavam como tirinhas cinzas)
+    + '[data-cmpx-folder-rename],[data-cmpx-folder-delete]{width:30px!important;min-width:30px!important;height:30px!important;padding:0!important;border-radius:8px!important;border:1px solid var(--b2)!important;background:var(--s2)!important;color:var(--text)!important;display:inline-flex!important;align-items:center;justify-content:center;font-size:14px!important;align-self:center;margin:0 2px!important;overflow:visible!important}'
+    + '[data-cmpx-folder-delete]{color:#dc2626!important;border-color:color-mix(in srgb,#dc2626 45%,transparent)!important}'
+    // modo claro
+    + '[data-theme="light"] .dcs-m,body.light .dcs-m{background:#fff;color:#0f172a;border-color:#cbd5e1}'
+    + '[data-theme="light"] .dcs-g .dcs-res span,body.light .dcs-g .dcs-res span{background:#f1f5f9;border-color:#cbd5e1;color:#0f172a}[data-theme="light"] .dcs-res b,body.light .dcs-res b{color:#475569}'
+    + '[data-theme="light"] .dcs-t th,body.light .dcs-t th{background:#e2e8f0;color:#1e293b}[data-theme="light"] .dcs-t td,body.light .dcs-t td{color:#0f172a;border-top-color:#e2e8f0}'
+    + '[data-theme="light"] .dcs-g .dcs-t tbody tr:nth-child(even) td,body.light .dcs-g .dcs-t tbody tr:nth-child(even) td{background:#f8fafc}'
+    + '[data-theme="light"] .dcs-btn,body.light .dcs-btn{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}[data-theme="light"] .dcs-pri,body.light .dcs-pri{background:#2563eb;border-color:#2563eb;color:#fff}'
+    + '[data-theme="light"] .dcs-x,body.light .dcs-x{color:#334155;border-color:#cbd5e1}'
+    + '[data-theme="light"] .cmpx-folder-pill .meta,body.light .cmpx-folder-pill .meta{color:#475569!important}'
+    + '@media (max-width:760px){.dcs-m.dcs-g{padding:14px}.dcs-g .dcs-t{font-size:15px}.dcs-amp{display:none}}';
+  var st = document.createElement('style'); st.id = 'ds-cmp-cores-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
 })();
