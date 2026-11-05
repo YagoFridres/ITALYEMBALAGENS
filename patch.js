@@ -9358,11 +9358,13 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
       if (!arr.length) return '<div style="text-align:center;color:#94a3b8;font-weight:700">Sem vincos</div>';
       var soma = arr.reduce(function(t, v){ var n = parseFloat(String(v).replace(',', '.')); return t + (isFinite(n) ? n : 0); }, 0);
       var badges = arr.map(function(v, i){
-        return '<div style="flex:0 0 calc(25% - 4px);min-width:0;box-sizing:border-box;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:4px 3px;text-align:center">'
-          + '<div style="font-size:8.5px;font-weight:800;letter-spacing:.08em;color:#64748b;line-height:1.1">V' + (i + 1) + '</div>'
-          + '<div style="font-size:13px;font-weight:900;color:#0f172a;font-family:Consolas,\'Courier New\',monospace;line-height:1.25;word-break:break-all">' + window._compraPapelaoEsc(v || '—') + '</div></div>';
+        // todos os vincos na mesma linha (5º, 6º... não descem); a letra diminui quando são muitos
+        var fs = arr.length <= 4 ? 13 : (arr.length <= 6 ? 11.5 : 10);
+        return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;padding:3px 1px;text-align:center">'
+          + '<div style="font-size:8px;font-weight:800;letter-spacing:.04em;color:#64748b;line-height:1.1">V' + (i + 1) + '</div>'
+          + '<div style="font-size:' + fs + 'px;font-weight:900;color:#0f172a;font-family:Consolas,\'Courier New\',monospace;line-height:1.25;white-space:nowrap">' + window._compraPapelaoEsc(v || '—') + '</div></div>';
       }).join('');
-      return '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start">' + badges + '</div>';
+      return '<div style="display:flex;flex-wrap:nowrap;gap:3px;justify-content:flex-start">' + badges + '</div>';
     })();
     return ''
       + '<tr style=\"display:table-row!important\">'
