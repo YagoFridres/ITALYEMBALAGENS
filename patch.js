@@ -75446,7 +75446,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var itens = []; try { itens = JSON.parse(JSON.stringify(Array.isArray(o.itens) ? o.itens : [])); } catch (_) { itens = []; }
     var i0 = itens[0] && typeof itens[0] === 'object' ? itens[0] : {};
     var prod = b.produto || val('of-r-produto') || i0.desc || i0.descricao || '';
-    Object.assign(i0, { desc: prod, descricao: prod, ref: ref != null ? ref : (i0.ref || ''), qtd: qtd, quantidade: qtd, vunit: vu, valor_unitario: vu, valor_total: tot });
+    Object.assign(i0, { desc: prod, descricao: prod, ref: ref ? ref : (i0.ref || ''), qtd: qtd, quantidade: qtd, vunit: vu, valor_unitario: vu, valor_total: tot });
     if (b.maquina) i0.maquina = b.maquina;
     if (Array.isArray(b.cores_impressao) && b.cores_impressao.length) i0.cores_impressao = b.cores_impressao;
     if (b.comprimento != null) { i0.comp = b.comprimento; i0.comprimento = b.comprimento; }

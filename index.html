@@ -4197,7 +4197,7 @@ function abrirNovaOfRapida(){
         </div>
       </div>
 
-      <div>
+      <div id="of-r-ref-wrap" style="display:none">
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Referência</label>
         <input id="of-r-ref" placeholder="Código de referência..."
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
@@ -33896,7 +33896,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261105100523';
+      const swVersion = '20261105101653';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61376,6 +61376,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261105100523"></script>
+<script src="/patch.js?v=20261105101653"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
