@@ -75343,12 +75343,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }).join('');
     var tots = imp.map(function (o) { var t = tot[o]; if (!t) return ''; return '<tr><td>Onda ' + o + '</td><td class="r">' + R(t.subtotal) + '</td><td class="r">' + R(t.frete) + '</td><td class="r"><b>' + R(t.total) + '</b></td></tr>'; }).join('');
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>Orçamento ' + esc(pl.numero_orcamento || '') + '</title><style>tr.tot td{font-weight:bold;font-size:14px;border-top:2px solid #111;background:#f3f4f6}@page{size:A4;margin:14mm}body{font:12px/1.45 Arial,Helvetica,sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0}header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:14px}.meta b{display:inline-block;min-width:70px;color:#555;font-weight:600}table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{border:1px solid #bbb;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee;font-size:11px}td small{display:block;color:#666;font-size:10.5px}.r{text-align:right;white-space:nowrap}.c{text-align:center}h2{font-size:13px;margin:16px 0 6px}.obs{white-space:pre-wrap;border:1px solid #bbb;padding:8px}footer{margin-top:28px;color:#666;font-size:10.5px}</style></head><body>'
-      + '<header><div><h1>Italy Embalagens</h1><div>Orçamento de caixas de papelão</div></div><div style="text-align:right"><b style="font-size:16px">Orçamento Nº ' + esc(pl.numero_orcamento || '(rascunho)') + '</b><br>' + data + '</div></header>'
+      + '<header><div><img src="' + location.origin + '/logo-italy.png" alt="Italy Embalagens" style="height:62px;width:auto;display:block;margin-bottom:4px"><div>Orçamento de caixas de papelão</div></div><div style="text-align:right"><b style="font-size:16px">Orçamento Nº ' + esc(pl.numero_orcamento || '(rascunho)') + '</b><br>' + data + '</div></header>'
       + '<div class="meta"><div><b>Cliente:</b> ' + esc(pl.cliente_nome || '—') + '</div><div><b>Referência:</b> ' + esc(pl.nome || '—') + '</div>' + ((pl.chapa_utilizada || p.chapa_utilizada) ? '<div style="grid-column:1/-1"><b>Papelão utilizado:</b> ' + esc(pl.chapa_utilizada || p.chapa_utilizada) + '</div>' : '') + '</div>'
       + '<table><thead><tr><th>Item</th><th>Medidas (C×L×A)</th><th class="c">Onda</th><th class="r">Quantidade</th><th class="r">Valor unitário</th><th class="r">Valor total</th></tr></thead><tbody>' + linhas + '</tbody>'
       + '<tfoot>' + imp.map(function (o) { var t = tot[o]; if (!t) return ''; return '<tr class="tot"><td colspan="4">Valor total do orçamento' + (imp.length > 1 ? ' — Onda ' + o : '') + '</td><td class="r" colspan="2">' + R(t.total) + '</td></tr>'; }).join('') + '</tfoot></table>'
       // (tabela de totais removida da impressão: o frete já está dentro do valor de cada item)
       + (p.observacoes_orc ? '<h2>Observações</h2><div class="obs">' + esc(p.observacoes_orc) + '</div>' : '')
+      + '<div class="ass" style="margin-top:30px;font-size:12.5px;line-height:1.55;page-break-inside:avoid">Atenciosamente,<br><b>Eleomar Fridres</b><br>(49) 9 9998-0203 (WhatsApp)<br>(49) 3622-8512<br>atendimento@italyembalagens.com.br</div>'
       + '<footer>Valores sujeitos a confirmação. Documento gerado pelo sistema Italy Embalagens em ' + data + '.</footer></body></html>';
     return html;
   }
@@ -75374,7 +75375,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try { if (w) w.close(); } catch (_) {}
     var f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
     var d = f.contentWindow.document; d.open(); d.write(html); d.close();
-    setTimeout(function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (_) {} setTimeout(function () { f.remove(); }, 60000); }, 300);
+    var imprimiu = false, go = function () { if (imprimiu) return; imprimiu = true; try { f.contentWindow.focus(); f.contentWindow.print(); } catch (_) {} setTimeout(function () { f.remove(); }, 60000); };
+    var imgs = [].slice.call(d.images || []), falta = imgs.filter(function (im) { return !im.complete; }).length;
+    if (!falta) setTimeout(go, 300); else { imgs.forEach(function (im) { if (!im.complete) { im.onload = im.onerror = function () { if (--falta <= 0) setTimeout(go, 100); }; } }); setTimeout(go, 4000); }
   }
   window.dsOrc = { htmlId: function (id) { return buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; return { html: htmlDe(pl), orc: o, pl: pl }; }); }, novo: novo, editar: editar, itens: verItens, imprimirId: function (id) { var w = ehMovel() ? window.open('', '_blank') : null; buscar(id).then(function (o) { var S = deOrc(o), sv = E; E = S; var pl = paraSalvar(); pl.numero_orcamento = o.numero_orcamento; E = sv; imprimir(pl, w); }).catch(function (e) { try { if (w) w.close(); } catch (_) {} alert('Não consegui abrir o orçamento para imprimir: ' + (e && e.message || e)); }); }, calcItem: calcItem, deOrc: deOrc, buscarChapas: buscarChapas, carregarChapas: carregarChapas, estado: function () { return E; }, paraSalvar: function () { return paraSalvar(); } };
   // ---------- liga nos botões da lista ----------
@@ -78717,6 +78720,16 @@ window.__perTxt = function (p) {
     carregar().then(function () { puxar(); }).catch(function () { puxar(); });
   }
   new MutationObserver(function () { if (document.getElementById('modal-of-rapida') && !document.getElementById('of-r-cidade')) setTimeout(campoCidade, 50); }).observe(document.body, { childList: true });
+  // a tela da OF é reorganizada em colunas depois de aberta: mantém a Cidade de entrega logo abaixo do Produto
+  function posCidade() {
+    var c = document.getElementById('of-r-cidade'), pr = document.getElementById('of-r-produto'); if (!c || !pr) return;
+    var w = c.closest('.ds-ofr-cidade'), pw = pr.parentNode; if (!w || !pw || !pw.parentNode || pw.contains(w)) return;
+    if (pw.nextElementSibling !== w) pw.parentNode.insertBefore(w, pw.nextSibling);
+    w.style.marginTop = '0';
+    var lp = pw.querySelector('label'), lc = w.querySelector('label');
+    if (lp && lc && !lc.__dsEst) { lc.__dsEst = 1; lc.className = lp.className; lc.style.cssText = lp.style.cssText; }
+  }
+  setInterval(posCidade, 300);
   // grava a cidade na OF criada (cidade_entrega) e no cadastro do cliente
   (function () {
     var orig = window.apiFetch;
