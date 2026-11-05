@@ -46860,12 +46860,113 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  // ---- detalhe de uma entrada/saída (clique na linha) + envio ao Checklist de Recebimento ----
+  function _movDetFmtData(v) { try { var d = new Date(v); if (isNaN(d)) return String(v || '—'); return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch (_) { return String(v || '—'); } }
+  function _movDetDiaLocal(v) { try { var d = new Date(v); if (isNaN(d)) return String(v || '').slice(0, 10); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } catch (_) { return ''; } }
+  function _movDetPlaca(row) { var o = String((row && row.mov && row.mov.obs) || (row && row.observacoes) || ''); var m = o.match(/placa\s*:\s*([A-Z0-9-]+)/i); return m ? m[1].toUpperCase() : ''; }
+  function _movDetLote(row, todos) {
+    var k = function (r) { return [String(r.data || '').slice(0, 16), String(r.usuario || ''), String(r.nf || ''), String(r.fornecedor || '')].join('|'); };
+    var kk = k(row);
+    var l = (Array.isArray(todos) ? todos : []).filter(function (r) { return k(r) === kk; });
+    return l.length ? l : [row];
+  }
+  function _movEstoqueDetalhe(row, todos) {
+    var E = _escapeHtmlLite, m = row.mov || {}, c = row.chapa || {};
+    var ehEntrada = String(row.tipo || m.tipo || '').indexOf('entrada') === 0;
+    var campo = function (rot, val, larga) { var v = (val == null || val === '' || val === '—') ? '—' : val; return '<div class="dmd-f' + (larga ? ' dmd-l' : '') + '"><span>' + E(rot) + '</span><b>' + E(String(v)) + '</b></div>'; };
+    var num = function (v) { return (v == null || v === '') ? '—' : _fmtNumEstoque(v); };
+    var gram = c.gramatura != null && c.gramatura !== '' ? c.gramatura : (c.gram || '');
+    var obsTxt = String(m.obs || '').trim(), descTxt = String(m.descricao || '').trim();
+    var lote = _movDetLote(row, todos);
+    var corpo = '<div class="dmd">'
+      + '<div class="dmd-sec">Movimentação</div><div class="dmd-g">'
+      + campo('Tipo', ehEntrada ? '📥 Entrada' : '📤 Saída') + campo('Data e hora', _movDetFmtData(row.data)) + campo('Responsável', row.usuario) + campo('Empresa', row.empresa)
+      + campo('Fornecedor', row.fornecedor) + campo('Nota fiscal', row.nf) + (ehEntrada ? campo('Placa do veículo', _movDetPlaca(row) || '—') : campo('OF', row.of_numero))
+      + campo('Origem', m.origem || '—')
+      + '</div>'
+      + '<div class="dmd-sec">Quantidades e valores</div><div class="dmd-g">'
+      + campo('Quantidade', num(row.quantidade)) + campo('Estoque antes', num(m.qtd_anterior)) + campo('Estoque depois', num(m.qtd_nova))
+      + campo('Valor unitário', row.valor_unitario ? _fmtRsEstoque(row.valor_unitario) : '—') + campo('Valor total', _fmtRsEstoque(row.valor_total))
+      + campo('Peso (kg)', row.kg ? num(Math.round(row.kg)) : '—') + campo('Toneladas', row.toneladas ? Number(row.toneladas).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '—')
+      + '</div>'
+      + '<div class="dmd-sec">Chapa</div><div class="dmd-g">'
+      + campo('Chapa', row.chapa_label, true) + campo('Nomenclatura', c.nomenclatura || c.nom) + campo('Tamanho', c.tamanho || c.tam) + campo('Nome de uso', c.nome_uso || c.nome)
+      + campo('Gramatura', gram) + campo('Categoria', c.categoria) + campo('Estoque atual', num(c.quantidade != null ? c.quantidade : c.qtd))
+      + '</div>'
+      + (!ehEntrada ? '<div class="dmd-sec">Produção</div><div class="dmd-g">' + campo('Cliente', row.cliente) + campo('Produto', row.produto, true) + campo('Máquina', row.maquina) + '</div>' : '')
+      + ((obsTxt || descTxt) ? '<div class="dmd-sec">Observações</div><div class="dmd-obs">' + E([obsTxt, descTxt].filter(Boolean).join('\n')) + '</div>' : '')
+      + (lote.length > 1 ? '<div class="dmd-sec">Itens lançados juntos (' + lote.length + ')</div><div class="dmd-lote">' + lote.map(function (r) { return '<div' + (r === row ? ' class="on"' : '') + '><span>' + E(r.chapa_label || '—') + '</span><b>' + E(_fmtNumEstoque(r.quantidade)) + '</b><em>' + E(_fmtRsEstoque(r.valor_total)) + '</em></div>'; }).join('') + '</div>' : '')
+      + (ehEntrada ? '<div class="dmd-sec">Checklist de Recebimento</div><div id="dmd-ck" class="dmd-ck">Verificando…</div>' : '')
+      + '</div>';
+    var ov = _abrirModalPadrao({ id: 'estoque-mov-detalhe', titulo: (ehEntrada ? 'Entrada' : 'Saída') + ' · ' + (row.chapa_label || ''), subtitulo: _movDetFmtData(row.data) + (row.nf && row.nf !== '—' ? ' · NF ' + row.nf : ''), hero: ehEntrada ? '📥' : '📤', accent: ehEntrada ? 'green' : 'red', largura: '760px', corpoHTML: corpo,
+      footerHTML: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Fechar</button>' });
+    if (!ehEntrada) return;
+    var box = ov.querySelector('#dmd-ck');
+    var nf = String(row.nf || '').trim();
+    var carregar = function () {
+      var url = '/api/recebimento_insumos' + (nf && nf !== '—' ? '?nota_fiscal=' + encodeURIComponent(nf) : '?data=' + _movDetDiaLocal(row.data));
+      _apiFetchJson(url).then(function (j) {
+        var lista = Array.isArray(j) ? j : (j && (j.data || j.rows)) || [];
+        var forn = String(row.fornecedor || '').toLowerCase();
+        lista = lista.filter(function (x) { return !forn || forn === '—' || String(x.fornecedor || '').toLowerCase().indexOf(forn) >= 0 || forn.indexOf(String(x.fornecedor || '').toLowerCase()) >= 0; });
+        if (lista.length) {
+          box.innerHTML = '<div class="dmd-ok">✅ Este recebimento já está no Checklist (' + lista.length + ' ' + (lista.length > 1 ? 'itens' : 'item') + ').</div>'
+            + '<div class="dmd-lote">' + lista.map(function (x) { return '<div><span>🚚 ' + E(x.placa_veiculo || 'sem placa') + ' · ' + E(x.produto || '—') + '</span><b>' + E(_fmtNumEstoque(x.quantidade || 0)) + '</b><em>' + E(String(x.data_recebimento || '').split('-').reverse().join('/')) + '</em></div>'; }).join('') + '</div>'
+            + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" id="dmd-ir-ck" style="margin-top:8px">Abrir Checklist de Recebimento</button>';
+          var ir = box.querySelector('#dmd-ir-ck'); if (ir) ir.onclick = function () { _fecharModalPadrao('estoque-mov-detalhe'); try { go('checklist-recebimento'); } catch (_) {} };
+          return;
+        }
+        box.innerHTML = '<div class="dmd-warn">⚠️ Este recebimento ainda não está no Checklist. Informe a placa do veículo para enviar ' + (lote.length > 1 ? 'os ' + lote.length + ' itens desta entrada' : 'este item') + '.</div>'
+          + '<div class="dmd-env"><input id="dmd-placa" class="estoque-modal-input" placeholder="Placa do veículo (ex.: ABC1D23)" maxlength="10" value="' + E(_movDetPlaca(row)) + '"><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="dmd-enviar">📋 Enviar ao Checklist</button></div>';
+        var inp = box.querySelector('#dmd-placa'), bt = box.querySelector('#dmd-enviar');
+        inp.oninput = function () { inp.value = inp.value.toUpperCase().replace(/\s+/g, ''); };
+        bt.onclick = function () {
+          var placa = String(inp.value || '').trim().toUpperCase();
+          if (!placa) { inp.focus(); try { window.toast('Informe a placa do veículo', 'var(--red)'); } catch (_) {} return; }
+          bt.disabled = true; bt.textContent = 'Enviando…';
+          var envia = lote.map(function (r) {
+            var ch = r.chapa || {};
+            return _apiFetchJson('/api/recebimento_insumos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+              data_recebimento: _movDetDiaLocal(r.data), placa_veiculo: placa, nota_fiscal: (r.nf && r.nf !== '—') ? r.nf : null,
+              produto: r.chapa_label || 'Chapa', fornecedor: (r.fornecedor && r.fornecedor !== '—') ? r.fornecedor : null,
+              quantidade: Math.trunc(Number(r.quantidade || 0) || 0), responsavel: (r.usuario && r.usuario !== '—') ? r.usuario : null,
+              tamanho_chapa: ch.tamanho || ch.tam || null, devolucao: false }) });
+          });
+          Promise.all(envia).then(function () {
+            try { window.toast('Enviado ao Checklist de Recebimento ✓', 'var(--green)'); } catch (_) {}
+            carregar();
+          }).catch(function (e) { bt.disabled = false; bt.textContent = '📋 Enviar ao Checklist'; try { alert('Não consegui enviar ao Checklist: ' + String(e && e.message || e)); } catch (_) {} });
+        };
+      }).catch(function () { box.textContent = 'Não consegui consultar o Checklist agora.'; });
+    };
+    carregar();
+  }
+  (function () {
+    if (document.getElementById('dmd-css')) return;
+    var st = document.createElement('style'); st.id = 'dmd-css';
+    st.textContent = '.dmd{display:flex;flex-direction:column;gap:8px}.dmd-sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text3,#64748b);margin-top:6px}'
+      + '.dmd-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.dmd-f{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--s2);min-width:0}.dmd-l{grid-column:1/-1}'
+      + '.dmd-f span{display:block;font-size:11px;color:var(--text3,#64748b);margin-bottom:2px}.dmd-f b{font-size:14px;word-break:break-word}'
+      + '.dmd-obs{white-space:pre-wrap;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--s2);font-size:13px}'
+      + '.dmd-lote{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}.dmd-lote>div{display:grid;grid-template-columns:1fr auto auto;gap:12px;padding:8px 10px;border-top:1px solid var(--border);font-size:13px;align-items:center}.dmd-lote>div:first-child{border-top:0}.dmd-lote>div.on{background:color-mix(in srgb,var(--accent) 14%,transparent)}.dmd-lote em{font-style:normal;color:var(--text3,#64748b)}'
+      + '.dmd-ok{color:var(--green);font-weight:700;margin-bottom:6px}.dmd-warn{color:#f59e0b;font-weight:700;margin-bottom:8px}.dmd-env{display:flex;gap:8px;flex-wrap:wrap}.dmd-env input{flex:1 1 200px;min-width:0;font-size:16px;text-transform:uppercase}'
+      + 'tr[data-mov-row]{cursor:pointer}tr[data-mov-row]:hover td{background:color-mix(in srgb,var(--accent) 8%,transparent)}'
+      + '@media (max-width:640px){.dmd-g{grid-template-columns:1fr 1fr}.dmd-env button{flex:1 1 100%;height:46px}}';
+    document.head.appendChild(st);
+  })();
+
   function _bindTabelaMovEstoqueAcoes(host, rows, refreshFn) {
     if (!host) return;
     var mapa = Object.create(null);
     (Array.isArray(rows) ? rows : []).forEach(function(row) {
       var id = String(row && row.id || '').trim();
       if (id) mapa[id] = row;
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-mov-edit]')).forEach(function(btn) {
+      var tr = btn.closest('tr'); if (!tr) return;
+      var movId = String(btn.getAttribute('data-mov-edit') || '').trim(); if (!mapa[movId]) return;
+      tr.setAttribute('data-mov-row', movId); tr.title = 'Clique para ver todos os dados';
+      tr.onclick = function (ev) { if (ev && ev.target && ev.target.closest('button,a,input,select,textarea')) return; _movEstoqueDetalhe(mapa[movId], rows); };
     });
     Array.prototype.slice.call(host.querySelectorAll('[data-mov-edit]')).forEach(function(btn) {
       btn.onclick = function(ev) {
@@ -46985,6 +47086,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         id: String(mov && mov.id || '').trim(),
         chapa_id: chapaId,
         chapa: chapa,
+        mov: mov,
         data: mov && mov.created_at || '',
         tipo: String(mov && mov.tipo || '').trim().toLowerCase(),
         reverted: !!(mov && mov.reverted),
@@ -48793,6 +48895,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         // #endregion
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
         if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
+        try { window.__dsAbrirEntradaReal = _abrirModalEntradaEstoqueReal; } catch (_) {}
         Array.prototype.slice.call(host.querySelectorAll('[data-sug-buy]')).forEach(function(btn) {
           btn.onclick = function() {
             var pinId = String(btn.getAttribute('data-sug-buy') || '').trim();
@@ -78765,4 +78868,19 @@ window.__perTxt = function (p) {
     return true;
   }
   if (!registrarHook()) { var n = 0, t = setInterval(function () { if (registrarHook() || ++n > 40) clearInterval(t); }, 500); }
+})();
+
+/* ===== Entrada de chapa: a tela antiga "Entrada em Lote" (sem placa, não ia ao Checklist) abre a tela nova ===== */
+(function () {
+  if (window.__dsEntradaLegada) return; window.__dsEntradaLegada = true;
+  function trocar() {
+    if (typeof window.abrirModalEntradaLoteChapas !== 'function' || window.abrirModalEntradaLoteChapas.__ds) return;
+    var f = function () {
+      if (typeof window.__dsAbrirEntradaReal === 'function') return window.__dsAbrirEntradaReal();
+      try { go('entradas-estoque'); } catch (_) {}
+      var n = 0, t = setInterval(function () { n++; var b = document.getElementById('estoque-entrada-lote-btn'); if (b) { clearInterval(t); b.click(); } else if (n > 40) clearInterval(t); }, 150);
+    };
+    f.__ds = true; window.abrirModalEntradaLoteChapas = f;
+  }
+  trocar(); setInterval(trocar, 2000);
 })();
