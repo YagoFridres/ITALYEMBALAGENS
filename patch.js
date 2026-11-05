@@ -70765,7 +70765,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var ESCONDER = ['dashboard', 'lancamento', '@jarvis', 'fluxos'];
 
   // um emoji por área — o mesmo no computador, tablet e celular
-  var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
+  var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'roteiro-entrega': '🗓️', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
     'operadores': '👷', 'vendedores': '💼', 'mapa-clientes': '🗺️', '@papelao': '🛒', 'compras': '🛒', 'almoxarifado': '🧰', 'fornecedores': '🚚', 'estoque': '🧱',
     'entradas-estoque': '📥', 'saidas-estoque': '📤', 'checklist-recebimento': '✅', 'facas1': '🔪', 'cliches': '🖋️', 'gramaturas': '⚖️',
     'toneladas-vendidas': '🏋️', 'simd': '♻️', 'inconformidades': '⚠️', 'caixas-perdidas': '🗑️', 'maquinas': '🖨️', 'fluxos': '🔀', 'tempos-reais': '⏱️',
@@ -78654,7 +78654,17 @@ window.__perTxt = function (p) {
       }).catch(function (er) { toast('Erro: ' + er.message, 'var(--red)'); });
     }
   }
-  function ativa() { var p = document.getElementById('page-roteiro-entrega'); return !!(p && (p.classList.contains('active') || p.offsetParent !== null)); }
+  function ativa() {
+    if (String(window._PAGE_ATUAL || '') !== 'roteiro-entrega') return false;
+    var p = document.getElementById('page-roteiro-entrega');
+    if (!p) {
+      var cont = (document.getElementById('page-pcp') || {}).parentElement || document.querySelector('.content'); if (!cont) return false;
+      p = document.createElement('div'); p.id = 'page-roteiro-entrega'; p.className = 'page'; cont.appendChild(p);
+    }
+    if (!p.classList.contains('active')) { document.querySelectorAll('.page.active').forEach(function (x) { if (x !== p) x.classList.remove('active'); }); p.classList.add('active'); }
+    if (!document.getElementById('ds-rot')) ultimoAtivo = false;
+    return true;
+  }
   var ultimoAtivo = false;
   setInterval(function () { var a = ativa(); if (a && !ultimoAtivo) carregar(true).then(render).catch(function (e) { toast('Erro ao carregar o roteiro: ' + e.message, 'var(--red)'); }); ultimoAtivo = a; }, 700);
   window.dsRoteiro = { render: function () { return carregar(true).then(render); } };
