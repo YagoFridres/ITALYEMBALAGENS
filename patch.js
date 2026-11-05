@@ -70748,10 +70748,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     '@chat': ['chat', 'Chat'], 'agenda': ['agenda', 'Agenda'], 'compras': ['carrinho', 'Compra de Papelão'],
     'usuarios': ['usuario', 'Usuários'], 'configuracoes': ['ajustes', 'Configurações'],
     'dashboard': ['painel', 'Painel'], 'lancamento': ['arquivo', 'Armazenamento de OFs'], 'historico-passagens': ['historico', 'Passagens'],
-    'roteiro-entrega': ['caminhao', 'Roteiro de Entrega']
+    'roteiro-semana': ['caminhao', 'Roteiro de Entrega']
   };
   var GRUPOS = [
-    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens', 'roteiro-entrega'] },
+    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens', 'roteiro-semana'] },
     { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'gramaturas', 'operadores', 'vendedores', 'mapa-clientes'] },
     { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
     { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'simd'] },
@@ -70765,7 +70765,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var ESCONDER = ['dashboard', 'lancamento', '@jarvis', 'fluxos'];
 
   // um emoji por área — o mesmo no computador, tablet e celular
-  var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'roteiro-entrega': '🗓️', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
+  var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'roteiro-semana': '🗓️', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
     'operadores': '👷', 'vendedores': '💼', 'mapa-clientes': '🗺️', '@papelao': '🛒', 'compras': '🛒', 'almoxarifado': '🧰', 'fornecedores': '🚚', 'estoque': '🧱',
     'entradas-estoque': '📥', 'saidas-estoque': '📤', 'checklist-recebimento': '✅', 'facas1': '🔪', 'cliches': '🖋️', 'gramaturas': '⚖️',
     'toneladas-vendidas': '🏋️', 'simd': '♻️', 'inconformidades': '⚠️', 'caixas-perdidas': '🗑️', 'maquinas': '🖨️', 'fluxos': '🔀', 'tempos-reais': '⏱️',
@@ -70821,7 +70821,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
     });
     // itens que não existem no menu antigo (Entradas / Saídas de chapas) são criados aqui
-    ['entradas-estoque', 'saidas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento', 'roteiro-entrega'].forEach(function (k) {
+    ['entradas-estoque', 'saidas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento', 'roteiro-semana'].forEach(function (k) {
       if (porChave[k]) return;
       var it = document.createElement('div');
       it.className = 'nav-item'; it.setAttribute('onclick', "go('" + k + "')"); it.setAttribute('data-ds-criado', '1');
@@ -78585,7 +78585,7 @@ window.__perTxt = function (p) {
   document.head.appendChild(css);
   var ST = { dd: null };
   function render() {
-    var pg = document.getElementById('page-roteiro-entrega'); if (!pg) return;
+    var pg = document.getElementById('page-roteiro-semana'); if (!pg) return;
     var box = document.getElementById('ds-rot');
     if (!box) { Array.prototype.forEach.call(pg.children, function (c) { c.style.display = 'none'; }); box = document.createElement('div'); box.id = 'ds-rot'; pg.insertBefore(box, pg.firstChild); box.addEventListener('click', clique); box.addEventListener('input', digitou); box.addEventListener('keydown', tecla); box.addEventListener('focusout', function () { setTimeout(function () { if (!box.contains(document.activeElement)) fecharDD(); }, 180); }); }
     var porCid = ofsPorCidade();
@@ -78655,15 +78655,16 @@ window.__perTxt = function (p) {
     }
   }
   function ativa() {
-    if (String(window._PAGE_ATUAL || '') !== 'roteiro-entrega') return false;
-    var p = document.getElementById('page-roteiro-entrega');
-    if (!p) {
-      var cont = (document.getElementById('page-pcp') || {}).parentElement || document.querySelector('.content'); if (!cont) return false;
-      p = document.createElement('div'); p.id = 'page-roteiro-entrega'; p.className = 'page'; cont.appendChild(p);
-    }
-    if (!p.classList.contains('active')) { document.querySelectorAll('.page.active').forEach(function (x) { if (x !== p) x.classList.remove('active'); }); p.classList.add('active'); }
+    garantirPagina();
+    if (String(window._PAGE_ATUAL || '') !== 'roteiro-semana') return false;
+    if (!/Roteiro de Entrega/.test(document.title)) document.title = 'Roteiro de Entrega — Italy PCP';
     if (!document.getElementById('ds-rot')) ultimoAtivo = false;
     return true;
+  }
+  function garantirPagina() {
+    if (document.getElementById('page-roteiro-semana')) return;
+    var cont = (document.getElementById('page-pcp') || {}).parentElement || document.querySelector('.content'); if (!cont) return;
+    var p = document.createElement('div'); p.id = 'page-roteiro-semana'; p.className = 'page'; cont.appendChild(p);
   }
   var ultimoAtivo = false;
   setInterval(function () { var a = ativa(); if (a && !ultimoAtivo) carregar(true).then(render).catch(function (e) { toast('Erro ao carregar o roteiro: ' + e.message, 'var(--red)'); }); ultimoAtivo = a; }, 700);
