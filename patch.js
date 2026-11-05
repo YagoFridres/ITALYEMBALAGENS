@@ -75055,8 +75055,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<footer><button type="button" class="dcs-btn" data-st="' + esc(id) + '">Mudar andamento</button><button type="button" class="dcs-btn dcs-pri" data-fechar>Fechar</button></footer>';
       ov.querySelector('[data-st]').addEventListener('click', function () { ov.remove(); abrirStatus(id); });
       var mm = ov.querySelector('.dcs-m'), bf = ov.querySelector('[data-dcs-full]');
-      var aplicaFull = function (on) { mm.classList.toggle('dcs-full', on); bf.textContent = on ? '🗗 Janela menor' : '⛶ Tela cheia'; try { localStorage.setItem('ds_cmp_itens_full', on ? '1' : '0'); } catch (_) {} };
-      var pref = false; try { pref = localStorage.getItem('ds_cmp_itens_full') === '1'; } catch (_) {}
+      var aplicaFull = function (on) { mm.classList.toggle('dcs-full', on); bf.textContent = on ? '🗗 Janela menor' : '⛶ Tela cheia'; try { localStorage.setItem('ds_cmp_itens_full2', on ? '1' : '0'); } catch (_) {} };
+      var pref = true; try { pref = localStorage.getItem('ds_cmp_itens_full2') !== '0'; } catch (_) {} // abre em tela cheia por padrão
       aplicaFull(pref);
       bf.addEventListener('click', function () { aplicaFull(!mm.classList.contains('dcs-full')); });
     }).catch(function (e) { ov.querySelector('.dcs-vazio').textContent = 'Erro ao carregar: ' + e.message; });
