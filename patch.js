@@ -12546,8 +12546,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     }).then(function(data) {
       var row = data && data.id ? data : { id: sid, pasta_id: target };
       updateLocalOrcamento(row);
+      // 05/11: a lista da tela pode estar em outra cópia (window.ORCAMENTOS x ORCAMENTOS): atualiza as duas e recarrega a tela
+      try {
+        [window.ORCAMENTOS, (typeof ORCAMENTOS !== 'undefined' ? ORCAMENTOS : null)].forEach(function (lst) {
+          if (!Array.isArray(lst)) return;
+          lst.forEach(function (it) { if (String(it && it.id || '') === sid) { it.pasta_id = target; it.pastaId = target; } });
+        });
+      } catch (_) {}
       if (!options.skipRender) {
         try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+        try { var rb = document.getElementById('orx-btn-recarregar'); if (rb && typeof rb.onclick === 'function') setTimeout(function () { try { rb.onclick(); } catch (_) {} }, 150); else if (rb) setTimeout(function () { rb.click(); }, 150); } catch (_) {}
       }
       try { syncCalcFolderUi(); } catch (_) {}
       if (!options.silent) {
