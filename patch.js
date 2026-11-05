@@ -8182,7 +8182,7 @@ window._compraPapelaoLoadPins = async function() {
 window._compraPapelaoBuildComprasUrl = function(empId) {
   var st = window._compraPapelaoStateRef();
   var qs = ['emp_id=' + encodeURIComponent(empId)];
-  if (st.busca) qs.push('busca=' + encodeURIComponent(st.busca));
+  // 05/11: a busca é feita aqui no navegador (acha qualquer coisa da compra, inclusive a pasta)
   var filtro = String(st.filtroCard || 'all');
   if (filtro === 'nopasta') qs.push('sem_pasta=true');
   if (filtro.indexOf('folder:') === 0) {
@@ -63656,6 +63656,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       return true;
     });
     if (!busca) return rows;
+    if (typeof window.__dsCmpMatch === 'function') return rows.filter(function (c) { return window.__dsCmpMatch(c, busca, pastas); });
     return rows.filter(function(compra) {
       var pastaNome = '';
       for (var i = 0; i < pastas.length; i += 1) {
@@ -64581,6 +64582,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
             return true;
           });
           if (!busca) return rows;
+          if (typeof window.__dsCmpMatch === 'function') return rows.filter(function (c) { return window.__dsCmpMatch(c, busca, pastas); });
           return rows.filter(function(compra) {
             try {
               var pastaNome = '';
@@ -79010,4 +79012,34 @@ window.__perTxt = function (p) {
     + '[data-theme="light"] .cmpx-folder-pill .meta,body.light .cmpx-folder-pill .meta{color:#475569!important}'
     + '@media (max-width:760px){.dcs-m.dcs-g{padding:14px}.dcs-g .dcs-t{font-size:15px}.dcs-amp{display:none}}';
   var st = document.createElement('style'); st.id = 'ds-cmp-cores-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
+})();
+
+/* ===== Compra de Papelão: busca acha qualquer coisa da compra (nº, fornecedor, pasta, empresa, itens, status, datas...) ===== */
+(function () {
+  if (window.__dsCmpMatch) return;
+  function norm(v) { return String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function dBR(v) { var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+  window.__dsCmpMatch = function (c, busca, pastas) {
+    var toks = norm(busca).split(/\s+/).filter(Boolean); if (!toks.length) return true;
+    if (!c.__dsBusca) {
+      var partes = [];
+      var pasta = (pastas || []).filter(function (p) { return String(p && p.id || '') === String(c && c.pasta_id || ''); })[0];
+      partes.push(pasta ? pasta.nome : 'sem pasta');
+      try { partes.push(window._compraPapelaoNumeroLabel ? window._compraPapelaoNumeroLabel(c.numero_compra) : ''); } catch (_) {}
+      try { partes.push(window._compraPapelaoEmpresaNome ? window._compraPapelaoEmpresaNome(c._emp_id_consulta || c.emp_id) : ''); } catch (_) {}
+      var andamento = { pedido_feito: 'pedido feito', a_caminho: 'a caminho', concluida: 'chegou concluida', cancelada: 'cancelada' };
+      partes.push(andamento[c.status] || '');
+      var tudo = function (o, prof) {
+        if (o == null || prof > 3) return;
+        if (Array.isArray(o)) { o.forEach(function (x) { tudo(x, prof + 1); }); return; }
+        if (typeof o === 'object') { Object.keys(o).forEach(function (k) { if (/^_|^id$|_id$|historico/.test(k)) return; tudo(o[k], prof + 1); }); return; }
+        var t = String(o); partes.push(t); var d = dBR(t); if (d) partes.push(d);
+        if (typeof o === 'number') partes.push(o.toLocaleString('pt-BR'));
+      };
+      tudo(c, 0);
+      try { Object.defineProperty(c, '__dsBusca', { value: norm(partes.join(' | ')), enumerable: false, configurable: true }); } catch (_) { c.__dsBusca = norm(partes.join(' | ')); }
+    }
+    var txt = c.__dsBusca;
+    return toks.every(function (t) { return txt.indexOf(t) >= 0; });
+  };
 })();
