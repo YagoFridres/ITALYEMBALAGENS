@@ -54750,6 +54750,10 @@ window._mbnActive = function(id) {
           var skip = false;
           try { skip = typeof shouldSkip === 'function' ? !!shouldSkip(meta) : false; } catch (_) {}
           if (skip) return;
+          // 05/11: só avisa "OF Criada" quando o servidor confirmou a criação (antes avisava até quando não salvava)
+          var r = meta && meta.result;
+          var criou = !!(r && typeof r === 'object' && r.ok === true && r.duplicata !== true && Number(r._httpStatus || 200) < 300 && r._httpOk !== false && !meta.baseFailed);
+          if (!criou) return;
           setTimeout(function() {
             try { window._notificacaoOF(mensagem, tipo); } catch (_) {}
           }, 500);
@@ -54762,7 +54766,8 @@ window._mbnActive = function(id) {
         var skip = false;
         try { skip = typeof shouldSkip === 'function' ? !!shouldSkip() : false; } catch (_) {}
         var result = await orig.apply(this, arguments);
-        if (!skip) {
+        var falhou = result === false || !!(result && typeof result === 'object' && (result.ok === false || result.error || result.__busy));
+        if (!skip && !falhou) {
           setTimeout(function() {
             try { window._notificacaoOF(mensagem, tipo); } catch (_) {}
           }, 500);
