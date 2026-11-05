@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261105165042';
-const SW_RUNTIME_VERSION = '20261105165042';
+const PATCH_RUNTIME_VERSION = '20261105171916';
+const SW_RUNTIME_VERSION = '20261105171916';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -29857,8 +29857,7 @@ async function _comprasChapasUpdateCompat(table, id, payload, selectExpr = '*') 
 async function _comprasChapasValidarPasta(pastaId, empId) {
   if (!pastaId) return { ok: true, data: null };
   let q = supabase.from('compras_pastas').select('*').eq('id', pastaId);
-  if (empId) q = q.eq('emp_id', empId);
-  const out = await q.maybeSingle();
+  const out = await q.maybeSingle(); // pasta de qualquer empresa do grupo
   if (out.error) return { ok: false, error: out.error };
   if (!out.data) return { ok: false, error: new Error('Pasta não encontrada') };
   return { ok: true, data: out.data };
@@ -30166,9 +30165,9 @@ app.get('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
     const empInfo = await _comprasChapasResolveEmpId(req);
     const empId = empInfo.empId;
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
-    const pastasOut = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).order('nome', { ascending: true });
+    const pastasOut = await supabase.from('compras_pastas').select('*').order('nome', { ascending: true }); // pastas valem para todas as empresas do grupo
     if (pastasOut.error) return res.status(500).json({ ok: false, error: pastasOut.error.message });
-    const comprasOut = await supabase.from('compras_chapas').select('id,pasta_id').eq('emp_id', empId);
+    const comprasOut = await supabase.from('compras_chapas').select('id,pasta_id');
     if (comprasOut.error) return res.status(500).json({ ok: false, error: comprasOut.error.message });
     const contagem = {};
     (Array.isArray(comprasOut.data) ? comprasOut.data : []).forEach((row) => {
@@ -30194,7 +30193,7 @@ app.post('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
     const empId = empInfo.empId;
     if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.body?.emp_id || req.body?.empId) });
-    const dup = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).eq('nome', nome).maybeSingle();
+    const dup = await supabase.from('compras_pastas').select('*').ilike('nome', nome).limit(1).maybeSingle();
     if (dup.error) return res.status(500).json({ ok: false, error: dup.error.message });
     if (dup.data) return ok(res, dup.data);
     const ins = await _comprasChapasInsertCompat('compras_pastas', [{ nome, emp_id: empId, empresa_id: empId }], '*');
