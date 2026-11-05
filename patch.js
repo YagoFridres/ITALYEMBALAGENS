@@ -64663,7 +64663,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                   if (Array.isArray(st && st.compras) && String(key || '').indexOf('folder:') === 0) {
                     var parts2 = String(key).split(':');
                     folderCount = st.compras.filter(function(row) {
-                      return String(row && row._emp_id_consulta || '') === String(parts2[1] || '') && String(row && row.pasta_id || '') === String(parts2[2] || '');
+                      return String(row && row.pasta_id || '') === String(parts2[2] || '');
                     }).length;
                   } else if (typeof window.compraFolderCount === 'function') {
                     folderCount = Number(window.compraFolderCount(key) || 0) || 0;
@@ -64674,7 +64674,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
                 return ''
                   + '<button type="button" class="cmpx-folder-pill' + (String(st && st.filtroCard || '') === key ? ' is-active' : '') + '" data-cmpx-filter="' + escAttr(key) + '">'
                   + '  <span class="name">' + escHtml(pasta && pasta.nome || 'Pasta') + '</span>'
-                  + '  <span class="meta">' + escHtml(empNome || 'Organização de compras') + '</span>'
+                  + '  <span class="meta">' + escHtml('Todas as empresas') + '</span>'
                   + '  <span class="count">' + escHtml(String(folderCount)) + '</span>'
                   + '  <span class="cmpx-folder-actions"><button type="button" data-cmpx-folder-rename="' + escAttr(key) + '" title="Renomear pasta">✎</button><button type="button" class="danger" data-cmpx-folder-delete="' + escAttr(key) + '" title="Excluir pasta">🗑</button></span>'
                   + '</button>';
