@@ -46886,7 +46886,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '</div>'
       + '<div class="dmd-sec">Quantidades e valores</div><div class="dmd-g">'
       + campo('Quantidade', num(row.quantidade)) + campo('Estoque antes', num(m.qtd_anterior)) + campo('Estoque depois', num(m.qtd_nova))
-      + campo('Valor unitário', row.valor_unitario ? _fmtRsEstoque(row.valor_unitario) : '—') + campo('Valor total', _fmtRsEstoque(row.valor_total))
+      + campo('Valor unitário', row.valor_unitario ? 'R$ ' + Number(row.valor_unitario).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 }) : '—') + campo('Valor total', _fmtRsEstoque(row.valor_total))
       + campo('Peso (kg)', row.kg ? num(Math.round(row.kg)) : '—') + campo('Toneladas', row.toneladas ? Number(row.toneladas).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '—')
       + '</div>'
       + '<div class="dmd-sec">Chapa</div><div class="dmd-g">'
