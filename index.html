@@ -4781,11 +4781,28 @@ window.salvarOfRapida = async function(){
   const btn = document.getElementById('btn-salvar-of-rapida');
   try{ if(btn){ btn.textContent='Salvando...'; btn.disabled=true; } }catch(e){}
 
-  const cli = (Array.isArray(CLIENTES)?CLIENTES:[]).find(c=>{
+  let cli = (Array.isArray(CLIENTES)?CLIENTES:[]).find(c=>{
     const n = String(c?.nome || c?.razao_social || c?.razao || '').trim();
     if(!n) return false;
     return n.toLowerCase() === clienteNome.toLowerCase();
   }) || null;
+  // 06/11: se a lista local não tem o cliente (lista desatualizada/filtrada), usa o cliente já escolhido no campo ou busca no servidor
+  if(!cli){
+    try{
+      const elC = document.getElementById('of-r-cliente');
+      const did = String((elC && elC.dataset && elC.dataset.clienteId) || document.getElementById('of-r-cliente-id')?.value || '').trim();
+      const listas = [].concat(Array.isArray(window.CLIENTES)?window.CLIENTES:[], Array.isArray(window.clientes)?window.clientes:[]);
+      if(did) cli = listas.find(c=>String(c?.id||'')===did) || { id: did, nome: String(elC?.dataset?.clienteNome || clienteNome) };
+      if(!cli) cli = listas.find(c=>String(c?.nome||c?.razao_social||'').trim().toLowerCase()===clienteNome.toLowerCase()) || null;
+      if(!cli && clienteNome){
+        const rr = await apiFetch('/api/clientes?busca=' + encodeURIComponent(clienteNome) + '&limit=50');
+        const jj = await rr.json().catch(()=>null);
+        const ll = Array.isArray(jj) ? jj : (jj && (jj.data || jj.rows)) || [];
+        cli = ll.find(c=>String(c?.nome||c?.razao_social||'').trim().toLowerCase()===clienteNome.toLowerCase()) || null;
+      }
+      if(cli && Array.isArray(CLIENTES) && !CLIENTES.some(c=>String(c?.id)===String(cli.id))) { try { CLIENTES.push(cli); } catch(_){} }
+    }catch(_){}
+  }
   const cliId = String(cli?.id || '').trim();
   if(!cliId){
     alert('Selecione um cliente válido da lista.');
@@ -33896,7 +33913,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261106103732';
+      const swVersion = '20261106110024';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61376,6 +61393,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261106103732"></script>
+<script src="/patch.js?v=20261106110024"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
