@@ -63350,6 +63350,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '@media (max-width:1100px){#modal-calc .calc-wave-panels,.pep-cards{grid-template-columns:1fr}}'
       + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}#modal-orcamento-calc{padding:0!important;align-items:stretch!important;justify-content:stretch!important}#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:100vw!important;max-width:100vw!important;max-height:100vh!important;border-radius:0!important}}'
       + '@media (max-width:760px){#cmp-body .cmpx-title,#orc-body .orx-title{font-size:21px}#cmp-body .cmpx-filter-row,#orc-body .orx-filter-row{align-items:stretch}#cmp-body .cmpx-filter-row .pep-input,#orc-body .orx-filter-row .pep-input{min-width:0}#cmp-body .cmpx-actions-row,#orc-body .orx-actions-row{flex-direction:column;align-items:stretch}#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{width:100%}.pep-cards{grid-template-columns:1fr}}';
+    st.textContent += '#ccpx-compra-fullscreen .ccpx-vinco-toolbar,#ccpx-compra-fullscreen [data-ccpx-add-vinco],#ccpx-compra-fullscreen [data-ccpx-vinco-add]{display:none!important}';
     document.head.appendChild(st);
   }
 
@@ -63366,7 +63367,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <input data-ccpx-vinco="' + idx + '" value="' + escAttr(val) + '" placeholder="V' + String(idx + 1) + '">'
         + '  <button type="button" data-ccpx-del-vinco="' + idx + '" title="Remover vinco">−</button>'
         + '</div>';
-    }).join('') + '<div class="ccpx-vinco-toolbar"><button type="button" data-ccpx-add-vinco="1" title="Adicionar Vinco">+ Adicionar Vinco</button></div>';
+    }).join(''); // 06/11: máximo de 5 vincos — sem botão de adicionar
   }
   function compraCollectRowVincos(row) {
     return Array.prototype.slice.call((row || document).querySelectorAll('[data-ccpx-vinco]')).map(function(input) {
