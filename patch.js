@@ -41661,6 +41661,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         src.split(/\s[-:]\s/).forEach(push);
         push(src);
         pipeParts.forEach(push);
+        // 06/11: o texto digitado inteiro sempre vale como busca (ex.: "USE 7" parecia código e era descartado)
+        try { var nsrc = normClienteNome(src); if (nsrc && !seen[nsrc]) { seen[nsrc] = true; out.push(src); } } catch (_) {}
         return out;
       }
 
@@ -41812,7 +41814,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         .then(function(r) { return r && r.ok ? r.json().catch(function() { return null; }) : null; })
         .then(function(j) {
           var arr = j && (j.data || j.clientes || j.items);
-          if (j && j.ok && Array.isArray(arr) && arr.length) return arr[0] || null;
+          if (j && j.ok && Array.isArray(arr) && arr.length) {
+            // prefere o cliente com o nome exatamente igual ao digitado
+            var alvo = normClienteNome(nome);
+            var exato = arr.filter(function(c) { return normClienteNome(c && (c.nome || c.razao_social || c.razao) || '') === alvo; })[0];
+            if (exato) return exato;
+            return arr.length === 1 ? arr[0] : null;
+          }
           return null;
         })
         .catch(function() { return null; })
