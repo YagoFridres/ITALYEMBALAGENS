@@ -79067,3 +79067,50 @@ window.__perTxt = function (p) {
     return toks.every(function (t) { return txt.indexOf(t) >= 0; });
   };
 })();
+
+/* ===== Comissões: a página rola até o fim (06/11/2026) ===== */
+(function () {
+  if (document.getElementById('ds-comissoes-scroll-css')) return;
+  var st = document.createElement('style'); st.id = 'ds-comissoes-scroll-css';
+  st.textContent = '#page-comissoes.active{height:100%!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px}';
+  (document.head || document.documentElement).appendChild(st);
+})();
+
+/* ===== Modo claro: texto ilegível (branco no claro / escuro no escuro) é corrigido sozinho (06/11/2026) =====
+ * Vários botões e números foram desenhados só para o tema escuro. No claro, aqui se mede o contraste real
+ * de cada texto com o fundo e, quando não dá para ler, troca a cor do texto. */
+(function () {
+  if (window.__dsClaroLegivel) return; window.__dsClaroLegivel = true;
+  function claro() { var t = document.documentElement.getAttribute('data-theme') || ''; return t === 'light' || document.body.classList.contains('light'); }
+  function parse(c) { var m = String(c || '').match(/rgba?\(([^)]+)\)/); if (!m) return null; var p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; }
+  function lum(c) { var f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); }
+  function fundo(el) {
+    for (var e = el; e && e.nodeType === 1; e = e.parentElement) {
+      var cs = getComputedStyle(e);
+      if (cs.backgroundImage && /gradient/.test(cs.backgroundImage)) { var m = cs.backgroundImage.match(/rgba?\([^)]+\)/); if (m) { var g = parse(m[0]); if (g && g.a > 0.5) return g; } }
+      var c = parse(cs.backgroundColor); if (c && c.a > 0.5) return c;
+    }
+    return { r: 255, g: 255, b: 255, a: 1 };
+  }
+  function temTexto(el) { for (var n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.textContent.trim()) return true; return el.tagName === 'INPUT' && !!el.value; }
+  function limpar() { document.querySelectorAll('[data-ds-cfix]').forEach(function (el) { el.style.removeProperty('color'); el.style.removeProperty('-webkit-text-fill-color'); el.removeAttribute('data-ds-cfix'); }); }
+  function varrer() {
+    if (!claro()) { if (document.querySelector('[data-ds-cfix]')) limpar(); return; }
+    var raizes = [].slice.call(document.querySelectorAll('.page.active')).concat([].slice.call(document.body.children).filter(function (x) { return x.offsetParent !== null || getComputedStyle(x).position === 'fixed'; }).filter(function (x) { return !/^(SCRIPT|STYLE|LINK)$/.test(x.tagName) && !x.classList.contains('layout'); }));
+    raizes.forEach(function (raiz) {
+      raiz.querySelectorAll('button, a, span, b, strong, label, small, div, td, th, h1, h2, h3, h4, p, i, em').forEach(function (el) {
+        if (el.hasAttribute('data-ds-cfix') || !temTexto(el)) return;
+        if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return;
+        var cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.2) return;
+        var fg = parse(cs.webkitTextFillColor && cs.webkitTextFillColor !== cs.color ? cs.webkitTextFillColor : cs.color); if (!fg || fg.a < 0.3) return;
+        var bg = fundo(el), L1 = lum(fg), L2 = lum(bg), cr = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+        if (cr >= 2.6) return;
+        var nova = lum(bg) > 0.45 ? '#0f172a' : '#ffffff';
+        el.style.setProperty('color', nova, 'important'); el.style.setProperty('-webkit-text-fill-color', nova, 'important'); el.setAttribute('data-ds-cfix', '1');
+      });
+    });
+  }
+  var tm = null; function agendar() { clearTimeout(tm); tm = setTimeout(varrer, 350); }
+  try { new MutationObserver(agendar).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-theme', 'class'] }); } catch (_) {}
+  setInterval(varrer, 3000); agendar();
+})();
