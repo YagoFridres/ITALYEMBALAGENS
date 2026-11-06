@@ -63356,8 +63356,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function compraRenderVincosInputs(item) {
     var values = compraAllVincos(item);
-    if (!values.length) values = ['', '', '', ''];
-    while (values.length < 4) values.push('');
+    // 06/11: sempre 5 campos de vinco na compra; os vazios não vão para a impressão/lista
+    while (values.length < 5) values.push('');
     return values.map(function(val, idx) {
       return ''
         + '<div class="ccpx-vinco-chip" data-ccpx-vinco-chip="' + idx + '">'
@@ -63414,7 +63414,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       } else if (delBtn) {
         var chip = delBtn.closest ? delBtn.closest('[data-ccpx-vinco-chip]') : null;
         var chips = row.querySelectorAll('[data-ccpx-vinco-chip]');
-        if (chip && chips.length > 1) chip.remove();
+        if (chip && chips.length > 5) chip.remove();
         else {
           var input = chip && chip.querySelector ? chip.querySelector('[data-ccpx-vinco]') : null;
           if (input) input.value = '';
