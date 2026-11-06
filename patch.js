@@ -41633,6 +41633,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (!s) return false;
         var flat = s.replace(/\s+/g, '');
         if (!flat || /^\d+$/.test(flat)) return false;
+        // 06/11: nome de cliente real que parece código (ex.: "USE 7") era recusado — se existe na lista, vale
+        try { var lst = clientesRef(); for (var i = 0; i < lst.length; i++) { var cn = lst[i] && (lst[i].nome || lst[i].razao_social || lst[i].razao || ''); if (cn && normClienteNome(cn) === s) return true; } } catch (_) {}
         if (/^[a-z]{0,6}\d+$/.test(flat)) return false;
         return s.length >= 3;
       }
