@@ -79093,13 +79093,16 @@ window.__perTxt = function (p) {
     return { r: 255, g: 255, b: 255, a: 1 };
   }
   function temTexto(el) { for (var n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.textContent.trim()) return true; return el.tagName === 'INPUT' && !!el.value; }
+  var vistos = new WeakSet(), temaAnt = null;
   function limpar() { document.querySelectorAll('[data-ds-cfix]').forEach(function (el) { el.style.removeProperty('color'); el.style.removeProperty('-webkit-text-fill-color'); el.removeAttribute('data-ds-cfix'); }); }
   function varrer() {
+    var tema = claro() ? 'c' : 'e'; if (tema !== temaAnt) { vistos = new WeakSet(); temaAnt = tema; }
     if (!claro()) { if (document.querySelector('[data-ds-cfix]')) limpar(); return; }
     var raizes = [].slice.call(document.querySelectorAll('.page.active')).concat([].slice.call(document.body.children).filter(function (x) { return x.offsetParent !== null || getComputedStyle(x).position === 'fixed'; }).filter(function (x) { return !/^(SCRIPT|STYLE|LINK)$/.test(x.tagName) && !x.classList.contains('layout'); }));
     raizes.forEach(function (raiz) {
       raiz.querySelectorAll('button, a, span, b, strong, label, small, div, td, th, h1, h2, h3, h4, p, i, em').forEach(function (el) {
-        if (el.hasAttribute('data-ds-cfix') || !temTexto(el)) return;
+        if (vistos.has(el) || el.hasAttribute('data-ds-cfix') || !temTexto(el)) return;
+        vistos.add(el);
         if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return;
         var cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.2) return;
         var fg = parse(cs.webkitTextFillColor && cs.webkitTextFillColor !== cs.color ? cs.webkitTextFillColor : cs.color); if (!fg || fg.a < 0.3) return;
