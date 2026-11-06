@@ -9140,7 +9140,9 @@ window._compraPapelaoForceFullscreenShell = function(overlay) {
   } catch (_) {}
 };
 window._compraPapelaoCompraFullscreenBodyHtml = function(compra) {
-  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
+  // 06/11: ao editar, vale a empresa gravada na compra (antes pegava a empresa da tela e marcava Italy numa compra da Cartoeste)
+  var empId = String(compra && (compra.emp_id || compra.empresa_id || compra._emp_id_consulta) || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
+  if (!/^[0-9a-f-]{36}$/i.test(empId)) { var mapE = { E1: 'df5f7672-0a6b-402d-ae65-296554236c31', E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', E3: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a' }; empId = mapE[empId] || empId; }
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
   var fornecedorPedidoLabel = window._compraPapelaoFornecedorPedidoLabel(header.fornecedor || '');
   return ''
