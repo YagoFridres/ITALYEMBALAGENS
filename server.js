@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261106091025';
-const SW_RUNTIME_VERSION = '20261106091025';
+const PATCH_RUNTIME_VERSION = '20261106091739';
+const SW_RUNTIME_VERSION = '20261106091739';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -29932,6 +29932,15 @@ function _comprasChapasNormalizarVincos(raw, targetOut) {
     const v2 = _comprasChapasStr(out.vinco2); if (v2) parts.push(v2);
     const v3 = _comprasChapasStr(out.vinco3); if (v3) parts.push(v3);
     const v4 = _comprasChapasStr(out.vinco4); if (v4) parts.push(v4);
+  }
+  // 06/11: aceita o 5º vinco (e além) — vinha em vincos_extra / no texto "a/b/c/d/e" e era cortado aqui
+  const extrasRaw = src.vincos_extra;
+  const extras = (Array.isArray(extrasRaw) ? extrasRaw : String(extrasRaw == null ? '' : extrasRaw).split(/[\/,;]+/))
+    .map(function(v){ return String(v == null ? '' : v).trim(); }).filter(function(v){ return v && v !== '0' && v.toLowerCase() !== 'null' && v.toLowerCase() !== 'undefined'; });
+  extras.forEach(function(v){ parts.push(v); });
+  if (vincosStr) {
+    const doTexto = String(vincosStr).split(String(vincosStr).indexOf('/') >= 0 ? /\/+/ : /[,;\s]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    if (doTexto.length > parts.length) { parts.length = 0; doTexto.forEach(function(v){ parts.push(v); }); }
   }
   out.vinco1 = v1In || '';
   out.vinco2 = v2In || '';
