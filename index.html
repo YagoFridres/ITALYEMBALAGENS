@@ -5040,7 +5040,8 @@ window.salvarOfRapida = async function(){
     }
     try { _ofSaveCleanup(true); } catch (_) {}
     var retFail = { ok: false, error: errTxt, _fromBase: true };
-    if (r && typeof r === 'object') {
+    // 'r' só existe dentro do try: aqui usar r direto dava "r is not defined" e escondia o erro real
+    if (typeof r !== 'undefined' && r && typeof r === 'object') {
       try { retFail._httpStatus = r.status || 0; } catch (_) {}
       try { retFail._httpOk = !!r.ok; } catch (_) {}
     }
@@ -33913,7 +33914,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261106110024';
+      const swVersion = '20261106110236';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61393,6 +61394,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261106110024"></script>
+<script src="/patch.js?v=20261106110236"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
