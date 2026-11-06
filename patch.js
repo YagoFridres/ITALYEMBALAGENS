@@ -79072,7 +79072,9 @@ window.__perTxt = function (p) {
 (function () {
   if (document.getElementById('ds-comissoes-scroll-css')) return;
   var st = document.createElement('style'); st.id = 'ds-comissoes-scroll-css';
-  st.textContent = '#page-comissoes.active{height:100%!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px}';
+  st.textContent = '#page-comissoes.active{height:100%!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px}'
+    // o detalhamento das OFs tinha uma caixinha com rolagem própria (só ~10 linhas visíveis): agora cresce e a página inteira rola
+    + '#page-comissoes.active #_com_detalhe{max-height:none!important;height:auto!important;overflow:visible!important}';
   (document.head || document.documentElement).appendChild(st);
 })();
 
