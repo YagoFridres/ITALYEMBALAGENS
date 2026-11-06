@@ -79102,8 +79102,8 @@ window.__perTxt = function (p) {
     raizes.forEach(function (raiz) {
       raiz.querySelectorAll('button, a, span, b, strong, label, small, div, td, th, h1, h2, h3, h4, p, i, em').forEach(function (el) {
         if (vistos.has(el) || el.hasAttribute('data-ds-cfix') || !temTexto(el)) return;
-        vistos.add(el);
         if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return;
+        vistos.add(el);
         var cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.2) return;
         var fg = parse(cs.webkitTextFillColor && cs.webkitTextFillColor !== cs.color ? cs.webkitTextFillColor : cs.color); if (!fg || fg.a < 0.3) return;
         var bg = fundo(el), L1 = lum(fg), L2 = lum(bg), cr = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
