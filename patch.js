@@ -72135,14 +72135,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ord.forEach(function (m) { g[m] = ordenar(g[m], m); agendar(g[m], m); });
     return { g: g, ord: ord };
   }
-  function ordenar(lista, maq) {
+  function ordenar(lista, maq, modo) {
     var pos = E.seq[maq] || {};
     return lista.slice().sort(function (a, b) {
+      // 09/11: OF urgente fica sempre em 1º lugar na máquina
+      var u0a = urg(a) ? 0 : 1, u0b = urg(b) ? 0 : 1; if (u0a !== u0b) return u0a - u0b;
       var pa = pos[a.id], pb = pos[b.id];
       if (pa != null && pb != null) return pa - pb;
       if (pa != null) return -1; if (pb != null) return 1;
       var pa2 = emProducao(a) ? 0 : 1, pb2 = emProducao(b) ? 0 : 1; if (pa2 !== pb2) return pa2 - pb2;
-      var ua = urg(a) ? 0 : 1, ub = urg(b) ? 0 : 1; if (ua !== ub) return ua - ub;
+      if (modo !== 'entrega' && typeof window.dsRoteiroCmp === 'function') return window.dsRoteiroCmp(a, b);
       var ea = entOf(a) || '9999', eb = entOf(b) || '9999'; if (ea !== eb) return ea < eb ? -1 : 1;
       return String(a.created_at || '').localeCompare(String(b.created_at || ''));
     });
@@ -72256,9 +72258,17 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var q = norm(E.busca || '');
     if (q) l = l.filter(function (x) { return norm(numOf(x.o) + ' ' + cliOf(x.o) + ' ' + prodOf(x.o) + ' ' + x.m).indexOf(q) >= 0; });
     if (E.setup) {
-      var ordem = [], grupos2 = {};
-      l.forEach(function (x) { var k = (E.todas ? x.m + ' | ' : '') + setupDe(x.o, x.m); x.k = k; if (!grupos2[k]) { grupos2[k] = []; ordem.push(k); } grupos2[k].push(x); });
-      l = []; ordem.forEach(function (k) { l = l.concat(grupos2[k]); });
+      // 09/11: junta as OFs com as MESMAS CORES e o MESMO TAMANHO; grupos de mesma cor ficam lado a lado
+      var ordemC = [], porC = {};
+      l.forEach(function (x) {
+        var cores = String(setupDe(x.o, 'IMP')).replace(/^Cores: /, '');
+        var tam = txt(h('tamanho', x.o)) || 'sem tamanho';
+        var kc = (E.todas ? x.m + ' | ' : '') + cores;
+        x.k = kc + ' · ' + tam; x.kLabel = (E.todas ? x.m + ' | ' : '') + '🎨 ' + cores + '  ·  📐 ' + tam;
+        if (!porC[kc]) { porC[kc] = { ordemT: [], t: {} }; ordemC.push(kc); }
+        var g = porC[kc]; if (!g.t[x.k]) { g.t[x.k] = []; g.ordemT.push(x.k); } g.t[x.k].push(x);
+      });
+      l = []; ordemC.forEach(function (kc) { porC[kc].ordemT.forEach(function (kt) { l = l.concat(porC[kc].t[kt]); }); });
     }
     return l;
   }
@@ -72320,18 +72330,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var e = entOf(o), atras = e && e < hojeIso(), ut = urgTipo(o);
       var ses = E.sessoes.find(function (z) { return z.of_id === o.id; });
       var cab = '';
-      if (E.setup && x.k !== setupAnt) { setupAnt = x.k; var n = l.filter(function (z) { return z.k === x.k; }).length; cab = '<tr class="dom-grupo"><td colspan="16">' + esc(String(x.k).replace(/^.*? \| /, '')) + ' <span>' + n + ' OF' + (n > 1 ? 's' : '') + '</span></td></tr>'; }
+      if (E.setup && x.k !== setupAnt) { setupAnt = x.k; var n = l.filter(function (z) { return z.k === x.k; }).length; cab = '<tr class="dom-grupo"><td colspan="16">' + esc(String(x.kLabel || x.k).replace(/^.*? \| /, '')) + ' <span>' + n + ' OF' + (n > 1 ? 's' : '') + '</span></td></tr>'; }
       var img = imgDe(o);
       var st = emProducao(o) ? '<span class="dom-chip prod">Em produção' + (ses ? ' · ' + esc(ses.operador || '') : '') + '</span>'
         : '<span class="dom-chip st-' + ut + '">' + (ut === 'urgente' ? 'Urgente' : (ut === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span>';
       var cores = h('cores', o), tam = h('tamanho', o), faca = h('faca', o), papel = h('papelPrev', o);
-      return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '" data-maq="' + esc(m) + '"' + (emProducao(o) ? ' class="dom-em-prod"' : '') + '>'
+      var plR = null; try { plR = typeof window.dsRoteiroPlano === 'function' ? window.dsRoteiroPlano(o) : null; } catch (_) {}
+      var rotTx = plR && plR.cidade ? '<small class="dom-rot' + (plR.noRoteiro ? '' : ' fora') + '" title="' + (plR.noRoteiro ? 'Sai no caminhão deste dia (roteiro de entrega)' : 'Cidade fora do roteiro — vai pela data de entrega') + '">🚚 ' + esc(plR.noRoteiro ? plR.rotulo + ' · ' : '') + esc(plR.cidade) + (plR.noRoteiro ? ' (' + plR.pos + 'ª)' : ' · fora do roteiro') + '</small>' : '';
+      var clsTr = (emProducao(o) ? 'dom-em-prod' : '') + (urg(o) ? ' dom-urg' : '');
+      return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '" data-maq="' + esc(m) + '"' + (clsTr.trim() ? ' class="' + clsTr.trim() + '"' : '') + '>'
         + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span><input class="dom-seq" type="number" min="1" value="' + (i + 1) + '" aria-label="Posição na fila"><span class="dom-setas"><button type="button" data-mv="-1" aria-label="Subir">▲</button><button type="button" data-mv="1" aria-label="Descer">▼</button></span>' : (i + 1)) + '</td>'
         + '<td class="dom-c-img">' + (img ? '<button type="button" class="dom-img" data-a="img" title="Ver imagem"><img src="' + esc(img) + '" alt="" loading="lazy"></button>' : '<span class="dom-img vazio" title="Sem imagem">—</span>') + '</td>'
         + '<td class="dom-c-of"><b>' + esc(numOf(o)) + '</b></td>'
         + '<td class="dom-c-dt">' + fmtData(diaDe(o)) + '</td>'
         + '<td class="dom-c-ent' + (atras ? ' t-red' : '') + '">' + fmtData(e) + '</td>'
-        + '<td class="dom-c-cli"><span>' + esc(cliOf(o)) + '</span></td>'
+        + '<td class="dom-c-cli"><span>' + esc(cliOf(o)) + '</span>' + rotTx + '</td>'
         + '<td class="dom-c-st">' + st + '</td>'
         + '<td class="dom-c-prod">' + esc(prodOf(o)) + '</td>'
         + '<td class="dom-c-num">' + qtdOf(o).toLocaleString('pt-BR') + '</td>'
@@ -72356,7 +72369,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var cx = lm.reduce(function (s2, x) { return s2 + qtdOf(x.o); }, 0), min = lm.reduce(function (s2, x) { return s2 + minutosPrevistos(x.o, m); }, 0);
       return (ehRiscador(m) && !E.busca ? blocoAmostras() : '') + '<section class="dom-bloco"><div class="dom-fila-head"><h2>' + esc(m) + ' <small>' + (E.dia ? 'dia ' + fmtData(E.dia) : 'fila completa') + ' · sequência ajustável</small></h2>'
         + '<div class="dom-pilulas"><span>OFs <b>' + lm.length + '</b></span><span>Caixas <b>' + cx.toLocaleString('pt-BR') + '</b></span><span>Tempo <b>' + fmtMin(min) + '</b></span>'
-        + (podeOrdenar && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="autoordem" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button><button type="button" class="dom-btn dom-btn-p" data-a="ordemroteiro" data-maq-alvo="' + esc(m) + '" title="Pela data de entrega e, em cada dia, na ordem das cidades do roteiro (da primeira para a última)">🚚 Ordenar pelo roteiro</button>' : '')
+        + (podeOrdenar && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="autoordem" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro, depois pela data de entrega">Ordenar por entrega</button><button type="button" class="dom-btn dom-btn-p" data-a="ordemroteiro" data-maq-alvo="' + esc(m) + '" title="Urgentes primeiro; depois pelo dia do caminhão de cada cidade e, em cada dia, na ordem das cidades do roteiro (da primeira para a última)">🚚 Ordenar pelo roteiro</button>' : '')
         + (E.setup && !E.busca && !E.dia && lm.length > 1 ? '<button type="button" class="dom-btn dom-btn-p" data-a="aplicarsetup" data-maq-alvo="' + esc(m) + '" title="Grava na fila desta máquina a ordem agrupada por setup">Usar esta ordem na fila</button>' : '') + '</div></div>'
         + (lm.length ? tabelaMaquina(m, lm, podeOrdenar) : '<div class="dom-vazio">Nenhuma OF ' + (E.busca ? 'encontrada.' : (E.dia ? 'para este dia.' : 'na fila desta máquina.')) + '</div>')
         + '</section>';
@@ -72456,7 +72469,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(function () { b.textContent = 'Atualizar'; render(); }); return; }
     if (a === 'operador') { abrirOperador(); return; }
     if (a === 'antiga') { return; E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); document.documentElement.removeAttribute('data-ds-ofmaq-nova'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
-    if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA); salvarSeq(mA, l1); render(); return; }
+    if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA, 'entrega'); salvarSeq(mA, l1); render(); return; }
     if (a === 'ordemroteiro') {
       var mR = b.getAttribute('data-maq-alvo') || E.maq;
       if (typeof window.dsRoteiroOrdenar !== 'function') return;
@@ -78700,15 +78713,48 @@ window.__perTxt = function (p) {
     var r = da.filter(function (x) { return Number(x.dia_semana) === diaEnt; })[0] || da[0];
     return { dia: Number(r.dia_semana) || 97, ord: Number(r.ordem) || 9999 };
   }
+  // 09/11: plano de entrega de cada OF.
+  //  - a CIDADE manda: o caminhão sai para a cidade nos dias do roteiro em que ela aparece;
+  //  - a OF vai no último dia de roteiro da cidade ATÉ a data de entrega (se a entrega é sexta e a cidade só tem caminhão
+  //    na quarta, ela precisa sair na quarta); se esse dia já passou (atrasada), vai no próximo dia da cidade;
+  //  - sem data de entrega: próximo dia da cidade;
+  //  - cidade fora do roteiro ou OF sem cidade: fica no dia da data de entrega, depois das cidades do roteiro.
+  //  Dentro do mesmo dia, a ordem é exatamente a das cidades no roteiro (1ª, 2ª, 3ª...).
+  var NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  function isoHoje() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function somaD(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function wd(iso) { return new Date(iso + 'T12:00:00').getDay(); }
+  function plano(o) {
+    var cidade = cidadeDaOF(o), k = norm(cidade);
+    var ent = String(o && (o.data_entrega || o.ent) || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(ent)) ent = '';
+    var hoje = isoHoje(), dias = {};
+    if (k) (ROT || []).forEach(function (r) { if (r.ativo !== false && norm(r.cidade) === k) { var w = Number(r.dia_semana); if (!(w in dias) || Number(r.ordem) < dias[w]) dias[w] = Number(r.ordem) || 999; } });
+    var ws = Object.keys(dias).map(Number);
+    if (!ws.length) return { dia: ent || '9999-12-31', pos: 9999, cidade: cidade, noRoteiro: false, ent: ent };
+    var d = null, i;
+    if (ent) { for (i = 0; i < 7; i++) { var c = somaD(ent, -i); if (ws.indexOf(wd(c)) >= 0) { d = c; break; } } }
+    if (!d || d < hoje) { for (i = 0; i < 8; i++) { var c2 = somaD(hoje, i); if (ws.indexOf(wd(c2)) >= 0) { d = c2; break; } } }
+    return { dia: d, pos: dias[wd(d)], cidade: cidade, noRoteiro: true, ent: ent };
+  }
+  function cmpPlano(a, b) {
+    var ra = plano(a), rb = plano(b);
+    if (ra.dia !== rb.dia) return ra.dia < rb.dia ? -1 : 1;
+    if (ra.pos !== rb.pos) return ra.pos - rb.pos;
+    var ca = norm(ra.cidade), cb = norm(rb.cidade); if (ca !== cb) return ca < cb ? -1 : 1;
+    var ea = ra.ent || '9999', eb = rb.ent || '9999'; if (ea !== eb) return ea < eb ? -1 : 1;
+    return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+  }
+  function ehUrg(o) { var u = o.urg != null ? o.urg : o.urgente; return u === true || u === 1 || u === '1' || u === 'true'; }
+  window.dsRoteiroPlano = function (o) { if (!ROT) carregar().catch(function () {}); var p = plano(o); p.rotulo = p.noRoteiro ? NOMES_DIA[wd(p.dia)] + ' ' + p.dia.slice(8, 10) + '/' + p.dia.slice(5, 7) : ''; return p; };
+  window.dsRoteiroCmp = cmpPlano;
+  window.dsRoteiroPronto = function () { return !!ROT; };
+  carregar().catch(function () {});
   window.dsRoteiroOrdenar = function (lista) {
     return carregar(true).then(function () {
       return (lista || []).slice().sort(function (a, b) {
+        var ua = ehUrg(a) ? 0 : 1, ub = ehUrg(b) ? 0 : 1; if (ua !== ub) return ua - ub;
         var pa = /produ/i.test(String(a.status || '')) ? 0 : 1, pb = /produ/i.test(String(b.status || '')) ? 0 : 1; if (pa !== pb) return pa - pb;
-        var ea = String(a.data_entrega || a.ent || '9999').slice(0, 10), eb = String(b.data_entrega || b.ent || '9999').slice(0, 10); if (ea !== eb) return ea < eb ? -1 : 1;
-        var ra = posicaoNoRoteiro(a), rb = posicaoNoRoteiro(b);
-        if (ra.dia !== rb.dia) return ra.dia - rb.dia; if (ra.ord !== rb.ord) return ra.ord - rb.ord;
-        var ca = norm(cidadeDaOF(a)), cb = norm(cidadeDaOF(b)); if (ca !== cb) return ca < cb ? -1 : 1;
-        return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+        return cmpPlano(a, b);
       });
     });
   };
@@ -79118,4 +79164,22 @@ window.__perTxt = function (p) {
   var tm = null; function agendar() { clearTimeout(tm); tm = setTimeout(varrer, 350); }
   try { new MutationObserver(agendar).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-theme', 'class'] }); } catch (_) {}
   setInterval(varrer, 3000); agendar();
+})();
+
+/* ===== OFs por Máquina: linha da OF urgente toda vermelha e legível (claro e escuro) + cidade do roteiro (09/11/2026) ===== */
+(function () {
+  if (document.getElementById('ds-ofmaq-urg-css')) return;
+  var st = document.createElement('style'); st.id = 'ds-ofmaq-urg-css';
+  st.textContent = ''
+    + '#ds-ofmaq tr.dom-urg > td{background:#991b1b!important;color:#fff!important;border-top:1px solid #7f1d1d!important;border-bottom:1px solid #7f1d1d!important}'
+    + '#ds-ofmaq tr.dom-urg > td:first-child{box-shadow:inset 5px 0 0 #fecaca}'
+    + '#ds-ofmaq tr.dom-urg > td *:not(img):not(.dom-chip):not(button):not(input){color:#fff!important;-webkit-text-fill-color:#fff!important}'
+    + '#ds-ofmaq tr.dom-urg .dom-chip{background:#fff!important;color:#991b1b!important;-webkit-text-fill-color:#991b1b!important;border-color:#fff!important;font-weight:800}'
+    + '#ds-ofmaq tr.dom-urg button,#ds-ofmaq tr.dom-urg input{background:rgba(255,255,255,.16)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:rgba(255,255,255,.55)!important}'
+    + '#ds-ofmaq tr.dom-urg:hover > td{background:#b91c1c!important}'
+    + '[data-theme="light"] #ds-ofmaq tr.dom-urg > td{background:#dc2626!important;border-color:#b91c1c!important}'
+    + '[data-theme="light"] #ds-ofmaq tr.dom-urg:hover > td{background:#b91c1c!important}'
+    + '#ds-ofmaq .dom-rot{display:block;font-size:11.5px;font-weight:600;color:#60a5fa;margin-top:2px;white-space:nowrap}#ds-ofmaq .dom-rot.fora{color:#f59e0b}'
+    + '[data-theme="light"] #ds-ofmaq .dom-rot{color:#1d4ed8}[data-theme="light"] #ds-ofmaq .dom-rot.fora{color:#b45309}';
+  (document.head || document.documentElement).appendChild(st);
 })();
