@@ -79252,7 +79252,7 @@ window.__perTxt = function (p) {
   st.textContent = ''
     + '#page-estoque tr[data-row-color] > td:first-child, .dsef-ov tr[data-row-color] > td:first-child{box-shadow:inset 6px 0 0 var(--ew-row-accent)}'
     + '.est-nome-cor *{color:inherit!important;-webkit-text-fill-color:inherit!important}'
-    + 'td.est-nome-cor[data-tx="#fff"]{text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 5px rgba(0,0,0,.75),1px 0 1px rgba(0,0,0,.6),-1px 0 1px rgba(0,0,0,.6)!important;letter-spacing:.2px}'
+    + 'td.est-nome-cor[data-tx="#fff"],td.est-nome-cor[data-tx="#ffffff"]{text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 5px rgba(0,0,0,.75),1px 0 1px rgba(0,0,0,.6),-1px 0 1px rgba(0,0,0,.6)!important;letter-spacing:.2px}'
     + 'td.est-nome-cor[data-tx="#111827"]{text-shadow:0 1px 1px rgba(255,255,255,.75),0 0 4px rgba(255,255,255,.55)!important}'
     + 'td.est-nome-cor .est-nome-meta{opacity:1!important;font-weight:700}'
     + '#page-estoque tr[data-row-color] td:not(.est-nome-cor), .dsef-ov tr[data-row-color] td:not(.est-nome-cor){text-shadow:0 1px 2px rgba(0,0,0,.55)}'
