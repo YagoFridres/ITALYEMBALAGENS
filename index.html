@@ -4,9 +4,14 @@
 <head>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261109143018'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261109150508'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
-function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='button')return true;var m=document.querySelector('#modal-of-rapida,.dsch-ov,.modal.open,.modal-overlay.open,.modal.active,.modal-overlay.active,[role="dialog"]');return !!(m&&m.offsetParent!==null);}catch(e){return false;}}
+function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
+function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
+/* qualquer janela/formulário aberto (as janelas ficam fixas na tela) = não recarrega, só mostra o aviso */
+var l=document.querySelectorAll('#modal-of-rapida,[id^="modal-"],.modal,.modal-overlay,.dsch-ov,.dsrs-ov,.dsef-ov,[role="dialog"],[class*="-ov"],[class*="overlay"]');
+for(var i=0;i<l.length;i++){if(visivel(l[i])&&l[i].getBoundingClientRect().width>200)return true;}
+return false;}catch(e){return true;}}
 function atualizar(nova){var k='ds_upd_'+nova;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');}catch(e){}
 var p=[];try{if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.update().catch(function(){});}));}));}catch(e){}
 try{if(window.caches&&caches.keys)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(c){return caches.delete(c);}));}));}catch(e){}
@@ -16,8 +21,9 @@ function aviso(nova){if(banner||!document.body)return;banner=document.createElem
 function checar(forte){if(!V)return;var agora=Date.now();if(agora-ult<15000)return;ult=agora;
 fetch('/api/version?_='+agora,{cache:'no-store',credentials:'same-origin'}).then(function(r){return r.ok?r.json():null;}).then(function(j){var n=j&&j.runtime&&String(j.runtime.patch||'');if(!n||n===V||!/^\d+$/.test(n)||n<V)return;
 if(forte&&!editando())atualizar(n);else aviso(n);}).catch(function(){});}
-document.addEventListener('visibilitychange',function(){if(!document.hidden)checar(true);});
-window.addEventListener('pageshow',function(){checar(true);});
+var escondidoEm=0;
+document.addEventListener('visibilitychange',function(){if(document.hidden){escondidoEm=Date.now();return;}var longe=escondidoEm&&(Date.now()-escondidoEm>10*60*1000);escondidoEm=0;checar(!!longe);});
+window.addEventListener('pageshow',function(e){checar(!!(e&&e.persisted));});
 window.addEventListener('online',function(){checar(true);});
 window.addEventListener('focus',function(){checar(false);});
 setInterval(function(){if(!document.hidden)checar(false);},5*60*1000);
@@ -33935,7 +33941,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261109143018';
+      const swVersion = '20261109150508';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61415,6 +61421,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261109143018"></script>
+<script src="/patch.js?v=20261109150508"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
