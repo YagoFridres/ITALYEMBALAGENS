@@ -34077,7 +34077,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _styleLinhaChapaCor(chapa) {
       var cor = _resolveChapaRowColor(chapa);
       if (!cor) return '';
-      return '--ew-row-bg:' + _hexToRgbaChapa(cor, 0.15) + ';--ew-row-accent:' + cor + ';';
+      return '--ew-row-bg:' + _hexToRgbaChapa(cor, 0.26) + ';--ew-row-accent:' + cor + ';';
     }
     function _paintChapaRowElement(tr, chapa) {
       try {
@@ -35210,7 +35210,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td class="col-text">' + esc(chapa && chapa.gramatura || '—') + '</td>'
         + '<td class="col-text">' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
         + '<td class="col-text">' + esc(chapa && chapa.tamanho || '—') + (String(chapa && chapa.vincos || '').trim() ? ('<div style="margin-top:4px;font-size:11px;line-height:1.35;color:#94a3b8">Vincos: ' + esc(chapa.vincos) + '</div>') : '') + '</td>'
-        + '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + _estoqueLinhaMetaHtml(chapa) + '</td>'
+        + (function () {
+            // 09/11: como na planilha, a coluna NOME fica pintada com a cor da linha (letra clara ou escura conforme a cor)
+            if (!corLinha) return '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + _estoqueLinhaMetaHtml(chapa) + '</td>';
+            var hx = corLinha.replace('#', ''), rr = parseInt(hx.slice(0, 2), 16), gg = parseInt(hx.slice(2, 4), 16), bb = parseInt(hx.slice(4, 6), 16);
+            var claroCor = (0.299 * rr + 0.587 * gg + 0.114 * bb) > 150, tx = claroCor ? '#111827' : '#ffffff';
+            return '<td class="col-text est-nome-cor" style="background:' + esc(corLinha) + ' !important;color:' + tx + ' !important;-webkit-text-fill-color:' + tx + ';font-weight:800">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '<div class="est-nome-meta" style="opacity:.85">' + _estoqueLinhaMetaHtml(chapa) + '</div></td>';
+          })()
         + '<td class="col-text">' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
         + '<td class="col-text">' + esc(chapa && chapa.nf || '—') + '</td>'
         + '<td class="col-num">' + num(qtd, 0) + '</td>'
@@ -79202,4 +79208,68 @@ window.__perTxt = function (p) {
     + '#ds-ofmaq .dom-rot{display:block;font-size:11.5px;font-weight:600;color:#60a5fa;margin-top:2px;white-space:nowrap}#ds-ofmaq .dom-rot.fora{color:#f59e0b}'
     + '[data-theme="light"] #ds-ofmaq .dom-rot{color:#1d4ed8}[data-theme="light"] #ds-ofmaq .dom-rot.fora{color:#b45309}';
   (document.head || document.documentElement).appendChild(st);
+})();
+
+/* ===== Estoque de Chapas: cor das linhas mais forte, NOME pintado como na planilha e janela "⛶ Tela cheia" (09/11/2026) ===== */
+(function () {
+  if (window.__dsEstoqueTelaCheia) return; window.__dsEstoqueTelaCheia = true;
+  var st = document.createElement('style'); st.id = 'ds-est-telacheia-css';
+  st.textContent = ''
+    + '#page-estoque tr[data-row-color] > td:first-child, .dsef-ov tr[data-row-color] > td:first-child{box-shadow:inset 6px 0 0 var(--ew-row-accent)}'
+    + '.est-nome-cor *{color:inherit!important;-webkit-text-fill-color:inherit!important}'
+    + '.dsef-ov{position:fixed;inset:0;z-index:100050;background:var(--bg,#0b0f17);display:flex;flex-direction:column}'
+    + '.dsef-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border,#1f2937);background:var(--s1,#111827);flex-wrap:wrap}'
+    + '.dsef-hd h2{margin:0;font-size:20px;margin-right:6px}.dsef-hd input{flex:1 1 320px;min-width:0;height:44px;border-radius:10px;border:2px solid #3b82f6;background:var(--s2,#0f172a);color:var(--text,#e5e7eb);padding:0 14px;font-size:16px}'
+    + '.dsef-hd .n{font-size:13px;color:var(--text2,#94a3b8);white-space:nowrap}.dsef-hd button{height:44px;border-radius:10px;border:1px solid var(--border,#334155);background:var(--s2,#1f2937);color:var(--text,#e5e7eb);padding:0 16px;font-weight:700;cursor:pointer}'
+    + '.dsef-hd .x{background:#dc2626;border-color:#b91c1c;color:#fff}'
+    + '.dsef-bd{flex:1 1 auto;overflow:auto;padding:10px 16px 24px}'
+    + '.dsef-bd .pep-table-wrap-estoque{max-height:none!important;overflow:visible!important}'
+    + '.dsef-bd table{font-size:15px!important}.dsef-bd th{position:sticky;top:-10px;z-index:2;background:var(--s1,#111827)!important;font-size:12.5px!important}.dsef-bd td{padding-top:10px!important;padding-bottom:10px!important}'
+    + '.dsef-btn{background:#2563eb!important;border-color:#1d4ed8!important;color:#fff!important;font-weight:800!important}'
+    + '@media (max-width:700px){.dsef-hd h2{font-size:16px;width:100%}.dsef-bd{padding:8px}}';
+  document.head.appendChild(st);
+  function norm(t) { var x = String(t || '').toLowerCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x; }
+  var ov = null, lugar = null, wrapAtual = null;
+  function wrapDaPagina() { var pg = document.getElementById('page-estoque'); return pg && pg.querySelector('.pep-table-wrap-estoque'); }
+  function filtrar() {
+    if (!ov) return; var q = norm(ov.querySelector('input').value).split(/\s+/).filter(Boolean), n = 0, t = 0;
+    ov.querySelectorAll('tbody tr').forEach(function (tr) { if (!tr.hasAttribute('data-chapa-id')) return; t++; var ok = !q.length || q.every(function (k) { return norm(tr.textContent).indexOf(k) >= 0; }); tr.style.display = ok ? '' : 'none'; if (ok) n++; });
+    ov.querySelector('.n').textContent = n + ' de ' + t + ' chapas';
+  }
+  function trazer(w) {
+    if (!w || !ov) return;
+    if (wrapAtual && wrapAtual !== w && lugar && wrapAtual.parentNode === ov.querySelector('.dsef-bd')) { wrapAtual.remove(); }
+    lugar = document.createElement('div'); lugar.className = 'dsef-lugar'; w.parentNode.insertBefore(lugar, w);
+    ov.querySelector('.dsef-bd').appendChild(w); wrapAtual = w; filtrar();
+  }
+  function abrir() {
+    var w = wrapDaPagina(); if (!w) return;
+    ov = document.createElement('div'); ov.className = 'dsef-ov';
+    ov.innerHTML = '<div class="dsef-hd"><h2>🧱 Estoque de Chapas</h2><input type="search" placeholder="Buscar por qualquer informação da chapa (fornecedor, nomenclatura, tamanho, nome, NF...)"><span class="n"></span><button type="button" class="x">✕ Fechar</button></div><div class="dsef-bd"></div>';
+    document.body.appendChild(ov);
+    trazer(w);
+    ov.querySelector('input').addEventListener('input', filtrar);
+    ov.querySelector('.x').addEventListener('click', fechar);
+    document.addEventListener('keydown', esc);
+    setTimeout(function () { try { ov.querySelector('input').focus(); } catch (_) {} }, 50);
+  }
+  function esc(e) { if (e.key === 'Escape' && ov && !document.querySelector('.estoque-modal-overlay, .modal-overlay.active, .dsch-ov')) fechar(); }
+  function fechar() {
+    if (!ov) return;
+    document.removeEventListener('keydown', esc);
+    if (wrapAtual) { wrapAtual.querySelectorAll('tbody tr').forEach(function (tr) { tr.style.display = ''; }); if (lugar && lugar.parentNode) { lugar.parentNode.insertBefore(wrapAtual, lugar); lugar.remove(); } else wrapAtual.remove(); }
+    ov.remove(); ov = null; wrapAtual = null; lugar = null;
+  }
+  window.dsEstoqueTelaCheia = abrir;
+  // a página do estoque se redesenha depois de editar uma chapa: a tabela nova vem para a janela aberta
+  setInterval(function () {
+    var pg = document.getElementById('page-estoque'); if (!pg) return;
+    var w = wrapDaPagina();
+    if (ov && w && w !== wrapAtual) { if (wrapAtual) wrapAtual.remove(); if (lugar) lugar.remove(); trazer(w); }
+    var painel = w && w.closest('.pep-panel');
+    if (painel && !painel.querySelector('.dsef-btn')) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pep-btn dsef-btn'; b.textContent = '⛶ Ver estoque em tela cheia'; b.style.margin = '0 0 10px';
+      b.onclick = abrir; painel.insertBefore(b, painel.firstChild);
+    }
+  }, 700);
 })();
