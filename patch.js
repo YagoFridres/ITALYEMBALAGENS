@@ -72232,14 +72232,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   E.diaAg = {};
   function utilIso(iso) { var d = new Date(iso + 'T12:00:00'); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
   function proxUtilIso(iso) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 1); return utilIso(d.toISOString().slice(0, 10)); }
+  // 09/11: cada OF aparece para produzir 1 dia útil ANTES da entrega (ou do dia do caminhão da cidade, pelo roteiro).
+  // Se esse dia já passou, aparece hoje. Data marcada à mão (dia_programacao no futuro) continua valendo.
+  function antUtilIso(iso) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - 1); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
   function agendar(lista, maq) {
-    var dia = utilIso(hojeIso()), livre = CAP_DIA;
+    var hoje = utilIso(hojeIso());
     lista.forEach(function (o) {
       var man = String(o.dia_programacao || o.data_programada || '').slice(0, 10);
       if (man && man > hojeIso()) { E.diaAg[o.id] = utilIso(man); return; }
-      E.diaAg[o.id] = dia;
-      var min = minutosPrevistos(o, maq);
-      while (min > 0) { var usa = Math.min(livre, min); livre -= usa; min -= usa; if (livre <= 0) { dia = proxUtilIso(dia); livre = CAP_DIA; } }
+      var base = '';
+      try { var pl = typeof window.dsRoteiroPlano === 'function' ? window.dsRoteiroPlano(o) : null; if (pl && pl.noRoteiro && pl.dia) base = pl.dia; } catch (_) {}
+      if (!base) base = entOf(o);
+      var d = /^\d{4}-\d{2}-\d{2}$/.test(base) ? antUtilIso(base) : hoje;
+      E.diaAg[o.id] = d < hoje ? hoje : d;
     });
   }
   function diaDe(o) {
@@ -72337,7 +72342,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var cores = h('cores', o), tam = h('tamanho', o), faca = h('faca', o), papel = h('papelPrev', o);
       var plR = null; try { plR = typeof window.dsRoteiroPlano === 'function' ? window.dsRoteiroPlano(o) : null; } catch (_) {}
       var rotTx = plR && plR.cidade ? '<small class="dom-rot' + (plR.noRoteiro ? '' : ' fora') + '" title="' + (plR.noRoteiro ? 'Sai no caminhão deste dia (roteiro de entrega)' : 'Cidade fora do roteiro — vai pela data de entrega') + '">🚚 ' + esc(plR.noRoteiro ? plR.rotulo + ' · ' : '') + esc(plR.cidade) + (plR.noRoteiro ? ' (' + plR.pos + 'ª)' : ' · fora do roteiro') + '</small>' : '';
-      var clsTr = (emProducao(o) ? 'dom-em-prod' : '') + (urg(o) ? ' dom-urg' : '');
+      var semPap = [o.sem_papel, o.sem_papelao].some(function (v) { return v === true || v === 1 || v === '1' || v === 'true'; });
+      // cor da linha: urgente = vermelha; sem papelão = amarela; atrasada = laranja (nessa ordem de prioridade)
+      var clsTr = (emProducao(o) ? 'dom-em-prod' : '') + (urg(o) ? ' dom-urg' : (semPap ? ' dom-sempapel' : (atras ? ' dom-atras' : '')));
       return cab + '<tr' + (podeOrdenar ? ' draggable="true"' : '') + ' data-id="' + esc(o.id) + '" data-maq="' + esc(m) + '"' + (clsTr.trim() ? ' class="' + clsTr.trim() + '"' : '') + '>'
         + '<td class="dom-c-pos">' + (podeOrdenar ? '<span class="dom-alca" title="Arraste para mudar a ordem">⋮⋮</span><input class="dom-seq" type="number" min="1" value="' + (i + 1) + '" aria-label="Posição na fila"><span class="dom-setas"><button type="button" data-mv="-1" aria-label="Subir">▲</button><button type="button" data-mv="1" aria-label="Descer">▼</button></span>' : (i + 1)) + '</td>'
         + '<td class="dom-c-img">' + (img ? '<button type="button" class="dom-img" data-a="img" title="Ver imagem"><img src="' + esc(img) + '" alt="" loading="lazy"></button>' : '<span class="dom-img vazio" title="Sem imagem">—</span>') + '</td>'
@@ -79175,7 +79182,20 @@ window.__perTxt = function (p) {
     + '#ds-ofmaq tr.dom-urg > td:first-child{box-shadow:inset 5px 0 0 #fecaca}'
     + '#ds-ofmaq tr.dom-urg > td *:not(img):not(.dom-chip):not(button):not(input){color:#fff!important;-webkit-text-fill-color:#fff!important}'
     + '#ds-ofmaq tr.dom-urg .dom-chip{background:#fff!important;color:#991b1b!important;-webkit-text-fill-color:#991b1b!important;border-color:#fff!important;font-weight:800}'
-    + '#ds-ofmaq tr.dom-urg button,#ds-ofmaq tr.dom-urg input{background:rgba(0,0,0,.28)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:rgba(255,255,255,.55)!important}'
+    + '#ds-ofmaq tr.dom-urg button,#ds-ofmaq tr.dom-urg input,#ds-ofmaq tr.dom-atras button,#ds-ofmaq tr.dom-atras input,#ds-ofmaq tr.dom-sempapel button,#ds-ofmaq tr.dom-sempapel input{background:#fff!important;color:#111827!important;-webkit-text-fill-color:#111827!important;border:1px solid rgba(0,0,0,.35)!important}'
+    // atrasada: laranja escuro com letra branca
+    + '#ds-ofmaq tr.dom-atras > td{background:#c2410c!important;color:#fff!important;border-top:1px solid #9a3412!important;border-bottom:1px solid #9a3412!important}'
+    + '#ds-ofmaq tr.dom-atras > td:first-child{box-shadow:inset 5px 0 0 #fed7aa}'
+    + '#ds-ofmaq tr.dom-atras > td *:not(img):not(.dom-chip):not(button):not(input){color:#fff!important;-webkit-text-fill-color:#fff!important}'
+    + '#ds-ofmaq tr.dom-atras .dom-chip{background:#fff!important;color:#c2410c!important;-webkit-text-fill-color:#c2410c!important;border-color:#fff!important;font-weight:800}'
+    + '#ds-ofmaq tr.dom-atras:hover > td{background:#9a3412!important}'
+    // sem papelão: amarelo com letra escura
+    + '#ds-ofmaq tr.dom-sempapel > td{background:#facc15!important;color:#1c1917!important;border-top:1px solid #ca8a04!important;border-bottom:1px solid #ca8a04!important}'
+    + '#ds-ofmaq tr.dom-sempapel > td:first-child{box-shadow:inset 5px 0 0 #854d0e}'
+    + '#ds-ofmaq tr.dom-sempapel > td *:not(img):not(.dom-chip):not(button):not(input){color:#1c1917!important;-webkit-text-fill-color:#1c1917!important}'
+    + '#ds-ofmaq tr.dom-sempapel .dom-chip{background:#1c1917!important;color:#facc15!important;-webkit-text-fill-color:#facc15!important;border-color:#1c1917!important;font-weight:800}'
+    + '#ds-ofmaq tr.dom-sempapel:hover > td{background:#eab308!important}'
+    + '#ds-ofmaq tr.dom-urg .t-red,#ds-ofmaq tr.dom-atras .t-red{color:#fff!important;-webkit-text-fill-color:#fff!important;text-decoration:underline}#ds-ofmaq tr.dom-sempapel .t-red{color:#7f1d1d!important;-webkit-text-fill-color:#7f1d1d!important}'
     + '#ds-ofmaq tr.dom-urg:hover > td{background:#b91c1c!important}'
     + '[data-theme="light"] #ds-ofmaq tr.dom-urg > td{background:#dc2626!important;border-color:#b91c1c!important}'
     + '[data-theme="light"] #ds-ofmaq tr.dom-urg:hover > td{background:#b91c1c!important}'
