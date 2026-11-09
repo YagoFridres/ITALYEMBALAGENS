@@ -77070,6 +77070,12 @@ window.__perTxt = function (p) {
     + '@media (max-width:760px){.dsch-t .mh{display:none!important}.dsch-t th{white-space:normal!important}.dsch-t td,.dsch-t th{padding:9px 6px}.dsch-t{font-size:13px}}'
     + '@media (max-width:760px){.dsch-ov{padding:0;align-items:stretch}.dsch-m{border-radius:0;max-height:100vh;height:100%}.dsch-g{grid-template-columns:1fr 1fr}.dsch-g .s2{grid-column:1/-1}.dsch-kpis{grid-template-columns:1fr 1fr}.dsch-prev{flex-wrap:wrap}.dsch-ft .dsch-dica{width:100%}.dsch-ft .dsch-bt{flex:1}.dsch-hd{padding:14px 16px}.dsch-bd{padding:14px 16px}.dsch-tw{max-height:none}}'
     + '@media (max-width:460px){.dsch-g{grid-template-columns:1fr}.dsch-g .s2,.dsch-g .s3{grid-column:auto}}';
+  css.textContent += '.dsch-cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}'
+    + '.dsch-cores button[data-cor]{width:38px;height:38px;border-radius:10px;border:2px solid rgba(148,163,184,.5);cursor:pointer;padding:0;transition:transform .1s}'
+    + '.dsch-cores button[data-cor]:hover{transform:scale(1.08)}.dsch-cores .on{outline:3px solid #22c55e!important;outline-offset:2px;transform:scale(1.08)}'
+    + '.dsch-cores .dsch-cor-sem{width:auto!important;padding:0 12px!important;background:var(--s2,#1e293b)!important;color:var(--text,#e2e8f0);font:inherit;font-weight:700;font-size:13px}'
+    + '.dsch-cor-livre{position:relative;display:inline-flex;align-items:center;height:38px;padding:0 12px;border-radius:10px;border:2px solid rgba(148,163,184,.5);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-weight:700;font-size:13px;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.7)}'
+    + '.dsch-cor-livre input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}';
   document.head.appendChild(css);
 
   function abrirOv(cls, hdCls, ic, titulo, sub, corpo, rodape) {
@@ -77101,6 +77107,7 @@ window.__perTxt = function (p) {
       + '<input class="dsch-in" id="dsch-' + id + '" data-orig="chapa-' + id + '" autocomplete="off"' + (opt.attrs || '') + ' placeholder="' + esc(opt.ph || '') + '">'
       + (opt.dica ? '<small>' + opt.dica + '</small>' : '') + '</div>';
   }
+  var CORES_LINHA = ['#7030A0', '#203864', '#2E75B6', '#0070C0', '#00B0F0', '#8FAADC', '#333F50', '#385724', '#00B050', '#92D050', '#FFFF00', '#FFD966', '#BF9000', '#C55A11', '#F4B183', '#843C0B', '#FF0000', '#AA2249'];
   function abrirChapa() {
     var mo = $('modal-nova-chapa'); if (!mo) return;
     if (atual && atual.parentNode) return;
@@ -77136,11 +77143,39 @@ window.__perTxt = function (p) {
       +   '<div class="dsch-f"><label>Já vem riscada?</label><div class="dsch-seg" data-ris><button type="button" data-v="0">Não</button><button type="button" data-v="1">Sim</button></div></div>'
       +   campo('risca-desc', 'Descrição da risca', { cls: 's2', ph: 'Detalhe do padrão da risca' })
       +   campo('obs', 'Observação', { cls: 's3', ph: 'Opcional' })
+      +   '<div class="dsch-f s3"><label>🎨 Cor da linha no estoque</label><div class="dsch-cores" data-cores>' + CORES_LINHA.map(function (c) { return '<button type="button" data-cor="' + c + '" title="' + c + '" style="background:' + c + '"></button>'; }).join('') + '<label class="dsch-cor-livre" title="Outra cor"><input type="color" data-cor-livre value="#2563eb"><span>🎨 Outra</span></label><button type="button" class="dsch-cor-sem" data-cor="">Sem cor</button></div><small data-cor-dica>Igual às cores da planilha. A linha da chapa fica com essa cor no estoque.</small></div>'
       +   '<div class="dsch-f s3"><div class="dsch-mini"><button type="button" data-foto>📷 Adicionar foto</button><button type="button" data-qr>🔳 QR Code</button></div></div>'
       + '</div></section>';
     var ov = abrirOv('', '', edit ? '✎' : '＋', edit ? 'Editar chapa' : 'Nova chapa', edit ? 'Altere o que precisar e salve.' : 'Cadastre a chapa em 4 passos rápidos. Campos com <b style="color:#f87171">*</b> são obrigatórios.', corpo,
       '<span class="dsch-dica">Enter avança para o próximo campo</span><button type="button" class="dsch-bt" data-x>Cancelar</button><button type="button" class="dsch-bt ok" data-salvar>' + (edit ? '✓ Salvar alterações' : '＋ Criar chapa') + '</button>');
     atual = ov;
+    // ---- cor da linha (campo oculto #chapa-cor-linha é lido pelo salvamento original) ----
+    (function () {
+      var hid = $('chapa-cor-linha');
+      if (!hid) { hid = document.createElement('input'); hid.type = 'hidden'; hid.id = 'chapa-cor-linha'; (mo.querySelector('form') || mo).appendChild(hid); }
+      var cor = '';
+      if (edit) {
+        var idE = lerOrig('chapa-edit-id').trim(), tr = null;
+        try { tr = document.querySelector('tr[data-chapa-id="' + (window.CSS && CSS.escape ? CSS.escape(idE) : idE) + '"]'); } catch (_) {}
+        var td = tr && tr.querySelector('td.est-nome-cor[data-cor]');
+        if (td) cor = td.getAttribute('data-cor');
+        if (!cor) { try { var ch = (window.__dsEstoqueLista || []).filter(function (c) { return String(c && c.id) === idE; })[0]; if (ch) cor = ch.cor_linha || ch.cor || ch.linha_cor || ''; } catch (_) {} }
+        if (!cor) cor = hid.value || '';
+      }
+      cor = /^#[0-9a-f]{6}$/i.test(String(cor || '').trim()) ? String(cor).trim().toUpperCase() : '';
+      var box = ov.querySelector('[data-cores]'), livre = ov.querySelector('[data-cor-livre]'), dica = ov.querySelector('[data-cor-dica]');
+      function marcar(c) {
+        cor = c; hid.value = c;
+        Array.prototype.forEach.call(box.querySelectorAll('button[data-cor]'), function (b) { b.classList.toggle('on', (b.getAttribute('data-cor') || '').toUpperCase() === c); });
+        var lb = box.querySelector('.dsch-cor-livre'), naLista = CORES_LINHA.indexOf(c) >= 0;
+        lb.classList.toggle('on', !!c && !naLista); if (c && !naLista) { livre.value = c.toLowerCase(); lb.style.background = c; } else lb.style.background = '';
+        var pv = ov.querySelector('.dsch-prev'); if (pv) pv.style.boxShadow = c ? 'inset 8px 0 0 ' + c : '';
+        dica.textContent = c ? 'Cor escolhida: ' + c + ' — a linha da chapa fica com essa cor no estoque.' : 'Sem cor: a linha fica no padrão do sistema.';
+      }
+      box.addEventListener('click', function (e) { var b = e.target.closest('button[data-cor]'); if (b) marcar((b.getAttribute('data-cor') || '').toUpperCase()); });
+      livre.addEventListener('input', function () { marcar(String(livre.value || '').toUpperCase()); });
+      marcar(cor);
+    })();
     // carrega valores do formulário original
     Array.prototype.forEach.call(ov.querySelectorAll('[data-orig]'), function (el) {
       var v = lerOrig(el.getAttribute('data-orig'));
@@ -79217,6 +79252,11 @@ window.__perTxt = function (p) {
   st.textContent = ''
     + '#page-estoque tr[data-row-color] > td:first-child, .dsef-ov tr[data-row-color] > td:first-child{box-shadow:inset 6px 0 0 var(--ew-row-accent)}'
     + '.est-nome-cor *{color:inherit!important;-webkit-text-fill-color:inherit!important}'
+    + 'td.est-nome-cor[data-tx="#fff"]{text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 5px rgba(0,0,0,.75),1px 0 1px rgba(0,0,0,.6),-1px 0 1px rgba(0,0,0,.6)!important;letter-spacing:.2px}'
+    + 'td.est-nome-cor[data-tx="#111827"]{text-shadow:0 1px 1px rgba(255,255,255,.75),0 0 4px rgba(255,255,255,.55)!important}'
+    + 'td.est-nome-cor .est-nome-meta{opacity:1!important;font-weight:700}'
+    + '#page-estoque tr[data-row-color] td:not(.est-nome-cor), .dsef-ov tr[data-row-color] td:not(.est-nome-cor){text-shadow:0 1px 2px rgba(0,0,0,.55)}'
+    + 'html[data-theme="light"] #page-estoque tr[data-row-color] td:not(.est-nome-cor), body.light #page-estoque tr[data-row-color] td:not(.est-nome-cor), html[data-theme="light"] .dsef-ov tr[data-row-color] td:not(.est-nome-cor), body.light .dsef-ov tr[data-row-color] td:not(.est-nome-cor){text-shadow:0 1px 1px rgba(255,255,255,.8)}'
     + '.dsef-ov{position:fixed;inset:0;z-index:100050;background:var(--bg,#0b0f17);display:flex;flex-direction:column}'
     + '.dsef-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border,#1f2937);background:var(--s1,#111827);flex-wrap:wrap}'
     + '.dsef-hd h2{margin:0;font-size:20px;margin-right:6px}.dsef-hd input{flex:1 1 320px;min-width:0;height:44px;border-radius:10px;border:2px solid #3b82f6;background:var(--s2,#0f172a);color:var(--text,#e5e7eb);padding:0 14px;font-size:16px}'
