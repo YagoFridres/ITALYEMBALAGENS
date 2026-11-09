@@ -78738,7 +78738,7 @@ window.__perTxt = function (p) {
   function ofs() { try { return (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
   function carregar(forcar) {
     if (ROT && !forcar && Date.now() - ROT_TS < 60000) return Promise.resolve(ROT);
-    return api('GET', '/api/roteiro_entrega?_=' + Date.now()).then(function (l) { ROT = Array.isArray(l) ? l : []; ROT_TS = Date.now(); return ROT; });
+    return api('GET', '/api/roteiro_entrega?_=' + Date.now()).then(function (l) { ROT = Array.isArray(l) ? l : []; ROT_TS = Date.now(); window.__dsRotLista = ROT; return ROT; });
   }
   function cliDe(o) { var id = String(o && (o.cli_id || o.cliId || o.cliente_id) || ''); if (!id) return null; var l = clientes(); for (var i = 0; i < l.length; i++) if (String(l[i].id) === id) return l[i]; return null; }
   function cidadeDaOF(o) { var c = String(o && o.cidade_entrega || '').trim(); if (c) return c; var cl = cliDe(o); return String(cl && (cl.cidade || cl.municipio) || '').trim(); }
@@ -79386,6 +79386,8 @@ window.__perTxt = function (p) {
     + '@media (max-width:760px){.dsrs-ov{padding:0}.dsrs-m{max-height:100vh;height:100%;border-radius:0}.dsrs-sem{width:100%;justify-content:space-between}.dsrs-sem b{min-width:0;flex:1}.dsrs-t{font-size:12.5px}.dsrs-t th,.dsrs-t td{padding:6px 5px}.dsrs-t .mh{display:none}.dsrs-bd{padding:10px}}';
   document.head.appendChild(st);
 
+  // posição da cidade no roteiro do dia da entrega (para a ordem das linhas dentro do dia)
+  function posNoDia(cid, d) { try { var w = new Date(d + 'T12:00:00').getDay(), k = norm(cid), r = (window.__dsRotLista || []).filter(function (x) { return Number(x.dia_semana) === w && norm(x.cidade) === k; })[0]; return r ? Number(r.ordem) || 999 : 9999; } catch (_) { return 9999; } }
   function plano(o) { try { return window.dsRoteiroPlano(o); } catch (_) { var e = String(o.data_entrega || o.ent || '').slice(0, 10); return { dia: e, pos: 9999, cidade: '', noRoteiro: false, ent: e }; } }
   function montar() {
     var ini = E.semana, fim = soma(ini, 4), hoje = iso(new Date()), dias = {};
@@ -79393,10 +79395,10 @@ window.__perTxt = function (p) {
       if (!ehAberta(o)) return; // só OFs em aberto (concluídas e canceladas ficam fora)
       var p = plano(o), ent = p.ent || String(o.data_entrega || o.ent || '').slice(0, 10), ab = true;
       if (ent && ent < hoje) return; // atrasadas ficam fora
-      var d = p.dia; if (!d || d === '9999-12-31' || d < ini || d > fim) return;
+      var d = ent; if (!d || d < ini || d > fim) return; // 09/11: vale a DATA DE ENTREGA da OF (segunda a sexta), igual à planilha
       var cid = p.cidade || '', k = norm(cliOf(o)) + '|' + norm(cid);
       var dd = dias[d] || (dias[d] = {}), g = dd[k];
-      if (!g) g = dd[k] = { cli: cliOf(o), cid: cid, pos: p.noRoteiro ? p.pos : 9999, ofs: [], ents: [], atras: false, fora: !p.noRoteiro };
+      if (!g) g = dd[k] = { cli: cliOf(o), cid: cid, pos: posNoDia(cid, d), ofs: [], ents: [], atras: false, fora: !p.noRoteiro };
       g.ofs.push(numOf(o)); if (ent && g.ents.indexOf(ent) < 0) g.ents.push(ent); if (ab && ent && ent < hoje) g.atras = true;
     });
     return Object.keys(dias).sort().map(function (d) {
@@ -79469,7 +79471,7 @@ window.__perTxt = function (p) {
     ov.innerHTML = '<div class="dsrs-m" role="dialog" aria-modal="true"><div class="dsrs-hd"><h2>📋 Pedidos da semana</h2>'
       + '<div class="dsrs-sem"><button type="button" data-s="-1" aria-label="Semana anterior">‹</button><b></b><button type="button" data-s="1" aria-label="Próxima semana">›</button><button type="button" data-s="0">Esta semana</button></div>'
       + '<button type="button" class="az" data-imp>🖨 Imprimir</button><button type="button" class="vd" data-xls>⬇ Excel</button><button type="button" class="x" data-x>✕ Fechar</button></div>'
-      + '<div class="dsrs-op"><span>Segunda a sexta · só OFs em aberto e no prazo (sem concluídas e sem atrasadas) · Modelos = quantidade de OFs do cliente no dia · o dia segue o Roteiro de Entrega</span></div>'
+      + '<div class="dsrs-op"><span>Segunda a sexta pela <b>data de entrega</b> da OF · só OFs em aberto e no prazo (sem concluídas e sem atrasadas) · Modelos = quantidade de OFs do cliente no dia · dentro do dia, na ordem das cidades do roteiro</span></div>'
       + '<div class="dsrs-bd"><div class="dsrs-vz">Carregando…</div></div></div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function (e) {
