@@ -79597,7 +79597,8 @@ window.__perTxt = function (p) {
 (function () {
   if (window.__dsAvisoVisivel) return; window.__dsAvisoVisivel = true;
   var st = document.createElement('style'); st.id = 'ds-toast-visivel';
-  st.textContent = '#toast{left:50%!important;right:auto!important;top:22px!important;bottom:auto!important;transform:translateX(-50%)!important;max-width:min(720px,94vw)!important;'
+  st.textContent = '#toast:not(.show){opacity:0!important;visibility:hidden!important;pointer-events:none!important}'
+    + '#toast.show{left:50%!important;right:auto!important;top:22px!important;bottom:auto!important;transform:translateX(-50%)!important;max-width:min(720px,94vw)!important;'
     + 'font-size:16px!important;font-weight:800!important;line-height:1.35!important;padding:14px 22px!important;border-radius:14px!important;z-index:2147483600!important;'
     + 'box-shadow:0 18px 50px rgba(0,0,0,.55)!important;text-align:center!important;white-space:normal!important}'
     + '.ds-modal-erro{margin:0 0 10px;padding:12px 16px;border-radius:12px;background:#7f1d1d;border:2px solid #ef4444;color:#fff;font-weight:800;font-size:15px;display:flex;gap:10px;align-items:flex-start}'
