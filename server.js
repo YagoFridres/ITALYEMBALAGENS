@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261109154031';
-const SW_RUNTIME_VERSION = '20261109154031';
+const PATCH_RUNTIME_VERSION = '20261109155737';
+const SW_RUNTIME_VERSION = '20261109155737';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
