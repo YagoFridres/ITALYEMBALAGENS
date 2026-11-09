@@ -48798,11 +48798,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { window.toast('Informe o fornecedor', 'var(--red)'); } catch (_) {}
       return;
     }
-    if (!payload.placa_veiculo || payload.placa_veiculo.replace(/-/g, '').length < 7) {
-      try { window.toast('Informe a placa do veículo (ex: ABC1D23)', 'var(--red)'); } catch (_) {}
-      try { var _pl = document.getElementById('estoque-entrada-real-placa'); if (_pl) { _pl.focus(); _pl.style.borderColor = '#ef4444'; } } catch (_) {}
-      return;
-    }
+    // 09/11: placa do veículo é opcional
 
     Array.from(tb ? tb.querySelectorAll('tr') : []).forEach(function(tr) {
       var modo = String(tr.querySelector('.est-ent-modo') && tr.querySelector('.est-ent-modo').value || 'existente');
@@ -48856,7 +48852,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       try {
         var _ck = Number(out.data && out.data.checklist_criados || 0);
-        window.toast('Entradas registradas com sucesso' + (_ck ? ' · ' + _ck + ' item(ns) no Checklist de Recebimento (placa ' + payload.placa_veiculo + ')' : ''), 'var(--green)');
+        window.toast('Entradas registradas com sucesso' + (_ck ? ' · ' + _ck + ' item(ns) no Checklist de Recebimento' + (payload.placa_veiculo ? ' (placa ' + payload.placa_veiculo + ')' : '') : ''), 'var(--green)');
         if (out.data && out.data.checklist_erro) window.toast('Entrada salva, mas o Checklist de Recebimento não foi gerado: ' + out.data.checklist_erro, 'var(--red)');
       } catch (_) {}
       _entradaEstoqueFecharModal();
@@ -48897,7 +48893,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
         + '    <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
         + '    <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
-        + '    <label class="estoque-modal-label"><span>Placa do veículo <b style="color:#f87171">*</b></span><input id="estoque-entrada-real-placa" class="estoque-modal-input estoque-modal-mono" type="text" maxlength="8" autocomplete="off" placeholder="Ex: ABC1D23" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,\'\')"></label>'
+        + '    <label class="estoque-modal-label"><span>Placa do veículo <small style="font-weight:600;opacity:.7">(opcional)</small></span><input id="estoque-entrada-real-placa" class="estoque-modal-input estoque-modal-mono" type="text" maxlength="8" autocomplete="off" placeholder="Opcional — ex: ABC1D23" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,\'\')"></label>'
         + '    <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
         + '    <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
         + '  </div>'
