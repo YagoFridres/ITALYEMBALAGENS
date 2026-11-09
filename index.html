@@ -4,7 +4,7 @@
 <head>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261109155737'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261109160124'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
 function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
 function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
@@ -12,21 +12,30 @@ function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SEL
 var l=document.querySelectorAll('#modal-of-rapida,[id^="modal-"],.modal,.modal-overlay,.dsch-ov,.dsrs-ov,.dsef-ov,[role="dialog"],[class*="-ov"],[class*="overlay"]');
 for(var i=0;i<l.length;i++){if(visivel(l[i])&&l[i].getBoundingClientRect().width>200)return true;}
 return false;}catch(e){return true;}}
-function atualizar(nova){var k='ds_upd_'+nova;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');}catch(e){}
+function atualizar(nova,manual){var k='ds_upd_'+nova;try{if(sessionStorage.getItem(k)&&!manual)return;sessionStorage.setItem(k,'1');}catch(e){}
 var p=[];try{if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.update().catch(function(){});}));}));}catch(e){}
 try{if(window.caches&&caches.keys)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(c){return caches.delete(c);}));}));}catch(e){}
 var fim=function(){try{var u=new URL(location.href);u.searchParams.set('v',nova);location.replace(u.toString());}catch(e){location.reload();}};
 Promise.race([Promise.all(p),new Promise(function(r){setTimeout(r,2500);})]).then(fim,fim);}
-function aviso(nova){if(banner||!document.body)return;banner=document.createElement('button');banner.type='button';banner.textContent='🔄 Nova versão do sistema — toque aqui para atualizar';banner.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483000;background:#2563eb;color:#fff;border:0;border-radius:12px;padding:12px 18px;font:700 14px Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.45);max-width:calc(100vw - 24px)';banner.onclick=function(){atualizar(nova);};document.body.appendChild(banner);}
+function aviso(nova){if(!document.body)return;if(banner&&document.body.contains(banner))return;if(aviso.ate&&Date.now()<aviso.ate)return;
+banner=document.createElement('div');banner.id='ds-nova-versao';banner.setAttribute('role','dialog');
+banner.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+banner.innerHTML='<div style="background:#0f172a;color:#f8fafc;border:2px solid #3b82f6;border-radius:18px;padding:24px 26px;max-width:440px;width:100%;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.6);font-family:Arial,Helvetica,sans-serif">'
++'<div style="font-size:40px;line-height:1">🔄</div><div style="font-size:20px;font-weight:800;margin:10px 0 6px">Nova versão do sistema</div>'
++'<div style="font-size:14.5px;color:#cbd5e1;margin-bottom:18px">O sistema foi atualizado. Toque em <b>Atualizar agora</b> para usar a versão nova.<br>Se estiver lançando algo, salve antes.</div>'
++'<button type="button" data-a="sim" style="width:100%;min-height:50px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-size:17px;font-weight:800;cursor:pointer">🔄 Atualizar agora</button>'
++'<button type="button" data-a="depois" style="width:100%;min-height:42px;margin-top:8px;border:1px solid #475569;border-radius:12px;background:transparent;color:#e2e8f0;font-size:14px;font-weight:700;cursor:pointer">Depois — estou terminando um lançamento</button></div>';
+banner.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.getAttribute('data-a')==='sim'){banner.remove();atualizar(nova,true);}else{banner.remove();banner=null;aviso.ate=Date.now()+3*60*1000;}});
+document.body.appendChild(banner);}
 function checar(forte){if(!V)return;var agora=Date.now();if(agora-ult<15000)return;ult=agora;
 fetch('/api/version?_='+agora,{cache:'no-store',credentials:'same-origin'}).then(function(r){return r.ok?r.json():null;}).then(function(j){var n=j&&j.runtime&&String(j.runtime.patch||'');if(!n||n===V||!/^\d+$/.test(n)||n<V)return;
-if(forte&&!editando())atualizar(n);else aviso(n);}).catch(function(){});}
+var ja=false;try{ja=!!sessionStorage.getItem('ds_upd_'+n);}catch(e){}if(forte&&!editando()&&!ja)atualizar(n);else aviso(n);}).catch(function(){});}
 var escondidoEm=0;
 document.addEventListener('visibilitychange',function(){if(document.hidden){escondidoEm=Date.now();return;}var longe=escondidoEm&&(Date.now()-escondidoEm>10*60*1000);escondidoEm=0;checar(!!longe);});
 window.addEventListener('pageshow',function(e){checar(!!(e&&e.persisted));});
 window.addEventListener('online',function(){checar(true);});
 window.addEventListener('focus',function(){checar(false);});
-setInterval(function(){if(!document.hidden)checar(false);},5*60*1000);
+setInterval(function(){if(!document.hidden)checar(false);},60*1000);
 setTimeout(function(){checar(true);},4000);
 }catch(e){}})();</script>
 <script>try{var __tpc=localStorage.getItem('pcpro_theme')||'dark';document.documentElement.setAttribute('data-theme',__tpc);}catch(__e){document.documentElement.setAttribute('data-theme','dark');}</script>
@@ -33941,7 +33950,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261109155737';
+      const swVersion = '20261109160124';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61421,6 +61430,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261109155737"></script>
+<script src="/patch.js?v=20261109160124"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

@@ -46777,8 +46777,44 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '</div>';
   }
 
+  // 09/11: entradas/saídas agrupadas por lançamento (uma linha por lançamento, botão "Itens")
+  function _movLoteKey(r) { return [String(r && r.tipo || ''), String(r && r.data || '').slice(0, 16), String(r && r.usuario || ''), String(r && r.observacoes || '')].join('|'); }
+  function _movAgruparLinhas(rows) {
+    var mapa = {}, ordem = [];
+    (rows || []).forEach(function (r) { var k = _movLoteKey(r); if (!mapa[k]) { mapa[k] = []; ordem.push(k); } mapa[k].push(r); });
+    return ordem.map(function (k) { return mapa[k]; });
+  }
+  function _movBtn(cls, attr, ids, txt, title) { return '<button type="button" class="dsmov-b ' + cls + '" ' + attr + '="' + _escapeHtmlLite(ids) + '" title="' + _escapeHtmlLite(title || '') + '">' + txt + '</button>'; }
   function _renderTabelaMovEstoque(rows, cols) {
     cols = Array.isArray(cols) ? cols : [];
+    var temAcoes = cols.some(function (c) { return c && c.key === 'acoes'; });
+    if (temAcoes && rows.length) {
+      var grupos = _movAgruparLinhas(rows);
+      return ''
+        + '<div class="dsmov-wrap" style="overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:14px">'
+        + '  <table style="width:100%;border-collapse:collapse;min-width:1180px">'
+        + '    <thead><tr style="background:var(--s2)">'
+        + cols.map(function(col) { return '<th style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-family:var(--mono);color:var(--text2);text-align:' + (col.align || 'left') + '">' + _escapeHtmlLite(col.key === 'chapa_label' ? 'Chapas' : col.label) + '</th>'; }).join('')
+        + '    </tr></thead><tbody>'
+        + grupos.map(function (g, idx) {
+            var r0 = g[0], ids = g.map(function (r) { return r.id; }).join(',');
+            var soma = function (k) { return g.reduce(function (s, r) { return s + (Number(r[k] || 0) || 0); }, 0); };
+            var ent = String(r0.tipo || '').indexOf('entrada') === 0;
+            return '<tr data-mov-grupo="' + _escapeHtmlLite(ids) + '" style="background:' + (idx % 2 === 0 ? 'var(--surface)' : 'var(--s2)') + '">' + cols.map(function (col) {
+              var val;
+              if (col.key === 'chapa_label') val = g.length === 1 ? _escapeHtmlLite(r0.chapa_label || '—') : '<b>' + g.length + ' chapas</b><div style="font-size:.7rem;color:var(--text2);margin-top:2px">' + _escapeHtmlLite(g.slice(0, 2).map(function (r) { return r.chapa_label; }).join(' · ') + (g.length > 2 ? ' · …' : '')) + '</div>';
+              else if (col.key === 'quantidade') val = '<span style="font-family:var(--mono);font-weight:900;color:' + (ent ? 'var(--green)' : '#fca5a5') + '">' + _escapeHtmlLite(_fmtNumEstoque(soma('quantidade'))) + '</span>';
+              else if (col.key === 'valor_total') val = '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(soma('valor_total'))) + '</span>';
+              else if (col.key === 'acoes') val = '<div class="dsmov-acoes">'
+                + _movBtn('it', 'data-mov-itens', ids, '📦 Itens <i>' + g.length + '</i>', 'Ver quais chapas e quantidades foram lançadas')
+                + (g.length === 1 ? _movBtn('ed', 'data-mov-edit', r0.id, '✏️ Alterar', 'Corrigir quantidade/observação') : '')
+                + _movBtn('ex', 'data-mov-del-lote', ids, '🗑 Excluir', 'Excluir e devolver o saldo ao estoque') + '</div>';
+              else val = typeof col.render === 'function' ? col.render(r0) : _escapeHtmlLite(r0[col.key] == null ? '—' : r0[col.key]);
+              return '<td style="padding:9px 12px;border-bottom:1px solid var(--border);font-size:.78rem;vertical-align:top;text-align:' + (col.align || 'left') + '">' + val + '</td>';
+            }).join('') + '</tr>';
+          }).join('')
+        + '</tbody></table></div>';
+    }
     if (!rows.length) {
       return '<div style="padding:22px;text-align:center;color:var(--text2);background:var(--card);border:1px solid var(--border);border-radius:14px">Nenhum registro encontrado.</div>';
     }
@@ -46973,10 +47009,53 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '.dmd-lote{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}.dmd-lote>div{display:grid;grid-template-columns:1fr auto auto;gap:12px;padding:8px 10px;border-top:1px solid var(--border);font-size:13px;align-items:center}.dmd-lote>div:first-child{border-top:0}.dmd-lote>div.on{background:color-mix(in srgb,var(--accent) 14%,transparent)}.dmd-lote em{font-style:normal;color:var(--text3,#64748b)}'
       + '.dmd-ok{color:var(--green);font-weight:700;margin-bottom:6px}.dmd-warn{color:#f59e0b;font-weight:700;margin-bottom:8px}.dmd-env{display:flex;gap:8px;flex-wrap:wrap}.dmd-env input{flex:1 1 200px;min-width:0;font-size:16px;text-transform:uppercase}'
       + 'tr[data-mov-row]{cursor:pointer}tr[data-mov-row]:hover td{background:color-mix(in srgb,var(--accent) 8%,transparent)}'
+      + 'tr[data-mov-grupo]:hover td{background:color-mix(in srgb,var(--accent) 8%,transparent)}'
+      + '.dsmov-acoes{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}'
+      + '.dsmov-b{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:9px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:filter .12s,transform .12s;color:#fff!important}'
+      + '.dsmov-b:hover{filter:brightness(1.12);transform:translateY(-1px)}.dsmov-b i{font-style:normal;background:rgba(255,255,255,.25);border-radius:99px;padding:1px 7px;font-size:11px}'
+      + '.dsmov-b.it{background:#2563eb;border-color:#1d4ed8}.dsmov-b.ed{background:#d97706;border-color:#b45309}.dsmov-b.ex{background:#dc2626;border-color:#b91c1c}'
+      + '.dsmov-res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}.dsmov-res div{border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--s2)}.dsmov-res span{display:block;font-size:11px;color:var(--text3,#64748b)}.dsmov-res b{font-size:16px}'
+      + '.dsmov-tb{width:100%;border-collapse:collapse;font-size:13.5px}.dsmov-tb th,.dsmov-tb td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:middle}.dsmov-tb th{font-size:11px;text-transform:uppercase;color:var(--text2)}.dsmov-tb td small{display:block;color:var(--text3,#64748b);font-size:11.5px}'
+      + '@media (max-width:640px){.dsmov-tb{font-size:12.5px}.dsmov-tb th:first-child,.dsmov-tb td:first-child{display:none}.dsmov-b{min-height:40px}}'
       + '@media (max-width:640px){.dmd-g{grid-template-columns:1fr 1fr}.dmd-env button{flex:1 1 100%;height:46px}}';
     document.head.appendChild(st);
   })();
 
+  function _movEstoqueItensModal(lista, todos, refreshFn) {
+    var E = _escapeHtmlLite, r0 = lista[0] || {}, ent = String(r0.tipo || '').indexOf('entrada') === 0;
+    var totQ = lista.reduce(function (s, r) { return s + (Number(r.quantidade) || 0); }, 0), totV = lista.reduce(function (s, r) { return s + (Number(r.valor_total) || 0); }, 0);
+    var corpo = '<div class="dsmov-itens"><div class="dsmov-res"><div><span>Itens</span><b>' + lista.length + '</b></div><div><span>Quantidade total</span><b>' + E(_fmtNumEstoque(totQ)) + '</b></div><div><span>Valor total</span><b>' + E(_fmtRsEstoque(totV)) + '</b></div><div><span>Responsável</span><b>' + E(r0.usuario || '—') + '</b></div></div>'
+      + '<table class="dsmov-tb"><thead><tr><th>#</th><th>Chapa</th><th style="text-align:right">Qtd</th><th style="text-align:right">Valor</th><th style="text-align:right">Ações</th></tr></thead><tbody>'
+      + lista.map(function (r, i) { return '<tr><td>' + (i + 1) + '</td><td><b>' + E(r.chapa_label || '—') + '</b><small>' + E(r.fornecedor || '') + '</small></td><td style="text-align:right;font-family:var(--mono);font-weight:900;color:' + (ent ? 'var(--green)' : '#fca5a5') + '">' + E(_fmtNumEstoque(r.quantidade)) + '</td><td style="text-align:right;font-family:var(--mono)">' + E(_fmtRsEstoque(r.valor_total)) + '</td><td><div class="dsmov-acoes">'
+        + _movBtn('it', 'data-i-ver', r.id, '🔎 Ver', 'Ver todos os dados') + _movBtn('ed', 'data-i-edit', r.id, '✏️ Alterar', '') + _movBtn('ex', 'data-i-del', r.id, '🗑 Excluir', 'Excluir este item e devolver o saldo') + '</div></td></tr>'; }).join('')
+      + '</tbody></table></div>';
+    var ov = _abrirModalPadrao({ id: 'estoque-mov-itens', titulo: (ent ? '📥 Itens da entrada' : '📤 Itens da saída'), subtitulo: _movDetFmtData(r0.data) + (r0.nf && r0.nf !== '—' ? ' · NF ' + r0.nf : '') + (r0.fornecedor && r0.fornecedor !== '—' ? ' · ' + r0.fornecedor : ''), hero: ent ? '📥' : '📤', accent: ent ? 'green' : 'red', largura: '900px', corpoHTML: corpo,
+      footerHTML: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Fechar</button>' });
+    var porId = {}; lista.forEach(function (r) { porId[r.id] = r; });
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-i-ver],[data-i-edit],[data-i-del]'); if (!b) return;
+      var r = porId[b.getAttribute('data-i-ver') || b.getAttribute('data-i-edit') || b.getAttribute('data-i-del')]; if (!r) return;
+      if (b.hasAttribute('data-i-ver')) { _fecharModalPadrao('estoque-mov-itens'); _movEstoqueDetalhe(r, todos); }
+      else if (b.hasAttribute('data-i-edit')) { _fecharModalPadrao('estoque-mov-itens'); _movEstoqueAbrirEdicao(r, refreshFn); }
+      else { _fecharModalPadrao('estoque-mov-itens'); _movEstoqueExcluir(r, refreshFn).catch(function () {}); }
+    });
+  }
+  async function _movEstoqueExcluirLote(lista, refreshFn) {
+    if (!lista.length) return;
+    if (lista.length === 1) return _movEstoqueExcluir(lista[0], refreshFn);
+    var ent = String(lista[0].tipo || '').indexOf('entrada') === 0;
+    var ok = true; try { ok = !!window.confirm('Excluir esta ' + (ent ? 'entrada' : 'saída') + ' inteira (' + lista.length + ' itens)?\n\nO saldo de cada chapa volta a ser como era antes do lançamento.'); } catch (_) {}
+    if (!ok) return;
+    var falhas = [];
+    for (var i = 0; i < lista.length; i++) {
+      try { await _apiFetchJson('/api/chapas_estoque_movimentos/' + encodeURIComponent(lista[i].id), { method: 'DELETE' }); }
+      catch (e) { falhas.push((lista[i].chapa_label || 'item ' + (i + 1)) + ': ' + String(e && e.message || e)); }
+    }
+    _resetChapasCaches();
+    try { window.toast(falhas.length ? 'Excluído com ' + falhas.length + ' erro(s)' : (ent ? 'Entrada' : 'Saída') + ' excluída e saldos devolvidos ✓', falhas.length ? 'var(--red)' : 'var(--green)'); } catch (_) {}
+    if (falhas.length) { try { alert('Não consegui excluir:\n' + falhas.join('\n')); } catch (_) {} }
+    if (typeof refreshFn === 'function') await refreshFn();
+  }
   function _bindTabelaMovEstoqueAcoes(host, rows, refreshFn) {
     if (!host) return;
     var mapa = Object.create(null);
@@ -46984,8 +47063,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var id = String(row && row.id || '').trim();
       if (id) mapa[id] = row;
     });
+    var deIds = function (txt) { return String(txt || '').split(',').map(function (x) { return mapa[x.trim()]; }).filter(Boolean); };
+    Array.prototype.slice.call(host.querySelectorAll('tr[data-mov-grupo]')).forEach(function (tr) {
+      var lista = deIds(tr.getAttribute('data-mov-grupo')); if (!lista.length) return;
+      tr.style.cursor = 'pointer'; tr.title = 'Clique para ver os itens';
+      tr.onclick = function (ev) { if (ev && ev.target && ev.target.closest('button,a,input,select,textarea')) return; if (lista.length === 1) _movEstoqueDetalhe(lista[0], rows); else _movEstoqueItensModal(lista, rows, refreshFn); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-mov-itens]')).forEach(function (btn) {
+      btn.onclick = function (ev) { if (ev) { ev.preventDefault(); ev.stopPropagation(); } var l = deIds(btn.getAttribute('data-mov-itens')); if (l.length) _movEstoqueItensModal(l, rows, refreshFn); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-mov-del-lote]')).forEach(function (btn) {
+      btn.onclick = function (ev) { if (ev) { ev.preventDefault(); ev.stopPropagation(); } _movEstoqueExcluirLote(deIds(btn.getAttribute('data-mov-del-lote')), refreshFn).catch(function () {}); };
+    });
     Array.prototype.slice.call(host.querySelectorAll('[data-mov-edit]')).forEach(function(btn) {
-      var tr = btn.closest('tr'); if (!tr) return;
+      var tr = btn.closest('tr'); if (!tr || tr.hasAttribute('data-mov-grupo') || tr.closest('#estoque-mov-itens')) return;
       var movId = String(btn.getAttribute('data-mov-edit') || '').trim(); if (!mapa[movId]) return;
       tr.setAttribute('data-mov-row', movId); tr.title = 'Clique para ver todos os dados';
       tr.onclick = function (ev) { if (ev && ev.target && ev.target.closest('button,a,input,select,textarea')) return; _movEstoqueDetalhe(mapa[movId], rows); };
@@ -79500,4 +79591,65 @@ window.__perTxt = function (p) {
     var b = document.createElement('button'); b.type = 'button'; b.className = 'dsc-btn dsrs-btn'; b.textContent = '📋 Relatório da semana'; b.title = 'O que vai sair em cada dia da semana (como a planilha Pedidos)';
     b.onclick = abrir; box.insertBefore(b, box.firstChild);
   }, 800);
+})();
+
+/* ===== 09/11: avisos (toast) grandes e visíveis + erro repetido dentro das janelas de Entrada/Saída de chapas ===== */
+(function () {
+  if (window.__dsAvisoVisivel) return; window.__dsAvisoVisivel = true;
+  var st = document.createElement('style'); st.id = 'ds-toast-visivel';
+  st.textContent = '#toast{left:50%!important;right:auto!important;top:22px!important;bottom:auto!important;transform:translateX(-50%)!important;max-width:min(720px,94vw)!important;'
+    + 'font-size:16px!important;font-weight:800!important;line-height:1.35!important;padding:14px 22px!important;border-radius:14px!important;z-index:2147483600!important;'
+    + 'box-shadow:0 18px 50px rgba(0,0,0,.55)!important;text-align:center!important;white-space:normal!important}'
+    + '.ds-modal-erro{margin:0 0 10px;padding:12px 16px;border-radius:12px;background:#7f1d1d;border:2px solid #ef4444;color:#fff;font-weight:800;font-size:15px;display:flex;gap:10px;align-items:flex-start}'
+    + '.ds-modal-erro button{margin-left:auto;background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;min-width:32px}'
+    + '.ds-campo-falta{outline:3px solid #ef4444!important;outline-offset:1px;background:rgba(239,68,68,.08)!important}';
+  document.head.appendChild(st);
+
+  function modalAberto() {
+    var ids = ['estoque-entrada-real-modal', 'estoque-saida-real-modal'];
+    for (var i = 0; i < ids.length; i++) { var m = document.getElementById(ids[i]); if (m && m.getClientRects().length && getComputedStyle(m).display !== 'none') return m; }
+    var l = document.querySelectorAll('[id^="estoque-"][id$="-modal"]');
+    for (var j = 0; j < l.length; j++) if (l[j].getClientRects().length && getComputedStyle(l[j]).display !== 'none' && /Salvar (Entrada|Sa[ií]da)/.test(l[j].textContent)) return l[j];
+    return null;
+  }
+  function mostrarNoModal(msg) {
+    var m = modalAberto(); if (!m) return;
+    var corpo = m.querySelector('.estoque-modal-body, [class*="modal-body"]') || m.querySelector('section') && m.querySelector('section').parentNode || m;
+    var b = m.querySelector('.ds-modal-erro');
+    if (!b) { b = document.createElement('div'); b.className = 'ds-modal-erro'; b.setAttribute('role', 'alert'); corpo.insertBefore(b, corpo.firstChild); }
+    b.innerHTML = '<span>⚠️</span><span></span><button type="button" aria-label="Fechar">✕</button>';
+    b.children[1].textContent = msg; b.querySelector('button').onclick = function () { b.remove(); };
+    try { b.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+    marcarCampos(m, msg);
+  }
+  function marcarCampos(m, msg) {
+    Array.prototype.forEach.call(m.querySelectorAll('.ds-campo-falta'), function (e) { e.classList.remove('ds-campo-falta'); });
+    var t = String(msg || '').toLowerCase(), alvo = [];
+    if (/placa/.test(t)) alvo.push('#estoque-entrada-real-placa');
+    if (/fornecedor/.test(t)) alvo.push('#estoque-entrada-real-fornecedor');
+    if (/data/.test(t)) alvo.push('#estoque-entrada-real-data');
+    if (/motivo/.test(t)) alvo.push('select.estoque-modal-select');
+    if (/chapa|item|selecione/.test(t)) alvo.push('.est-ent-chapa', '.est-sai-chapa');
+    if (/quantidade|qtd/.test(t)) alvo.push('.est-ent-qtd', '.est-sai-qtd');
+    alvo.forEach(function (sel) { Array.prototype.forEach.call(m.querySelectorAll(sel), function (e) { if (!e.value || /quantidade|qtd/.test(t)) { e.classList.add('ds-campo-falta'); e.addEventListener('input', function f() { e.classList.remove('ds-campo-falta'); e.removeEventListener('input', f); }); e.addEventListener('change', function f2() { e.classList.remove('ds-campo-falta'); e.removeEventListener('change', f2); }); } }); });
+    var p = m.querySelector('.ds-campo-falta'); if (p) try { p.focus({ preventScroll: true }); } catch (_) {}
+  }
+  // espelha avisos de erro (vermelhos) dentro da janela aberta de entrada/saída
+  var ultimo = '';
+  function olhar() {
+    var t = document.getElementById('toast'); if (!t) return;
+    if (!t.__dsObs) {
+      t.__dsObs = new MutationObserver(function () {
+        var txt = String(t.textContent || '').trim(); if (!txt || !/show/.test(t.className)) return;
+        var bg = String(t.style.background || t.style.backgroundColor || '') + ' ' + getComputedStyle(t).backgroundColor;
+        var erro = /red|239,\s*68|220,\s*38|185,\s*28|#ef|#dc|#f87|#b91/i.test(bg) || /^(erro|falha|informe|selecione|preencha|não)/i.test(txt.replace(/^[^\wÀ-ú]+/, ''));
+        if (!erro || txt === ultimo && Date.now() - (olhar.ts || 0) < 800) return;
+        ultimo = txt; olhar.ts = Date.now(); mostrarNoModal(txt);
+      });
+      t.__dsObs.observe(t, { attributes: true, childList: true, characterData: true, subtree: true });
+    }
+  }
+  setInterval(olhar, 1000); olhar();
+  // ao abrir de novo a janela, tira o aviso velho
+  new MutationObserver(function () { var m = modalAberto(); if (m && !m.__dsLimpo) { m.__dsLimpo = true; var b = m.querySelector('.ds-modal-erro'); if (b) b.remove(); } }).observe(document.body, { childList: true });
 })();
