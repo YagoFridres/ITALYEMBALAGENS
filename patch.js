@@ -79175,7 +79175,7 @@ window.__perTxt = function (p) {
     + '#ds-ofmaq tr.dom-urg > td:first-child{box-shadow:inset 5px 0 0 #fecaca}'
     + '#ds-ofmaq tr.dom-urg > td *:not(img):not(.dom-chip):not(button):not(input){color:#fff!important;-webkit-text-fill-color:#fff!important}'
     + '#ds-ofmaq tr.dom-urg .dom-chip{background:#fff!important;color:#991b1b!important;-webkit-text-fill-color:#991b1b!important;border-color:#fff!important;font-weight:800}'
-    + '#ds-ofmaq tr.dom-urg button,#ds-ofmaq tr.dom-urg input{background:rgba(255,255,255,.16)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:rgba(255,255,255,.55)!important}'
+    + '#ds-ofmaq tr.dom-urg button,#ds-ofmaq tr.dom-urg input{background:rgba(0,0,0,.28)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:rgba(255,255,255,.55)!important}'
     + '#ds-ofmaq tr.dom-urg:hover > td{background:#b91c1c!important}'
     + '[data-theme="light"] #ds-ofmaq tr.dom-urg > td{background:#dc2626!important;border-color:#b91c1c!important}'
     + '[data-theme="light"] #ds-ofmaq tr.dom-urg:hover > td{background:#b91c1c!important}'
