@@ -79364,12 +79364,11 @@ window.__perTxt = function (p) {
 
   function plano(o) { try { return window.dsRoteiroPlano(o); } catch (_) { var e = String(o.data_entrega || o.ent || '').slice(0, 10); return { dia: e, pos: 9999, cidade: '', noRoteiro: false, ent: e }; } }
   function montar() {
-    var ini = E.semana, fim = soma(ini, 6), hoje = iso(new Date()), dias = {};
+    var ini = E.semana, fim = soma(ini, 4), hoje = iso(new Date()), dias = {};
     ofs().forEach(function (o) {
-      var ab = ehAberta(o), cc = E.concl && ehConcl(o);
-      if (!ab && !cc) return;
-      var p = plano(o), ent = p.ent || String(o.data_entrega || o.ent || '').slice(0, 10);
-      if (cc && (!ent || ent < hoje)) return; // concluída só entra se a entrega ainda não passou
+      if (!ehAberta(o)) return; // só OFs em aberto (concluídas e canceladas ficam fora)
+      var p = plano(o), ent = p.ent || String(o.data_entrega || o.ent || '').slice(0, 10), ab = true;
+      if (ent && ent < hoje) return; // atrasadas ficam fora
       var d = p.dia; if (!d || d === '9999-12-31' || d < ini || d > fim) return;
       var cid = p.cidade || '', k = norm(cliOf(o)) + '|' + norm(cid);
       var dd = dias[d] || (dias[d] = {}), g = dd[k];
@@ -79383,7 +79382,7 @@ window.__perTxt = function (p) {
       return { dia: d, grupos: gs };
     });
   }
-  function rotSemana() { return br(E.semana).slice(0, 5) + ' a ' + br(soma(E.semana, 6)); }
+  function rotSemana() { return br(E.semana).slice(0, 5) + ' a ' + br(soma(E.semana, 4)); }
   function tabelaHtml(dados, imp) {
     var n = 0;
     return dados.map(function (D) {
@@ -79446,7 +79445,7 @@ window.__perTxt = function (p) {
     ov.innerHTML = '<div class="dsrs-m" role="dialog" aria-modal="true"><div class="dsrs-hd"><h2>📋 Pedidos da semana</h2>'
       + '<div class="dsrs-sem"><button type="button" data-s="-1" aria-label="Semana anterior">‹</button><b></b><button type="button" data-s="1" aria-label="Próxima semana">›</button><button type="button" data-s="0">Esta semana</button></div>'
       + '<button type="button" class="az" data-imp>🖨 Imprimir</button><button type="button" class="vd" data-xls>⬇ Excel</button><button type="button" class="x" data-x>✕ Fechar</button></div>'
-      + '<div class="dsrs-op"><label><input type="checkbox" data-concl' + (E.concl ? ' checked' : '') + '> Incluir OFs já concluídas (prontas) que ainda vão ser entregues</label><span>· Modelos = quantidade de OFs do cliente no dia · o dia segue o Roteiro de Entrega</span></div>'
+      + '<div class="dsrs-op"><span>Segunda a sexta · só OFs em aberto e no prazo (sem concluídas e sem atrasadas) · Modelos = quantidade de OFs do cliente no dia · o dia segue o Roteiro de Entrega</span></div>'
       + '<div class="dsrs-bd"><div class="dsrs-vz">Carregando…</div></div></div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function (e) {
@@ -79457,7 +79456,6 @@ window.__perTxt = function (p) {
       if (b.hasAttribute('data-imp')) imprimir();
       if (b.hasAttribute('data-xls')) excel();
     });
-    ov.querySelector('[data-concl]').addEventListener('change', function (e) { E.concl = e.target.checked; try { localStorage.setItem('ds_relsem_concl', E.concl ? '1' : '0'); } catch (_) {} render(); });
     document.addEventListener('keydown', onKey, true);
     // espera o roteiro carregar (até 3 s) para os dias saírem certos
     var t0 = Date.now(); (function esperar() { try { window.dsRoteiroPlano({}); } catch (_) {} if ((typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto()) || Date.now() - t0 > 3000) render(); else setTimeout(esperar, 150); })();
