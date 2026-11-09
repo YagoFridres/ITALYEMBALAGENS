@@ -78723,7 +78723,7 @@ window.__perTxt = function (p) {
  * - OFs por Máquina: botão "Ordenar pelo roteiro" usa window.dsRoteiroOrdenar. */
 (function __dsRoteiro() {
   if (window.__dsRoteiro) return; window.__dsRoteiro = true;
-  var DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, 'Sexta'], [6, 'Sábado']];
+  var DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, 'Sexta']]; // 09/11: sábado não aparece
   var ROT = null, ROT_TS = 0;
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function norm(t) { var x = String(t || '').toUpperCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x.replace(/[^A-Z0-9]+/g, ' ').trim(); }
@@ -78811,7 +78811,7 @@ window.__perTxt = function (p) {
   // ---------- tela do roteiro ----------
   var css = document.createElement('style');
   css.textContent = '#ds-rot{padding:4px 0 24px}#ds-rot h1{font-size:22px;margin:0 0 4px}#ds-rot .sub{color:var(--text2,#94a3b8);font-size:13px;margin:0 0 14px}'
-    + '.drt-g{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}'
+    + '.drt-g{display:grid;grid-template-columns:repeat(5,minmax(210px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}'
     + '.drt-dia{background:var(--s1,#111827);border:1px solid var(--border,#1f2937);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:200px}'
     + '.drt-dia h2{font-size:15px;margin:0;display:flex;justify-content:space-between;align-items:center}.drt-dia h2 small{font-size:11px;color:var(--text3,#64748b);font-weight:600}'
     + '.drt-c{display:grid;grid-template-columns:26px 1fr auto;gap:6px;align-items:center;background:var(--s2,#0f172a);border:1px solid var(--border,#1f2937);border-radius:10px;padding:8px}'
@@ -78820,6 +78820,8 @@ window.__perTxt = function (p) {
     + '.drt-c .bt{display:flex;gap:2px}.drt-c .bt button{min-width:30px;min-height:30px;border-radius:8px;border:1px solid var(--border,#334155);background:transparent;color:var(--text,#e2e8f0);cursor:pointer;font-size:13px}'
     + '.drt-c .bt button.x{color:#f87171;border-color:rgba(239,68,68,.4)}.drt-c .bt button:disabled{opacity:.3;cursor:default}'
     + '.drt-add{position:relative}.drt-add input{width:100%;box-sizing:border-box;min-height:40px;border-radius:10px;border:1px dashed #3b82f6;background:transparent;color:var(--text,#e2e8f0);padding:8px 10px;font:inherit;font-size:13.5px}'
+    + '.drt-c .n{border:0;text-align:center;padding:0;font:inherit;font-weight:800;font-size:12px;-moz-appearance:textfield;cursor:text}.drt-c .n::-webkit-inner-spin-button,.drt-c .n::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.drt-c input.n{width:34px;height:30px;border-radius:8px;outline:2px solid transparent}.drt-c input.n:focus{outline-color:#f59e0b;background:#1d4ed8}'
+    + '.drt-c{grid-template-columns:36px 1fr auto}'
     + '.drt-dd{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:#0b1220;border:2px solid #3b82f6;border-radius:12px;max-height:280px;overflow:auto;padding:4px;box-shadow:0 18px 40px rgba(0,0,0,.55)}'
     + '.drt-dd button{display:block;width:100%;text-align:left;border:0;background:transparent;color:#f1f5f9;font:inherit;font-size:15px;padding:10px 12px;border-radius:8px;cursor:pointer}.drt-dd button small{color:#cbd5e1;font-size:12px;margin-left:6px}.drt-dd button.on,.drt-dd button:hover{background:rgba(37,99,235,.35)}'
     + '.drt-vazio{font-size:12px;color:var(--text3,#64748b);text-align:center;padding:10px 4px}'
@@ -78830,7 +78832,7 @@ window.__perTxt = function (p) {
   function render() {
     var pg = document.getElementById('page-roteiro-semana'); if (!pg) return;
     var box = document.getElementById('ds-rot');
-    if (!box) { Array.prototype.forEach.call(pg.children, function (c) { c.style.display = 'none'; }); box = document.createElement('div'); box.id = 'ds-rot'; pg.insertBefore(box, pg.firstChild); box.addEventListener('click', clique); box.addEventListener('input', digitou); box.addEventListener('keydown', tecla); box.addEventListener('focusout', function () { setTimeout(function () { if (!box.contains(document.activeElement)) fecharDD(); }, 180); }); }
+    if (!box) { Array.prototype.forEach.call(pg.children, function (c) { c.style.display = 'none'; }); box = document.createElement('div'); box.id = 'ds-rot'; pg.insertBefore(box, pg.firstChild); box.addEventListener('click', clique); box.addEventListener('input', digitou); box.addEventListener('keydown', tecla); box.addEventListener('change', function (e) { var t = e.target; if (t.hasAttribute && t.hasAttribute('data-pos') && !t.__feito) moverPara(t.getAttribute('data-pos'), t.value); }); box.addEventListener('focusin', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-pos')) try { e.target.select(); } catch (_) {} }); window.addEventListener('scroll', function () { if (ST.dd) { var i2 = ST.dd.parentNode.querySelector('input'); if (i2) posDD(i2, ST.dd); } }, true); window.addEventListener('resize', function () { if (ST.dd) fecharDD(); }); box.addEventListener('focusout', function () { setTimeout(function () { if (!box.contains(document.activeElement)) fecharDD(); }, 180); }); }
     var porCid = ofsPorCidade();
     var noRot = {}; (ROT || []).forEach(function (r) { noRot[norm(r.cidade)] = 1; });
     var semRot = Object.keys(porCid).filter(function (k) { return !noRot[k]; }).sort(function (a, b) { return porCid[b] - porCid[a]; });
@@ -78840,7 +78842,7 @@ window.__perTxt = function (p) {
         return '<section class="drt-dia" data-dia="' + d[0] + '"><h2>' + d[1] + '<small>' + l.length + ' cidade' + (l.length === 1 ? '' : 's') + '</small></h2>'
           + (l.length ? l.map(function (r, i) {
             var q = porCid[norm(r.cidade)] || 0;
-            return '<div class="drt-c"><span class="n">' + (i + 1) + '</span><div><b>' + esc(r.cidade) + '</b><small>' + (q ? q + ' OF' + (q > 1 ? 's' : '') + ' em aberto' : 'sem OF em aberto') + '</small></div>'
+            return '<div class="drt-c"><input class="n" type="number" min="1" max="' + l.length + '" value="' + (i + 1) + '" data-pos="' + esc(r.id) + '" title="Digite a posição desta cidade no dia e aperte Enter" aria-label="Posição de ' + esc(r.cidade) + '"><div><b>' + esc(r.cidade) + '</b><small>' + (q ? q + ' OF' + (q > 1 ? 's' : '') + ' em aberto' : 'sem OF em aberto') + '</small></div>'
               + '<div class="bt"><button type="button" data-mv="-1" data-id="' + esc(r.id) + '" title="Subir"' + (i ? '' : ' disabled') + '>↑</button><button type="button" data-mv="1" data-id="' + esc(r.id) + '" title="Descer"' + (i < l.length - 1 ? '' : ' disabled') + '>↓</button><button type="button" class="x" data-rm="' + esc(r.id) + '" title="Tirar do dia">✕</button></div></div>';
           }).join('') : '<div class="drt-vazio">Nenhuma cidade neste dia</div>')
           + '<div class="drt-add"><input type="text" data-add="' + d[0] + '" placeholder="＋ Adicionar cidade…" autocomplete="off"><div class="drt-dd" hidden></div></div></section>';
@@ -78856,9 +78858,31 @@ window.__perTxt = function (p) {
     var h = l.map(function (c, i) { return '<button type="button" data-pick="' + esc(c.nome) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(c.nome) + (c.cli ? '<small>' + c.cli + ' cliente' + (c.cli > 1 ? 's' : '') + '</small>' : '') + '</button>'; }).join('');
     if (q && !l.some(function (c) { return c.k === q; })) h += '<button type="button" data-pick="' + esc(bonito(inp.value)) + '">＋ Usar “' + esc(bonito(inp.value)) + '”</button>';
     dd.innerHTML = h || '<div class="drt-vazio">Digite o nome da cidade</div>'; dd.hidden = false; ST.dd = dd;
+    posDD(inp, dd);
+  }
+  // a lista fica "flutuando" na tela (não é cortada pela coluna do dia) e abre para cima se faltar espaço embaixo
+  function posDD(inp, dd) {
+    var r = inp.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+    var top = r.bottom / z + 4, alt = Math.min(320, window.innerHeight / z - 16);
+    dd.style.cssText = 'position:fixed;left:' + (r.left / z) + 'px;width:' + Math.max(r.width / z, 260) + 'px;z-index:100070;max-height:' + alt + 'px;right:auto';
+    var h = dd.offsetHeight, baixo = window.innerHeight / z - top - 8;
+    if (h > baixo && r.top / z > baixo) { dd.style.top = 'auto'; dd.style.bottom = (window.innerHeight / z - r.top / z + 4) + 'px'; dd.style.maxHeight = Math.min(320, r.top / z - 12) + 'px'; }
+    else { dd.style.top = top + 'px'; dd.style.maxHeight = Math.min(320, baixo) + 'px'; }
+  }
+  function moverPara(id, pos) {
+    var r = (ROT || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!r) return;
+    var dia = Number(r.dia_semana), l = (ROT || []).filter(function (x) { return Number(x.dia_semana) === dia && x.ativo !== false; });
+    var i = l.indexOf(r), j = Math.max(0, Math.min(l.length - 1, (Math.trunc(Number(pos)) || 1) - 1));
+    if (i === j) { render(); return; }
+    l.splice(i, 1); l.splice(j, 0, r); l.forEach(function (x, k) { x.ordem = k + 1; });
+    ROT.sort(function (a, b) { return (a.dia_semana - b.dia_semana) || (a.ordem - b.ordem); }); render();
+    toast(r.cidade + ' agora é a ' + (j + 1) + 'ª cidade');
+    api('POST', '/api/roteiro_entrega/ordem', { dia_semana: dia, ids: l.map(function (x) { return x.id; }) }).catch(function (er) { toast('Não salvou a ordem: ' + er.message, 'var(--red)'); carregar(true).then(render); });
   }
   function tecla(e) {
-    var inp = e.target; if (!inp.hasAttribute || !inp.hasAttribute('data-add')) return;
+    var inp = e.target;
+    if (inp.hasAttribute && inp.hasAttribute('data-pos')) { if (e.key === 'Enter') { e.preventDefault(); inp.__feito = true; moverPara(inp.getAttribute('data-pos'), inp.value); } else if (e.key === 'Escape') { inp.__feito = true; render(); } return; }
+    if (!inp.hasAttribute || !inp.hasAttribute('data-add')) return;
     var dd = inp.parentNode.querySelector('.drt-dd'); if (dd.hidden) return;
     var bs = dd.querySelectorAll('button'), i = Array.prototype.findIndex.call(bs, function (b) { return b.classList.contains('on'); });
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!bs.length) return; i = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach(function (b, j) { b.classList.toggle('on', j === i); }); bs[i].scrollIntoView({ block: 'nearest' }); }
@@ -79461,10 +79485,13 @@ window.__perTxt = function (p) {
     var t0 = Date.now(); (function esperar() { try { window.dsRoteiroPlano({}); } catch (_) {} if ((typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto()) || Date.now() - t0 > 3000) render(); else setTimeout(esperar, 150); })();
     // OFs/roteiro ainda carregando: redesenha quando os dados mudarem
     var assin = '';
-    ov.__tm = setInterval(function () { if (!ov) return; var l = ofs(), a = l.length + '|' + (typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto() ? 1 : 0) + '|' + l.filter(ehAberta).length; if (a !== assin) { assin = a; render(); } }, 1500);
+    ov.__tm = setInterval(function () { if (!ov) return; var l = ofs(), ab = l.filter(ehAberta), a = l.length + '|' + (typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto() ? 1 : 0) + '|' + ab.length + '|' + ab.map(function (o) { return o.id + ':' + (o.data_entrega || o.ent || '') + ':' + (o.cidade_entrega || ''); }).join(','); if (a !== assin) { assin = a; render(); } }, 1500);
+    // busca as OFs novas no servidor a cada 30 s (OF lançada por outro computador já aparece aqui)
+    var buscar = function () { try { if (typeof window.carregarOFsUnico === 'function') window.carregarOFsUnico(true); } catch (_) {} };
+    buscar(); ov.__tm2 = setInterval(function () { if (ov && !document.hidden) buscar(); }, 30000);
   }
   function onKey(e) { if (e.key === 'Escape' && ov) { e.stopPropagation(); fechar(); } }
-  function fechar() { document.removeEventListener('keydown', onKey, true); if (ov) { clearInterval(ov.__tm); ov.remove(); } ov = null; }
+  function fechar() { document.removeEventListener('keydown', onKey, true); if (ov) { clearInterval(ov.__tm); clearInterval(ov.__tm2); ov.remove(); } ov = null; }
   window.dsRelatorioSemana = abrir;
   setInterval(function () {
     var box = document.querySelector('#page-pcp .dsc-head-acoes'); if (!box || box.querySelector('.dsrs-btn')) return;
