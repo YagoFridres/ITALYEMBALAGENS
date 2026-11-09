@@ -79654,3 +79654,58 @@ window.__perTxt = function (p) {
   // ao abrir de novo a janela, tira o aviso velho
   new MutationObserver(function () { var m = modalAberto(); if (m && !m.__dsLimpo) { m.__dsLimpo = true; var b = m.querySelector('.ds-modal-erro'); if (b) b.remove(); } }).observe(document.body, { childList: true });
 })();
+
+/* ===== 09/11: Dar Entrada — campo Fornecedor puxa da lista de fornecedores de chapas cadastrados ===== */
+(function () {
+  if (window.__dsEntradaFornLista) return; window.__dsEntradaFornLista = true;
+  var cache = null, cacheTs = 0;
+  function norm(t) { var x = String(t || '').trim().toLowerCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x; }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function carregar() {
+    if (cache && Date.now() - cacheTs < 5 * 60 * 1000) return Promise.resolve(cache);
+    var f = typeof window.apiFetch === 'function' ? window.apiFetch('/api/fornecedores?_=' + Date.now()).then(function (r) { return r.json(); }) : Promise.resolve([]);
+    return f.catch(function () { return []; }).then(function (j) {
+      var l = Array.isArray(j) ? j : (j && j.data) || [], mapa = {};
+      l.forEach(function (x) { if (!x || x.ativo === false) return; if (x.tipo && !/papel|chapa/i.test(String(x.tipo))) return; var n = String(x.nome || x.razao_social || '').trim(); if (n) mapa[norm(n)] = { nome: n, sub: x.cidade ? x.cidade + (x.uf || x.estado ? '/' + (x.uf || x.estado) : '') : 'Fornecedor cadastrado' }; });
+      (window.__entradaEstoqueChapasCache || []).forEach(function (c) { var n = String(c && (c.fornecedor || c.forn) || '').trim(); if (n && !mapa[norm(n)]) mapa[norm(n)] = { nome: n, sub: 'Usado nas chapas do estoque' }; });
+      cache = Object.keys(mapa).map(function (k) { return mapa[k]; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }); cacheTs = Date.now();
+      return cache;
+    });
+  }
+  var st = document.createElement('style');
+  st.textContent = '.dsfl-dd{position:fixed;z-index:100080;background:#0b1220;border:2px solid #22c55e;border-radius:12px;max-height:300px;overflow:auto;padding:4px;box-shadow:0 18px 40px rgba(0,0,0,.55)}'
+    + '.dsfl-dd button{display:block;width:100%;text-align:left;border:0;background:transparent;color:#f1f5f9;font:inherit;font-size:15px;font-weight:700;padding:10px 12px;border-radius:8px;cursor:pointer}.dsfl-dd button small{display:block;font-size:11.5px;font-weight:500;color:#94a3b8}.dsfl-dd button.on,.dsfl-dd button:hover{background:rgba(34,197,94,.25)}'
+    + '.dsfl-dd .vz{padding:10px 12px;color:#94a3b8;font-size:13px}';
+  document.head.appendChild(st);
+  function ligar(inp) {
+    if (inp.__dsfl) return; inp.__dsfl = true;
+    inp.setAttribute('autocomplete', 'off'); inp.placeholder = 'Escolha ou digite o fornecedor';
+    var dd = null;
+    function fechar() { if (dd) { dd.remove(); dd = null; } }
+    function pos() { if (!dd) return; var r = inp.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.body).zoom) || 1; dd.style.left = (r.left / z) + 'px'; dd.style.width = (r.width / z) + 'px'; var baixo = window.innerHeight / z - r.bottom / z - 10; if (baixo < 180 && r.top / z > baixo) { dd.style.top = 'auto'; dd.style.bottom = (window.innerHeight / z - r.top / z + 4) + 'px'; dd.style.maxHeight = Math.min(300, r.top / z - 12) + 'px'; } else { dd.style.bottom = 'auto'; dd.style.top = (r.bottom / z + 4) + 'px'; dd.style.maxHeight = Math.min(300, baixo) + 'px'; } }
+    function escolher(n) { inp.value = n; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); fechar(); }
+    function abrir() {
+      carregar().then(function (l) {
+        if (document.activeElement !== inp) return;
+        var q = norm(inp.value), f = l.filter(function (x) { return !q || norm(x.nome).indexOf(q) >= 0; });
+        if (!dd) { dd = document.createElement('div'); dd.className = 'dsfl-dd'; document.body.appendChild(dd); dd.addEventListener('mousedown', function (e) { e.preventDefault(); var b = e.target.closest('button[data-n]'); if (b) escolher(b.getAttribute('data-n')); }); }
+        dd.innerHTML = f.length ? f.map(function (x, i) { return '<button type="button" data-n="' + esc(x.nome) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(x.nome) + '<small>' + esc(x.sub) + '</small></button>'; }).join('') : '<div class="vz">Nenhum fornecedor com esse nome — será usado o que você digitou.</div>';
+        pos();
+      });
+    }
+    inp.addEventListener('focus', abrir); inp.addEventListener('click', abrir); inp.addEventListener('input', function (e) { if (e.isTrusted) abrir(); });
+    inp.addEventListener('keydown', function (e) {
+      if (!dd) return; var bs = dd.querySelectorAll('button'), i = Array.prototype.findIndex.call(bs, function (b) { return b.classList.contains('on'); });
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!bs.length) return; i = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach(function (b, j) { b.classList.toggle('on', j === i); }); bs[i].scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'Enter') { var b = bs[i >= 0 ? i : 0]; if (b) { e.preventDefault(); escolher(b.getAttribute('data-n')); } }
+      else if (e.key === 'Escape') { e.stopPropagation(); fechar(); }
+    });
+    inp.addEventListener('blur', function () {
+      setTimeout(fechar, 150);
+      // se digitou um nome que existe (com outra caixa/acentos), usa o nome cadastrado
+      carregar().then(function (l) { var q = norm(inp.value); if (!q) return; var x = l.filter(function (y) { return norm(y.nome) === q; })[0]; if (x && inp.value !== x.nome) inp.value = x.nome; });
+    });
+    window.addEventListener('scroll', function () { if (dd) pos(); }, true);
+  }
+  new MutationObserver(function () { var inp = document.getElementById('estoque-entrada-real-fornecedor'); if (inp) ligar(inp); }).observe(document.body, { childList: true, subtree: true });
+})();
