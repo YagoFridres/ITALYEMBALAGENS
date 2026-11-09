@@ -70887,8 +70887,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     'roteiro-semana': ['caminhao', 'Roteiro de Entrega']
   };
   var GRUPOS = [
-    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens', 'roteiro-semana'] },
-    { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'gramaturas', 'operadores', 'vendedores', 'mapa-clientes'] },
+    { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens'] },
+    { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'gramaturas', 'operadores', 'vendedores', 'mapa-clientes', 'roteiro-semana'] },
     { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
     { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'simd'] },
     { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
