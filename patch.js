@@ -79318,3 +79318,156 @@ window.__perTxt = function (p) {
     }
   }, 700);
 })();
+
+/* ===== Central de OFs: botão azul "Relatório da semana" — o que sai em cada dia, como na planilha Pedidos 2026 (09/11/2026) =====
+ * MODELOS = quantidade de OFs do cliente naquele dia. O dia de saída segue o Roteiro de Entrega (cidade);
+ * cidade fora do roteiro vai pela data de entrega. Atrasadas entram no próximo dia de caminhão. */
+(function () {
+  if (window.__dsRelSemana) return; window.__dsRelSemana = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(t) { var x = String(t || '').trim().toLowerCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x.replace(/\s+/g, ' '); }
+  function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function soma(s, n) { var d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return iso(d); }
+  function segunda(s) { var d = new Date(s + 'T12:00:00'); var w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); return iso(d); }
+  function br(s) { s = String(s || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : '—'; }
+  var DIAS = ['Domingo', 'Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 'Quinta-Feira', 'Sexta-Feira', 'Sábado'];
+  function ofs() { try { return (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
+  function cliOf(o) { return String(o.cliNome || o.cliente || o.cliente_nome || o.clinome || '—').trim(); }
+  function numOf(o) { return String(o.of || o.numero || o.of_num || o.seq || '').trim(); }
+  function ehAberta(o) { return !o.deleted_at && /aberto/i.test(String(o.status || '')); }
+  function ehConcl(o) { return !o.deleted_at && /conclu/i.test(String(o.status || '')); }
+  var E = { semana: segunda(iso(new Date())), concl: true };
+  try { E.concl = localStorage.getItem('ds_relsem_concl') !== '0'; } catch (_) {}
+
+  var st = document.createElement('style'); st.id = 'ds-relsem-css';
+  st.textContent = ''
+    + '.dsrs-btn{background:linear-gradient(135deg,#2563eb,#1d4ed8)!important;border:1px solid #1d4ed8!important;color:#fff!important;font-weight:800!important;box-shadow:0 4px 14px rgba(37,99,235,.35)}'
+    + '.dsrs-btn:hover{filter:brightness(1.1)}'
+    + '.dsrs-ov{position:fixed;inset:0;z-index:100060;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.dsrs-m{width:min(1100px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--surface,var(--bg2,#0f172a));color:var(--text,#e2e8f0);border:1px solid var(--border,#1e293b);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}'
+    + '.dsrs-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;background:linear-gradient(135deg,rgba(37,99,235,.28),rgba(14,165,233,.14));border-bottom:1px solid var(--border,#1e293b)}'
+    + '.dsrs-hd h2{margin:0;font-size:19px;font-weight:800;margin-right:auto}'
+    + '.dsrs-sem{display:flex;align-items:center;gap:6px}.dsrs-sem b{min-width:190px;text-align:center;font-size:14px}'
+    + '.dsrs-m button{min-height:40px;border-radius:10px;border:1px solid var(--border,#334155);background:var(--s2,var(--bg3,#1e293b));color:var(--text,#e2e8f0);font:inherit;font-weight:700;padding:0 14px;cursor:pointer}'
+    + '.dsrs-m button.az{background:#2563eb;border-color:#1d4ed8;color:#fff}.dsrs-m button.vd{background:#16a34a;border-color:#15803d;color:#fff}.dsrs-m button.x{background:#dc2626;border-color:#b91c1c;color:#fff}'
+    + '.dsrs-op{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--border,#1e293b);font-size:13px;color:var(--text2,#94a3b8)}.dsrs-op label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--text,#e2e8f0);font-weight:600}.dsrs-op input{width:18px;height:18px}'
+    + '.dsrs-bd{overflow:auto;padding:12px 18px 20px}'
+    + '.dsrs-t{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:14px}.dsrs-t th,.dsrs-t td{border:1px solid var(--border,#334155);padding:7px 9px;text-align:left;vertical-align:top}'
+    + '.dsrs-t th{background:#1e3a8a;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.03em}'
+    + '.dsrs-t td.dia{font-weight:800;white-space:nowrap}.dsrs-t td.n{text-align:center;font-weight:800}.dsrs-t td.ofs{font-size:12px;color:var(--text2,#94a3b8)}'
+    + '.dsrs-t tr.tot td{background:rgba(37,99,235,.14);font-weight:800}.dsrs-t td.at{color:#f87171;font-weight:700}'
+    + '.dsrs-vz{padding:30px;text-align:center;color:var(--text2,#94a3b8)}'
+    + '.dsrs-res{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.dsrs-res div{border:1px solid var(--border,#334155);border-radius:10px;padding:8px 14px;font-size:13px}.dsrs-res b{font-size:18px;display:block}'
+    + 'body.light .dsrs-t td.ofs,[data-theme="light"] .dsrs-t td.ofs{color:#475569}body.light .dsrs-t td.at,[data-theme="light"] .dsrs-t td.at{color:#b91c1c}'
+    + '@media (max-width:760px){.dsrs-ov{padding:0}.dsrs-m{max-height:100vh;height:100%;border-radius:0}.dsrs-sem{width:100%;justify-content:space-between}.dsrs-sem b{min-width:0;flex:1}.dsrs-t{font-size:12.5px}.dsrs-t th,.dsrs-t td{padding:6px 5px}.dsrs-t .mh{display:none}.dsrs-bd{padding:10px}}';
+  document.head.appendChild(st);
+
+  function plano(o) { try { return window.dsRoteiroPlano(o); } catch (_) { var e = String(o.data_entrega || o.ent || '').slice(0, 10); return { dia: e, pos: 9999, cidade: '', noRoteiro: false, ent: e }; } }
+  function montar() {
+    var ini = E.semana, fim = soma(ini, 6), hoje = iso(new Date()), dias = {};
+    ofs().forEach(function (o) {
+      var ab = ehAberta(o), cc = E.concl && ehConcl(o);
+      if (!ab && !cc) return;
+      var p = plano(o), ent = p.ent || String(o.data_entrega || o.ent || '').slice(0, 10);
+      if (cc && (!ent || ent < hoje)) return; // concluída só entra se a entrega ainda não passou
+      var d = p.dia; if (!d || d === '9999-12-31' || d < ini || d > fim) return;
+      var cid = p.cidade || '', k = norm(cliOf(o)) + '|' + norm(cid);
+      var dd = dias[d] || (dias[d] = {}), g = dd[k];
+      if (!g) g = dd[k] = { cli: cliOf(o), cid: cid, pos: p.noRoteiro ? p.pos : 9999, ofs: [], ents: [], atras: false, fora: !p.noRoteiro };
+      g.ofs.push(numOf(o)); if (ent && g.ents.indexOf(ent) < 0) g.ents.push(ent); if (ab && ent && ent < hoje) g.atras = true;
+    });
+    return Object.keys(dias).sort().map(function (d) {
+      var gs = Object.keys(dias[d]).map(function (k) { return dias[d][k]; });
+      gs.sort(function (a, b) { return a.pos - b.pos || norm(a.cid).localeCompare(norm(b.cid)) || norm(a.cli).localeCompare(norm(b.cli)); });
+      gs.forEach(function (g) { g.ents.sort(); g.ofs.sort(function (a, b) { return (Number(a) || 0) - (Number(b) || 0); }); });
+      return { dia: d, grupos: gs };
+    });
+  }
+  function rotSemana() { return br(E.semana).slice(0, 5) + ' a ' + br(soma(E.semana, 6)); }
+  function tabelaHtml(dados, imp) {
+    var n = 0;
+    return dados.map(function (D) {
+      var w = new Date(D.dia + 'T12:00:00').getDay(), totM = 0;
+      var linhas = D.grupos.map(function (g, i) {
+        n++; totM += g.ofs.length;
+        return '<tr><td class="dia">' + (i === 0 ? esc(DIAS[w]) : br(D.dia).slice(0, 5)) + '</td><td>' + esc(g.cli) + '</td><td class="n">' + g.ofs.length + '</td>'
+          + '<td class="ofs mh">' + esc(g.ofs.join(', ')) + '</td><td class="' + (g.atras ? 'at' : '') + '">' + (g.ents.length ? g.ents.map(br).join('<br>') : '—') + (g.atras ? ' <small>(atrasada)</small>' : '') + '</td>'
+          + '<td>' + esc(g.cid || '—') + (g.fora && g.cid ? ' <small>(fora do roteiro)</small>' : '') + '</td><td class="n mh">' + n + '</td></tr>';
+      }).join('');
+      return '<table class="dsrs-t"><thead><tr><th>Dia da semana</th><th>Cliente</th><th>Modelos</th><th class="mh">Nº das OFs</th><th>Data de entrega</th><th>Cidade</th><th class="mh">Nº</th></tr></thead><tbody>'
+        + '<tr><td colspan="7" style="font-weight:800;background:' + (imp ? '#dbeafe' : 'rgba(37,99,235,.18)') + '">' + esc(DIAS[w]) + ' — ' + br(D.dia) + '</td></tr>'
+        + linhas + '<tr class="tot"><td colspan="2">Total do dia: ' + D.grupos.length + ' cliente' + (D.grupos.length > 1 ? 's' : '') + '</td><td class="n">' + totM + '</td><td colspan="4" class="mh">' + totM + ' OF' + (totM > 1 ? 's' : '') + '</td></tr></tbody></table>';
+    }).join('');
+  }
+  function resumo(dados) { var c = 0, m = 0; dados.forEach(function (D) { c += D.grupos.length; D.grupos.forEach(function (g) { m += g.ofs.length; }); }); return { c: c, m: m }; }
+  var ov = null;
+  function render() {
+    if (!ov) return;
+    var dados = montar(), r = resumo(dados);
+    ov.querySelector('.dsrs-sem b').textContent = 'Semana ' + rotSemana();
+    ov.querySelector('.dsrs-bd').innerHTML = dados.length
+      ? '<div class="dsrs-res"><div><b>' + r.c + '</b>clientes / entregas</div><div><b>' + r.m + '</b>OFs (modelos)</div><div><b>' + dados.length + '</b>dias com saída</div></div>' + tabelaHtml(dados, false)
+      : '<div class="dsrs-vz">Nenhuma OF para sair nesta semana.</div>';
+    ov.__dados = dados;
+  }
+  function imprimir() {
+    var dados = ov && ov.__dados || montar(), r = resumo(dados);
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>Pedidos da semana ' + esc(rotSemana()) + '</title><style>'
+      + '@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font:11.5px Arial,Helvetica,sans-serif;color:#111;margin:0}'
+      + '.top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:8px}.top img{height:42px}.top b{font-size:17px;display:block}.top span{font-size:11px;color:#555}'
+      + '.dsrs-t{width:100%;border-collapse:collapse;margin-bottom:10px;page-break-inside:auto}.dsrs-t tr{page-break-inside:avoid}.dsrs-t th,.dsrs-t td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}'
+      + '.dsrs-t th{background:#1e3a8a!important;color:#fff;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dsrs-t td.dia{font-weight:700;white-space:nowrap}.dsrs-t td.n{text-align:center;font-weight:700}.dsrs-t td.ofs{font-size:10px;color:#444}'
+      + '.dsrs-t tr.tot td{background:#eff6ff;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dsrs-t td.at{color:#b91c1c;font-weight:700}td[style*="background"]{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      + '</style></head><body><div class="top"><div><b>Pedidos da semana — ' + esc(rotSemana()) + '</b><span>' + r.c + ' clientes · ' + r.m + ' OFs · emitido em ' + br(iso(new Date())) + '</span></div><img src="' + location.origin + '/logo-italy.png" alt=""></div>'
+      + (dados.length ? tabelaHtml(dados, true) : '<p>Nenhuma OF para sair nesta semana.</p>') + '</body></html>';
+    var fr = document.getElementById('dsrs-print'); if (fr) fr.remove();
+    fr = document.createElement('iframe'); fr.id = 'dsrs-print'; fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(fr);
+    var d = fr.contentWindow.document; d.open(); d.write(html); d.close();
+    var foi = false, vai = function () { if (foi) return; foi = true; try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} };
+    var img = d.querySelector('img'); if (img && !img.complete) { img.onload = img.onerror = function () { setTimeout(vai, 60); }; setTimeout(vai, 2000); } else setTimeout(vai, 150);
+  }
+  function excel() {
+    var dados = ov && ov.__dados || montar(), n = 0;
+    var linhas = '<tr><th>DIA DA SEMANA</th><th>CLIENTE</th><th>MODELOS</th><th>Nº DAS OFs</th><th>DATA DE ENTREGA</th><th>CIDADE</th><th>Nº</th></tr>';
+    dados.forEach(function (D) {
+      var w = new Date(D.dia + 'T12:00:00').getDay();
+      D.grupos.forEach(function (g, i) { n++; linhas += '<tr><td>' + (i === 0 ? esc(DIAS[w]) : br(D.dia)) + '</td><td>' + esc(g.cli) + '</td><td>' + g.ofs.length + '</td><td>' + esc(g.ofs.join(', ')) + '</td><td>' + g.ents.map(br).join(' / ') + '</td><td>' + esc(g.cid) + '</td><td>' + n + '</td></tr>'; });
+      linhas += '<tr><td></td></tr>';
+    });
+    var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>th{background:#1e3a8a;color:#fff;font-weight:bold}td,th{border:.5pt solid #999}</style></head><body><table>' + linhas + '</table></body></html>';
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' }));
+    a.download = 'Pedidos da semana ' + E.semana + '.xls'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function abrir() {
+    if (ov) return;
+    ov = document.createElement('div'); ov.className = 'dsrs-ov';
+    try { var zb = parseFloat(getComputedStyle(document.body).zoom) || 1; if (Math.abs(zb - 1) > 0.01) ov.style.zoom = String(1 / zb); } catch (_) {}
+    ov.innerHTML = '<div class="dsrs-m" role="dialog" aria-modal="true"><div class="dsrs-hd"><h2>📋 Pedidos da semana</h2>'
+      + '<div class="dsrs-sem"><button type="button" data-s="-1" aria-label="Semana anterior">‹</button><b></b><button type="button" data-s="1" aria-label="Próxima semana">›</button><button type="button" data-s="0">Esta semana</button></div>'
+      + '<button type="button" class="az" data-imp>🖨 Imprimir</button><button type="button" class="vd" data-xls>⬇ Excel</button><button type="button" class="x" data-x>✕ Fechar</button></div>'
+      + '<div class="dsrs-op"><label><input type="checkbox" data-concl' + (E.concl ? ' checked' : '') + '> Incluir OFs já concluídas (prontas) que ainda vão ser entregues</label><span>· Modelos = quantidade de OFs do cliente no dia · o dia segue o Roteiro de Entrega</span></div>'
+      + '<div class="dsrs-bd"><div class="dsrs-vz">Carregando…</div></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (e.target === ov || (b && b.hasAttribute('data-x'))) return fechar();
+      if (!b) return;
+      if (b.hasAttribute('data-s')) { var s = Number(b.getAttribute('data-s')); E.semana = s === 0 ? segunda(iso(new Date())) : soma(E.semana, 7 * s); render(); }
+      if (b.hasAttribute('data-imp')) imprimir();
+      if (b.hasAttribute('data-xls')) excel();
+    });
+    ov.querySelector('[data-concl]').addEventListener('change', function (e) { E.concl = e.target.checked; try { localStorage.setItem('ds_relsem_concl', E.concl ? '1' : '0'); } catch (_) {} render(); });
+    document.addEventListener('keydown', onKey, true);
+    // espera o roteiro carregar (até 3 s) para os dias saírem certos
+    var t0 = Date.now(); (function esperar() { try { window.dsRoteiroPlano({}); } catch (_) {} if ((typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto()) || Date.now() - t0 > 3000) render(); else setTimeout(esperar, 150); })();
+  }
+  function onKey(e) { if (e.key === 'Escape' && ov) { e.stopPropagation(); fechar(); } }
+  function fechar() { document.removeEventListener('keydown', onKey, true); if (ov) ov.remove(); ov = null; }
+  window.dsRelatorioSemana = abrir;
+  setInterval(function () {
+    var box = document.querySelector('#page-pcp .dsc-head-acoes'); if (!box || box.querySelector('.dsrs-btn')) return;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'dsc-btn dsrs-btn'; b.textContent = '📋 Relatório da semana'; b.title = 'O que vai sair em cada dia da semana (como a planilha Pedidos)';
+    b.onclick = abrir; box.insertBefore(b, box.firstChild);
+  }, 800);
+})();
