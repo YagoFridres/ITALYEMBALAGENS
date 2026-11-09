@@ -78730,7 +78730,7 @@ window.__perTxt = function (p) {
     var hoje = isoHoje(), dias = {};
     if (k) (ROT || []).forEach(function (r) { if (r.ativo !== false && norm(r.cidade) === k) { var w = Number(r.dia_semana); if (!(w in dias) || Number(r.ordem) < dias[w]) dias[w] = Number(r.ordem) || 999; } });
     var ws = Object.keys(dias).map(Number);
-    if (!ws.length) return { dia: ent || '9999-12-31', pos: 9999, cidade: cidade, noRoteiro: false, ent: ent };
+    if (!ws.length) return { dia: ent ? (ent < hoje ? hoje : ent) : '9999-12-31', pos: 9999, cidade: cidade, noRoteiro: false, ent: ent }; // atrasada sem roteiro: hoje, depois das cidades do dia
     var d = null, i;
     if (ent) { for (i = 0; i < 7; i++) { var c = somaD(ent, -i); if (ws.indexOf(wd(c)) >= 0) { d = c; break; } } }
     if (!d || d < hoje) { for (i = 0; i < 8; i++) { var c2 = somaD(hoje, i); if (ws.indexOf(wd(c2)) >= 0) { d = c2; break; } } }
