@@ -79461,9 +79461,12 @@ window.__perTxt = function (p) {
     document.addEventListener('keydown', onKey, true);
     // espera o roteiro carregar (até 3 s) para os dias saírem certos
     var t0 = Date.now(); (function esperar() { try { window.dsRoteiroPlano({}); } catch (_) {} if ((typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto()) || Date.now() - t0 > 3000) render(); else setTimeout(esperar, 150); })();
+    // OFs/roteiro ainda carregando: redesenha quando os dados mudarem
+    var assin = '';
+    ov.__tm = setInterval(function () { if (!ov) return; var l = ofs(), a = l.length + '|' + (typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto() ? 1 : 0) + '|' + l.filter(ehAberta).length; if (a !== assin) { assin = a; render(); } }, 1500);
   }
   function onKey(e) { if (e.key === 'Escape' && ov) { e.stopPropagation(); fechar(); } }
-  function fechar() { document.removeEventListener('keydown', onKey, true); if (ov) ov.remove(); ov = null; }
+  function fechar() { document.removeEventListener('keydown', onKey, true); if (ov) { clearInterval(ov.__tm); ov.remove(); } ov = null; }
   window.dsRelatorioSemana = abrir;
   setInterval(function () {
     var box = document.querySelector('#page-pcp .dsc-head-acoes'); if (!box || box.querySelector('.dsrs-btn')) return;
