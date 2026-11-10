@@ -33939,6 +33939,102 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       };
     }
+    // 10/11: Novo Checklist com vários itens (como a entrada de chapas), só registra o recebimento — NÃO mexe no estoque
+    function openChecklistLoteModal(done) {
+      var hoje = new Date(); var hojeIso = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+      var linhaHtml = function () {
+        return '<tr class="ckl-it">'
+          + '<td><input class="pep-input ckl-prod" list="ckl-chapas" placeholder="Digite ou escolha a chapa/produto"></td>'
+          + '<td><input class="pep-input ckl-qtd" type="number" min="1" step="1" placeholder="0" style="text-align:right"></td>'
+          + '<td><input class="pep-input ckl-cli" list="ckl-clientes" placeholder="(igual ao de cima)"></td>'
+          + '<td><input class="pep-input ckl-oc" placeholder="Opcional"></td>'
+          + '<td><button type="button" class="ckl-rm" title="Tirar este item">✕</button></td></tr>';
+      };
+      var corpo = ''
+        + '<div class="ckl-aviso">📋 Este lançamento fica só no <b>Checklist de Recebimento</b>. <b>Não</b> entra no estoque de chapas — use para chapas que chegam e já saem.</div>'
+        + '<div class="pep-grid estoque-modal-grid estoque-modal-grid-checklist">'
+        + '  <div><div class="pep-sub">Data de Rec. *</div><input class="pep-input" id="ckl-data" type="date" value="' + hojeIso + '"></div>'
+        + '  <div><div class="pep-sub">Fornecedor</div><input class="pep-input" id="ckl-forn" list="ckl-forns" placeholder="Escolha ou digite"></div>'
+        + '  <div><div class="pep-sub">N Nota Fiscal</div><input class="pep-input" id="ckl-nf"></div>'
+        + '  <div><div class="pep-sub">Placa do Veículo (opcional)</div><input class="pep-input" id="ckl-placa" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>'
+        + '  <div><div class="pep-sub">Resp. pelo Recebimento</div><input class="pep-input" id="ckl-resp"></div>'
+        + '  <div><div class="pep-sub">Cliente (para todos os itens)</div><input class="pep-input" id="ckl-cli" list="ckl-clientes" placeholder="Opcional"></div>'
+        + '  <div><div class="pep-sub">Data de Validade</div><input class="pep-input" id="ckl-val" type="date"></div>'
+        + '  <div style="display:flex;align-items:flex-end"><label class="ckl-dev"><input id="ckl-dev" type="checkbox"> Devolução</label></div>'
+        + '</div>'
+        + '<div class="ckl-itens-hd"><b>Itens recebidos</b><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="ckl-add">＋ Adicionar item</button></div>'
+        + '<div class="ckl-tb-wrap"><table class="ckl-tb"><thead><tr><th>Chapa / produto *</th><th style="width:120px">Quantidade *</th><th style="width:220px">Cliente</th><th style="width:140px">Ordem de compra</th><th style="width:44px"></th></tr></thead><tbody id="ckl-body">' + linhaHtml() + linhaHtml() + linhaHtml() + '</tbody></table></div>'
+        + '<div class="ckl-tot" id="ckl-tot">0 itens · 0 unidades</div>'
+        + '<datalist id="ckl-chapas"></datalist><datalist id="ckl-forns"></datalist><datalist id="ckl-clientes"></datalist>';
+      var wrap = _abrirModalPadrao({ id: 'estoque-checklist-lote-modal', titulo: 'Novo Checklist', subtitulo: 'Lance vários itens do mesmo recebimento de uma vez (não movimenta o estoque).', largura: '1100px', wide: true, hero: '📋', accent: 'blue', corpoHTML: corpo,
+        footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-blue" id="ckl-save">✓ Salvar Checklist</button>' });
+      if (!document.getElementById('ckl-css')) {
+        var st = document.createElement('style'); st.id = 'ckl-css';
+        st.textContent = '.ckl-aviso{margin:0 0 12px;padding:10px 14px;border-radius:10px;background:rgba(37,99,235,.14);border:1px solid rgba(59,130,246,.45);font-size:13.5px}'
+          + '.ckl-dev{display:flex;gap:8px;align-items:center;padding:10px 14px;border:1px solid var(--border,rgba(148,163,184,.25));border-radius:10px;font-weight:700;cursor:pointer;width:100%}.ckl-dev input{width:18px;height:18px}'
+          + '.ckl-itens-hd{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;font-size:15px}'
+          + '.ckl-tb-wrap{overflow-x:auto}.ckl-tb{width:100%;border-collapse:collapse;min-width:720px}.ckl-tb th{font-size:11px;text-transform:uppercase;color:var(--text2,#94a3b8);text-align:left;padding:6px 6px}.ckl-tb td{padding:4px 6px}.ckl-tb .pep-input{width:100%}'
+          + '.ckl-rm{width:36px;height:36px;border-radius:8px;border:1px solid #b91c1c;background:#dc2626;color:#fff;font-weight:800;cursor:pointer}'
+          + '.ckl-tot{margin-top:8px;text-align:right;font-weight:800;color:var(--text2,#94a3b8)}'
+          + '@media (max-width:700px){.ckl-tb{min-width:600px}}';
+        document.head.appendChild(st);
+      }
+      var body = document.getElementById('ckl-body');
+      function total() { var n = 0, u = 0; Array.prototype.forEach.call(body.querySelectorAll('.ckl-it'), function (tr) { var p = tr.querySelector('.ckl-prod').value.trim(), q = Math.trunc(Number(tr.querySelector('.ckl-qtd').value) || 0); if (p && q > 0) { n++; u += q; } }); document.getElementById('ckl-tot').textContent = n + ' ite' + (n === 1 ? 'm' : 'ns') + ' · ' + u.toLocaleString('pt-BR') + ' unidades'; }
+      body.addEventListener('input', total);
+      body.addEventListener('click', function (e) { var b = e.target.closest('.ckl-rm'); if (!b) return; var trs = body.querySelectorAll('.ckl-it'); if (trs.length > 1) b.closest('tr').remove(); else Array.prototype.forEach.call(b.closest('tr').querySelectorAll('input'), function (i) { i.value = ''; }); total(); });
+      document.getElementById('ckl-add').onclick = function () { body.insertAdjacentHTML('beforeend', linhaHtml()); var l = body.querySelectorAll('.ckl-prod'); l[l.length - 1].focus(); };
+      // listas de sugestão: chapas do estoque, fornecedores e clientes
+      (async function () {
+        try {
+          var ch = window.__entradaEstoqueChapasCache;
+          if (!Array.isArray(ch) || !ch.length) { var jj = await apiJson('/api/chapas_estoque?limit=2000'); ch = Array.isArray(jj) ? jj : ((jj && (jj.data || jj.rows)) || []); }
+          var vistos = {}; document.getElementById('ckl-chapas').innerHTML = (ch || []).map(function (c) { var t = [c.fornecedor, c.nomenclatura, c.tamanho, c.nome_uso || c.nome].filter(Boolean).join(' · '); if (!t || vistos[t]) return ''; vistos[t] = 1; return '<option value="' + esc(t) + '">'; }).join('');
+        } catch (_) {}
+        try { var fj = await apiJson('/api/fornecedores'); var fl = Array.isArray(fj) ? fj : ((fj && fj.data) || []); document.getElementById('ckl-forns').innerHTML = fl.filter(function (f) { return f && f.ativo !== false; }).map(function (f) { return '<option value="' + esc(f.nome || f.razao_social || '') + '">'; }).join(''); } catch (_) {}
+        try { var cl = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : (window.CLIENTES || []); document.getElementById('ckl-clientes').innerHTML = cl.slice(0, 3000).map(function (c) { return '<option value="' + esc(c.nome || '') + '">'; }).join(''); } catch (_) {}
+      })();
+      document.getElementById('ckl-save').onclick = async function () {
+        var btn = this;
+        var cab = {
+          data_recebimento: String(document.getElementById('ckl-data').value || '').trim(),
+          fornecedor: String(document.getElementById('ckl-forn').value || '').trim(),
+          nota_fiscal: String(document.getElementById('ckl-nf').value || '').trim(),
+          placa_veiculo: String(document.getElementById('ckl-placa').value || '').trim().toUpperCase(),
+          responsavel: String(document.getElementById('ckl-resp').value || '').trim(),
+          data_validade: String(document.getElementById('ckl-val').value || '').trim(),
+          devolucao: !!document.getElementById('ckl-dev').checked
+        };
+        var cliCab = String(document.getElementById('ckl-cli').value || '').trim();
+        var itens = [], faltou = null;
+        Array.prototype.forEach.call(body.querySelectorAll('.ckl-it'), function (tr) {
+          var p = tr.querySelector('.ckl-prod').value.trim(), q = Math.trunc(Number(tr.querySelector('.ckl-qtd').value) || 0);
+          if (!p && !q) return;
+          if (!p || q <= 0) { faltou = faltou || tr; return; }
+          itens.push({ produto: p, quantidade: q, cliente: tr.querySelector('.ckl-cli').value.trim() || cliCab, ordem_compra: tr.querySelector('.ckl-oc').value.trim() });
+        });
+        if (!cab.data_recebimento) { try { window.toast('Informe a data de recebimento', 'var(--red)'); } catch (_) {} return; }
+        if (faltou) { try { window.toast('Item incompleto: preencha a chapa/produto e a quantidade', 'var(--red)'); faltou.querySelector(faltou.querySelector('.ckl-prod').value.trim() ? '.ckl-qtd' : '.ckl-prod').focus(); } catch (_) {} return; }
+        if (!itens.length) { try { window.toast('Adicione pelo menos um item', 'var(--red)'); body.querySelector('.ckl-prod').focus(); } catch (_) {} return; }
+        var empId = String(window.EMP_FILTRO || '').trim();
+        btn.disabled = true; btn.textContent = 'Salvando…';
+        var ok = 0, erros = [];
+        for (var i = 0; i < itens.length; i++) {
+          var pl = Object.assign({}, cab, itens[i], { origem: 'checklist_manual' });
+          if (!pl.placa_veiculo) pl.placa_veiculo = null; if (!pl.data_validade) pl.data_validade = null;
+          if (empId) pl.emp_id = empId;
+          try { await apiJson('/api/recebimento_insumos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pl) }); ok++; }
+          catch (e) { erros.push(itens[i].produto + ': ' + String(e && e.message || e)); }
+        }
+        btn.disabled = false; btn.textContent = '✓ Salvar Checklist';
+        if (erros.length) { try { window.toast('Salvos ' + ok + ' de ' + itens.length + '. Erro: ' + erros[0], 'var(--red)'); } catch (_) {} if (!ok) return; }
+        else { try { window.toast('Checklist salvo: ' + ok + ' ite' + (ok === 1 ? 'm' : 'ns') + ' ✓', 'var(--green)'); } catch (_) {} }
+        _fecharModalPadrao('estoque-checklist-lote-modal');
+        if (typeof done === 'function') done();
+      };
+      setTimeout(function () { try { document.querySelector('#ckl-body .ckl-prod').focus(); } catch (_) {} }, 80);
+      return wrap;
+    }
     async function renderChecklistPage() {
       ensureStyles();
       var page = ensurePage('checklist-recebimento');
@@ -33987,7 +34083,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         })() : '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhum checklist encontrado.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
-      document.getElementById('ck-novo').onclick = function() { openChecklistModal(null, renderChecklistPage); };
+      document.getElementById('ck-novo').onclick = function() { openChecklistLoteModal(renderChecklistPage); };
       document.getElementById('ck-exportar').onclick = function() { checklistCsv(filtrada); };
       document.getElementById('ck-agrupar').onclick = function() { st.agrupar = st.agrupar === false; renderChecklistPage(); };
       document.getElementById('ck-aplicar').onclick = function() {
