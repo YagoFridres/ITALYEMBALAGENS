@@ -71595,6 +71595,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function empNome(id) { var m = { E1: 'Italy', E2: 'Cartoeste', E3: 'Oestepack' }; return m[id] || id || ''; }
 
   function filtrar() {
+    try { if (typeof window.dsCarregarPedidos === 'function') window.dsCarregarPedidos(function () { try { render(); } catch (_) {} }); } catch (_) {}
     var hoje = hojeIso(), q = norm(E.busca).trim();
     var ini = '', fim = '';
     if (E.periodo === 'hoje') { ini = fim = hoje; }
@@ -71610,7 +71611,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (vCanc) st = 'cancelada';
       if (st === 'cancelada' && E.vista !== 'todas' && !vCanc) { cont.todas++; return; }
       // filtros comuns
-      if (q) { var alvo = norm([o.of, o.produto || o.prodDesc, o.cliNome || o.cliente, o.vendNome || o.vendedor, o.ref || o.referencia].join(' ')); if (alvo.indexOf(q) < 0) return; }
+      // 10/11: busca também pelo Nº do pedido; várias palavras = todas precisam aparecer (ex.: "ripke 4521")
+      if (q) { var _ped = (window.__dsPedMap && window.__dsPedMap[String(o.id)]) || o.num_pedido || ''; var alvo = norm([o.of, o.produto || o.prodDesc, o.cliNome || o.cliente, o.vendNome || o.vendedor, o.ref || o.referencia, _ped, _ped ? 'pedido ' + _ped : '', o.cidade_entrega].join(' ')); if (!q.split(/\s+/).filter(Boolean).every(function (t) { return alvo.indexOf(t) >= 0; })) return; }
       var ent = String(o.ent || o.data_entrega || '').slice(0, 10);
       if (ini && (!ent || ent < ini || ent > fim)) return;
       if (E.maquina && maqs(o).indexOf(E.maquina) < 0) return;
@@ -71855,6 +71857,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function ligar() {
     var busca = raiz.querySelector('.dsc-busca input'), t = null;
     busca.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { E.busca = busca.value; E.pagina = 1; render(); }, 160); });
+    try { busca.placeholder = 'Buscar por nº da OF, nº do pedido, cliente, produto ou vendedor'; } catch (_) {}
     busca.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { var tr = raiz.querySelector('tbody tr'); if (tr && raiz.querySelectorAll('tbody tr').length === 1) editar(tr.getAttribute('data-of')); } });
     raiz.addEventListener('change', function (ev) {
       var f = ev.target.getAttribute('data-f');
@@ -80067,7 +80070,7 @@ window.__perTxt = function (p) {
       try {
         var u = String(url || '').replace(/^https?:\/\/[^/]+/, ''), m = String(opts && opts.method || 'GET').toUpperCase(), el = document.getElementById('of-r-numpedido');
         if (el && opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData) && ((m === 'POST' && /^\/?api\/ofs\/?(\?|$)/.test(u)) || ((m === 'PUT' || m === 'PATCH') && /^\/?api\/ofs\/[^/?]+\/?(\?|$)/.test(u) && emEdicao()))) {
-          var v = String(el.value || '').trim(); if (v || m !== 'POST') opts.body.num_pedido = v || null;
+          var v = String(el.value || '').trim(); if (v || m !== 'POST') opts.body.num_pedido = v || null; try { if (window.dsCarregarPedidosReset) setTimeout(window.dsCarregarPedidosReset, 1500); } catch (_) {}
         }
       } catch (_) {}
       return orig.apply(this, arguments);
@@ -80106,4 +80109,23 @@ window.__perTxt = function (p) {
     }
   }
   setInterval(ajustar, 500); window.addEventListener('resize', ajustar);
+})();
+
+
+/* ===== 10/11: mapa OF -> Nº do pedido (para buscas) ===== */
+(function () {
+  if (window.dsCarregarPedidos) return;
+  var ts = 0, carregando = false, espera = [];
+  window.__dsPedMap = window.__dsPedMap || {};
+  window.dsCarregarPedidosReset = function () { ts = 0; };
+  window.dsCarregarPedidos = function (cb) {
+    if (carregando) { if (cb) espera.push(cb); return; }
+    if (Date.now() - ts < 60000 || typeof window.apiFetch !== 'function') return;
+    carregando = true; ts = Date.now(); if (cb) espera.push(cb);
+    window.apiFetch('/api/ofs-pedidos?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
+      var m = {}, mudou = false; ((j && j.data) || []).forEach(function (x) { m[String(x.id)] = String(x.num_pedido || '').trim(); });
+      mudou = JSON.stringify(m) !== JSON.stringify(window.__dsPedMap || {}); window.__dsPedMap = m;
+      var l = espera.splice(0); if (mudou) l.forEach(function (f) { try { f(); } catch (_) {} });
+    }).catch(function () { espera.length = 0; }).finally(function () { carregando = false; });
+  };
 })();
