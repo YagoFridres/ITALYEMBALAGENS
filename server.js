@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261110112433';
-const SW_RUNTIME_VERSION = '20261110112433';
+const PATCH_RUNTIME_VERSION = '20261110112535';
+const SW_RUNTIME_VERSION = '20261110112535';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -32690,6 +32690,7 @@ app.post('/api/recebimento_insumos', authMiddleware, async (req, res) => {
         delete payload[col];
         continue;
       }
+      if (!payload.placa_veiculo && /placa_veiculo/i.test(msg) && /null/i.test(msg)) { payload.placa_veiculo = 'SEM PLACA'; continue; }
       throw error;
     }
     return res.status(400).json({ ok: false, error: 'Falha ao inserir recebimento' });
