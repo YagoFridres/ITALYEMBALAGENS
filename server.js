@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261110150457';
-const SW_RUNTIME_VERSION = '20261110150457';
+const PATCH_RUNTIME_VERSION = '20261110150754';
+const SW_RUNTIME_VERSION = '20261110150754';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -32682,7 +32682,7 @@ app.get('/api/recebimento_insumos', authMiddleware, async (req, res) => {
     if (req.query.fornecedor) q = q.ilike('fornecedor', '%' + req.query.fornecedor + '%');
     if (req.query.cliente) q = q.ilike('cliente', '%' + req.query.cliente + '%');
     if (req.query.nota_fiscal) q = q.ilike('nota_fiscal', '%' + req.query.nota_fiscal + '%');
-    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
+    if (req.query.empId) q = q.or('emp_id.eq.' + String(req.query.empId).replace(/[^A-Za-z0-9_-]/g, '') + ',emp_id.is.null');
     const { data, error } = await q;
     if (error) throw error;
     return ok(res, data || []);

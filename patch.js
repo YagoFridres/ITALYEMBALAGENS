@@ -33800,7 +33800,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     function checklistState() {
       if (!window.__checklistRecebState) {
-        window.__checklistRecebState = { q: '', fornecedor: '', nf: '', data: '', cliente: '' };
+        var _h = new Date(); window.__checklistRecebState = { q: '', fornecedor: '', nf: '', data: '', cliente: '', mes: _h.getFullYear() + '-' + String(_h.getMonth() + 1).padStart(2, '0') };
       }
       return window.__checklistRecebState;
     }
@@ -33828,6 +33828,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (f.nf) qs.set('nota_fiscal', String(f.nf || '').trim());
       if (f.data) qs.set('data', String(f.data || '').trim());
       if (f.cliente) qs.set('cliente', String(f.cliente || '').trim());
+      if (f.mes && f.mes !== 'todos') qs.set('mes', String(f.mes));
       try {
         var empId = String(window.EMP_FILTRO || '').trim();
         if (empId) qs.set('empId', empId);
@@ -34050,6 +34051,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<div class="pep-wrap">'
         + '  <div class="pep-head"><div><div class="pep-title">📋 Checklist de Recebimento</div><div class="pep-sub">Registro manual do recebimento com os campos finais definidos para o estoque.</div></div><button class="pep-btn primary" id="ck-novo">Novo Checklist</button></div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '    <select class="pep-input" id="ck-fil-mes" title="Mês do checklist" style="max-width:190px;font-weight:800">' + (function () { var nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'], h = new Date(), o = '<option value="todos"' + (st.mes === 'todos' ? ' selected' : '') + '>Todos os meses</option>'; for (var i = 0; i < 15; i++) { var d = new Date(h.getFullYear(), h.getMonth() - i, 1), v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); o += '<option value="' + v + '"' + (st.mes === v ? ' selected' : '') + '>📅 ' + nomes[d.getMonth()] + ' ' + d.getFullYear() + '</option>'; } return o; })() + '</select>'
         + '    <input class="pep-input" id="ck-busca" placeholder="Buscar por placa, produto, fornecedor, NF, cliente ou responsável..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
         + '    <input class="pep-input" id="ck-fil-forn" placeholder="Fornecedor" value="' + esc(st.fornecedor || '') + '" style="max-width:220px">'
         + '    <input class="pep-input" id="ck-fil-nf" placeholder="NF" value="' + esc(st.nf || '') + '" style="max-width:160px">'
@@ -34084,6 +34086,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('ck-novo').onclick = function() { openChecklistLoteModal(renderChecklistPage); };
+      try { document.getElementById('ck-fil-mes').onchange = function () { st.mes = this.value; renderChecklistPage(); }; } catch (_) {}
       document.getElementById('ck-exportar').onclick = function() { checklistCsv(filtrada); };
       document.getElementById('ck-agrupar').onclick = function() { st.agrupar = st.agrupar === false; renderChecklistPage(); };
       document.getElementById('ck-aplicar').onclick = function() {
