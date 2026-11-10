@@ -79820,3 +79820,151 @@ window.__perTxt = function (p) {
   }
   new MutationObserver(function () { var inp = document.getElementById('estoque-entrada-real-fornecedor'); if (inp) ligar(inp); }).observe(document.body, { childList: true, subtree: true });
 })();
+
+/* ===== 10/11: Importar XML da NF-e — Dar Entrada (chapas) e Novo Checklist de Recebimento =====
+ * Lê o XML da nota no navegador (nada é enviado antes de você salvar), preenche fornecedor/NF/empresa e monta os itens,
+ * ligando cada item à chapa do estoque pelo fornecedor + medida (aceita 2170X1350 ou 1350X2170) + nomenclatura. */
+(function () {
+  if (window.__dsXmlNfe) return; window.__dsXmlNfe = true;
+  function norm(t) { var x = String(t || '').toUpperCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x.replace(/\s+/g, ' ').trim(); }
+  function tag(el, nome) { if (!el) return ''; var l = el.getElementsByTagName(nome); return l && l[0] ? String(l[0].textContent || '').trim() : ''; }
+  function num(v) { var n = Number(String(v || '').replace(',', '.')); return isFinite(n) ? n : 0; }
+  function lerXml(txt) {
+    var doc = new DOMParser().parseFromString(txt, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('Arquivo XML inválido');
+    var inf = doc.getElementsByTagName('infNFe')[0]; if (!inf) throw new Error('Este XML não é de uma NF-e');
+    var ide = inf.getElementsByTagName('ide')[0], emit = inf.getElementsByTagName('emit')[0], dest = inf.getElementsByTagName('dest')[0];
+    var itens = Array.prototype.map.call(inf.getElementsByTagName('det'), function (d) {
+      var p = d.getElementsByTagName('prod')[0];
+      return { cProd: tag(p, 'cProd'), xProd: tag(p, 'xProd'), uCom: tag(p, 'uCom'), qCom: num(tag(p, 'qCom')), vUnCom: num(tag(p, 'vUnCom')), vProd: num(tag(p, 'vProd')), uTrib: tag(p, 'uTrib'), qTrib: num(tag(p, 'qTrib')), vUnTrib: num(tag(p, 'vUnTrib')), infAd: tag(d, 'infAdProd') };
+    });
+    return { chave: String(inf.getAttribute('Id') || '').replace(/^NFe/i, ''), nNF: tag(ide, 'nNF'), serie: tag(ide, 'serie'), data: (tag(ide, 'dhEmi') || tag(ide, 'dEmi')).slice(0, 10),
+      emitCnpj: tag(emit, 'CNPJ'), emitNome: tag(emit, 'xNome'), emitFant: tag(emit, 'xFant'), destCnpj: tag(dest, 'CNPJ'), destNome: tag(dest, 'xNome'), itens: itens };
+  }
+  function ehUnidade(u) { return /^(UN|UND|UNID|UNIDADE|PC|PCS|PC\.|PÇ|PCA|PECA|CH|CHP|CHAPA|FL|FLS|FOLHA|CX|PT)$/i.test(String(u || '').trim().replace(/\.$/, '')); }
+  function qtdItem(it) {
+    if (ehUnidade(it.uCom) || !it.uCom) return { q: Math.round(it.qCom), vu: it.vUnCom || (it.qCom ? it.vProd / it.qCom : 0), aviso: '' };
+    if (ehUnidade(it.uTrib)) return { q: Math.round(it.qTrib), vu: it.vUnTrib || (it.qTrib ? it.vProd / it.qTrib : 0), aviso: '' };
+    return { q: Math.round(it.qCom), vu: it.vUnCom, aviso: 'A nota está em ' + it.uCom + ' — confira a quantidade de chapas' };
+  }
+  function medidas(txt) {
+    var t = String(txt || '').toUpperCase().replace(/(\d)[,.]0+\b/g, '$1'), out = [], m, re = /(\d{2,4})\s*(?:X|\*|POR|MM\s*X)\s*(\d{2,4})/g;
+    while ((m = re.exec(t))) out.push([m[1], m[2]]);
+    return out;
+  }
+  function tamKey(t) { var m = String(t || '').toUpperCase().replace(/\s+/g, '').match(/(\d{2,4})X(\d{2,4})/); return m ? [m[1], m[2]] : null; }
+  function chapasLista() { var l = window.__entradaEstoqueChapasCache || window.__estoqueChapasCacheGlobal || []; return Array.isArray(l) ? l : []; }
+  function fornDaNota(nf, chapas) {
+    var txt = norm(nf.emitNome + ' ' + nf.emitFant), nomes = {};
+    chapas.forEach(function (c) { var f = norm(c.fornecedor || c.forn); if (f) nomes[f] = String(c.fornecedor || c.forn).trim(); });
+    (window.__dsFornCad || []).forEach(function (f) { var n = norm(f); if (n) nomes[n] = f; });
+    var achou = Object.keys(nomes).filter(function (n) { return n.length >= 3 && txt.indexOf(n) >= 0; }).sort(function (a, b) { return b.length - a.length; })[0];
+    return achou ? nomes[achou] : (nf.emitFant || nf.emitNome || '').toUpperCase();
+  }
+  function empresaDest(nf) { var d = norm(nf.destNome); if (/CARTOESTE/.test(d)) return 'CARTOESTE'; if (/OESTEPACK|OESTE PACK/.test(d)) return 'OESTEPACK'; if (/ITALY|ITALIA/.test(d)) return 'ITALY'; return nf.destNome || ''; }
+  function casar(it, forn, chapas) {
+    var txt = norm(it.xProd + ' ' + it.cProd + ' ' + it.infAd), meds = medidas(it.xProd + ' ' + it.infAd);
+    var f = norm(forn), doForn = chapas.filter(function (c) { return norm(c.fornecedor || c.forn) === f; });
+    function porMedida(lista) {
+      return lista.filter(function (c) { var k = tamKey(c.tamanho || c.tam); if (!k) return false; return meds.some(function (m) { return (m[0] === k[0] && m[1] === k[1]) || (m[0] === k[1] && m[1] === k[0]); }); });
+    }
+    var cand = porMedida(doForn); if (!cand.length) cand = porMedida(chapas);
+    if (!cand.length) return { chapa: null, nomGuess: (doForn.map(function (c) { return String(c.nomenclatura || ''); }).filter(function (n) { return n && txt.indexOf(norm(n)) >= 0; })[0] || ''), meds: meds };
+    var comNom = cand.filter(function (c) { var n = norm(c.nomenclatura || c.nom); return n && (txt.indexOf(n) >= 0 || txt.replace(/\s/g, '').indexOf(n.replace(/\s/g, '')) >= 0); });
+    var escolha = (comNom.length ? comNom : cand)[0];
+    return { chapa: escolha, duvida: !comNom.length && cand.length > 1, meds: meds };
+  }
+  function lerArquivo(cb) {
+    var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.xml,text/xml,application/xml';
+    inp.onchange = function () { var f = inp.files && inp.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { try { cb(lerXml(String(r.result || ''))); } catch (e) { aviso('Não consegui ler o XML: ' + e.message, true); } }; r.readAsText(f); };
+    inp.click();
+  }
+  function aviso(msg, erro) { try { window.toast(msg, erro ? 'var(--red)' : 'var(--green)'); } catch (_) { alert(msg); } }
+  function setv(el, v, evt) { if (!el) return; el.value = v == null ? '' : v; el.dispatchEvent(new Event(evt || 'input', { bubbles: true })); }
+  function esperar(fn, ms) { return new Promise(function (ok) { var t0 = Date.now(); (function v() { if (fn() || Date.now() - t0 > (ms || 4000)) ok(); else setTimeout(v, 80); })(); }); }
+  // fornecedores cadastrados (para reconhecer o emitente)
+  try { if (typeof window.apiFetch === 'function') window.apiFetch('/api/fornecedores').then(function (r) { return r.json(); }).then(function (j) { var l = Array.isArray(j) ? j : (j && j.data) || []; window.__dsFornCad = l.map(function (f) { return f.nome || f.razao_social; }).filter(Boolean); }).catch(function () {}); } catch (_) {}
+
+  /* ---------- Dar Entrada ---------- */
+  async function importarEntrada(nf) {
+    await esperar(function () { return chapasLista().length && document.querySelector('#estoque-entrada-real-tbody .est-ent-modo'); }, 6000);
+    var chapas = chapasLista(), forn = fornDaNota(nf, chapas);
+    setv(document.getElementById('estoque-entrada-real-fornecedor'), forn);
+    setv(document.getElementById('estoque-entrada-real-nf'), nf.nNF);
+    setv(document.getElementById('estoque-entrada-real-cnpj'), empresaDest(nf));
+    var obs = document.getElementById('estoque-entrada-real-obs'); if (obs && !obs.value) setv(obs, 'NF-e ' + nf.nNF + ' · chave ' + nf.chave);
+    var tb = document.getElementById('estoque-entrada-real-tbody'), add = document.getElementById('estoque-entrada-real-add');
+    // reaproveita linhas vazias e cria as que faltam
+    var linhasVazias = Array.prototype.filter.call(tb.querySelectorAll('tr'), function (tr) { return tr.querySelector('.est-ent-modo') && !tr.dataset.dsXml; });
+    linhasVazias.forEach(function (tr, i) { if (i > 0) tr.remove(); });
+    var achados = 0, novos = 0, avisos = 0;
+    for (var i = 0; i < nf.itens.length; i++) {
+      var it = nf.itens[i], q = qtdItem(it), c = casar(it, forn, chapas);
+      var tr = i === 0 && linhasVazias[0] ? linhasVazias[0] : null;
+      if (!tr) { add.click(); var trs = tb.querySelectorAll('tr'); tr = trs[trs.length - 1]; }
+      tr.dataset.dsXml = '1';
+      var modo = tr.querySelector('.est-ent-modo');
+      if (c.chapa) {
+        setv(modo, 'existente', 'input');
+        var sel = tr.querySelector('.est-ent-chapa'); sel.value = String(c.chapa.id); sel.dispatchEvent(new Event('change', { bubbles: true }));
+        achados++;
+      } else {
+        // chapa que não existe no estoque: modo "Nova" com os dados da nota (sem abrir a janela de cadastro)
+        setv(modo, 'nova', 'input');
+        var m = c.meds[0];
+        setv(tr.querySelector('.est-ent-nomenclatura'), c.nomGuess || '');
+        setv(tr.querySelector('.est-ent-tamanho'), m ? (Math.max(+m[0], +m[1]) + 'X' + Math.min(+m[0], +m[1])) : '');
+        setv(tr.querySelector('.est-ent-nome'), it.xProd);
+        novos++;
+      }
+      setv(tr.querySelector('.est-ent-qtd'), q.q);
+      setv(tr.querySelector('.est-ent-vu'), Math.round(q.vu * 100000) / 100000);
+      var nota = q.aviso || (c.duvida ? 'Mais de uma chapa com essa medida — confira se é a certa' : '') || (!c.chapa ? 'Não achei no estoque — será criada como chapa nova' : '');
+      var td = tr.querySelector('.est-ent-picker-wrap'); var old = tr.querySelector('.ds-xml-nota'); if (old) old.remove();
+      var info = document.createElement('div'); info.className = 'ds-xml-nota' + (nota ? ' warn' : '');
+      info.textContent = '📄 Nota: ' + it.xProd + (nota ? ' — ⚠ ' + nota : '');
+      if (td) td.appendChild(info); if (nota) avisos++;
+    }
+    aviso('XML da NF ' + nf.nNF + ' lido: ' + nf.itens.length + ' itens (' + achados + ' ligados ao estoque' + (novos ? ', ' + novos + ' novos' : '') + ')' + (avisos ? ' · confira os marcados em amarelo' : '') + '. Confira e clique em Salvar Entrada.');
+  }
+  /* ---------- Novo Checklist ---------- */
+  async function importarChecklist(nf) {
+    var chapas = chapasLista();
+    if (!chapas.length) { try { var j = await window.apiFetch('/api/chapas_estoque?limit=2000').then(function (r) { return r.json(); }); chapas = Array.isArray(j) ? j : (j && j.data) || []; window.__entradaEstoqueChapasCache = chapas; } catch (_) {} }
+    var forn = fornDaNota(nf, chapas);
+    setv(document.getElementById('ckl-forn'), forn); setv(document.getElementById('ckl-nf'), nf.nNF);
+    var body = document.getElementById('ckl-body'), add = document.getElementById('ckl-add');
+    Array.prototype.forEach.call(body.querySelectorAll('.ckl-it'), function (tr, i) { if (i > 0) tr.remove(); else Array.prototype.forEach.call(tr.querySelectorAll('input'), function (x) { x.value = ''; }); });
+    nf.itens.forEach(function (it, i) {
+      if (i > 0) add.click();
+      var trs = body.querySelectorAll('.ckl-it'), tr = trs[trs.length - 1], q = qtdItem(it), c = casar(it, forn, chapas);
+      var rot = c.chapa ? [c.chapa.fornecedor, c.chapa.nomenclatura, c.chapa.tamanho, c.chapa.nome_uso || c.chapa.nome].filter(Boolean).join(' · ') : it.xProd;
+      setv(tr.querySelector('.ckl-prod'), rot); setv(tr.querySelector('.ckl-qtd'), q.q);
+      if (q.aviso) { tr.querySelector('.ckl-qtd').title = q.aviso; tr.querySelector('.ckl-qtd').style.outline = '2px solid #f59e0b'; }
+    });
+    aviso('XML da NF ' + nf.nNF + ' lido: ' + nf.itens.length + ' itens. Confira e clique em Salvar Checklist.');
+  }
+
+  var st = document.createElement('style');
+  st.textContent = '.ds-xml-btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:10px;border:1px solid #7c3aed;background:#7c3aed;color:#fff!important;font:inherit;font-weight:800;font-size:13.5px;cursor:pointer;white-space:nowrap}.ds-xml-btn:hover{filter:brightness(1.1)}'
+    + '.ds-xml-zona{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;border:2px dashed rgba(124,58,237,.6);border-radius:12px;background:rgba(124,58,237,.08);font-size:13px}.ds-xml-zona.on{background:rgba(124,58,237,.25)}'
+    + '.ds-xml-nota{font-size:11.5px;color:var(--text2,#94a3b8);line-height:1.3}.ds-xml-nota.warn{color:#f59e0b;font-weight:700}';
+  document.head.appendChild(st);
+  function zona(onNota) {
+    var z = document.createElement('div'); z.className = 'ds-xml-zona';
+    z.innerHTML = '<button type="button" class="ds-xml-btn">📄 Importar XML da nota</button><span>Escolha o arquivo XML da NF-e (ou arraste aqui) e os itens são preenchidos sozinhos.</span>';
+    z.querySelector('button').onclick = function () { lerArquivo(onNota); };
+    z.addEventListener('dragover', function (e) { e.preventDefault(); z.classList.add('on'); });
+    z.addEventListener('dragleave', function () { z.classList.remove('on'); });
+    z.addEventListener('drop', function (e) { e.preventDefault(); z.classList.remove('on'); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { try { onNota(lerXml(String(r.result || ''))); } catch (er) { aviso('Não consegui ler o XML: ' + er.message, true); } }; r.readAsText(f); });
+    return z;
+  }
+  function ligar() {
+    var m1 = document.getElementById('estoque-entrada-real-modal');
+    if (m1 && !m1.querySelector('.ds-xml-zona')) { var card = m1.querySelector('.estoque-modal-card'); if (card) card.parentNode.insertBefore(zona(function (nf) { importarEntrada(nf).catch(function (e) { aviso('Erro ao importar: ' + e.message, true); }); }), card); }
+    var m2 = document.getElementById('ckl-body');
+    if (m2) { var wrap = m2.closest('[id="estoque-checklist-lote-modal"]') || document.getElementById('estoque-checklist-lote-modal'); var av = wrap && wrap.querySelector('.ckl-aviso'); if (av && !wrap.querySelector('.ds-xml-zona')) av.parentNode.insertBefore(zona(function (nf) { importarChecklist(nf).catch(function (e) { aviso('Erro ao importar: ' + e.message, true); }); }), av.nextSibling); }
+  }
+  new MutationObserver(function () { ligar(); }).observe(document.body, { childList: true, subtree: true });
+  window.dsLerXmlNfe = lerXml; // usado nos testes
+})();
