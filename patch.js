@@ -79577,6 +79577,8 @@ window.__perTxt = function (p) {
     + '.dsrs-m button.az{background:#2563eb;border-color:#1d4ed8;color:#fff}.dsrs-m button.vd{background:#16a34a;border-color:#15803d;color:#fff}.dsrs-m button.x{background:#dc2626;border-color:#b91c1c;color:#fff}'
     + '.dsrs-op{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--border,#1e293b);font-size:13px;color:var(--text2,#94a3b8)}.dsrs-op label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--text,#e2e8f0);font-weight:600}.dsrs-op input{width:18px;height:18px}'
     + '.dsrs-bd{overflow:auto;padding:12px 18px 20px}'
+    + '.dsrs-t{table-layout:fixed}.dsrs-t .c-dia{width:15%}.dsrs-t .c-cli{width:47%}.dsrs-t .c-mod{width:9%}.dsrs-t .c-ent{width:13%}.dsrs-t .c-cid{width:16%}'
+    + '.dsrs-t td{word-wrap:break-word}'
     + '.dsrs-t{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:14px}.dsrs-t th,.dsrs-t td{border:1px solid var(--border,#334155);padding:7px 9px;text-align:left;vertical-align:top}'
     + '.dsrs-t th{background:#1e3a8a;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.03em}'
     + '.dsrs-t td.dia{font-weight:800;white-space:nowrap}.dsrs-t td.n{text-align:center;font-weight:800}.dsrs-t td.ofs{font-size:12px;color:var(--text2,#94a3b8)}'
@@ -79617,12 +79619,12 @@ window.__perTxt = function (p) {
       var linhas = D.grupos.map(function (g, i) {
         n++; totM += g.ofs.length;
         return '<tr><td class="dia">' + (i === 0 ? esc(DIAS[w]) : br(D.dia).slice(0, 5)) + '</td><td>' + esc(g.cli) + '</td><td class="n">' + g.ofs.length + '</td>'
-          + '<td class="ofs mh">' + esc(g.ofs.join(', ')) + '</td><td class="' + (g.atras ? 'at' : '') + '">' + (g.ents.length ? g.ents.map(br).join('<br>') : '—') + (g.atras ? ' <small>(atrasada)</small>' : '') + '</td>'
-          + '<td>' + esc(g.cid || '—') + (g.fora && g.cid ? ' <small>(fora do roteiro)</small>' : '') + '</td><td class="n mh">' + n + '</td></tr>';
+          + '<td class="' + (g.atras ? 'at' : '') + '">' + (g.ents.length ? g.ents.map(br).join('<br>') : '—') + (g.atras ? ' <small>(atrasada)</small>' : '') + '</td>'
+          + '<td>' + esc(g.cid || '—') + (g.fora && g.cid ? ' <small>(fora do roteiro)</small>' : '') + '</td></tr>';
       }).join('');
-      return '<table class="dsrs-t"><thead><tr><th>Dia da semana</th><th>Cliente</th><th>Modelos</th><th class="mh">Nº das OFs</th><th>Data de entrega</th><th>Cidade</th><th class="mh">Nº</th></tr></thead><tbody>'
-        + '<tr><td colspan="7" style="font-weight:800;background:' + (imp ? '#dbeafe' : 'rgba(37,99,235,.18)') + '">' + esc(DIAS[w]) + ' — ' + br(D.dia) + '</td></tr>'
-        + linhas + '<tr class="tot"><td colspan="2">Total do dia: ' + D.grupos.length + ' cliente' + (D.grupos.length > 1 ? 's' : '') + '</td><td class="n">' + totM + '</td><td colspan="4" class="mh">' + totM + ' OF' + (totM > 1 ? 's' : '') + '</td></tr></tbody></table>';
+      return '<table class="dsrs-t"><thead><tr><th class="c-dia">Dia da semana</th><th class="c-cli">Cliente</th><th class="c-mod">Modelos</th><th class="c-ent">Data de entrega</th><th class="c-cid">Cidade</th></tr></thead><tbody>'
+        + '<tr><td colspan="5" style="font-weight:800;background:' + (imp ? '#dbeafe' : 'rgba(37,99,235,.18)') + '">' + esc(DIAS[w]) + ' — ' + br(D.dia) + '</td></tr>'
+        + linhas + '<tr class="tot"><td colspan="2">Total do dia: ' + D.grupos.length + ' cliente' + (D.grupos.length > 1 ? 's' : '') + '</td><td class="n">' + totM + '</td><td colspan="2"></td></tr></tbody></table>';
     }).join('');
   }
   function resumo(dados) { var c = 0, m = 0; dados.forEach(function (D) { c += D.grupos.length; D.grupos.forEach(function (g) { m += g.ofs.length; }); }); return { c: c, m: m }; }
@@ -79641,6 +79643,7 @@ window.__perTxt = function (p) {
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>Pedidos da semana ' + esc(rotSemana()) + '</title><style>'
       + '@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font:11.5px Arial,Helvetica,sans-serif;color:#111;margin:0}'
       + '.top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:8px}.top img{height:42px}.top b{font-size:17px;display:block}.top span{font-size:11px;color:#555}'
+      + '.dsrs-t{table-layout:fixed}.dsrs-t .c-dia{width:15%}.dsrs-t .c-cli{width:47%}.dsrs-t .c-mod{width:9%}.dsrs-t .c-ent{width:13%}.dsrs-t .c-cid{width:16%}'
       + '.dsrs-t{width:100%;border-collapse:collapse;margin-bottom:10px;page-break-inside:auto}.dsrs-t tr{page-break-inside:avoid}.dsrs-t th,.dsrs-t td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}'
       + '.dsrs-t th{background:#1e3a8a!important;color:#fff;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dsrs-t td.dia{font-weight:700;white-space:nowrap}.dsrs-t td.n{text-align:center;font-weight:700}.dsrs-t td.ofs{font-size:10px;color:#444}'
       + '.dsrs-t tr.tot td{background:#eff6ff;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dsrs-t td.at{color:#b91c1c;font-weight:700}td[style*="background"]{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
@@ -79655,10 +79658,10 @@ window.__perTxt = function (p) {
   }
   function excel() {
     var dados = ov && ov.__dados || montar(), n = 0;
-    var linhas = '<tr><th>DIA DA SEMANA</th><th>CLIENTE</th><th>MODELOS</th><th>Nº DAS OFs</th><th>DATA DE ENTREGA</th><th>CIDADE</th><th>Nº</th></tr>';
+    var linhas = '<tr><th>DIA DA SEMANA</th><th style="width:420px">CLIENTE</th><th>MODELOS</th><th>DATA DE ENTREGA</th><th>CIDADE</th></tr>';
     dados.forEach(function (D) {
       var w = new Date(D.dia + 'T12:00:00').getDay();
-      D.grupos.forEach(function (g, i) { n++; linhas += '<tr><td>' + (i === 0 ? esc(DIAS[w]) : br(D.dia)) + '</td><td>' + esc(g.cli) + '</td><td>' + g.ofs.length + '</td><td>' + esc(g.ofs.join(', ')) + '</td><td>' + g.ents.map(br).join(' / ') + '</td><td>' + esc(g.cid) + '</td><td>' + n + '</td></tr>'; });
+      D.grupos.forEach(function (g, i) { n++; linhas += '<tr><td>' + (i === 0 ? esc(DIAS[w]) : br(D.dia)) + '</td><td>' + esc(g.cli) + '</td><td>' + g.ofs.length + '</td><td>' + g.ents.map(br).join(' / ') + '</td><td>' + esc(g.cid) + '</td></tr>'; });
       linhas += '<tr><td></td></tr>';
     });
     var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>th{background:#1e3a8a;color:#fff;font-weight:bold}td,th{border:.5pt solid #999}</style></head><body><table>' + linhas + '</table></body></html>';
