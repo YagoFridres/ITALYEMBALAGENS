@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261110114717';
-const SW_RUNTIME_VERSION = '20261110114717';
+const PATCH_RUNTIME_VERSION = '20261110150457';
+const SW_RUNTIME_VERSION = '20261110150457';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4703,7 +4703,7 @@ const CAMPOS_OFS_UPDATE = new Set([
   'caixas_boas', 'caixas_perdidas', 'motivo_perda', 'operador_conclusao',
   'tempo_setup_real', 'tempo_producao_real',
   'dim_comprimento', 'dim_largura', 'dim_altura', 'gramatura_id',
-  'chapa_id', 'modo_programacao', 'dia_programacao', 'cidade_entrega',
+  'chapa_id', 'modo_programacao', 'dia_programacao', 'cidade_entrega', 'num_pedido',
   'valor_venda', 'valor_total', 'fluxo_maquinas', 'maquina_atual_index',
   'gramatura_nome', 'gramatura', 'peso_utilizado_kg', 'toneladas_utilizadas',
   'area_total_m2', 'consumo_chapas_estimado', 'tonelada_vendida', 'custo_m2_venda',
@@ -4789,7 +4789,7 @@ const OFS_TABLE_COLS = [
   'deleted_at',
   'prioridade', 'sem_papel',
   'papel_comprado', 'previsao_entrega_papel', 'papel_observacao',
-  'cidade_entrega', 'modo_programacao',
+  'cidade_entrega', 'modo_programacao', 'num_pedido',
   'usuario_conclusao', 'gramatura_id', 'gramatura_nome', 'gramatura',
   'peso_utilizado_kg', 'toneladas_utilizadas', 'area_total_m2',
   'consumo_chapas_estimado', 'tonelada_vendida', 'custo_m2_venda',
@@ -6871,6 +6871,19 @@ async function _autoSugerirMaquinaParaOF(body, created){
     return { ok:false, skipped:'erro', error: String(e?.message || e) };
   }
 }
+
+// 10/11: número do pedido do cliente por OF (a lista de OFs da tela não carrega este campo)
+app.get('/api/ofs-pedidos', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('ofs').select('id,num_pedido').not('num_pedido', 'is', null).limit(20000);
+    if (error) {
+      if (/num_pedido/i.test(String(error.message || ''))) return res.json({ ok: true, data: [] });
+      throw error;
+    }
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, data: (data || []).filter(r => String(r.num_pedido || '').trim()) });
+  } catch (e) { err(res, e); }
+});
 
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   // #region debug-point B:ofs-post-state
