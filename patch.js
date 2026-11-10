@@ -79397,7 +79397,11 @@ window.__perTxt = function (p) {
   var st = document.createElement('style'); st.id = 'ds-comissoes-scroll-css';
   st.textContent = '#page-comissoes.active{height:100%!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px}'
     // o detalhamento das OFs tinha uma caixinha com rolagem própria (só ~10 linhas visíveis): agora cresce e a página inteira rola
-    + '#page-comissoes.active #_com_detalhe{max-height:none!important;height:auto!important;overflow:visible!important}';
+    + '#page-comissoes.active #_com_detalhe{max-height:none!important;height:auto!important;overflow:visible!important}'
+    // 10/11: Checklist de Recebimento também rola até o fim
+    + '#page-checklist-recebimento{height:100%!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px;box-sizing:border-box}'
+    + '#page-checklist-recebimento .pep-panel,#page-checklist-recebimento .pep-wrap{max-height:none!important;overflow:visible!important}'
+    + '#page-checklist-recebimento .pep-table-wrap,#page-checklist-recebimento [style*="overflow:auto"]{max-height:none!important;overflow-y:visible!important;overflow-x:auto!important}';
   (document.head || document.documentElement).appendChild(st);
 })();
 
