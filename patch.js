@@ -72233,11 +72233,21 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return lista.slice().sort(function (a, b) {
       // 09/11: OF urgente fica sempre em 1º lugar na máquina
       var u0a = urg(a) ? 0 : 1, u0b = urg(b) ? 0 : 1; if (u0a !== u0b) return u0a - u0b;
+      var pa2 = emProducao(a) ? 0 : 1, pb2 = emProducao(b) ? 0 : 1; if (pa2 !== pb2) return pa2 - pb2;
       var pa = pos[a.id], pb = pos[b.id];
+      // 10/11: o ROTEIRO DE ENTREGA manda na fila (dia do caminhão da cidade e, no dia, a ordem das cidades);
+      // a ordem manual (arrastar/setas) só vale entre OFs da mesma cidade no mesmo dia.
+      if (modo !== 'entrega' && typeof window.dsRoteiroPlano === 'function' && typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto()) {
+        var ra = window.dsRoteiroPlano(a), rb = window.dsRoteiroPlano(b);
+        if (ra.dia !== rb.dia) return ra.dia < rb.dia ? -1 : 1;
+        if (ra.pos !== rb.pos) return ra.pos - rb.pos;
+        var ca = String(ra.cidade || '').toLowerCase(), cb = String(rb.cidade || '').toLowerCase(); if (ca !== cb) return ca < cb ? -1 : 1;
+        if (pa != null && pb != null && pa !== pb) return pa - pb;
+        if (pa != null && pb == null) return -1; if (pb != null && pa == null) return 1;
+        return window.dsRoteiroCmp(a, b);
+      }
       if (pa != null && pb != null) return pa - pb;
       if (pa != null) return -1; if (pb != null) return 1;
-      var pa2 = emProducao(a) ? 0 : 1, pb2 = emProducao(b) ? 0 : 1; if (pa2 !== pb2) return pa2 - pb2;
-      if (modo !== 'entrega' && typeof window.dsRoteiroCmp === 'function') return window.dsRoteiroCmp(a, b);
       var ea = entOf(a) || '9999', eb = entOf(b) || '9999'; if (ea !== eb) return ea < eb ? -1 : 1;
       return String(a.created_at || '').localeCompare(String(b.created_at || ''));
     });
@@ -72370,6 +72380,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }
     return l;
   }
+  window.addEventListener('ds-roteiro-mudou', function () { try { if (ativa()) render(); } catch (_) {} });
   function render() {
     if (!raiz || E.antiga) return;
     if (!raiz.querySelector('.dom-head')) {
@@ -78825,7 +78836,14 @@ window.__perTxt = function (p) {
   function ofs() { try { return (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
   function carregar(forcar) {
     if (ROT && !forcar && Date.now() - ROT_TS < 60000) return Promise.resolve(ROT);
-    return api('GET', '/api/roteiro_entrega?_=' + Date.now()).then(function (l) { ROT = Array.isArray(l) ? l : []; ROT_TS = Date.now(); window.__dsRotLista = ROT; return ROT; });
+    if (carregar.__p) return carregar.__p;
+    carregar.__p = api('GET', '/api/roteiro_entrega?_=' + Date.now()).then(function (l) {
+      var antes = JSON.stringify((ROT || []).map(function (r) { return [r.id, r.dia_semana, r.ordem, r.ativo]; }));
+      ROT = Array.isArray(l) ? l : []; ROT_TS = Date.now(); window.__dsRotLista = ROT;
+      if (JSON.stringify(ROT.map(function (r) { return [r.id, r.dia_semana, r.ordem, r.ativo]; })) !== antes) { try { window.dispatchEvent(new Event('ds-roteiro-mudou')); } catch (_) {} }
+      return ROT;
+    }).finally(function () { carregar.__p = null; });
+    return carregar.__p;
   }
   function cliDe(o) { var id = String(o && (o.cli_id || o.cliId || o.cliente_id) || ''); if (!id) return null; var l = clientes(); for (var i = 0; i < l.length; i++) if (String(l[i].id) === id) return l[i]; return null; }
   function cidadeDaOF(o) { var c = String(o && o.cidade_entrega || '').trim(); if (c) return c; var cl = cliDe(o); return String(cl && (cl.cidade || cl.municipio) || '').trim(); }
@@ -78880,7 +78898,7 @@ window.__perTxt = function (p) {
     return String(a.created_at || '').localeCompare(String(b.created_at || ''));
   }
   function ehUrg(o) { var u = o.urg != null ? o.urg : o.urgente; return u === true || u === 1 || u === '1' || u === 'true'; }
-  window.dsRoteiroPlano = function (o) { if (!ROT) carregar().catch(function () {}); var p = plano(o); p.rotulo = p.noRoteiro ? NOMES_DIA[wd(p.dia)] + ' ' + p.dia.slice(8, 10) + '/' + p.dia.slice(5, 7) : ''; return p; };
+  window.dsRoteiroPlano = function (o) { if (!ROT || Date.now() - ROT_TS > 60000) carregar().catch(function () {}); var p = plano(o); p.rotulo = p.noRoteiro ? NOMES_DIA[wd(p.dia)] + ' ' + p.dia.slice(8, 10) + '/' + p.dia.slice(5, 7) : ''; return p; };
   window.dsRoteiroCmp = cmpPlano;
   window.dsRoteiroPronto = function () { return !!ROT; };
   carregar().catch(function () {});
@@ -78923,7 +78941,7 @@ window.__perTxt = function (p) {
     var porCid = ofsPorCidade();
     var noRot = {}; (ROT || []).forEach(function (r) { noRot[norm(r.cidade)] = 1; });
     var semRot = Object.keys(porCid).filter(function (k) { return !noRot[k]; }).sort(function (a, b) { return porCid[b] - porCid[a]; });
-    box.innerHTML = '<h1>🚚 Roteiro de Entrega</h1><p class="sub">Coloque as cidades de cada dia na ordem da entrega (da primeira para a última). Em <b>OFs por Máquina</b>, o botão <b>🚚 Ordenar pelo roteiro</b> organiza a fila nessa ordem.</p>'
+    box.innerHTML = '<h1>🚚 Roteiro de Entrega</h1><p class="sub">Coloque as cidades de cada dia na ordem da entrega (da primeira para a última). A fila de <b>OFs por Máquina</b> segue esta ordem automaticamente: primeiro o dia do caminhão de cada cidade e, no dia, a ordem das cidades daqui (urgentes sempre na frente).</p>'
       + '<div class="drt-g">' + DIAS.map(function (d) {
         var l = (ROT || []).filter(function (r) { return Number(r.dia_semana) === d[0] && r.ativo !== false; });
         return '<section class="drt-dia" data-dia="' + d[0] + '"><h2>' + d[1] + '<small>' + l.length + ' cidade' + (l.length === 1 ? '' : 's') + '</small></h2>'
@@ -78963,7 +78981,7 @@ window.__perTxt = function (p) {
     if (i === j) { render(); return; }
     l.splice(i, 1); l.splice(j, 0, r); l.forEach(function (x, k) { x.ordem = k + 1; });
     ROT.sort(function (a, b) { return (a.dia_semana - b.dia_semana) || (a.ordem - b.ordem); }); render();
-    toast(r.cidade + ' agora é a ' + (j + 1) + 'ª cidade');
+    toast(r.cidade + ' agora é a ' + (j + 1) + 'ª cidade'); try { window.dispatchEvent(new Event('ds-roteiro-mudou')); } catch (_) {}
     api('POST', '/api/roteiro_entrega/ordem', { dia_semana: dia, ids: l.map(function (x) { return x.id; }) }).catch(function (er) { toast('Não salvou a ordem: ' + er.message, 'var(--red)'); carregar(true).then(render); });
   }
   function tecla(e) {
