@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261110155414';
-const SW_RUNTIME_VERSION = '20261110155414';
+const PATCH_RUNTIME_VERSION = '20261110155531';
+const SW_RUNTIME_VERSION = '20261110155531';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -34032,7 +34032,10 @@ ${admin ? '' : '- Este usuário não é administrador: não mostre dados finance
     const j = await r.json().catch(() => null);
     if (!r.ok) throw new Error(String(j?.error?.message || r.status));
     const msg = j?.choices?.[0]?.message; if (!msg) throw new Error('resposta vazia');
-    msgs.push(msg);
+    // devolve só os campos aceitos (a API recusa campos extras como "annotations"/"refusal")
+    msgs.push(Array.isArray(msg.tool_calls) && msg.tool_calls.length
+      ? { role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls.map((c) => ({ id: c.id, type: 'function', function: { name: c.function?.name, arguments: c.function?.arguments || '{}' } })) }
+      : { role: 'assistant', content: String(msg.content || '') });
     const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
     if (!calls.length) return { texto: String(msg.content || '').trim(), acoes: ctx.acoes };
     for (const c of calls) {
@@ -34139,7 +34142,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       try {
         const rAg = await _jarvisAgente({ pergunta, historico: req.body?.historico || req.body?.history || [], nome, perfil, req });
         if (rAg && rAg.texto) return respond(rAg.texto, { origem_ia: 'jarvis_ferramentas', acoes_tela: rAg.acoes || [], navegar: (rAg.acoes || [])[0] || null });
-      } catch (eAg) { console.warn('[JARVIS AGENTE] falhou, usando modo antigo:', eAg?.message); }
+      } catch (eAg) {
+        console.warn('[JARVIS AGENTE] falhou:', eAg?.message);
+        // mostra o motivo para administrador (ajuda a corrigir); para os demais, segue no modo antigo
+        if (/admin/i.test(String(perfil || req?.usuario?.perfil || ''))) return respond('⚠️ O Jarvis IA não conseguiu consultar agora. Motivo técnico: ' + String(eAg?.message || eAg).slice(0, 300) + '\n\n(Mande esta mensagem para o suporte.)', { origem_ia: 'erro' });
+      }
     }
 
     if (hasAny('imagem', 'foto', 'img', 'figura') && hasAny('of', 'pedido')) {

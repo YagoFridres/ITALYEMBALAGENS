@@ -74204,8 +74204,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function maqs(o) { var v = o.maq != null ? o.maq : o.fluxo_maquinas; if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = v.split(','); } } return Array.isArray(v) ? v.join(' ') : (o.maquina || ''); }
   // tipos: [chave, título, ícone, fonte(), texto(item), card(item)]
   var TIPOS = [
-    ['ofs', 'OFs', '📋', function () { return Promise.resolve(window.OFs || []); },
-      function (o) { return [o.of, o.numero, o.cliNome || o.cliente, o.produto || o.prodDesc, o.ref || o.referencia, o.vendNome || o.vendedor, maqs(o), o.maquina_atual, o.status, o.obs, itensTxt(o)].join(' '); }, null],
+    ['ofs', 'OFs', '📋', function () {
+        // 10/11: garante o mapa de Nº do pedido antes de buscar
+        return new Promise(function (ok) { var fim = function () { ok(window.OFs || []); }; try { if (window.dsCarregarPedidosReset && !window.__dsPedMapCarregado) { window.dsCarregarPedidosReset(); } window.__dsPedMapCarregado = true; } catch (_) {} if (typeof window.apiFetch !== 'function') return fim(); window.apiFetch('/api/ofs-pedidos?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) { var m = {}; ((j && j.data) || []).forEach(function (x) { m[String(x.id)] = String(x.num_pedido || '').trim(); }); window.__dsPedMap = m; }).catch(function () {}).then(fim); });
+      },
+      function (o) { var ped = (window.__dsPedMap && window.__dsPedMap[String(o.id)]) || o.num_pedido || ''; return [o.of, o.numero, o.cliNome || o.cliente, o.produto || o.prodDesc, o.ref || o.referencia, o.vendNome || o.vendedor, maqs(o), o.maquina_atual, o.status, o.obs, itensTxt(o), ped, ped ? 'pedido ' + ped : '', o.cidade_entrega].join(' '); }, null],
     ['clientes', 'Clientes', '🏢', function () { var l = glob('CLIENTES'); return l.length ? Promise.resolve(l) : remoto('/api/clientes?limit=5000'); },
       function (c) { return [c.nome, c.rs, c.razao_social, c.cnpj, c.cidade, c.uf, c.tel, c.email, c.ramo, c.endereco].join(' '); },
       function (c) { return { t: c.nome, s: [c.cnpj, [c.cidade, c.uf].filter(Boolean).join('/'), c.tel].filter(Boolean).join(' · '), a: function () { try { window.go('clientes'); setTimeout(function () { window.abrirModalCliente(c.id); }, 400); } catch (_) {} } }; }],
@@ -74294,7 +74297,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var chip = { aberta: ['Em aberto', 'ab'], producao: ['Em produção', 'pr'], concluida: ['Concluída', 'ok'], cancelada: ['Cancelada', 'cn'] }[st];
     var ent = br(o.ent || o.data_entrega), atr = aberta && String(o.ent || o.data_entrega || '').slice(0, 10) < new Date().toISOString().slice(0, 10);
     return '<div class="dsb-card dsb-of" data-of="' + esc(o.of) + '"><div class="dsb-l1"><b>OF ' + esc(o.of || o.numero) + '</b><span class="dsb-st dsb-' + chip[1] + '">' + chip[0] + '</span>' + ((o.urg === true || o.urgente === true) ? '<span class="dsb-st dsb-urg">Urgente</span>' : '') + '</div>'
-      + '<div class="dsb-cli">' + esc(o.cliNome || o.cliente || '—') + '</div>'
+      + '<div class="dsb-cli">' + esc(o.cliNome || o.cliente || '—') + (function () { var p = (window.__dsPedMap && window.__dsPedMap[String(o.id)]) || o.num_pedido || ''; return p ? ' <span class="dsb-st" style="background:rgba(124,58,237,.18);color:#c4b5fd">Pedido ' + esc(p) + '</span>' : ''; })() + '</div>'
       + '<div class="dsb-sub">' + esc([o.produto || o.prodDesc, (o.qtd || o.quantidade) ? Number(o.qtd || o.quantidade).toLocaleString('pt-BR') + ' un.' : '', o.maquina_atual || ''].filter(Boolean).join(' · ')) + '</div>'
       + '<div class="dsb-sub">' + (ent ? 'Entrega ' + ent + (atr ? ' <b class="dsb-atr">atrasada</b>' : '') : 'Sem entrega') + (o.vendNome || o.vendedor ? ' · ' + esc(o.vendNome || o.vendedor) : '') + '</div>'
       + '<div class="dsb-acoes"><button type="button" data-o="alterar">Alterar</button>' + (aberta ? '<button type="button" class="dsb-pri" data-o="concluir">✓ Concluir</button><button type="button" data-o="passou">Passou pela máquina</button><button type="button" class="dsb-cancel" data-o="cancelar">✕ Cancelar OF</button>' : '') + '</div></div>';
