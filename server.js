@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261110154639';
-const SW_RUNTIME_VERSION = '20261110154639';
+const PATCH_RUNTIME_VERSION = '20261110154908';
+const SW_RUNTIME_VERSION = '20261110154908';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -33866,6 +33866,185 @@ function _jarvisPickAllImgs(o) {
 function _jarvisMaqAtualOf(o) { return _jarvisPickMaqAtualOf(o); }
 function _jarvisTodasImgsOf(o) { return _jarvisPickAllImgs(o); }
 
+
+// ===================== 10/11: JARVIS com ferramentas (consulta o banco de verdade) =====================
+const _JARVIS_PAGINAS = {
+  'pcp': 'Central de OFs', 'ofmaq': 'OFs por Máquina', 'historico-passagens': 'Passagens', 'roteiro-semana': 'Roteiro de Entrega',
+  'clientes': 'Clientes', 'tipos-caixa': 'Tipos de Caixa', 'cores-impressao': 'Cores de Impressão', 'gramaturas': 'Gramaturas',
+  'operadores': 'Operadores', 'vendedores': 'Vendedores', 'mapa-clientes': 'Mapa de Clientes', 'compras-papelao': 'Compra de Papelão',
+  'almoxarifado': 'Almoxarifado', 'fornecedores': 'Fornecedores', 'estoque': 'Estoque de Chapas', 'entradas-estoque': 'Entradas de chapas',
+  'saidas-estoque': 'Saídas de chapas', 'checklist-recebimento': 'Checklist de Recebimento', 'facas1': 'Estoque de Facas', 'cliches': 'Estoque de Clichês',
+  'inconformidades': 'Inconformidades', 'caixas-perdidas': 'Caixas Perdidas', 'maquinas': 'Máquinas', 'tempos-reais': 'Tempos Reais',
+  'orcamentos': 'Orçamentos', 'comissoes': 'Comissões', 'relatorios': 'Relatórios', 'agenda': 'Agenda'
+};
+const _JARVIS_TAB_LIVRES = ['clientes', 'fornecedores', 'vendedores', 'maquinas', 'operadores', 'gramaturas', 'tipos_caixa', 'cores_impressao', 'produtos_cadastro',
+  'orcamentos', 'amostras', 'inconformidades', 'caixas_perdidas', 'facas_estoque', 'cliches_estoque', 'estoque_tintas', 'estoque_materiais', 'almox_ordens',
+  'compras_chapas', 'compras_chapas_itens', 'compras_pastas', 'papelao_solicitacoes', 'sugestoes_compra', 'roteiro_entrega', 'recebimento_insumos',
+  'agenda_eventos', 'passagens_maquina', 'pedidos_recorrentes', 'visitas_vendedor', 'cidades', 'ramos_atividade', 'chapas_estoque_v2', 'chapas_estoque_movimentos_v2'];
+const _JARVIS_TAB_ADMIN = ['vw_comissoes', 'lancamentos_custos', 'lancamentos_recorrentes', 'faturamento_manual', 'centros_custo', 'notas_fiscais', 'cotacoes'];
+function _jvNorm(t) { return String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function _jvMatchTexto(obj, texto) {
+  const toks = _jvNorm(texto).split(/\s+/).filter(Boolean); if (!toks.length) return true;
+  const alvo = _jvNorm(JSON.stringify(obj)); return toks.every((t) => alvo.includes(t));
+}
+function _jvEnxuga(o, maxLen = 160) {
+  const out = {};
+  for (const [k, v] of Object.entries(o || {})) {
+    if (v == null || v === '' || /senha|password|token|hash|secret|imgs|imagem|foto|base64|_url$/i.test(k)) continue;
+    if (Array.isArray(v) || typeof v === 'object') { const s = JSON.stringify(v); if (s.length <= maxLen) out[k] = v; continue; }
+    out[k] = typeof v === 'string' && v.length > maxLen ? v.slice(0, maxLen) + '…' : v;
+  }
+  return out;
+}
+const _JARVIS_TOOLS = [
+  { type: 'function', function: { name: 'buscar_ofs', description: 'Busca OFs (ordens de fabricação). Use para qualquer pergunta sobre OFs, pedidos, clientes de uma OF, entregas, atrasos, urgentes, máquinas, número do pedido.',
+    parameters: { type: 'object', properties: {
+      texto: { type: 'string', description: 'Palavras livres: cliente, produto, nº da OF, nº do pedido, cidade, vendedor (todas as palavras precisam aparecer)' },
+      numero_of: { type: 'string' }, num_pedido: { type: 'string', description: 'Número do pedido do cliente' },
+      situacao: { type: 'string', enum: ['aberta', 'atrasada', 'urgente', 'concluida', 'cancelada', 'todas'] },
+      entrega_de: { type: 'string', description: 'AAAA-MM-DD' }, entrega_ate: { type: 'string', description: 'AAAA-MM-DD' },
+      criada_de: { type: 'string', description: 'AAAA-MM-DD' }, criada_ate: { type: 'string', description: 'AAAA-MM-DD' },
+      limite: { type: 'integer', description: 'máx. de OFs na lista (padrão 40, máx 200)' } } } } },
+  { type: 'function', function: { name: 'resumo_ofs', description: 'Conta OFs e soma valores/quantidades agrupando por um campo. Use para "quantas", "total", "por máquina", "por cliente", "faturamento".',
+    parameters: { type: 'object', properties: {
+      agrupar_por: { type: 'string', enum: ['situacao', 'cliente', 'maquina', 'cidade', 'vendedor', 'empresa', 'mes_entrega', 'dia_entrega'] },
+      situacao: { type: 'string', enum: ['aberta', 'atrasada', 'urgente', 'concluida', 'cancelada', 'todas'] },
+      texto: { type: 'string' }, entrega_de: { type: 'string' }, entrega_ate: { type: 'string' }, criada_de: { type: 'string' }, criada_ate: { type: 'string' } }, required: ['agrupar_por'] } } },
+  { type: 'function', function: { name: 'consultar', description: 'Consulta qualquer outra área do sistema (cadastros, estoque de chapas, entradas/saídas, checklist, compras, roteiro, orçamentos, qualidade, facas, clichês, agenda…). Filtra por texto livre e por datas.',
+    parameters: { type: 'object', properties: {
+      tabela: { type: 'string', enum: _JARVIS_TAB_LIVRES.concat(_JARVIS_TAB_ADMIN), description: 'chapas_estoque_v2 = estoque de chapas; chapas_estoque_movimentos_v2 = entradas/saídas de chapas; recebimento_insumos = checklist de recebimento; compras_chapas(+_itens) = compras de papelão; roteiro_entrega = cidades por dia (dia_semana 1=seg); orcamentos; caixas_perdidas; inconformidades' },
+      texto: { type: 'string' }, campo_data: { type: 'string', description: 'nome da coluna de data para filtrar (ex.: created_at, data_recebimento)' },
+      de: { type: 'string' }, ate: { type: 'string' }, limite: { type: 'integer' } }, required: ['tabela'] } } },
+  { type: 'function', function: { name: 'abrir_tela', description: 'Abre uma tela do sistema para o usuário (e opcionalmente já busca algo nela). Use quando o usuário quiser ir para algum lugar, lançar, editar ou fazer algo.',
+    parameters: { type: 'object', properties: { pagina: { type: 'string', enum: Object.keys(_JARVIS_PAGINAS).concat(['relatorio-semana', 'nova-of']) }, buscar: { type: 'string', description: 'texto para já colocar na busca da Central de OFs' } }, required: ['pagina'] } } }
+];
+function _jvSituacao(o, hoje) {
+  const st = _jvNorm(o.status);
+  if (/cancel/.test(st) || o.deleted_at) return 'cancelada';
+  if (/conclu|finaliz|entreg/.test(st)) return 'concluida';
+  const ent = String(o.data_entrega || o.ent || '').slice(0, 10);
+  return ent && ent < hoje ? 'atrasada' : 'aberta';
+}
+async function _jvCarregarOfs() {
+  const cols = 'id,of,numero,status,cliNome,cliente_nome,cli_id,descricao,prodDesc,produto,qtd,quantidade,valor_total,valor_venda,data_entrega,ent,dia,created_at,urg,urgente,maquina,maquina_atual,maq,vendNome,vendedor,emp_id,cidade_entrega,num_pedido,sem_papel,obs,deleted_at,data_conclusao,qtd_produzida';
+  const out = [];
+  for (let p = 0; p < 30; p++) {
+    let { data, error } = await supabase.from('ofs').select(cols).order('created_at', { ascending: false }).range(p * 1000, p * 1000 + 999);
+    if (error && /column/i.test(String(error.message))) ({ data, error } = await supabase.from('ofs').select('*').order('created_at', { ascending: false }).range(p * 1000, p * 1000 + 999));
+    if (error) throw error;
+    out.push(...(data || [])); if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+function _jvOfCompacta(o, hoje) {
+  const maq = Array.isArray(o.maq) ? o.maq.join(', ') : (o.maquina_atual || o.maquina || o.maq || '');
+  return { of: o.of || o.numero, cliente: o.cliNome || o.cliente_nome, produto: o.descricao || o.prodDesc || o.produto, qtd: o.qtd || o.quantidade,
+    situacao: _jvSituacao(o, hoje), status: o.status, entrega: String(o.data_entrega || o.ent || '').slice(0, 10) || null, criada: String(o.created_at || '').slice(0, 10),
+    num_pedido: o.num_pedido || undefined, cidade: o.cidade_entrega || undefined, urgente: (o.urg === true || o.urg === 'true' || o.urgente === true) || undefined,
+    maquina: maq || undefined, vendedor: o.vendNome || o.vendedor || undefined, valor: Number(o.valor_total || o.valor_venda || 0) || undefined, empresa: o.emp_id || undefined };
+}
+function _jvFiltrarOfs(lista, a, hoje) {
+  const sit = String(a.situacao || '').toLowerCase();
+  return lista.filter((o) => {
+    if (o.deleted_at && sit !== 'cancelada' && sit !== 'todas') return false;
+    const s = _jvSituacao(o, hoje);
+    if (sit === 'aberta' && !(s === 'aberta' || s === 'atrasada')) return false;
+    if (sit && !['aberta', 'todas', 'urgente'].includes(sit) && s !== sit) return false;
+    if (sit === 'urgente' && !(o.urg === true || o.urg === 'true' || o.urgente === true) ) return false;
+    if (sit === 'urgente' && (s === 'concluida' || s === 'cancelada')) return false;
+    if (a.numero_of && String(o.of || o.numero || '').replace(/\D/g, '') !== String(a.numero_of).replace(/\D/g, '')) return false;
+    if (a.num_pedido && !_jvNorm(o.num_pedido).includes(_jvNorm(a.num_pedido))) return false;
+    const ent = String(o.data_entrega || o.ent || '').slice(0, 10), cri = String(o.created_at || '').slice(0, 10);
+    if (a.entrega_de && (!ent || ent < a.entrega_de)) return false; if (a.entrega_ate && (!ent || ent > a.entrega_ate)) return false;
+    if (a.criada_de && (!cri || cri < a.criada_de)) return false; if (a.criada_ate && (!cri || cri > a.criada_ate)) return false;
+    if (a.texto && !_jvMatchTexto([o.of, o.numero, o.cliNome, o.cliente_nome, o.descricao, o.prodDesc, o.produto, o.num_pedido, o.cidade_entrega, o.vendNome, o.vendedor, o.obs, o.status], a.texto)) return false;
+    return true;
+  });
+}
+async function _jvExecTool(nome, a, ctx) {
+  const hoje = ctx.hoje;
+  if (nome === 'buscar_ofs' || nome === 'resumo_ofs') {
+    if (!ctx.ofs) ctx.ofs = await _jvCarregarOfs();
+    const f = _jvFiltrarOfs(ctx.ofs, a || {}, hoje);
+    if (nome === 'buscar_ofs') {
+      const lim = Math.min(200, Math.max(1, Number(a.limite) || 40));
+      const ord = f.slice().sort((x, y) => String(x.data_entrega || x.ent || '9').localeCompare(String(y.data_entrega || y.ent || '9')));
+      return { total_encontradas: f.length, mostrando: Math.min(lim, f.length), ofs: ord.slice(0, lim).map((o) => _jvOfCompacta(o, hoje)) };
+    }
+    const g = {}, campo = a.agrupar_por;
+    for (const o of f) {
+      const c = _jvOfCompacta(o, hoje);
+      const k = campo === 'situacao' ? c.situacao : campo === 'cliente' ? c.cliente : campo === 'maquina' ? (c.maquina || 'sem máquina') : campo === 'cidade' ? (c.cidade || 'sem cidade')
+        : campo === 'vendedor' ? (c.vendedor || 'sem vendedor') : campo === 'empresa' ? ({ E1: 'Italy', E2: 'Cartoeste', E3: 'Oestepack' }[c.empresa] || c.empresa || '—')
+        : campo === 'mes_entrega' ? String(c.entrega || '').slice(0, 7) : String(c.entrega || '');
+      const x = g[k || '—'] || (g[k || '—'] = { grupo: k || '—', ofs: 0, quantidade: 0, valor: 0 });
+      x.ofs++; x.quantidade += Number(c.qtd) || 0; x.valor += Number(c.valor) || 0;
+    }
+    const linhas = Object.values(g).sort((p, q) => q.ofs - p.ofs).slice(0, 80).map((x) => ({ ...x, valor: Math.round(x.valor * 100) / 100 }));
+    return { total_ofs: f.length, total_valor: Math.round(f.reduce((s, o) => s + (Number(o.valor_total || o.valor_venda) || 0), 0) * 100) / 100, grupos: linhas };
+  }
+  if (nome === 'consultar') {
+    const tab = String(a.tabela || '');
+    if (!_JARVIS_TAB_LIVRES.includes(tab) && !(ctx.admin && _JARVIS_TAB_ADMIN.includes(tab))) return { erro: 'Sem permissão para consultar esta área.' };
+    let q = supabase.from(tab).select('*').limit(3000);
+    if (a.campo_data && /^[a-z_]+$/.test(a.campo_data)) { if (a.de) q = q.gte(a.campo_data, a.de); if (a.ate) q = q.lte(a.campo_data, a.ate + (a.campo_data.endsWith('_at') ? 'T23:59:59' : '')); }
+    let { data, error } = await q;
+    if (error) return { erro: String(error.message || error) };
+    let rows = (data || []).filter((r) => !r.deleted_at);
+    if (a.texto) rows = rows.filter((r) => _jvMatchTexto(r, a.texto));
+    const lim = Math.min(150, Math.max(1, Number(a.limite) || 60));
+    return { tabela: tab, total_encontrados: rows.length, mostrando: Math.min(lim, rows.length), registros: rows.slice(0, lim).map((r) => _jvEnxuga(r)) };
+  }
+  if (nome === 'abrir_tela') {
+    const pg = String(a.pagina || '');
+    ctx.acoes.push({ tipo: 'abrir_tela', pagina: pg, buscar: a.buscar || '' });
+    return { ok: true, aberta: _JARVIS_PAGINAS[pg] || pg };
+  }
+  return { erro: 'ferramenta desconhecida' };
+}
+async function _jarvisAgente({ pergunta, historico, nome, perfil, req }) {
+  if (!OPENAI_API_KEY) return null;
+  const hoje = _assistTodayIso();
+  const admin = /admin/i.test(String(perfil || '')) || String(req?.usuario?.perfil || '').toLowerCase() === 'admin';
+  const dsem = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][new Date(hoje + 'T12:00:00').getDay()];
+  const sistema = `Você é o JARVIS, assistente do sistema PCP Pro (ERP da Italy Embalagens, Cartoeste e Oestepack — fábrica de caixas de papelão).
+Usuário: ${nome}. Hoje é ${dsem}, ${hoje}.
+REGRAS:
+- Responda SEMPRE em português do Brasil, de forma direta, curta e precisa. Formato: TEXTO SIMPLES (a tela não mostra markdown) — nada de **, #, | tabelas |; para listas use uma linha por item começando com • (ex.: • OF 4726 · KASPER MÓVEIS · entrega 10/11/2026 · São José do Cedro). Listas longas: mostre até 25 itens e diga quantos são no total.
+- NUNCA invente dados. Para qualquer informação do sistema, CONSULTE com as ferramentas (pode chamar várias, em sequência, até ter certeza). Se não achar, diga o que procurou e sugira como achar.
+- OFs: use buscar_ofs (lista) ou resumo_ofs (contagens/somas). "Atrasada" = entrega antes de hoje e não concluída. Datas para o usuário em DD/MM/AAAA, valores em R$ 1.234,56.
+- Se o usuário quer IR para uma tela, LANÇAR, CRIAR, EDITAR ou IMPRIMIR algo, use abrir_tela com a tela certa e explique em 1-3 passos o que fazer lá (você não grava dados sozinho).
+- Telas: ${Object.entries(_JARVIS_PAGINAS).map(([k, v]) => k + '=' + v).join('; ')}; relatorio-semana = Relatório da semana (pedidos a entregar); nova-of = abrir janela de nova OF.
+- Empresas: E1=Italy, E2=Cartoeste, E3=Oestepack. Roteiro: dia_semana 1=segunda … 5=sexta.
+${admin ? '' : '- Este usuário não é administrador: não mostre dados financeiros sensíveis (comissões, custos, lançamentos).'}`;
+  const msgs = [{ role: 'system', content: sistema }];
+  for (const m of (Array.isArray(historico) ? historico : []).slice(-8)) {
+    const role = String(m?.role || m?.tipo || '').toLowerCase() === 'user' ? 'user' : 'assistant';
+    const content = String(m?.content || m?.texto || m?.text || '').trim(); if (content) msgs.push({ role, content: content.slice(0, 2000) });
+  }
+  msgs.push({ role: 'user', content: pergunta });
+  const ctx = { hoje, admin, acoes: [], ofs: null };
+  for (let passo = 0; passo < 7; passo++) {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: process.env.JARVIS_MODEL || 'gpt-4o', temperature: 0.1, messages: msgs, tools: _JARVIS_TOOLS, tool_choice: 'auto', max_tokens: 1800 })
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok) throw new Error(String(j?.error?.message || r.status));
+    const msg = j?.choices?.[0]?.message; if (!msg) throw new Error('resposta vazia');
+    msgs.push(msg);
+    const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
+    if (!calls.length) return { texto: String(msg.content || '').trim(), acoes: ctx.acoes };
+    for (const c of calls) {
+      let args = {}; try { args = JSON.parse(c.function?.arguments || '{}'); } catch (_) {}
+      let out; try { out = await _jvExecTool(c.function?.name, args, ctx); } catch (e) { out = { erro: String(e?.message || e) }; }
+      let s = JSON.stringify(out); if (s.length > 60000) s = s.slice(0, 60000) + '…(cortado)';
+      msgs.push({ role: 'tool', tool_call_id: c.id, content: s });
+    }
+  }
+  return { texto: 'Fiz muitas consultas e não consegui fechar a resposta. Pode reformular a pergunta de forma mais específica?', acoes: ctx.acoes };
+}
+
 app.post('/api/assistente', authMiddleware, async (req, res) => {
   try {
     const { nome: nomeFull, email, perfil } = await _assistUser(req);
@@ -33953,6 +34132,14 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (imgMatch && (norm.includes('recebi uma imagem') || /\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(imgMatch[0]))) {
       const url = String(imgMatch[0] || '').replace(/[)\],.]+$/g, '').trim();
       if (url) return respond(`Imagem recebida!`, { images: [url], dadosExtras: { tipo: 'imagem_recebida', url } });
+    }
+
+    // 10/11: JARVIS com ferramentas — consulta o banco e responde (comandos /... continuam no modo antigo)
+    if (!norm.startsWith('/') && OPENAI_API_KEY && !(hasAny('imagem', 'foto', 'img', 'figura') && hasAny('of', 'pedido'))) {
+      try {
+        const rAg = await _jarvisAgente({ pergunta, historico: req.body?.historico || req.body?.history || [], nome, perfil, req });
+        if (rAg && rAg.texto) return respond(rAg.texto, { origem_ia: 'jarvis_ferramentas', acoes_tela: rAg.acoes || [], navegar: (rAg.acoes || [])[0] || null });
+      } catch (eAg) { console.warn('[JARVIS AGENTE] falhou, usando modo antigo:', eAg?.message); }
     }
 
     if (hasAny('imagem', 'foto', 'img', 'figura') && hasAny('of', 'pedido')) {

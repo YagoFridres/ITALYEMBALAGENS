@@ -80129,3 +80129,30 @@ window.__perTxt = function (p) {
     }).catch(function () { espera.length = 0; }).finally(function () { carregando = false; });
   };
 })();
+
+/* ===== 10/11: JARVIS — executa na tela as ações pedidas (abrir tela, buscar OF, relatório da semana, nova OF) ===== */
+(function () {
+  if (window.__dsJarvisAcoes) return; window.__dsJarvisAcoes = true;
+  function executar(a) {
+    if (!a || !a.pagina) return;
+    var pg = String(a.pagina);
+    try { if (typeof window._jarvisFechar === 'function' && window.innerWidth < 900) window._jarvisFechar(); } catch (_) {}
+    if (pg === 'nova-of') { try { if (typeof go === 'function') go('pcp'); } catch (_) {} setTimeout(function () { try { window.abrirNovaOfRapida(); } catch (_) {} }, 600); return; }
+    if (pg === 'relatorio-semana') { try { if (typeof go === 'function') go('pcp'); } catch (_) {} setTimeout(function () { try { window.dsRelatorioSemana(); } catch (_) {} }, 800); return; }
+    try { if (typeof go === 'function') go(pg); } catch (_) {}
+    if (a.buscar && pg === 'pcp') {
+      var n = 0, t = setInterval(function () { var i = document.querySelector('#ds-central .dsc-busca input, .dsc-busca input'); if (i) { clearInterval(t); i.value = a.buscar; i.dispatchEvent(new Event('input', { bubbles: true })); } else if (++n > 30) clearInterval(t); }, 200);
+    }
+  }
+  var orig = window.fetch;
+  window.fetch = function (u, o) {
+    var p = orig.apply(this, arguments);
+    try {
+      var url = String(u && u.url || u || ''), m = String(o && o.method || 'GET').toUpperCase();
+      if (m === 'POST' && /\/api\/assistente(\?|$)/.test(url)) {
+        p.then(function (r) { return r.clone().json(); }).then(function (j) { var l = (j && j.acoes_tela) || []; if (l.length) setTimeout(function () { executar(l[l.length - 1]); }, 700); }).catch(function () {});
+      }
+    } catch (_) {}
+    return p;
+  };
+})();
