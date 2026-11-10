@@ -33943,48 +33943,70 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     // 10/11: Novo Checklist com vários itens (como a entrada de chapas), só registra o recebimento — NÃO mexe no estoque
     function openChecklistLoteModal(done) {
       var hoje = new Date(); var hojeIso = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+      var nItem = 0;
       var linhaHtml = function () {
-        return '<tr class="ckl-it">'
-          + '<td><input class="pep-input ckl-prod" list="ckl-chapas" placeholder="Digite ou escolha a chapa/produto"></td>'
-          + '<td><input class="pep-input ckl-qtd" type="number" min="1" step="1" placeholder="0" style="text-align:right"></td>'
-          + '<td><input class="pep-input ckl-cli" list="ckl-clientes" placeholder="(igual ao de cima)"></td>'
-          + '<td><input class="pep-input ckl-oc" placeholder="Opcional"></td>'
-          + '<td><button type="button" class="ckl-rm" title="Tirar este item">✕</button></td></tr>';
+        nItem++;
+        return '<div class="ckl-it">'
+          + '<span class="ckl-n"></span>'
+          + '<label class="ckl-f ckl-f-prod"><span>Chapa / produto</span><input class="ckl-prod" list="ckl-chapas" autocomplete="off" placeholder="Ex.: 2170X1350 AB21 — digite e escolha"></label>'
+          + '<label class="ckl-f ckl-f-qtd"><span>Quantidade</span><input class="ckl-qtd" type="number" min="1" step="1" inputmode="numeric" placeholder="0"></label>'
+          + '<label class="ckl-f ckl-f-cli"><span>Cliente <i>(opcional)</i></span><input class="ckl-cli" list="ckl-clientes" autocomplete="off" placeholder="Igual ao de cima"></label>'
+          + '<label class="ckl-f ckl-f-oc"><span>Ordem de compra</span><input class="ckl-oc" autocomplete="off" placeholder="Ex.: OC 1575"></label>'
+          + '<button type="button" class="ckl-rm" title="Tirar este item" aria-label="Tirar este item">🗑</button></div>';
       };
+      var resp0 = ''; try { resp0 = String((window.CURRENT_USER && (CURRENT_USER.nome || CURRENT_USER.name)) || '').replace(/^\s*ESTOQUE\s*\(([^)]+)\)\s*$/i, '$1').trim().toUpperCase(); } catch (_) {}
       var corpo = ''
-        + '<div class="ckl-aviso">📋 Este lançamento fica só no <b>Checklist de Recebimento</b>. <b>Não</b> entra no estoque de chapas — use para chapas que chegam e já saem.</div>'
-        + '<div class="pep-grid estoque-modal-grid estoque-modal-grid-checklist">'
-        + '  <div><div class="pep-sub">Data de Rec. *</div><input class="pep-input" id="ckl-data" type="date" value="' + hojeIso + '"></div>'
-        + '  <div><div class="pep-sub">Fornecedor</div><input class="pep-input" id="ckl-forn" list="ckl-forns" placeholder="Escolha ou digite"></div>'
-        + '  <div><div class="pep-sub">N Nota Fiscal</div><input class="pep-input" id="ckl-nf"></div>'
-        + '  <div><div class="pep-sub">Placa do Veículo (opcional)</div><input class="pep-input" id="ckl-placa" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>'
-        + '  <div><div class="pep-sub">Resp. pelo Recebimento</div><input class="pep-input" id="ckl-resp"></div>'
-        + '  <div><div class="pep-sub">Cliente (para todos os itens)</div><input class="pep-input" id="ckl-cli" list="ckl-clientes" placeholder="Opcional"></div>'
-        + '  <div><div class="pep-sub">Data de Validade</div><input class="pep-input" id="ckl-val" type="date"></div>'
-        + '  <div style="display:flex;align-items:flex-end"><label class="ckl-dev"><input id="ckl-dev" type="checkbox"> Devolução</label></div>'
-        + '</div>'
-        + '<div class="ckl-itens-hd"><b>Itens recebidos</b><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="ckl-add">＋ Adicionar item</button></div>'
-        + '<div class="ckl-tb-wrap"><table class="ckl-tb"><thead><tr><th>Chapa / produto *</th><th style="width:120px">Quantidade *</th><th style="width:220px">Cliente</th><th style="width:140px">Ordem de compra</th><th style="width:44px"></th></tr></thead><tbody id="ckl-body">' + linhaHtml() + linhaHtml() + linhaHtml() + '</tbody></table></div>'
-        + '<div class="ckl-tot" id="ckl-tot">0 itens · 0 unidades</div>'
+        + '<div class="ckl-aviso">📋 Fica só no <b>Checklist de Recebimento</b> — <b>não</b> mexe no estoque de chapas. Ideal para chapas que chegam e já saem.</div>'
+        + '<section class="ckl-card"><div class="ckl-card-hd"><span class="ckl-step">1</span><div><b>Dados da nota</b><small>Preencha uma vez — vale para todos os itens</small></div></div>'
+        + '<div class="ckl-grid">'
+        + '  <label class="ckl-f"><span>Data de recebimento *</span><input id="ckl-data" type="date" value="' + hojeIso + '"></label>'
+        + '  <label class="ckl-f"><span>Fornecedor</span><input id="ckl-forn" list="ckl-forns" autocomplete="off" placeholder="Escolha ou digite"></label>'
+        + '  <label class="ckl-f"><span>Nº da nota fiscal</span><input id="ckl-nf" inputmode="numeric" autocomplete="off" placeholder="Ex.: 895289"></label>'
+        + '  <label class="ckl-f"><span>Placa do veículo <i>(opcional)</i></span><input id="ckl-placa" maxlength="8" autocomplete="off" placeholder="ABC1D23" style="text-transform:uppercase;font-family:var(--mono,monospace);font-weight:800" oninput="this.value=this.value.toUpperCase()"></label>'
+        + '  <label class="ckl-f"><span>Quem recebeu</span><input id="ckl-resp" autocomplete="off" value="' + esc(resp0) + '" placeholder="Nome"></label>'
+        + '  <label class="ckl-f"><span>Cliente <i>(se for de um cliente)</i></span><input id="ckl-cli" list="ckl-clientes" autocomplete="off" placeholder="Opcional"></label>'
+        + '  <label class="ckl-f"><span>Validade <i>(opcional)</i></span><input id="ckl-val" type="date"></label>'
+        + '  <label class="ckl-tg"><input id="ckl-dev" type="checkbox"><span class="ckl-tg-sw"></span><span>É devolução</span></label>'
+        + '</div></section>'
+        + '<section class="ckl-card"><div class="ckl-card-hd"><span class="ckl-step">2</span><div><b>Itens recebidos</b><small>Uma linha por chapa. Dica: no campo Quantidade, aperte <kbd>Enter</kbd> para abrir o próximo item.</small></div><span class="ckl-tot" id="ckl-tot">0 itens · 0 unidades</span></div>'
+        + '<div id="ckl-body">' + linhaHtml() + '</div>'
+        + '<button type="button" class="ckl-add" id="ckl-add">＋ Adicionar outro item</button>'
+        + '</section>'
         + '<datalist id="ckl-chapas"></datalist><datalist id="ckl-forns"></datalist><datalist id="ckl-clientes"></datalist>';
-      var wrap = _abrirModalPadrao({ id: 'estoque-checklist-lote-modal', titulo: 'Novo Checklist', subtitulo: 'Lance vários itens do mesmo recebimento de uma vez (não movimenta o estoque).', largura: '1100px', wide: true, hero: '📋', accent: 'blue', corpoHTML: corpo,
+      var wrap = _abrirModalPadrao({ id: 'estoque-checklist-lote-modal', titulo: 'Novo Checklist', subtitulo: 'Registre o recebimento em 2 passos: dados da nota e itens.', largura: '980px', wide: true, hero: '📋', accent: 'blue', corpoHTML: corpo,
         footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-blue" id="ckl-save">✓ Salvar Checklist</button>' });
-      if (!document.getElementById('ckl-css')) {
-        var st = document.createElement('style'); st.id = 'ckl-css';
-        st.textContent = '.ckl-aviso{margin:0 0 12px;padding:10px 14px;border-radius:10px;background:rgba(37,99,235,.14);border:1px solid rgba(59,130,246,.45);font-size:13.5px}'
-          + '.ckl-dev{display:flex;gap:8px;align-items:center;padding:10px 14px;border:1px solid var(--border,rgba(148,163,184,.25));border-radius:10px;font-weight:700;cursor:pointer;width:100%}.ckl-dev input{width:18px;height:18px}'
-          + '.ckl-itens-hd{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;font-size:15px}'
-          + '.ckl-tb-wrap{overflow-x:auto}.ckl-tb{width:100%;border-collapse:collapse;min-width:720px}.ckl-tb th{font-size:11px;text-transform:uppercase;color:var(--text2,#94a3b8);text-align:left;padding:6px 6px}.ckl-tb td{padding:4px 6px}.ckl-tb .pep-input{width:100%}'
-          + '.ckl-rm{width:36px;height:36px;border-radius:8px;border:1px solid #b91c1c;background:#dc2626;color:#fff;font-weight:800;cursor:pointer}'
-          + '.ckl-tot{margin-top:8px;text-align:right;font-weight:800;color:var(--text2,#94a3b8)}'
-          + '@media (max-width:700px){.ckl-tb{min-width:600px}}';
+      if (!document.getElementById('ckl-css2')) {
+        var st = document.createElement('style'); st.id = 'ckl-css2';
+        st.textContent = ''
+          + '#estoque-checklist-lote-modal .ckl-aviso{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:rgba(37,99,235,.12);border:1px solid rgba(59,130,246,.4);font-size:13.5px}'
+          + '#estoque-checklist-lote-modal .ds-xml-zona{margin:0 0 12px;padding:8px 12px}'
+          + '.ckl-card{border:1px solid var(--border,rgba(148,163,184,.25));border-radius:16px;padding:14px 16px 16px;margin-bottom:14px;background:var(--s2,rgba(15,23,42,.35))}'
+          + '.ckl-card-hd{display:flex;align-items:center;gap:12px;margin-bottom:12px}.ckl-card-hd b{display:block;font-size:16px}.ckl-card-hd small{display:block;color:var(--text2,#94a3b8);font-size:12.5px;margin-top:1px}.ckl-card-hd kbd{background:var(--surface,#0f172a);border:1px solid var(--border,#334155);border-radius:5px;padding:0 5px;font-size:11px}'
+          + '.ckl-step{flex:none;width:32px;height:32px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px}'
+          + '.ckl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}'
+          + '.ckl-f{display:flex;flex-direction:column;gap:5px;min-width:0}.ckl-f>span{font-size:12px;font-weight:800;color:var(--text2,#94a3b8)}.ckl-f>span i{font-weight:500;font-style:normal;opacity:.8}'
+          + '.ckl-f input{width:100%;box-sizing:border-box;height:44px;padding:0 12px;border-radius:10px;border:1.5px solid var(--border,#334155);background:var(--surface,#0b1220);color:var(--text,#e2e8f0);font:inherit;font-size:15px;transition:border-color .15s,box-shadow .15s}'
+          + '.ckl-f input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25)}'
+          + '.ckl-tg{display:flex;align-items:center;gap:10px;align-self:end;height:44px;padding:0 12px;border:1.5px solid var(--border,#334155);border-radius:10px;cursor:pointer;font-weight:800;user-select:none}.ckl-tg input{display:none}'
+          + '.ckl-tg-sw{width:38px;height:22px;border-radius:99px;background:#475569;position:relative;transition:background .15s;flex:none}.ckl-tg-sw:after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}.ckl-tg input:checked+.ckl-tg-sw{background:#f59e0b}.ckl-tg input:checked+.ckl-tg-sw:after{left:19px}'
+          + '.ckl-tot{margin-left:auto;padding:6px 12px;border-radius:99px;background:rgba(34,197,94,.15);color:#22c55e;font-weight:900;font-size:13px;white-space:nowrap}'
+          + '#ckl-body{display:flex;flex-direction:column;gap:10px;counter-reset:cklit}'
+          + '.ckl-it{display:grid;grid-template-columns:30px minmax(0,2.4fr) minmax(0,.9fr) minmax(0,1.3fr) minmax(0,1fr) 44px;gap:10px;align-items:end;padding:10px 12px;border-radius:12px;background:var(--surface,rgba(2,6,23,.45));border:1px solid var(--border,rgba(148,163,184,.2));counter-increment:cklit}'
+          + '.ckl-n{align-self:center;width:28px;height:28px;border-radius:8px;background:rgba(59,130,246,.2);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.ckl-n:before{content:counter(cklit)}'
+          + '.ckl-f-qtd input{text-align:right;font-family:var(--mono,monospace);font-weight:900;font-size:16px}'
+          + '.ckl-rm{height:44px;width:44px;border-radius:10px;border:1.5px solid rgba(239,68,68,.5);background:rgba(239,68,68,.12);color:#ef4444;font-size:17px;cursor:pointer}.ckl-rm:hover{background:#dc2626;color:#fff}'
+          + '.ckl-add{margin-top:10px;width:100%;height:46px;border-radius:12px;border:2px dashed rgba(59,130,246,.6);background:transparent;color:#60a5fa;font:inherit;font-weight:900;font-size:15px;cursor:pointer}.ckl-add:hover{background:rgba(59,130,246,.1)}'
+          + 'body.light .ckl-n{color:#1d4ed8}body.light .ckl-add{color:#1d4ed8}'
+          + '@media (max-width:820px){.ckl-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ckl-it{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 44px}.ckl-f-prod{grid-column:2/-1}.ckl-n{grid-row:1}.ckl-rm{grid-column:4}}'
+          + '@media (max-width:520px){.ckl-grid{grid-template-columns:1fr}.ckl-card-hd{flex-wrap:wrap}.ckl-tot{margin-left:44px}}';
         document.head.appendChild(st);
       }
       var body = document.getElementById('ckl-body');
       function total() { var n = 0, u = 0; Array.prototype.forEach.call(body.querySelectorAll('.ckl-it'), function (tr) { var p = tr.querySelector('.ckl-prod').value.trim(), q = Math.trunc(Number(tr.querySelector('.ckl-qtd').value) || 0); if (p && q > 0) { n++; u += q; } }); document.getElementById('ckl-tot').textContent = n + ' ite' + (n === 1 ? 'm' : 'ns') + ' · ' + u.toLocaleString('pt-BR') + ' unidades'; }
       body.addEventListener('input', total);
-      body.addEventListener('click', function (e) { var b = e.target.closest('.ckl-rm'); if (!b) return; var trs = body.querySelectorAll('.ckl-it'); if (trs.length > 1) b.closest('tr').remove(); else Array.prototype.forEach.call(b.closest('tr').querySelectorAll('input'), function (i) { i.value = ''; }); total(); });
-      document.getElementById('ckl-add').onclick = function () { body.insertAdjacentHTML('beforeend', linhaHtml()); var l = body.querySelectorAll('.ckl-prod'); l[l.length - 1].focus(); };
+      body.addEventListener('click', function (e) { var b = e.target.closest('.ckl-rm'); if (!b) return; var trs = body.querySelectorAll('.ckl-it'); if (trs.length > 1) b.closest('.ckl-it').remove(); else Array.prototype.forEach.call(b.closest('.ckl-it').querySelectorAll('input'), function (i) { i.value = ''; }); total(); });
+      body.addEventListener('keydown', function (e) { if (e.key !== 'Enter' || !e.target.classList.contains('ckl-qtd')) return; e.preventDefault(); var it = e.target.closest('.ckl-it'), prox = it.nextElementSibling; if (prox) { prox.querySelector('.ckl-prod').focus(); return; } document.getElementById('ckl-add').click(); });
+      document.getElementById('ckl-add').onclick = function () { body.insertAdjacentHTML('beforeend', linhaHtml()); var l = body.querySelectorAll('.ckl-prod'); l[l.length - 1].focus(); try { l[l.length - 1].scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {} total(); };
       // listas de sugestão: chapas do estoque, fornecedores e clientes
       (async function () {
         try {
@@ -34044,19 +34066,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var lista = await loadChecklistRecebimento(st);
       var busca = String(st.q || '').trim().toLowerCase();
       var filtrada = busca ? lista.filter(function(r) {
-        var txt = [r.placa_veiculo, r.nota_fiscal, r.produto, r.fornecedor, r.cliente, r.responsavel].join(' ').toLowerCase();
-        return txt.indexOf(busca) >= 0;
+        var sem = function (t) { var x = String(t || '').toLowerCase(); try { x = x.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {} return x; };
+        var txt = sem([r.placa_veiculo, r.nota_fiscal, r.produto, r.fornecedor, r.cliente, r.responsavel, r.ordem_compra, r.quantidade, checklistFmtDate(r.data_recebimento), r.data_recebimento, checklistFmtDate(r.data_validade), r.devolucao ? 'devolucao sim' : ''].join(' '));
+        return sem(busca).split(/\s+/).filter(Boolean).every(function (t) { return txt.indexOf(t) >= 0; });
       }) : lista;
       page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-head"><div><div class="pep-title">📋 Checklist de Recebimento</div><div class="pep-sub">Registro manual do recebimento com os campos finais definidos para o estoque.</div></div><button class="pep-btn primary" id="ck-novo">Novo Checklist</button></div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <select class="pep-input" id="ck-fil-mes" title="Mês do checklist" style="max-width:190px;font-weight:800">' + (function () { var nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'], h = new Date(), o = '<option value="todos"' + (st.mes === 'todos' ? ' selected' : '') + '>Todos os meses</option>'; for (var i = 0; i < 15; i++) { var d = new Date(h.getFullYear(), h.getMonth() - i, 1), v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); o += '<option value="' + v + '"' + (st.mes === v ? ' selected' : '') + '>📅 ' + nomes[d.getMonth()] + ' ' + d.getFullYear() + '</option>'; } return o; })() + '</select>'
-        + '    <input class="pep-input" id="ck-busca" placeholder="Buscar por placa, produto, fornecedor, NF, cliente ou responsável..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
-        + '    <input class="pep-input" id="ck-fil-forn" placeholder="Fornecedor" value="' + esc(st.fornecedor || '') + '" style="max-width:220px">'
-        + '    <input class="pep-input" id="ck-fil-nf" placeholder="NF" value="' + esc(st.nf || '') + '" style="max-width:160px">'
+        + '    <input class="pep-input" id="ck-busca" list="ck-dl-tudo" autocomplete="off" placeholder="🔎 Buscar qualquer coisa: placa, produto, fornecedor, NF, OC, cliente, responsável, data..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
+        + '    <input class="pep-input" id="ck-fil-forn" list="ck-dl-forn" autocomplete="off" placeholder="Fornecedor" value="' + esc(st.fornecedor || '') + '" style="max-width:220px">'
+        + '    <input class="pep-input" id="ck-fil-nf" list="ck-dl-nf" autocomplete="off" placeholder="NF" value="' + esc(st.nf || '') + '" style="max-width:160px">'
         + '    <input class="pep-input" id="ck-fil-data" type="date" value="' + esc(st.data || '') + '" style="max-width:180px">'
-        + '    <input class="pep-input" id="ck-fil-cliente" placeholder="Cliente" value="' + esc(st.cliente || '') + '" style="max-width:220px">'
+        + '    <input class="pep-input" id="ck-fil-cliente" list="ck-dl-cli" autocomplete="off" placeholder="Cliente" value="' + esc(st.cliente || '') + '" style="max-width:220px">'
+        + (function () {
+            var uniq = function (arr) { var v = {}; return arr.map(function (x) { return String(x == null ? '' : x).trim(); }).filter(function (x) { if (!x || v[x.toLowerCase()]) return false; v[x.toLowerCase()] = 1; return true; }).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); }); };
+            var dl = function (id, arr) { return '<datalist id="' + id + '">' + uniq(arr).slice(0, 800).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>'; };
+            var col = function (k) { return lista.map(function (r) { return r[k]; }); };
+            return dl('ck-dl-tudo', [].concat(col('produto'), col('placa_veiculo'), col('nota_fiscal'), col('fornecedor'), col('ordem_compra'), col('cliente'), col('responsavel')))
+              + dl('ck-dl-forn', col('fornecedor')) + dl('ck-dl-nf', col('nota_fiscal')) + dl('ck-dl-cli', col('cliente'));
+          })()
         + '    <button class="pep-btn" id="ck-aplicar">Filtrar</button>'
         + '    <button class="pep-btn" id="ck-exportar">Exportar Excel</button>'
         + '    <button class="pep-btn' + (st.agrupar !== false ? ' primary' : '') + '" id="ck-agrupar" type="button">🚚 Agrupar por placa</button>'
@@ -34087,6 +34117,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '</div>';
       document.getElementById('ck-novo').onclick = function() { openChecklistLoteModal(renderChecklistPage); };
       try { document.getElementById('ck-fil-mes').onchange = function () { st.mes = this.value; renderChecklistPage(); }; } catch (_) {}
+      try {
+        var _bx = document.getElementById('ck-busca');
+        _bx.oninput = function () { clearTimeout(window.__ckBuscaT); window.__ckBuscaT = setTimeout(function () { st.q = String(_bx.value || '').trim(); st.__foco = 'ck-busca'; renderChecklistPage(); }, 350); };
+        _bx.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(window.__ckBuscaT); st.q = String(_bx.value || '').trim(); st.__foco = 'ck-busca'; renderChecklistPage(); } };
+        ['ck-fil-forn', 'ck-fil-nf', 'ck-fil-cliente'].forEach(function (id) { var el = document.getElementById(id); if (!el) return; el.onchange = function () { document.getElementById('ck-aplicar').click(); }; el.onkeydown = function (e) { if (e.key === 'Enter') document.getElementById('ck-aplicar').click(); }; });
+        if (st.__foco) { var _f = document.getElementById(st.__foco); st.__foco = null; if (_f) { _f.focus(); try { var n = _f.value.length; _f.setSelectionRange(n, n); } catch (_) {} } }
+      } catch (_) {}
       document.getElementById('ck-exportar').onclick = function() { checklistCsv(filtrada); };
       document.getElementById('ck-agrupar').onclick = function() { st.agrupar = st.agrupar === false; renderChecklistPage(); };
       document.getElementById('ck-aplicar').onclick = function() {
@@ -79399,7 +79436,7 @@ window.__perTxt = function (p) {
     // o detalhamento das OFs tinha uma caixinha com rolagem própria (só ~10 linhas visíveis): agora cresce e a página inteira rola
     + '#page-comissoes.active #_com_detalhe{max-height:none!important;height:auto!important;overflow:visible!important}'
     // 10/11: Checklist de Recebimento também rola até o fim
-    + '#page-checklist-recebimento{height:100%!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px;box-sizing:border-box}'
+    + '#page-checklist-recebimento{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding-bottom:40px;box-sizing:border-box}'
     + '#page-checklist-recebimento .pep-panel,#page-checklist-recebimento .pep-wrap{max-height:none!important;overflow:visible!important}'
     + '#page-checklist-recebimento .pep-table-wrap,#page-checklist-recebimento [style*="overflow:auto"]{max-height:none!important;overflow-y:visible!important;overflow-x:auto!important}';
   (document.head || document.documentElement).appendChild(st);
@@ -80038,4 +80075,35 @@ window.__perTxt = function (p) {
     novo.__dsNumPed = true; Object.keys(orig).forEach(function (k) { try { novo[k] = orig[k]; } catch (_) {} });
     window.apiFetch = novo;
   })();
+})();
+
+
+/* ===== 10/11: rolagem garantida no Checklist de Recebimento, Entradas e Saídas =====
+ * A área da página recebe a altura exata que sobra na janela (do topo dela até o fim da tela) e rola por dentro. */
+(function () {
+  if (window.__dsRolagemPaginas) return; window.__dsRolagemPaginas = true;
+  var PAGS = { 'checklist-recebimento': 1, 'entradas-estoque': 1, 'saidas-estoque': 1 };
+  function atual() { try { return String(window._PAGE_ATUAL || window.__PAGE_ATUAL || '').replace(/^page-/, ''); } catch (_) { return ''; } }
+  function alvo() {
+    var a = document.getElementById('page-checklist-recebimento');
+    if (a && a.getClientRects().length && getComputedStyle(a).display !== 'none') return a;
+    var pg = atual(); if (!PAGS[pg]) return null;
+    var h = document.getElementById('patch-page-host');
+    if (h && h.getClientRects().length && getComputedStyle(h).display !== 'none') return h;
+    return null;
+  }
+  var ultimo = null;
+  function ajustar() {
+    var el = alvo();
+    if (ultimo && ultimo !== el && ultimo.__dsRol) { ultimo.style.removeProperty('height'); ultimo.style.removeProperty('max-height'); ultimo.style.removeProperty('overflow-y'); ultimo.__dsRol = false; }
+    ultimo = el; if (!el) return;
+    var z = parseFloat(getComputedStyle(document.body).zoom) || 1, r = el.getBoundingClientRect();
+    var alt = Math.max(240, Math.floor(window.innerHeight / z - r.top / z - 4));
+    if (el.__dsRolH !== alt || !el.__dsRol) {
+      el.style.setProperty('height', alt + 'px', 'important'); el.style.setProperty('max-height', alt + 'px', 'important');
+      el.style.setProperty('overflow-y', 'auto', 'important'); el.style.setProperty('-webkit-overflow-scrolling', 'touch');
+      el.__dsRolH = alt; el.__dsRol = true;
+    }
+  }
+  setInterval(ajustar, 500); window.addEventListener('resize', ajustar);
 })();
