@@ -9372,7 +9372,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
       return '<div style="display:flex;flex-wrap:nowrap;gap:3px;justify-content:flex-start">' + badges + '</div>';
     })();
     var resina = !!(item && (item.resina_interna === true || item.resina_interna === 'true' || item.resina_interna === 1));
-    if (resina) po = '<div style=\"display:inline-block;background:#dc2626;color:#fff;font-weight:900;font-size:10.5px;letter-spacing:.04em;padding:2px 7px;border-radius:5px;margin-bottom:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact\">COM RESINA INTERNA</div><br>' + po;
+    // 11/11: selo "Resina interna" — palavras inteiras (sem quebrar no meio), borda forte para aparecer até em impressão preto e branco
+    if (resina) po = '<div style=\"display:block;background:#dc2626;color:#fff;border:2px solid #7f1d1d;font-weight:900;font-size:10px;line-height:1.2;letter-spacing:.02em;text-align:center;padding:3px 4px;border-radius:5px;margin:0 0 5px 0;white-space:normal;word-break:normal!important;overflow-wrap:normal!important;hyphens:none;-webkit-print-color-adjust:exact;print-color-adjust:exact\">RESINA<br>INTERNA</div>' + po;
     var linhaResina = resina ? '<tr style=\"display:table-row!important\" class=\"ccpx-linha-resina\">' : '<tr style=\"display:table-row!important\">';
     return ''
       + linhaResina
