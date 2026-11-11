@@ -71761,6 +71761,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var nAv = (E.vendedor ? 1 : 0) + (E.empresa ? 1 : 0) + (E.pedDe ? 1 : 0) + (E.pedAte ? 1 : 0) + (E.semPapel ? 1 : 0);
     raiz.querySelector('.dsc-nf').textContent = nAv ? nAv : '';
     Hs(raiz.querySelector('thead'), '<tr><th class="dsc-c-chk"><input type="checkbox" class="dsc-chk-todos" aria-label="Selecionar página"></th>' + colsVisiveis().map(function (c) { return th(c.ord || '', c.t, c.c + '" data-col="' + c.k); }).join('') + '<th class="dsc-c-acao">Ações</th></tr>');
+    // 11/11: sem busca/filtro mostra só as 15 OFs mais recentes (tela leve); a busca e os filtros procuram em todas
+    var totalVista = linhas.length, so15 = false;
+    if (!E.verTodas && !String(E.busca || '').trim() && !nAv && !E.periodo && !E.maquina && E.vista !== 'canceladas' && linhas.length > 15) {
+      var rec = function (o) { return String(o.created_at || o.data_pedido || o.dia || ''); };
+      var top = linhas.slice().sort(function (a, b) { var ra = rec(a), rb = rec(b); if (ra !== rb) return ra < rb ? 1 : -1; return num(b.of) - num(a.of); }).slice(0, 15);
+      var set15 = {}; top.forEach(function (o) { set15[String(o.id || o.of)] = 1; });
+      linhas = linhas.filter(function (o) { return set15[String(o.id || o.of)]; });
+      so15 = true; E.pagina = 1;
+    }
     var total = linhas.length, pags = Math.max(1, Math.ceil(total / E.porPagina));
     if (E.pagina > pags) E.pagina = pags;
     var ini = (E.pagina - 1) * E.porPagina, pagina = linhas.slice(ini, ini + E.porPagina);
@@ -71769,7 +71778,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var carregando = !lista().length;
     vazio.hidden = total > 0;
     Hs(vazio, carregando ? '<div class="dsc-skel"></div><div class="dsc-skel"></div><div class="dsc-skel"></div>' : svg(IC.vazio, 28) + '<b>Nenhuma OF encontrada</b><span>Ajuste a busca ou os filtros.</span>' + (E.busca || nAv || E.periodo || E.maquina ? '<button type="button" class="dsc-btn dsc-btn-sec" data-a="limpar">Limpar filtros</button>' : ''));
-    raiz.querySelector('.dsc-pag-info').textContent = total ? ('Mostrando ' + (ini + 1) + '–' + Math.min(ini + E.porPagina, total) + ' de ' + total.toLocaleString('pt-BR')) : '';
+    var pinfo = raiz.querySelector('.dsc-pag-info');
+    if (so15) Hs(pinfo, 'Mostrando as <b>15 OFs mais recentes</b> de ' + totalVista.toLocaleString('pt-BR') + ' · use a busca para achar qualquer OF <button type="button" class="dsc-link" data-dsc15="todas" style="margin-left:6px">Ver todas</button>');
+    else if (E.verTodas && !String(E.busca || '').trim() && !nAv && !E.periodo && !E.maquina && totalVista > 15) Hs(pinfo, 'Mostrando ' + (ini + 1) + '–' + Math.min(ini + E.porPagina, total) + ' de ' + total.toLocaleString('pt-BR') + ' <button type="button" class="dsc-link" data-dsc15="recentes" style="margin-left:6px">Mostrar só as 15 recentes</button>');
+    else Hs(pinfo, total ? ('Mostrando ' + (ini + 1) + '–' + Math.min(ini + E.porPagina, total) + ' de ' + total.toLocaleString('pt-BR')) : '');
+    if (!raiz.__dsc15) { raiz.__dsc15 = 1; raiz.addEventListener('click', function (ev) { var b = ev.target.closest('[data-dsc15]'); if (!b) return; ev.preventDefault(); ev.stopPropagation(); E.verTodas = b.getAttribute('data-dsc15') === 'todas'; E.pagina = 1; render(); }, true); }
     var pg = '';
     if (pags > 1) {
       pg += '<button type="button" class="dsc-ib" data-p="' + (E.pagina - 1) + '"' + (E.pagina <= 1 ? ' disabled' : '') + ' aria-label="Página anterior">‹</button>';
@@ -72662,7 +72675,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         var i = fluxo.findIndex(function (x) { return norm(x) === norm(m); }), prox = i >= 0 ? fluxo[i + 1] : '';
         req('POST', '/api/ofs/' + encodeURIComponent(o.id) + '/passou-maquina', { maquina_nome: m, maquina: m })
           .then(function () { return req('POST', '/api/operador/pos-passagem', { of_id: o.id, status_anterior: o.status, proxima_maquina: prox, indice: i + 1 }); })
-          .then(function () { depois('OF ' + numOf(o) + ' passou pela ' + m + (prox ? ' · foi para ' + prox : '')); })
+          .then(function () {
+            // 11/11: tira da fila na hora (a lista do servidor chega logo depois)
+            try { [o].concat(((typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || [])).filter(function (z) { return z && z.id === o.id && z !== o; })).forEach(function (z) {
+              if (prox) { z.passou_maquina = false; z.maquina_atual = prox; z.maquina_atual_index = i + 1; } else { z.passou_maquina = true; z.passou_maquina_nome = m; z.passou_em = new Date().toISOString(); }
+            }); } catch (_) {}
+            try { render(); } catch (_) {}
+            depois('OF ' + numOf(o) + ' passou pela ' + m + (prox ? ' · foi para ' + prox : ''));
+          })
           .catch(function (e) { b.disabled = false; toast('Erro: ' + e.message, 'var(--red)'); });
         return;
       }
@@ -75159,7 +75179,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * toneladas. Agora os campos vindos do servidor são mantidos. */
 (function () {
   if (window.__dsNormOF) return; window.__dsNormOF = true;
-  var CAMPOS = ['cores_impressao', 'gramatura', 'gramatura_id', 'gramatura_nome', 'tonelada_vendida', 'toneladas_utilizadas', 'toneladas_perdidas', 'peso_utilizado_kg', 'caixas_perdidas', 'qtd_perdida', 'perdas_por_maquina', 'maquina_perda', 'motivo_perda', 'papel_comprado', 'papel_observacao', 'previsao_entrega_papel', 'custo_m2_venda', 'area_total_m2', 'chapa_id', 'qtd_chapas', 'consumo_chapas_estimado', 'data_conclusao', 'data_faturamento', 'tipo_caixa', 'tipo_caixa_id', 'caixa_largura', 'caixa_comprimento', 'caixa_altura', 'operador_conclusao', 'usuario_conclusao', 'passagens_maquina', 'faca', 'faca_id', 'facas', 'faca_ids'];
+  var CAMPOS = ['cores_impressao', 'gramatura', 'gramatura_id', 'gramatura_nome', 'tonelada_vendida', 'toneladas_utilizadas', 'toneladas_perdidas', 'peso_utilizado_kg', 'caixas_perdidas', 'qtd_perdida', 'perdas_por_maquina', 'maquina_perda', 'motivo_perda', 'papel_comprado', 'papel_observacao', 'previsao_entrega_papel', 'custo_m2_venda', 'area_total_m2', 'chapa_id', 'qtd_chapas', 'consumo_chapas_estimado', 'data_conclusao', 'data_faturamento', 'tipo_caixa', 'tipo_caixa_id', 'caixa_largura', 'caixa_comprimento', 'caixa_altura', 'operador_conclusao', 'usuario_conclusao', 'passagens_maquina', 'passou_maquina', 'passou_maquina_nome', 'passou_em', 'faca', 'faca_id', 'facas', 'faca_ids'];
   function parse(v) { if (typeof v === 'string' && /^\s*[\[{]/.test(v)) { try { return JSON.parse(v); } catch (_) {} } return v; }
   function completar(r, o) {
     if (!o || typeof o !== 'object' || !r || typeof r !== 'object') return o;
