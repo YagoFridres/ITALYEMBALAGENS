@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261111174748';
-const SW_RUNTIME_VERSION = '20261111174748';
+const PATCH_RUNTIME_VERSION = '20261111180021';
+const SW_RUNTIME_VERSION = '20261111180021';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -41152,13 +41152,13 @@ app.delete('/api/papelao/solicitacoes/:id', authMiddleware, async (req, res) => 
 });
 
 // ===== PRODUTOS (cadastro para autocompletar "Produto / Descrição" na OF) (28/10/2026) =====
-const _PROD_CAMPOS = ['nome', 'cores', 'clientes', 'largura', 'comprimento', 'altura', 'valor_unitario', 'aliases', 'cliente_id', 'cliente_nome', 'observacao', 'ativo'];
+const _PROD_CAMPOS = ['nome', 'cores', 'clientes', 'largura', 'comprimento', 'altura', 'valor_unitario', 'aliases', 'cliente_id', 'cliente_nome', 'observacao', 'ativo', 'maquina'];
 function _prodPayload(b) {
   const o = {};
   _PROD_CAMPOS.forEach((k) => { if (Object.prototype.hasOwnProperty.call(b || {}, k)) o[k] = b[k]; });
   if (o.nome != null) o.nome = String(o.nome).trim().replace(/\s+/g, ' ');
   ['largura', 'comprimento', 'altura', 'valor_unitario'].forEach((k) => { if (k in o) { const n = Number(String(o[k] ?? '').replace(',', '.')); o[k] = Number.isFinite(n) && n > 0 ? n : null; } });
-  ['cliente_id', 'cliente_nome', 'observacao'].forEach((k) => { if (k in o) o[k] = String(o[k] ?? '').trim() || null; });
+  ['cliente_id', 'cliente_nome', 'observacao', 'maquina'].forEach((k) => { if (k in o) o[k] = String(o[k] ?? '').trim() || null; });
   if ('ativo' in o) o.ativo = o.ativo !== false && o.ativo !== 'false';
   if ('aliases' in o) o.aliases = Array.from(new Set((Array.isArray(o.aliases) ? o.aliases : []).map((x) => String(x || '').trim().replace(/\s+/g, ' ')).filter(Boolean)));
   if ('clientes' in o) o.clientes = (Array.isArray(o.clientes) ? o.clientes : []).map((c) => ({ id: c && c.id ? String(c.id) : null, nome: String(c && c.nome || c || '').trim() })).filter((c) => c.nome);
@@ -41310,7 +41310,9 @@ app.get('/api/produtos-cadastro/por-cliente', authMiddleware, async (req, res) =
         cores = (Array.isArray(cores) ? cores : []).map((c) => String(c && c.nome || c || '').trim()).filter((c) => c && !/sem impress/i.test(c));
         e = { produto: prod, pedidos: 0, concluidas: 0, caixas: 0, ultimo: null, ultima_of: null,
           largura: num(o.largura || o.dim_largura || o.caixa_largura || o.larg || it.larg || it.largura) || null, comprimento: num(o.comprimento || o.dim_comprimento || o.caixa_comprimento || o.comp || it.comp || it.comprimento) || null,
-          valor_unitario: num(o.valor_unitario || o.preco || it.vunit || it.valor_unitario) || null, cores };
+          valor_unitario: num(o.valor_unitario || o.preco || it.vunit || it.valor_unitario) || null, cores,
+          // 11/11: máquina da OF mais recente desse produto (para já vir preenchida na OF nova)
+          maquina: (() => { let m = o.fluxo_maquinas; if (typeof m === 'string') { try { m = JSON.parse(m); } catch (_) { m = null; } } let mq = o.maq; if (typeof mq === 'string') { try { mq = JSON.parse(mq); } catch (_) { mq = [mq]; } } const c = [Array.isArray(m) && m[0], Array.isArray(mq) && mq[0], o.maquina_agendada, it.maquina_nome, it.maquina].map((x) => String(x && typeof x === 'object' ? (x.nome || x.maquina || '') : x || '').trim()).find(Boolean); return c || null; })() };
         mapa.set(k, e);
       }
       e.pedidos += 1;

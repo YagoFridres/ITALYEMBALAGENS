@@ -76104,6 +76104,20 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + l.map(function (p) { return '<tr data-id="' + esc(p.id) + '"><td class="dsp-ck"><input type="checkbox" data-mck="' + esc(p.id) + '"' + (SEL.cad[p.id] ? ' checked' : '') + ' aria-label="Selecionar para mesclar"></td><td data-l="Produto"><b>' + esc(p.nome) + '</b>' + (aliasesDe(p).length ? '<small class="dsp-al">também: ' + esc(aliasesDe(p).join(' · ')) + '</small>' : '') + '</td><td data-l="Medidas">' + (esc(medidasTxt(p)) || '—') + '</td><td data-l="Valor un.">' + (esc(valorTxt(p)) || '—') + '</td><td data-l="Cores">' + (esc(medida(p)) || '—') + '</td><td data-l="Clientes">' + (esc(clientesDe(p).map(function (c) { return c.nome; }).join(', ')) || '<span class="dsp-mut">Qualquer cliente</span>') + '</td><td class="dsp-ac"><button type="button" class="dsp-btn" data-a="editar">Editar</button><button type="button" class="dsp-btn dsp-no" data-a="excluir">Excluir</button></td></tr>'; }).join('') + '</tbody></table></div>'
       : '<div class="dsp-vazio">' + (P.lista.length ? 'Nenhum produto encontrado.' : 'Nenhum produto cadastrado ainda. Use “Novo produto” ou “Trazer produtos das OFs”.') + '</div>';
   }
+  // 11/11: máquinas para o produto (as mesmas da OF Rápida)
+  var MAQS = [];
+  function carregarMaquinas() {
+    if (MAQS.length) return Promise.resolve(MAQS);
+    return req('GET', '/api/maquinas').then(function (j) { var l = Array.isArray(j) ? j : (j && (j.data || j.maquinas)) || []; MAQS = l.filter(function (m) { return m && m.ativo !== false && m.ativa !== false; }).map(function (m) { return String(m.nome || m.maquina || '').trim(); }).filter(Boolean); return MAQS; }).catch(function () { return MAQS; });
+  }
+  function maquinasLista(atual) {
+    var l = MAQS.slice();
+    if (!l.length) { var s0 = document.getElementById('of-r-maquina'); if (s0) l = Array.prototype.map.call(s0.options, function (o) { return o.value; }).filter(Boolean); }
+    if (!l.length) l = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+    if (atual && !l.some(function (m) { return norm(m) === norm(atual); })) l.push(atual);
+    return l;
+  }
+  setTimeout(carregarMaquinas, 6000);
   function formulario(p) {
     E.ed = p || {};
     var ant = document.getElementById('dsp-ov'); if (ant) ant.remove();
@@ -76113,7 +76127,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<div class="dsp-g3"><label class="dsp-f"><span>Largura (mm)</span><input class="dsp-in" name="largura" inputmode="decimal" value="' + esc(p && p.largura ? String(p.largura) : '') + '" placeholder="Ex.: 510"></label>'
       + '<label class="dsp-f"><span>Comprimento (mm)</span><input class="dsp-in" name="comprimento" inputmode="decimal" value="' + esc(p && p.comprimento ? String(p.comprimento) : '') + '" placeholder="Ex.: 1020"></label>'
       + '<label class="dsp-f"><span>Valor unitário (R$)</span><input class="dsp-in" name="valor_unitario" inputmode="decimal" value="' + esc(p && p.valor_unitario ? String(p.valor_unitario).replace('.', ',') : '') + '" placeholder="0,00"></label></div>'
-      + '<p class="dsp-dica">Ao escolher este produto na OF, as medidas, as cores e o valor unitário já vêm preenchidos.</p>'
+      + '<label class="dsp-f"><span>Máquina em que o produto passa (opcional)</span><select class="dsp-in" name="maquina"><option value="">— sem máquina fixa —</option>' + maquinasLista(p && p.maquina).map(function (m) { return '<option value="' + esc(m) + '"' + (p && p.maquina && norm(p.maquina) === norm(m) ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select></label>'
+      + '<p class="dsp-dica">Ao escolher este produto na OF, as medidas, as cores, o valor unitário e a máquina já vêm preenchidos (a máquina pode ser trocada na OF).</p>'
       + (p && p.nome && typeof window.dsTemposHtml === 'function' ? window.dsTemposHtml(p.nome) : '')
       + (p && p.id && aliasesDe(p).length ? '<div class="dsp-f"><span>Nomes juntados neste produto (os pedidos com esses nomes contam como dele — tire um nome para separá-lo de novo)</span><div class="dsp-als"></div></div>' : '')
       + '<div class="dsp-f"><span>Cores (opcional)</span><div class="dsp-cores">' + coresDisp().map(function (c) { var on = coresDe(p).some(function (x) { return norm(x) === norm(c.nome); }); return '<button type="button" class="dsp-cor' + (on ? ' on' : '') + '" data-cor="' + esc(c.nome) + '"><i style="background:' + esc(c.hex || 'transparent') + '"></i>' + esc(c.nome) + '</button>'; }).join('') + '</div></div>'
@@ -76145,6 +76160,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var f = e.target.closest('form'); if (!f || !f.closest('#dsp-ov')) return; e.preventDefault();
     var d = { nome: f.querySelector('[name="nome"]').value };
     ['largura', 'comprimento', 'valor_unitario'].forEach(function (k) { var i = f.querySelector('[name="' + k + '"]'); if (i) d[k] = numIn(i.value); });
+    var mqSel = f.querySelector('[name="maquina"]'); if (mqSel) d.maquina = mqSel.value || null;
     if (E.ed && E.ed.id && Array.isArray(E.als)) d.aliases = E.als.slice();
     var pend = f.querySelector('[name="cli_add"]'); if (pend && String(pend.value || '').trim()) { var cp = clientes().find(function (x) { return norm(x.nome || x.rs) === norm(pend.value); }); var nm = cp ? (cp.nome || cp.rs) : String(pend.value).trim(); if (!E.clis.some(function (x) { return norm(x.nome) === norm(nm); })) E.clis.push({ id: cp ? String(cp.id) : null, nome: nm }); }
     d.clientes = (E.clis || []).slice(); d.cliente_nome = d.clientes.length === 1 ? d.clientes[0].nome : null; d.cliente_id = d.clientes.length === 1 ? d.clientes[0].id : null;
@@ -76353,7 +76369,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (HC.key === k) return HC.prom || Promise.resolve(HC.lista);
     HC = { key: k, lista: [], prom: null };
     HC.prom = req('GET', '/api/produtos-cadastro/por-cliente?cliente_id=' + encodeURIComponent(c._so ? '' : (c.id || '')) + '&cliente=' + encodeURIComponent(c.nome || c.rs || ''))
-      .then(function (j) { if (HC.key !== k) return []; HC.lista = ((j && j.produtos) || []).map(function (x) { return { nome: x.produto, largura: x.largura, comprimento: x.comprimento, valor_unitario: x.valor_unitario, cores: x.cores || [], _ped: x.pedidos, _hist: true }; }); HC.prom = null; return HC.lista; })
+      .then(function (j) { if (HC.key !== k) return []; HC.lista = ((j && j.produtos) || []).map(function (x) { return { nome: x.produto, largura: x.largura, comprimento: x.comprimento, valor_unitario: x.valor_unitario, cores: x.cores || [], maquina: x.maquina || null, _ped: x.pedidos, _hist: true }; }); HC.prom = null; return HC.lista; })
       .catch(function () { HC.prom = null; return []; });
     return HC.prom;
   }
@@ -76364,6 +76380,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var o = Object.assign({}, p);
     ['largura', 'comprimento', 'valor_unitario'].forEach(function (k) { if (!(Number(o[k]) > 0) && Number(h[k]) > 0) o[k] = h[k]; });
     if (!coresDe(o).length && h.cores && h.cores.length) o.cores = h.cores;
+    if (!o.maquina && h.maquina) o.maquina = h.maquina;
     o._ped = h._ped;
     return o;
   }
@@ -76410,6 +76427,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       try { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
     });
     try { if (typeof window.calcTotalOf === 'function') window.calcTotalOf(); } catch (_) {}
+    // 11/11: máquina do produto (cadastro ou última OF dele). Preenche se estiver vazia ou se foi o sistema que preencheu; a pessoa pode trocar.
+    try {
+      var sm = document.getElementById('of-r-maquina');
+      if (sm && p.maquina) {
+        var op = Array.prototype.find.call(sm.options, function (o) { return o.value && (norm(o.value) === norm(p.maquina) || norm(o.textContent) === norm(p.maquina)); });
+        var curM = String(sm.value || '');
+        if (op && (!curM || sm.__dsProdAuto === curM) && curM !== op.value) {
+          sm.value = op.value; sm.__dsProdAuto = op.value;
+          sm.dispatchEvent(new Event('change', { bubbles: true }));
+          sm.classList.add('ds-auto-maq'); setTimeout(function () { sm.classList.remove('ds-auto-maq'); }, 1600);
+        }
+      }
+    } catch (_) {}
     // cores do produto (se ainda não escolheu nenhuma)
     var cs = coresDe(p);
     if (cs.length) {
@@ -76479,7 +76509,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   (function () { var g0 = window.go; if (typeof g0 !== 'function' || g0.__dsProd) return; })();
   setInterval(vigiar, 700); setTimeout(function () { carregar(); }, 5000);
   window.dsProdutos = { render: render, carregar: carregar, lista: function () { return P.lista; } };
-  var css = '#dsp-raiz{display:flex;flex-direction:column;gap:14px;padding:4px 0}.dsp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.dsp-head h1{margin:0;font-size:22px}.dsp-head p{margin:4px 0 0;color:var(--text2);font-size:13px}.dsp-acoes{display:flex;gap:8px;flex-wrap:wrap}'
+  var css = '#of-r-maquina.ds-auto-maq{box-shadow:0 0 0 3px color-mix(in srgb,var(--green,#22c55e) 55%,transparent)!important;transition:box-shadow .3s}#dsp-raiz{display:flex;flex-direction:column;gap:14px;padding:4px 0}.dsp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.dsp-head h1{margin:0;font-size:22px}.dsp-head p{margin:4px 0 0;color:var(--text2);font-size:13px}.dsp-acoes{display:flex;gap:8px;flex-wrap:wrap}'
     + '.dsp-barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dsp-barra .dsp-in{flex:1;min-width:200px}.dsp-cont{font-size:12.5px;color:var(--text3)}'
     + '.dsp-in{height:40px;border-radius:9px;border:1px solid var(--b2);background:var(--bg);color:var(--text);font:inherit;font-size:14px;padding:0 12px;box-sizing:border-box;width:100%}'
     + '.dsp-btn{height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}.dsp-btn:hover{background:var(--s3)}.dsp-pri{background:var(--accent);border-color:var(--accent);color:#fff}.dsp-no{color:var(--red)}.dsp-btn:disabled{opacity:.6}'
