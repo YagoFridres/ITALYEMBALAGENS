@@ -72385,7 +72385,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // As OFs movidas à mão ocupam as mesmas "vagas" da fila, na ordem que o usuário deixou; OF nova entra pelo roteiro.
   // Posições salvas antes de 11/11 09h (ordem automática antiga) não contam.
   var SEQ_CORTE = '2026-11-11T12:00:00';
-  function seqValida(maq, id) { var p = (E.seq[maq] || {})[id]; if (p == null) return false; var t = String(((E.seqT || {})[maq] || {})[id] || ''); return t >= SEQ_CORTE; }
+  function seqValida(maq, id, o) { if (o && (urg(o) || emProducao(o))) return false; var p = (E.seq[maq] || {})[id]; if (p == null) return false; var t = String(((E.seqT || {})[maq] || {})[id] || ''); return t >= SEQ_CORTE; }
   function ordenar(lista, maq, modo) {
     var base = lista.slice().sort(function (a, b) {
       // 09/11: OF urgente fica sempre em 1º lugar na máquina
@@ -72403,11 +72403,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
     if (modo === 'entrega') return base;
     var pos = E.seq[maq] || {};
-    var man = base.filter(function (o) { return seqValida(maq, o.id); });
+    var man = base.filter(function (o) { return seqValida(maq, o.id, o); });
     if (man.length < 2) return base;
     man.sort(function (a, b) { return pos[a.id] - pos[b.id]; });
     var k = 0;
-    return base.map(function (o) { return seqValida(maq, o.id) ? man[k++] : o; });
+    return base.map(function (o) { return seqValida(maq, o.id, o) ? man[k++] : o; });
   }
   function carregarApoio(forcar) {
     if (E.carregado && !forcar) return Promise.resolve();
@@ -72450,7 +72450,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   });
   function salvarSeq(maq, lista) {
     var ids = lista.map(function (o) { return o.id; });
-    var s = {}, t = {}, agora = new Date().toISOString(); ids.forEach(function (id, i) { s[id] = i + 1; t[id] = agora; }); E.seq[maq] = s; E.seqT = E.seqT || {}; E.seqT[maq] = t;
+    var s = {}, t = {}, agora = new Date().toISOString(); ids.forEach(function (id, i) { s[id] = i + 1; t[id] = agora; }); E.seq[maq] = s; E.seqV = (E.seqV || 0) + 1; E.seqT = E.seqT || {}; E.seqT[maq] = t;
     return req('POST', '/api/ofmaq/sequencia', { maquina: maq, ordem: ids }).then(function () { toast('Sequência salva'); }).catch(function (e) { toast('Não foi possível salvar a sequência: ' + e.message, 'var(--red)'); });
   }
   function recarregarOfs() { try { if (typeof window.carregarOFs === 'function') return Promise.resolve(window.carregarOFs({ forcar: true })).catch(function () {}); } catch (_) {} return Promise.resolve(); }
@@ -72950,7 +72950,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
   /* ---------- ciclo ---------- */
   var assAnt = '';
-  function assinatura() { var l = ofsBase(); var mx = ''; for (var i = 0; i < l.length; i++) { var u = String(l[i].updated_at || ''); if (u > mx) mx = u; } return l.length + '|' + mx + '|' + E.maq + '|' + E.sessoes.length + '|' + JSON.stringify(E.seq[E.maq] || {}).length; }
+  // 11/11: a assinatura olha o conteúdo das OFs abertas (urgente, status, papel, máquina, datas…), não só o updated_at
+  // (que a lista do navegador não guarda) — antes a tela não se redesenhava depois de uma ação e parecia que "não salvou".
+  function assinatura() {
+    var l = ofsBase(), h = 0, n = 0;
+    for (var i = 0; i < l.length; i++) {
+      var o = l[i]; if (!o || o.deleted_at) continue;
+      var st = String(o.status || ''); if (FECHADA.test(st)) continue; n++;
+      var k = o.id + '|' + st + '|' + urg(o) + '|' + (o.sem_papel || o.sem_papelao ? 1 : 0) + '|' + maqDaOf(o) + '|' + String(o.ent || o.data_entrega || '') + '|' + String(o.dia_programacao || o.dia || '') + '|' + (o.passou_maquina ? 1 : 0) + '|' + String(o.papel_observacao || '') + '|' + String(o.previsao_entrega_papel || '') + '|' + String(o.qtd || o.quantidade || '') + '|' + String(o.updated_at || '');
+      for (var j = 0; j < k.length; j++) h = ((h << 5) - h + k.charCodeAt(j)) | 0;
+    }
+    return n + '|' + h + '|' + E.maq + '|' + E.sessoes.length + '|' + JSON.stringify(E.seq[E.maq] || {}).length + '|' + (E.seqV || 0);
+  }
   var ultRecargaLite = 0;
   function ciclo() {
     try {
