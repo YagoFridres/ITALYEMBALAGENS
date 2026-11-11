@@ -40096,7 +40096,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
 
     if (!t && todos.length > 10) {
-      dd.innerHTML += '<div style="padding:8px 14px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #2d3748">Digite para filtrar entre ' + escHLocal(String(todos.length)) + ' clientes</div>';
+      var rodCli = document.createElement('div'); rodCli.style.cssText = 'padding:8px 14px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #2d3748';
+      rodCli.textContent = 'Digite para filtrar entre ' + String(todos.length) + ' clientes'; dd.appendChild(rodCli);
     }
 
     dd.style.display = 'block';
@@ -58141,7 +58142,9 @@ function _ocultarGraficoComissoes() {
           gramSuggestEl.appendChild(row);
         });
         if (!busca && lista.length > 10) {
-          gramSuggestEl.innerHTML += '<div style="padding:8px 14px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #2d3748">Digite para filtrar entre ' + String(lista.length) + ' gramaturas</div>';
+          // 11/11: appendChild (o "innerHTML +=" recriava as linhas e o clique na gramatura parava de funcionar)
+          var rodGram = document.createElement('div'); rodGram.style.cssText = 'padding:8px 14px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #2d3748';
+          rodGram.textContent = 'Digite para filtrar entre ' + String(lista.length) + ' gramaturas'; gramSuggestEl.appendChild(rodGram);
         }
         gramSuggestEl.style.display = 'block';
       }

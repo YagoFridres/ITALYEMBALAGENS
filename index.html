@@ -4,7 +4,7 @@
 <head>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261111100132'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261111100524'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
 function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
 function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
@@ -32491,6 +32491,9 @@ function imprimirOF(ofNum){
   const o=OFs.find(x=>x.of===ofNum);if(!o)return;
   const cli=getCli(o.cliId)||{nome:'—'};
   const fl=getF(o.fluxo)||{nome:'—'};
+  // 11/11: fluxo = máquinas da OF; datas no formato brasileiro; data do pedido certa (antes mostrava a de entrega)
+  try{ const ms=(Array.isArray(o.fluxo_maquinas)&&o.fluxo_maquinas.length?o.fluxo_maquinas:(Array.isArray(o.maq)?o.maq:[])).map(x=>String(x&&typeof x==='object'?(x.nome||x.maquina||''):x||'').trim()).filter(Boolean); if(ms.length && (!fl.nome||fl.nome==='—')) fl.nome=ms.join(' → '); }catch(_){}
+  const _brD=(v)=>{ const s=String(v||'').slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(s)? s.split('-').reverse().join('/') : (s||'—'); };
   const emp=getEmp(o.empId)||{nome:'Italy Embalagens'};
   const chapa=o.chp?getCh(o.chp):null;
   const itens=(o.itens&&o.itens.length>0)?o.itens:[{desc:o.obs||'—',qtd:o.qtd,vunit:o.vunit||0,vtot:o.val||0}];
@@ -32508,8 +32511,8 @@ function imprimirOF(ofNum){
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px">
       <tr style="background:#f0f8fa">
         <td style="padding:6px 8px;border:1px solid #ccc"><b>Cliente:</b> ${cli.nome}</td>
-        <td style="padding:6px 8px;border:1px solid #ccc"><b>Data Pedido:</b> ${o.dia||'—'}</td>
-        <td style="padding:6px 8px;border:1px solid #ccc"><b>Entrega:</b> ${o.ent||'—'}</td>
+        <td style="padding:6px 8px;border:1px solid #ccc"><b>Data Pedido:</b> ${_brD(o.dia_pedido||o.data_pedido||o.created_at||o.dia)}</td>
+        <td style="padding:6px 8px;border:1px solid #ccc"><b>Entrega:</b> ${_brD(o.ent||o.data_entrega)}</td>
       </tr>
       <tr>
         <td style="padding:6px 8px;border:1px solid #ccc"><b>Fluxo:</b> ${fl.nome}</td>
@@ -33951,7 +33954,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261111100132';
+      const swVersion = '20261111100524';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61433,6 +61436,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261111100132"></script>
+<script src="/patch.js?v=20261111100524"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
