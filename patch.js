@@ -72344,7 +72344,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function arr(v) { if (Array.isArray(v)) return v; if (typeof v === 'string' && v.trim()) { try { var p = JSON.parse(v); return Array.isArray(p) ? p : [p]; } catch (_) { return v.split(',').map(function (x) { return x.trim(); }).filter(Boolean); } } return v ? [v] : []; }
   function nomeMaq(x) { return String(x && typeof x === 'object' ? (x.nome || x.col || x.maquina || x.name || '') : (x || '')).trim(); }
   function maqDaOf(o) {
-    var c = [o.maquina_atual, o.maquina, o.maquina_agendada].map(nomeMaq).filter(Boolean);
+    // 11/11: OF com mais de uma máquina no fluxo — a fila é a da etapa atual (antes virava "IMP 01, CORTE…" e sumia das filas)
+    var fl = arr(o.fluxo_maquinas).map(nomeMaq).filter(Boolean);
+    if (fl.length > 1) { var ix = Math.trunc(Number(o.maquina_atual_index) || 0); if (ix < 0) ix = 0; if (ix > fl.length - 1) ix = fl.length - 1; return fl[ix]; }
+    var c = [o.maquina_atual, o.maquina, o.maquina_agendada].map(nomeMaq).filter(Boolean).map(function (x) { return x.split(/\s*,\s*/)[0]; });
     if (c.length) return c[0];
     var a = arr(o.maq); return a.length ? nomeMaq(a[0]) : '';
   }
