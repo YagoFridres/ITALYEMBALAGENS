@@ -80102,7 +80102,24 @@ window.__perTxt = function (p) {
     if (depois.nextElementSibling !== w) depois.parentNode.insertBefore(w, depois.nextSibling);
   }
   new MutationObserver(function () { if (document.getElementById('modal-of-rapida') && !document.getElementById('of-r-numpedido')) setTimeout(criar, 80); }).observe(document.body, { childList: true });
-  setInterval(function () { if (document.getElementById('of-r-numpedido')) posicionar(); }, 400);
+  // 11/11: a tela da OF Rápida é reaproveitada — a cada abertura, "Nova OF" limpa o campo e "Editar" puxa o Nº do pedido e a cidade salvos
+  var CARREG = { id: '' }, chaveAnt = '';
+  function visivel() { var m = document.getElementById('modal-of-rapida'); return !!(m && m.getClientRects().length && getComputedStyle(m).display !== 'none' && getComputedStyle(m).visibility !== 'hidden'); }
+  setInterval(function () {
+    var el = document.getElementById('of-r-numpedido'); if (el) posicionar();
+    var vis = visivel(), ed = vis && emEdicao() ? idEdicao() : '';
+    var chave = vis ? (ed ? 'e:' + ed : 'n') : '';
+    if (chave === chaveAnt) return; chaveAnt = chave;
+    if (!vis || !el) { if (!vis) CARREG.id = ''; return; }
+    if (!ed) { el.value = ''; CARREG.id = ''; return; }
+    el.value = ''; CARREG.id = '';
+    window.apiFetch('/api/ofs/' + encodeURIComponent(ed) + '?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
+      var o = (j && j.data) || j || {}; if (String(o.id || '') !== ed || chaveAnt !== 'e:' + ed) return;
+      el.value = o.num_pedido || '';
+      var ce = document.getElementById('of-r-cidade'); if (ce && o.cidade_entrega) { ce.value = o.cidade_entrega; ce.dataset.manual = '1'; try { ce.dispatchEvent(new Event('input', { bubbles: true })); var dd = ce.parentNode.querySelector('.drt-dd'); if (dd) dd.hidden = true; } catch (_) {} }
+      CARREG.id = ed;
+    }).catch(function () {});
+  }, 300);
   // criação: vai junto no POST /api/ofs
   (function embrulhar() {
     var orig = window.apiFetch;
@@ -80111,7 +80128,14 @@ window.__perTxt = function (p) {
       try {
         var u = String(url || '').replace(/^https?:\/\/[^/]+/, ''), m = String(opts && opts.method || 'GET').toUpperCase(), el = document.getElementById('of-r-numpedido');
         if (el && opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData) && ((m === 'POST' && /^\/?api\/ofs\/?(\?|$)/.test(u)) || ((m === 'PUT' || m === 'PATCH') && /^\/?api\/ofs\/[^/?]+\/?(\?|$)/.test(u) && emEdicao()))) {
-          var v = String(el.value || '').trim(); if (v || m !== 'POST') opts.body.num_pedido = v || null; try { if (window.dsCarregarPedidosReset) setTimeout(window.dsCarregarPedidosReset, 1500); } catch (_) {}
+          var v = String(el.value || '').trim();
+          if (m === 'POST') { if (v) opts.body.num_pedido = v; }
+          // 11/11: na edição só manda o Nº do pedido (e a cidade) se o valor salvo da OF já foi carregado na tela — antes apagava o número
+          else if (CARREG.id && u.indexOf(CARREG.id) >= 0) {
+            opts.body.num_pedido = v || null;
+            var ce = document.getElementById('of-r-cidade'); if (ce && String(ce.value || '').trim()) opts.body.cidade_entrega = String(ce.value).trim();
+          }
+          try { if (window.dsCarregarPedidosReset) setTimeout(window.dsCarregarPedidosReset, 1500); } catch (_) {}
         }
       } catch (_) {}
       return orig.apply(this, arguments);
