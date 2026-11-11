@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261111091604';
-const SW_RUNTIME_VERSION = '20261111091604';
+const PATCH_RUNTIME_VERSION = '20261111094659';
+const SW_RUNTIME_VERSION = '20261111094659';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -40688,7 +40688,7 @@ app.get('/api/operador/velocidades', authMiddleware, async (req, res) => {
 app.get('/api/ofmaq/sequencia', authMiddleware, async (req, res) => {
   try {
     const maquina = String(req.query.maquina || '').trim();
-    let q = supabase.from('sequenciamento_manual').select('of_id,maquina,posicao').limit(20000);
+    let q = supabase.from('sequenciamento_manual').select('of_id,maquina,posicao,updated_at').limit(20000);
     if (maquina) q = q.eq('maquina', maquina);
     const { data, error } = await q;
     if (error) throw error;
@@ -40700,6 +40700,11 @@ app.post('/api/ofmaq/sequencia', authMiddleware, async (req, res) => {
     const maquina = String((req.body || {}).maquina || '').trim();
     const ordem = Array.isArray((req.body || {}).ordem) ? req.body.ordem : [];
     if (!maquina) return res.status(400).json({ ok: false, error: 'maquina obrigatória' });
+    if ((req.body || {}).limpar === true) {
+      const { error: eDel } = await supabase.from('sequenciamento_manual').delete().eq('maquina', maquina);
+      if (eDel) throw eDel;
+      return ok(res, { limpo: true });
+    }
     const nowIso = new Date().toISOString();
     const up = ordem.map((id, i) => ({ of_id: String(id), maquina, posicao: i + 1, updated_at: nowIso })).filter((x) => x.of_id).slice(0, 5000);
     if (up.length) {

@@ -72381,36 +72381,40 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ord.forEach(function (m) { g[m] = ordenar(g[m], m); agendar(g[m], m); });
     return { g: g, ord: ord };
   }
+  // 11/11: a ordem do ROTEIRO é a base; o que o usuário arrastou/moveu (setas, arrastar) VALE e fica salvo.
+  // As OFs movidas à mão ocupam as mesmas "vagas" da fila, na ordem que o usuário deixou; OF nova entra pelo roteiro.
+  // Posições salvas antes de 11/11 09h (ordem automática antiga) não contam.
+  var SEQ_CORTE = '2026-11-11T12:00:00';
+  function seqValida(maq, id) { var p = (E.seq[maq] || {})[id]; if (p == null) return false; var t = String(((E.seqT || {})[maq] || {})[id] || ''); return t >= SEQ_CORTE; }
   function ordenar(lista, maq, modo) {
-    var pos = E.seq[maq] || {};
-    return lista.slice().sort(function (a, b) {
+    var base = lista.slice().sort(function (a, b) {
       // 09/11: OF urgente fica sempre em 1º lugar na máquina
       var u0a = urg(a) ? 0 : 1, u0b = urg(b) ? 0 : 1; if (u0a !== u0b) return u0a - u0b;
       var pa2 = emProducao(a) ? 0 : 1, pb2 = emProducao(b) ? 0 : 1; if (pa2 !== pb2) return pa2 - pb2;
-      var pa = pos[a.id], pb = pos[b.id];
-      // 10/11: o ROTEIRO DE ENTREGA manda na fila (dia do caminhão da cidade e, no dia, a ordem das cidades);
-      // a ordem manual (arrastar/setas) só vale entre OFs da mesma cidade no mesmo dia.
       if (modo !== 'entrega' && typeof window.dsRoteiroPlano === 'function' && typeof window.dsRoteiroPronto === 'function' && window.dsRoteiroPronto()) {
         var ra = window.dsRoteiroPlano(a), rb = window.dsRoteiroPlano(b);
         if (ra.dia !== rb.dia) return ra.dia < rb.dia ? -1 : 1;
         if (ra.pos !== rb.pos) return ra.pos - rb.pos;
         var ca = String(ra.cidade || '').toLowerCase(), cb = String(rb.cidade || '').toLowerCase(); if (ca !== cb) return ca < cb ? -1 : 1;
-        if (pa != null && pb != null && pa !== pb) return pa - pb;
-        if (pa != null && pb == null) return -1; if (pb != null && pa == null) return 1;
         return window.dsRoteiroCmp(a, b);
       }
-      if (pa != null && pb != null) return pa - pb;
-      if (pa != null) return -1; if (pb != null) return 1;
       var ea = entOf(a) || '9999', eb = entOf(b) || '9999'; if (ea !== eb) return ea < eb ? -1 : 1;
       return String(a.created_at || '').localeCompare(String(b.created_at || ''));
     });
+    if (modo === 'entrega') return base;
+    var pos = E.seq[maq] || {};
+    var man = base.filter(function (o) { return seqValida(maq, o.id); });
+    if (man.length < 2) return base;
+    man.sort(function (a, b) { return pos[a.id] - pos[b.id]; });
+    var k = 0;
+    return base.map(function (o) { return seqValida(maq, o.id) ? man[k++] : o; });
   }
   function carregarApoio(forcar) {
     if (E.carregado && !forcar) return Promise.resolve();
     E.carregado = true;
     return Promise.all([
       req('GET', '/api/maquinas').then(function (l) { E.maquinas = (l || []).filter(function (m) { return m.ativa !== false; }).sort(function (a, b) { return (a.ordem || 99) - (b.ordem || 99); }).map(function (m) { return String(m.nome || m.col || '').trim(); }).filter(Boolean); }).catch(function () {}),
-      req('GET', '/api/ofmaq/sequencia').then(function (l) { var s = {}; (l || []).forEach(function (x) { (s[x.maquina] = s[x.maquina] || {})[x.of_id] = Number(x.posicao) || 0; }); E.seq = s; }).catch(function () {}),
+      req('GET', '/api/ofmaq/sequencia').then(function (l) { var s = {}, t = {}; (l || []).forEach(function (x) { (s[x.maquina] = s[x.maquina] || {})[x.of_id] = Number(x.posicao) || 0; (t[x.maquina] = t[x.maquina] || {})[x.of_id] = String(x.updated_at || ''); }); E.seq = s; E.seqT = t; }).catch(function () {}),
       req('GET', '/api/operador/velocidades').then(function (v) { E.vel = v || {}; }).catch(function () {}),
       req('GET', '/api/operador/sessoes').then(function (l) { E.sessoes = l || []; }).catch(function () {}),
       carregarAmostras()
@@ -72446,7 +72450,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   });
   function salvarSeq(maq, lista) {
     var ids = lista.map(function (o) { return o.id; });
-    var s = {}; ids.forEach(function (id, i) { s[id] = i + 1; }); E.seq[maq] = s;
+    var s = {}, t = {}, agora = new Date().toISOString(); ids.forEach(function (id, i) { s[id] = i + 1; t[id] = agora; }); E.seq[maq] = s; E.seqT = E.seqT || {}; E.seqT[maq] = t;
     return req('POST', '/api/ofmaq/sequencia', { maquina: maq, ordem: ids }).then(function () { toast('Sequência salva'); }).catch(function (e) { toast('Não foi possível salvar a sequência: ' + e.message, 'var(--red)'); });
   }
   function recarregarOfs() { try { if (typeof window.carregarOFs === 'function') return Promise.resolve(window.carregarOFs({ forcar: true })).catch(function () {}); } catch (_) {} return Promise.resolve(); }
@@ -72740,12 +72744,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (a === 'atualizar') { b.textContent = 'Atualizando…'; recarregarOfs().then(function () { return carregarApoio(true); }).then(function () { b.textContent = 'Atualizar'; render(); }); return; }
     if (a === 'operador') { abrirOperador(); return; }
     if (a === 'antiga') { return; E.antiga = true; try { localStorage.setItem('ds_ofmaq_antiga', '1'); document.documentElement.removeAttribute('data-ds-ofmaq-nova'); } catch (_) {} montar(); try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {} return; }
-    if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; var l0 = filaAtual(mA); E.seq[mA] = {}; var l1 = ordenar(l0, mA, 'entrega'); salvarSeq(mA, l1); render(); return; }
+    if (a === 'autoordem') { var mA = b.getAttribute('data-maq-alvo') || E.maq; E.seq[mA] = {}; if (E.seqT) E.seqT[mA] = {}; req('POST', '/api/ofmaq/sequencia', { maquina: mA, limpar: true }).then(function () { toast('Ordem automática aplicada'); }).catch(function (e) { toast('Erro: ' + e.message, 'var(--red)'); }); render(); return; }
     if (a === 'ordemroteiro') {
       var mR = b.getAttribute('data-maq-alvo') || E.maq;
       if (typeof window.dsRoteiroOrdenar !== 'function') return;
       b.disabled = true; b.textContent = 'Ordenando…';
-      window.dsRoteiroOrdenar(filaAtual(mR)).then(function (lr) { E.seq[mR] = {}; return salvarSeq(mR, lr); }).then(function () { render(); }).catch(function (e) { toast('Não foi possível ordenar pelo roteiro: ' + e.message, 'var(--red)'); render(); });
+      Promise.resolve().then(function () { E.seq[mR] = {}; if (E.seqT) E.seqT[mR] = {}; return req('POST', '/api/ofmaq/sequencia', { maquina: mR, limpar: true }); }).then(function () { toast('Fila na ordem do roteiro'); render(); }).catch(function (e) { toast('Não foi possível ordenar pelo roteiro: ' + e.message, 'var(--red)'); render(); });
       return;
     }
     var tr = b.closest('tr[data-id]'); if (!tr) return;
