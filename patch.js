@@ -74464,13 +74464,17 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function pagina() { return document.getElementById('page-fornecedores'); }
   function resumoCompras() {
     if (E.compras) return Promise.resolve();
-    return Promise.all([req('GET', '/api/compras-chapas?limit=3000').then(lista).catch(function () { return []; }), req('GET', '/api/almoxarifado/ordens').then(lista).catch(function () { return []; })])
+    // 11/11: compras de papelão de TODAS as empresas + e-mails enviados (antes só lia uma empresa e mostrava 0)
+    return Promise.all([req('GET', '/api/fornecedores-emails/resumo').catch(function () { return {}; }), req('GET', '/api/almoxarifado/ordens').then(lista).catch(function () { return []; })])
       .then(function (r) {
-        var c = {}; r[0].forEach(function (x) { var k = norm(x.fornecedor || x.fornecedor_nome); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || x.total || 0) || (Array.isArray(x.itens) ? x.itens.reduce(function (s2, i) { return s2 + (Number(i.valor_total) || 0); }, 0) : 0); var d = String(x.data_compra || x.data || x.criado_em || x.created_at || '').slice(0, 10); if (d > o.ult) o.ult = d; });
+        var c = {}; var RES = r[0] && !Array.isArray(r[0]) ? r[0] : {}; E.emails = {};
+        Object.keys(RES).forEach(function (k0) { var x = RES[k0], k = norm(k0); c[k] = { n: x.compras || 0, v: Number(x.valor) || 0, ult: x.ultima || '' }; E.emails[k] = x.emails || []; });
+        r[0] = []; r[0].forEach(function (x) { var k = norm(x.fornecedor || x.fornecedor_nome); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || x.total || 0) || (Array.isArray(x.itens) ? x.itens.reduce(function (s2, i) { return s2 + (Number(i.valor_total) || 0); }, 0) : 0); var d = String(x.data_compra || x.data || x.criado_em || x.created_at || '').slice(0, 10); if (d > o.ult) o.ult = d; });
         r[1].forEach(function (x) { if (/cancel/i.test(x.status || '')) return; var k = norm(x.fornecedor); if (!k) return; var o = c[k] = c[k] || { n: 0, v: 0, ult: '' }; o.n++; o.v += Number(x.valor_total || 0) || 0; var d = String(x.data || '').slice(0, 10); if (d > o.ult) o.ult = d; });
         E.compras = c;
       });
   }
+  function emailsDe(f) { return String(f && f.email || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(function (x) { return /@/.test(x); }); }
   function br(iso) { iso = String(iso || ''); return /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
   function render() {
     var p = pagina(), r = p && p.querySelector('#ds-forn'); if (!r) return;
@@ -74491,9 +74495,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var t = TIPOS[tipoDe(f)], c = C[norm(f.nome)], tel = f.telefone || f.tel || '', zap = String(tel).replace(/\D/g, '');
       return '<article class="dsf-card' + (f.ativo === false ? ' off' : '') + '" data-id="' + esc(f.id) + '"><header><span class="dsf-av">' + esc(String(f.nome || '?').trim().charAt(0).toUpperCase()) + '</span><div><h3>' + esc(f.nome) + '</h3>'
         + '<span class="dsf-tipo dsf-' + tipoDe(f) + '">' + t.ic + ' ' + t.rot + '</span>' + (f.ativo === false ? '<span class="dsf-tipo dsf-inat">Inativo</span>' : '') + '</div></header>'
-        + '<ul class="dsf-info">' + (f.contato ? '<li>👤 ' + esc(f.contato) + '</li>' : '') + (tel ? '<li>📞 <a href="tel:' + esc(zap) + '">' + esc(tel) + '</a>' + (zap.length >= 10 ? ' · <a href="https://wa.me/55' + esc(zap) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') + '</li>' : '') + (f.email ? '<li>✉️ <a href="mailto:' + esc(f.email) + '">' + esc(f.email) + '</a></li>' : '')
-        + ((f.cidade || f.uf) ? '<li>📍 ' + esc([f.cidade, f.uf || f.estado].filter(Boolean).join('/')) + '</li>' : '') + (f.cnpj ? '<li>🏷️ ' + esc(f.cnpj) + '</li>' : '') + (!f.contato && !tel && !f.email && !f.cidade && !f.cnpj ? '<li class="dsf-falta">Sem contato cadastrado — clique em Editar para completar</li>' : '') + '</ul>'
-        + '<div class="dsf-stats"><div><b>' + (c ? c.n : 0) + '</b><span>compras</span></div><div><b>' + (c ? moeda(c.v) : '—') + '</b><span>total comprado</span></div><div><b>' + (c && c.ult ? br(c.ult) : '—') + '</b><span>última compra</span></div></div>'
+        + '<dl class="dsf-info2">'
+        + '<div class="dsf-l"><dt>E-mail' + (emailsDe(f).length > 1 ? 's' : '') + '</dt><dd>' + (emailsDe(f).length ? emailsDe(f).map(function (em) { return '<a href="mailto:' + esc(em) + '" title="' + esc(em) + '">' + esc(em) + '</a>'; }).join('') : '<span class="dsf-falta">não informado</span>') + '</dd></div>'
+        + '<div><dt>Telefone</dt><dd>' + (tel ? '<a href="tel:' + esc(zap) + '">' + esc(tel) + '</a>' + (zap.length >= 10 ? ' · <a href="https://wa.me/55' + esc(zap) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') : '<span class="dsf-falta">não informado</span>') + '</dd></div>'
+        + '<div><dt>Contato</dt><dd>' + (f.contato ? esc(f.contato) : '<span class="dsf-falta">não informado</span>') + '</dd></div>'
+        + '<div><dt>Cidade</dt><dd>' + ((f.cidade || f.uf || f.estado) ? esc([f.cidade, f.uf || f.estado].filter(Boolean).join(' / ')) : '<span class="dsf-falta">não informada</span>') + '</dd></div>'
+        + '<div class="dsf-l"><dt>CNPJ</dt><dd>' + (f.cnpj ? esc(f.cnpj) : '<span class="dsf-falta">não informado</span>') + '</dd></div>'
+        + '</dl>'
+        + '<div class="dsf-stats"><div><b>' + (c ? c.n : 0) + '</b><span>compras</span></div><div><b>' + (c && c.v ? moeda(c.v) : '—') + '</b><span>total comprado</span></div><div><b>' + (c && c.ult ? br(c.ult) : '—') + '</b><span>última compra</span></div>'
+        + '<button type="button" data-a="emails" class="dsf-st-mail"><b>' + ((E.emails || {})[norm(f.nome)] || []).length + '</b><span>e-mails enviados · ver</span></button></div>'
+        + (tipoDe(f) === 'papelao' ? '<button type="button" data-a="emails" class="dsf-btn-mail">E-mails enviados e respostas</button>' : '')
         + '<footer><span class="dsf-onde">Aparece em: ' + t.onde + '</span><div><button type="button" data-a="editar">Editar</button><button type="button" data-a="ativo">' + (f.ativo === false ? 'Ativar' : 'Desativar') + '</button><button type="button" data-a="excluir" class="dsf-del" aria-label="Excluir">Excluir</button></div></footer></article>';
     }).join('') : '<div class="dsf-vazio">Nenhum fornecedor ' + (q ? 'encontrado.' : 'cadastrado neste filtro.') + '</div>';
   }
@@ -74524,6 +74535,61 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
     setTimeout(function () { try { ov.querySelector('[name="nome"]').focus(); } catch (_) {} }, 40);
   }
+  function dataHora(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); }
+  function kb(n) { n = Number(n) || 0; return n > 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function janelaEmails(f) {
+    var env = (E.emails || {})[norm(f.nome)] || [];
+    var ov = document.createElement('div'); ov.className = 'dsf-ov';
+    ov.innerHTML = '<div class="dsf-modal dsf-mail" role="dialog" aria-modal="true"><header><h2>E-mails — ' + esc(f.nome) + '</h2><button type="button" class="dsf-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<div class="dsf-abas"><button type="button" data-aba="env" class="on">Enviados <span>' + env.length + '</span></button><button type="button" data-aba="rec">Respostas recebidas <span class="dsf-nrec">…</span></button></div>'
+      + '<div class="dsf-aba" data-p="env">' + (env.length ? '<ul class="dsf-ml">' + env.map(function (e) {
+          return '<li><div class="dsf-ml1"><b>' + esc(e.compra || 'Compra') + '</b><span>' + esc(dataHora(e.em)) + '</span></div><div class="dsf-ml2">Para: ' + esc(e.para || '—') + '</div>' + (e.por ? '<div class="dsf-ml3">Enviado por ' + esc(e.por) + '</div>' : '') + '</li>';
+        }).join('') + '</ul>' : '<div class="dsf-vazio">Nenhum e-mail de compra enviado para este fornecedor pelo sistema.</div>') + '</div>'
+      + '<div class="dsf-aba" data-p="rec" hidden><div class="dsf-vazio">Buscando na caixa de entrada do comercial@…</div></div>'
+      + '<footer><button type="button" data-x="fechar">Fechar</button></footer></div>';
+    document.body.appendChild(ov);
+    var recP = ov.querySelector('[data-p="rec"]'), carregado = false, MSGS = [];
+    function abaRec(forcar) {
+      carregado = true; recP.innerHTML = '<div class="dsf-vazio">Buscando na caixa de entrada do comercial@…</div>';
+      req('GET', '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/recebidos' + (forcar ? '?atualizar=1' : '')).then(function (d) {
+        MSGS = d.mensagens || []; ov.querySelector('.dsf-nrec').textContent = MSGS.length;
+        if (d.sem_email) { recP.innerHTML = '<div class="dsf-vazio">Cadastre o e-mail do fornecedor (botão Editar) para ver as respostas dele.</div>'; return; }
+        recP.innerHTML = '<div class="dsf-recinfo">Últimos 12 meses da caixa de entrada · procurando por ' + esc((d.procurado_em || []).join(', ')) + ' <button type="button" data-rec="atualizar">Atualizar</button></div>'
+          + (MSGS.length ? '<ul class="dsf-ml">' + MSGS.map(function (m, i) {
+            return '<li class="dsf-rec" data-i="' + i + '"><button type="button" class="dsf-recbt" data-abrir="' + i + '"><div class="dsf-ml1"><b>' + esc(m.assunto || '(sem assunto)') + '</b><span>' + esc(dataHora(m.data)) + '</span></div>'
+              + '<div class="dsf-ml2">De: ' + esc(m.de) + '</div><div class="dsf-ml3">' + esc(m.previa || '') + '</div>'
+              + (m.anexos && m.anexos.length ? '<div class="dsf-anx">Anexos: ' + m.anexos.map(esc).join(', ') + '</div>' : '') + '</button><div class="dsf-corpo" hidden></div></li>';
+          }).join('') + '</ul>' : '<div class="dsf-vazio">Nenhuma resposta deste fornecedor na caixa de entrada.</div>');
+      }).catch(function (er) { ov.querySelector('.dsf-nrec').textContent = '!'; recP.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui ler a caixa de entrada: ' + esc(er.message) + ' <button type="button" data-rec="atualizar">Tentar de novo</button></div>'; });
+    }
+    function abrirMsg(i) {
+      var li = recP.querySelector('.dsf-rec[data-i="' + i + '"]'), corpo = li.querySelector('.dsf-corpo');
+      if (!corpo.hidden) { corpo.hidden = true; return; }
+      corpo.hidden = false; corpo.innerHTML = '<div class="dsf-vazio">Abrindo o e-mail…</div>';
+      req('GET', '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + MSGS[i].uid).then(function (m) {
+        corpo.innerHTML = '<div class="dsf-cab">De: ' + esc(m.de) + (m.para ? '<br>Para: ' + esc(m.para) : '') + (m.cc ? '<br>Cc: ' + esc(m.cc) : '') + '<br>Data: ' + esc(dataHora(m.data)) + '</div>'
+          + '<pre class="dsf-txt">' + esc(m.texto || '(e-mail sem texto)') + '</pre>'
+          + (m.anexos && m.anexos.length ? '<div class="dsf-anxs">' + m.anexos.map(function (a) { return '<button type="button" data-anexo="' + a.i + '" data-uid="' + m.uid + '" data-nome="' + esc(a.nome) + '">⬇ ' + esc(a.nome) + ' <small>' + kb(a.tamanho) + '</small></button>'; }).join('') + '</div>' : '');
+      }).catch(function (er) { corpo.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui abrir: ' + esc(er.message) + '</div>'; });
+    }
+    function baixar(btn) {
+      var nome = btn.getAttribute('data-nome'), t0 = btn.innerHTML; btn.disabled = true; btn.textContent = 'Baixando…';
+      var h = {}; try { h.Authorization = 'Bearer ' + (localStorage.getItem('token') || ''); } catch (_) {}
+      fetch((window.API_BASE || '') + '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + btn.getAttribute('data-uid') + '/anexo/' + btn.getAttribute('data-anexo'), { headers: h })
+        .then(function (r) { if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); }); return r.blob(); })
+        .then(function (b) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = nome || 'anexo'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 4000); })
+        .catch(function (er) { try { window.toast('Erro ao baixar: ' + er.message, 'var(--red)'); } catch (_) {} })
+        .then(function () { btn.disabled = false; btn.innerHTML = t0; });
+    }
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov || e.target.closest('[data-x="fechar"]')) { ov.remove(); return; }
+      var ab = e.target.closest('[data-aba]'); if (ab) { var k = ab.getAttribute('data-aba'); ov.querySelectorAll('[data-aba]').forEach(function (x) { x.classList.toggle('on', x === ab); }); ov.querySelectorAll('[data-p]').forEach(function (x) { x.hidden = x.getAttribute('data-p') !== k; }); if (k === 'rec' && !carregado) abaRec(false); return; }
+      if (e.target.closest('[data-rec="atualizar"]')) { abaRec(true); return; }
+      var bt = e.target.closest('[data-abrir]'); if (bt) { abrirMsg(Number(bt.getAttribute('data-abrir'))); return; }
+      var an = e.target.closest('[data-anexo]'); if (an) baixar(an);
+    });
+    abaRec(false); // já busca as respostas em segundo plano (o número aparece na aba)
+  }
   function confirmar(msg) {
     return new Promise(function (ok) {
       var ov = document.createElement('div'); ov.className = 'dsf-ov';
@@ -74550,6 +74616,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (a === 'novo') return form(null);
       var card = b.closest('[data-id]'), f = card && FORN.find(function (x) { return String(x.id) === card.getAttribute('data-id'); }); if (!f) return;
       if (a === 'editar') return form(f);
+      if (a === 'emails') return janelaEmails(f);
       if (a === 'ativo') { req('PUT', '/api/fornecedores/' + encodeURIComponent(f.id), { nome: f.nome, ativo: f.ativo === false }).then(function () { return carregar(true); }).then(render).catch(function (er) { try { window.toast('Erro: ' + er.message, 'var(--red)'); } catch (_) {} }); return; }
       if (a === 'excluir') confirmar('Excluir o fornecedor ' + f.nome + '? As compras já feitas continuam registradas.').then(function (sim) { if (!sim) return; req('DELETE', '/api/fornecedores/' + encodeURIComponent(f.id)).then(function () { return carregar(true); }).then(render).catch(function (er) { try { window.toast('Erro ao excluir: ' + er.message, 'var(--red)'); } catch (_) {} }); });
     });
@@ -74574,6 +74641,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dsf-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}.dsf-card.off{opacity:.6}.dsf-card header{display:flex;gap:12px;align-items:center}.dsf-av{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);flex:0 0 auto}.dsf-card h3{margin:0 0 4px;font-size:15.5px}'
       + '.dsf-tipo{display:inline-block;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;margin-right:4px}.dsf-papelao{background:color-mix(in srgb,#f59e0b 20%,transparent);color:#d97706}.dsf-diversos{background:color-mix(in srgb,#8b5cf6 20%,transparent);color:#8b5cf6}.dsf-inat{background:var(--s3);color:var(--text3)}'
       + '.dsf-info{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--text2)}.dsf-info a{color:var(--accent);text-decoration:none}.dsf-falta{font-style:italic;color:var(--text3)}'
+      + '.dsf-info2{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:13px}.dsf-info2>div{min-width:0}.dsf-info2 .dsf-l{grid-column:1/-1}.dsf-info2 dt{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 1px}.dsf-info2 dd{margin:0;color:var(--text);overflow-wrap:anywhere}.dsf-info2 dd a{display:block;color:var(--accent);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dsf-info2 dd a+a{margin-top:1px}.dsf-info2 .dsf-l dd a{display:block}.dsf-info2 div:not(.dsf-l) dd a{display:inline}'
+      + '.dsf-stats{grid-template-columns:repeat(4,1fr)!important}.dsf-st-mail{text-align:left;background:color-mix(in srgb,var(--accent) 14%,var(--s2))!important;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:9px;padding:7px 8px;color:var(--text);font:inherit;cursor:pointer}.dsf-st-mail b{display:block;font-size:13.5px}.dsf-st-mail span{font-size:11px;color:var(--accent)}'
+      + '.dsf-btn-mail{height:36px;border-radius:9px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:600;font-size:13px;cursor:pointer}.dsf-btn-mail:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}'
+      + '.dsf-mail{width:min(820px,100%)}.dsf-abas{display:flex;gap:6px;margin:4px 0 12px;border-bottom:1px solid var(--border)}.dsf-abas button{border:0;background:transparent;color:var(--text2);font:inherit;font-weight:600;padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.dsf-abas button.on{color:var(--accent);border-bottom-color:var(--accent)}.dsf-abas span{background:var(--s3);color:var(--text);border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}'
+      + '.dsf-ml{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.dsf-ml>li{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--s2)}.dsf-ml1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.dsf-ml1 b{font-size:14px;overflow-wrap:anywhere}.dsf-ml1 span{font-size:12px;color:var(--text2);white-space:nowrap}.dsf-ml2{font-size:12.5px;color:var(--text2);margin-top:3px;overflow-wrap:anywhere}.dsf-ml3{font-size:12.5px;color:var(--text3);margin-top:3px;overflow-wrap:anywhere}'
+      + '.dsf-ml>li.dsf-rec{padding:0}.dsf-recbt{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);font:inherit;padding:10px 12px;cursor:pointer;border-radius:10px}.dsf-recbt:hover{background:var(--s3)}.dsf-anx{font-size:12px;color:var(--accent);margin-top:4px}'
+      + '.dsf-corpo{border-top:1px solid var(--border);padding:10px 12px}.dsf-cab{font-size:12.5px;color:var(--text2);margin-bottom:8px;overflow-wrap:anywhere}.dsf-txt{white-space:pre-wrap;font:13px/1.5 inherit;font-family:inherit;margin:0;max-height:50vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text)}'
+      + '.dsf-anxs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.dsf-anxs button{border:1px solid var(--b2);background:var(--surface);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px;cursor:pointer}.dsf-anxs small{color:var(--text3)}'
+      + '.dsf-recinfo{font-size:12px;color:var(--text3);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere}.dsf-recinfo button,.dsf-erro button{border:1px solid var(--b2);background:var(--s2);color:var(--text);border-radius:7px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer}.dsf-erro{color:var(--red)}'
+      + '@media (max-width:700px){.dsf-stats{grid-template-columns:1fr 1fr!important}.dsf-info2{grid-template-columns:1fr}.dsf-ml1{flex-direction:column;gap:2px}}'
       + '.dsf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.dsf-stats div{background:var(--s2);border-radius:9px;padding:7px 8px}.dsf-stats b{display:block;font-size:13.5px}.dsf-stats span{font-size:11px;color:var(--text3)}'
       + '.dsf-card footer{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px}.dsf-onde{font-size:11.5px;color:var(--text3)}.dsf-card footer div{display:flex;gap:6px}.dsf-card footer button{height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}.dsf-card footer .dsf-del{color:var(--red)}'
       + '.dsf-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dsf-modal{width:min(640px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--b2);border-radius:16px;padding:18px}.dsf-modal header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dsf-modal h2{margin:0;font-size:18px}.dsf-x{background:none;border:0;color:var(--text2);font-size:18px;cursor:pointer}'

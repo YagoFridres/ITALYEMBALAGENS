@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261111105721';
-const SW_RUNTIME_VERSION = '20261111105721';
+const PATCH_RUNTIME_VERSION = '20261111161305';
+const SW_RUNTIME_VERSION = '20261111161305';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30794,6 +30794,253 @@ app.post('/api/orcamentos/:id/enviar-email', authMiddleware, async (req, res) =>
     const r = await _emailEnviarPdf('orcamentos', req.body || {});
     try { console.log('[ORC-EMAIL] orcamento=' + String(req.params.id) + ' para=' + r.para.join(',') + ' por=' + String(req.usuario?.nome || '')); } catch (_) {}
     return ok(res, r);
+  } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+// ===== Fornecedores: compras, e-mails enviados e respostas recebidas (11/11/2026) =====
+// Enviados = histórico de cada compra (status_historico com email:true).
+// Recebidos = leitura (somente leitura, sem marcar como lido) da caixa de entrada do comercial@ por IMAP,
+// filtrando pelos e-mails / domínio do fornecedor. Nada é apagado nem alterado na caixa.
+function _fornNorm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+function _fornPodeEmails(req) {
+  const u = req.usuario || {};
+  const perfil = String(u.perfil || '').toLowerCase();
+  let perms = u.permissoes; if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+  perms = Array.isArray(perms) ? perms : [];
+  return perfil.includes('admin') || perms.includes('tudo') || perms.includes('compras');
+}
+app.get('/api/fornecedores-emails/resumo', authMiddleware, async (req, res) => {
+  try {
+    const { data: cps, error } = await supabase.from('compras_chapas').select('*').limit(5000);
+    if (error) throw error;
+    const ids = (cps || []).map((c) => c.id);
+    const tot = {};
+    for (let i = 0; i < ids.length; i += 300) {
+      const { data: its } = await supabase.from('compras_chapas_itens').select('compra_id,valor_total').in('compra_id', ids.slice(i, i + 300));
+      (its || []).forEach((x) => { tot[x.compra_id] = (tot[x.compra_id] || 0) + (Number(x.valor_total) || 0); });
+    }
+    const out = {};
+    (cps || []).forEach((c) => {
+      const k = _fornNorm(c.fornecedor || c.fornecedor_nome); if (!k) return;
+      const o = out[k] = out[k] || { compras: 0, valor: 0, ultima: '', emails: [] };
+      if (!/cancel/i.test(String(c.status || ''))) {
+        o.compras++; o.valor += tot[c.id] || Number(c.valor_total || 0) || 0;
+        const d = String(c.data_compra || c.data || c.created_at || '').slice(0, 10); if (d > o.ultima) o.ultima = d;
+      }
+      const num = c.numero_compra != null ? 'CMP-' + String(c.numero_compra).padStart(3, '0') : '';
+      (Array.isArray(c.status_historico) ? c.status_historico : []).forEach((h) => {
+        if (!h || !h.email) return;
+        o.emails.push({ em: h.em, por: h.por || '', compra_id: c.id, compra: num, emp_id: c.emp_id || null, para: String(h.nota || '').replace(/^E-mail enviado para\s*/i, '') });
+      });
+    });
+    Object.values(out).forEach((o) => { o.valor = Math.round(o.valor * 100) / 100; o.emails.sort((a, b) => String(b.em).localeCompare(String(a.em))); });
+    return ok(res, out);
+  } catch (e) { return err(res, e); }
+});
+
+// ---- IMAP de leitura (sem biblioteca extra) ----
+function _imapLeitor(c) {
+  const tls = require('tls');
+  const host = String(c.imap_host || c.host || '').trim();
+  const port = Number(c.imap_port || 993);
+  let sock; let buf = Buffer.alloc(0); let n = 0; let atual = null; let respAtual = { texto: '', literais: [] }; let precisa = 0; let fechado = false; let saudacao = null;
+  const fila = [];
+  function processar() {
+    for (;;) {
+      if (precisa > 0) {
+        if (buf.length < precisa) return;
+        respAtual.literais.push(buf.subarray(0, precisa)); respAtual.texto += '{LIT' + (respAtual.literais.length - 1) + '}';
+        buf = buf.subarray(precisa); precisa = 0; continue;
+      }
+      const i = buf.indexOf('\r\n'); if (i < 0) return;
+      const linha = buf.subarray(0, i).toString('latin1'); buf = buf.subarray(i + 2);
+      const m = linha.match(/\{(\d+)\}$/);
+      if (m) { respAtual.texto += linha.slice(0, -m[0].length); precisa = Number(m[1]); if (precisa === 0) { respAtual.literais.push(Buffer.alloc(0)); respAtual.texto += '{LIT' + (respAtual.literais.length - 1) + '}'; } continue; }
+      respAtual.texto += linha;
+      const r = respAtual; respAtual = { texto: '', literais: [] };
+      if (saudacao) { const s = saudacao; saudacao = null; s(r); continue; }
+      if (atual && r.texto.startsWith(atual.tag + ' ')) { const a = atual; atual = null; a.ok({ ok: / OK/i.test(r.texto.slice(a.tag.length, a.tag.length + 4)), fim: r.texto, resp: a.resp }); proxima(); continue; }
+      if (atual) atual.resp.push(r);
+    }
+  }
+  function proxima() { if (atual || !fila.length || fechado) return; atual = fila.shift(); sock.write(atual.tag + ' ' + atual.linha + '\r\n'); }
+  return {
+    abrir() {
+      return new Promise((ok, no) => {
+        const tm = setTimeout(() => no(new Error('tempo esgotado ao conectar no e-mail')), 20000);
+        saudacao = () => { clearTimeout(tm); ok(); };
+        sock = tls.connect({ host, port, servername: host, rejectUnauthorized: false });
+        sock.setTimeout(60000, () => { try { sock.destroy(new Error('tempo esgotado')); } catch (_) {} });
+        sock.on('data', (d) => { buf = Buffer.concat([buf, d]); processar(); });
+        sock.on('error', (e) => { fechado = true; clearTimeout(tm); no(e); if (atual) atual.no(e); fila.splice(0).forEach((f) => f.no(e)); });
+        sock.on('close', () => { fechado = true; const e = new Error('conexão com o e-mail fechada'); if (atual) { atual.no(e); atual = null; } fila.splice(0).forEach((f) => f.no(e)); });
+      });
+    },
+    cmd(linha) { return new Promise((ok, no) => { fila.push({ tag: 'B' + (++n), linha, ok, no, resp: [] }); proxima(); }); },
+    fechar() { try { sock.write('Z LOGOUT\r\n'); } catch (_) {} setTimeout(() => { try { sock.destroy(); } catch (_) {} }, 300); },
+  };
+}
+const _imapQ = (x) => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+async function _imapConectar() {
+  const c = _emailCmpLer('compras');
+  if (!c || !c.user || !c.pass) { const e = new Error('O e-mail de compras ainda não foi configurado.'); e.status = 400; throw e; }
+  const im = _imapLeitor(c);
+  await im.abrir();
+  const r = await im.cmd('LOGIN ' + _imapQ(c.user) + ' ' + _imapQ(c.pass));
+  if (!r.ok) { im.fechar(); const e = new Error('O servidor de e-mail recusou o login.'); e.status = 502; throw e; }
+  const s = await im.cmd('EXAMINE "INBOX"'); // EXAMINE = somente leitura (não marca nada como lido)
+  if (!s.ok) { im.fechar(); throw new Error('Não consegui abrir a caixa de entrada.'); }
+  return im;
+}
+// ---- MIME simples ----
+function _mimeHeaderDecode(s) {
+  return String(s || '').replace(/\?=\s+=\?/g, '?==?').replace(/=\?([^?]+)\?([bBqQ])\?([^?]*)\?=/g, (_, cs, enc, txt) => {
+    try {
+      const b = /b/i.test(enc) ? Buffer.from(txt, 'base64') : Buffer.from(txt.replace(/_/g, ' ').replace(/=([0-9A-Fa-f]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16))), 'latin1');
+      return _mimeCharset(b, cs);
+    } catch (_) { return txt; }
+  });
+}
+function _mimeCharset(b, cs) {
+  cs = String(cs || 'utf-8').toLowerCase().replace(/^"|"$/g, '');
+  if (/^(us-ascii|ascii)$/.test(cs)) cs = 'utf-8';
+  try { return new TextDecoder(cs).decode(b); } catch (_) { try { return new TextDecoder('utf-8').decode(b); } catch (__) { return b.toString('latin1'); } }
+}
+function _mimeParams(v) {
+  const p = {}; String(v || '').split(';').slice(1).forEach((x) => { const m = x.match(/^\s*([^=\s]+)\s*=\s*"?([^"]*)"?\s*$/); if (m) p[m[1].toLowerCase().replace(/\*$/, '')] = m[2]; });
+  return p;
+}
+function _mimeParse(buf, out, prof) {
+  out = out || { texto: '', html: '', anexos: [], cab: null }; prof = prof || 0;
+  if (prof > 8) return out;
+  let i = buf.indexOf('\r\n\r\n'); let sep = 4; if (i < 0) { i = buf.indexOf('\n\n'); sep = 2; }
+  const cabTxt = (i < 0 ? buf : buf.subarray(0, i)).toString('latin1').replace(/\r?\n[ \t]+/g, ' ');
+  const corpo = i < 0 ? Buffer.alloc(0) : buf.subarray(i + sep);
+  const cab = {}; cabTxt.split(/\r?\n/).forEach((l) => { const m = l.match(/^([^:\s]+):\s*(.*)$/); if (m && cab[m[1].toLowerCase()] == null) cab[m[1].toLowerCase()] = m[2]; });
+  if (!out.cab) out.cab = cab;
+  const ct = String(cab['content-type'] || 'text/plain'); const tipo = ct.split(';')[0].trim().toLowerCase(); const pr = _mimeParams(ct);
+  const cd = String(cab['content-disposition'] || ''); const pd = _mimeParams(cd);
+  const enc = String(cab['content-transfer-encoding'] || '').trim().toLowerCase();
+  if (tipo.startsWith('multipart/') && pr.boundary) {
+    const b = Buffer.from('--' + pr.boundary); let pos = buf.indexOf(b, i < 0 ? 0 : i); const partes = [];
+    while (pos >= 0) {
+      let ini = pos + b.length; if (buf.subarray(ini, ini + 2).toString() === '--') break;
+      ini = buf.indexOf('\n', ini); if (ini < 0) break; ini += 1;
+      let prox = buf.indexOf(b, ini); const fim = prox < 0 ? buf.length : prox;
+      let fimReal = fim; if (buf[fimReal - 1] === 10) fimReal--; if (buf[fimReal - 1] === 13) fimReal--;
+      partes.push(buf.subarray(ini, fimReal)); pos = prox;
+    }
+    partes.forEach((p) => _mimeParse(p, out, prof + 1));
+    return out;
+  }
+  if (tipo === 'message/rfc822') { _mimeParse(corpo, out, prof + 1); return out; }
+  let dados = corpo;
+  if (enc === 'base64') dados = Buffer.from(corpo.toString('latin1').replace(/[^A-Za-z0-9+/=]/g, ''), 'base64');
+  else if (enc === 'quoted-printable') dados = Buffer.from(corpo.toString('latin1').replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16))), 'latin1');
+  const nome = _mimeHeaderDecode(pd.filename || pr.name || '');
+  const ehAnexo = /attachment/i.test(cd) || (!!nome && !/^text\/(plain|html)$/.test(tipo));
+  if (ehAnexo) { out.anexos.push({ nome: nome || ('anexo-' + (out.anexos.length + 1)), tipo, tamanho: dados.length, dados }); return out; }
+  if (tipo === 'text/plain' && !out.texto) out.texto = _mimeCharset(dados, pr.charset);
+  else if (tipo === 'text/html' && !out.html) out.html = _mimeCharset(dados, pr.charset);
+  return out;
+}
+function _htmlParaTexto(h) {
+  return String(h || '').replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#(\d+);/g, (m, d) => String.fromCharCode(Number(d)))
+    .replace(/[ \t]+/g, ' ').replace(/\n\s*\n\s*\n+/g, '\n\n').trim();
+}
+function _emailEndereco(s) { const m = String(s || '').match(/<([^>]+)>/); return (m ? m[1] : String(s || '')).trim().toLowerCase(); }
+const _EMAIL_GRATIS = /^(gmail|hotmail|outlook|live|yahoo|bol|uol|terra|icloud|msn|ig)\./i;
+function _fornAlvos(f) {
+  const ems = _emailLista(f && f.email).filter((e) => _EMAIL_RE.test(e));
+  const dominios = [...new Set(ems.map((e) => e.split('@')[1]).filter((d) => d && !_EMAIL_GRATIS.test(d)))];
+  return { ems, dominios };
+}
+function _fornCasa(endereco, alvos) { const e = String(endereco || '').toLowerCase(); return alvos.ems.includes(e) || alvos.dominios.some((d) => e.endsWith('@' + d)); }
+const _FORN_CACHE = new Map();
+async function _fornBuscar(req, res) {
+  if (!_fornPodeEmails(req)) { res.status(403).json({ ok: false, error: 'Sem permissão para ver os e-mails de compras.' }); return null; }
+  const { data: f } = await supabase.from('fornecedores').select('id,nome,email').eq('id', String(req.params.id || '')).maybeSingle();
+  if (!f) { res.status(404).json({ ok: false, error: 'Fornecedor não encontrado' }); return null; }
+  const alvos = _fornAlvos(f);
+  if (!alvos.ems.length) { res.json({ ok: true, data: { fornecedor: f.nome, sem_email: true, mensagens: [] } }); return null; }
+  return { f, alvos };
+}
+function _imapUidsDaBusca(r) { const l = (r.resp || []).map((x) => x.texto).find((t) => /^\* SEARCH/i.test(t)) || ''; return l.replace(/^\* SEARCH/i, '').trim().split(/\s+/).filter(Boolean).map(Number).filter((x) => x > 0); }
+function _imapCriterio(alvos) {
+  const termos = alvos.ems.map((e) => 'FROM ' + _imapQ(e)).concat(alvos.dominios.map((d) => 'FROM ' + _imapQ('@' + d)));
+  let crit = termos[termos.length - 1]; for (let i = termos.length - 2; i >= 0; i--) crit = 'OR ' + termos[i] + ' ' + crit;
+  return crit;
+}
+app.get('/api/fornecedores-emails/:id/recebidos', authMiddleware, async (req, res) => {
+  let im = null;
+  try {
+    const ctx = await _fornBuscar(req, res); if (!ctx) return;
+    const chave = ctx.f.id; const cache = _FORN_CACHE.get(chave);
+    if (cache && Date.now() - cache.t < 120000 && !req.query.atualizar) return ok(res, cache.v);
+    im = await _imapConectar();
+    const desde = new Date(Date.now() - 365 * 86400000); const MESES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const sinceTxt = desde.getUTCDate() + '-' + MESES[desde.getUTCMonth()] + '-' + desde.getUTCFullYear();
+    const s = await im.cmd('UID SEARCH SINCE ' + sinceTxt + ' ' + _imapCriterio(ctx.alvos));
+    const uids = _imapUidsDaBusca(s).sort((a, b) => b - a).slice(0, 30);
+    const mensagens = [];
+    if (uids.length) {
+      const r = await im.cmd('UID FETCH ' + uids.join(',') + ' (UID RFC822.SIZE BODY.PEEK[]<0.80000>)');
+      (r.resp || []).forEach((x) => {
+        const mu = x.texto.match(/UID (\d+)/i); const ms = x.texto.match(/RFC822\.SIZE (\d+)/i); if (!mu || !x.literais.length) return;
+        const p = _mimeParse(x.literais[0]);
+        const de = _mimeHeaderDecode(p.cab && p.cab.from || '');
+        if (!_fornCasa(_emailEndereco(de), ctx.alvos)) return;
+        const texto = p.texto || _htmlParaTexto(p.html);
+        mensagens.push({ uid: Number(mu[1]), de, assunto: _mimeHeaderDecode(p.cab && p.cab.subject || '(sem assunto)'), data: (() => { const d = new Date(p.cab && p.cab.date || ''); return isNaN(d) ? null : d.toISOString(); })(),
+          previa: texto.replace(/\s+/g, ' ').slice(0, 260), anexos: p.anexos.map((a) => a.nome), tamanho: ms ? Number(ms[1]) : null });
+      });
+    }
+    mensagens.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+    const v = { fornecedor: ctx.f.nome, procurado_em: ctx.alvos.ems.concat(ctx.alvos.dominios.map((d) => '@' + d)), mensagens };
+    _FORN_CACHE.set(chave, { t: Date.now(), v });
+    return ok(res, v);
+  } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
+  finally { try { im && im.fechar(); } catch (_) {} }
+});
+async function _fornMensagemCompleta(req, res) {
+  const ctx = await _fornBuscar(req, res); if (!ctx) return null;
+  const uid = Math.trunc(Number(req.params.uid)); if (!(uid > 0)) { res.status(400).json({ ok: false, error: 'mensagem inválida' }); return null; }
+  const im = await _imapConectar();
+  try {
+    const r = await im.cmd('UID FETCH ' + uid + ' (UID RFC822.SIZE)');
+    const ms = (r.resp || []).map((x) => x.texto.match(/RFC822\.SIZE (\d+)/i)).find(Boolean);
+    if (!ms) { res.status(404).json({ ok: false, error: 'E-mail não encontrado na caixa de entrada' }); return null; }
+    if (Number(ms[1]) > 30 * 1024 * 1024) { res.status(413).json({ ok: false, error: 'E-mail grande demais para abrir aqui (mais de 30 MB)' }); return null; }
+    const r2 = await im.cmd('UID FETCH ' + uid + ' (UID BODY.PEEK[])');
+    const lit = (r2.resp || []).find((x) => x.literais.length);
+    if (!lit) { res.status(404).json({ ok: false, error: 'E-mail não encontrado' }); return null; }
+    const p = _mimeParse(lit.literais[0]);
+    const de = _mimeHeaderDecode(p.cab && p.cab.from || '');
+    // só deixa abrir e-mail que veio desse fornecedor
+    if (!_fornCasa(_emailEndereco(de), ctx.alvos)) { res.status(403).json({ ok: false, error: 'Esse e-mail não é deste fornecedor' }); return null; }
+    return { p, de };
+  } finally { im.fechar(); }
+}
+app.get('/api/fornecedores-emails/:id/mensagem/:uid', authMiddleware, async (req, res) => {
+  try {
+    const m = await _fornMensagemCompleta(req, res); if (!m) return;
+    const c = m.p.cab || {};
+    return ok(res, { uid: Number(req.params.uid), de: m.de, para: _mimeHeaderDecode(c.to || ''), cc: _mimeHeaderDecode(c.cc || ''), assunto: _mimeHeaderDecode(c.subject || ''),
+      data: (() => { const d = new Date(c.date || ''); return isNaN(d) ? null : d.toISOString(); })(), texto: (m.p.texto || _htmlParaTexto(m.p.html)).slice(0, 60000),
+      anexos: m.p.anexos.map((a, i) => ({ i, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho })) });
+  } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
+});
+app.get('/api/fornecedores-emails/:id/mensagem/:uid/anexo/:i', authMiddleware, async (req, res) => {
+  try {
+    const m = await _fornMensagemCompleta(req, res); if (!m) return;
+    const a = m.p.anexos[Math.trunc(Number(req.params.i))];
+    if (!a) return res.status(404).json({ ok: false, error: 'Anexo não encontrado' });
+    const nome = String(a.nome || 'anexo').replace(/[\r\n"]/g, '');
+    res.setHeader('Content-Type', /^[\w.+-]+\/[\w.+-]+$/.test(a.tipo) ? a.tipo : 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + nome.replace(/[^\x20-\x7e]/g, '_') + '"; filename*=UTF-8\'\'' + encodeURIComponent(nome));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.end(a.dados);
   } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
 });
 
