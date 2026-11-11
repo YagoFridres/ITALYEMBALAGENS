@@ -8347,6 +8347,9 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-item-sheet-index .eyebrow{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}'
     + '.ccpx-item-sheet-index .title{font-size:16px;font-weight:900;color:#f8fafc;font-family:var(--mono,inherit)}'
     + '.ccpx-item-sheet-grid{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:8px 10px;align-items:end;min-width:0}'
+    + '.ccpx-resina{display:flex!important;align-items:center;gap:8px;height:38px;padding:0 10px;border-radius:10px;border:1px solid var(--b2,#334155);background:var(--s2,transparent);cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text2,#94a3b8);margin:0!important;text-transform:none!important;letter-spacing:0!important}'
+    + '.ccpx-resina input{width:18px!important;height:18px!important;min-height:0!important;margin:0;accent-color:#dc2626;flex:0 0 auto}'
+    + '.ccpx-resina.on,.ccpx-resina:has(input:checked){background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}'
     + '.ccpx-item-sheet-actions{display:grid;gap:8px;align-content:start}'
     + '.ccpx-item-sheet-actions .hint{font-size:10px;line-height:1.4;color:#64748b;text-align:center;max-width:46px}'
     + '.ccpx-item-action-strip{display:flex;gap:8px;flex-wrap:wrap}'
@@ -9368,8 +9371,11 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
       }).join('');
       return '<div style="display:flex;flex-wrap:nowrap;gap:3px;justify-content:flex-start">' + badges + '</div>';
     })();
+    var resina = !!(item && (item.resina_interna === true || item.resina_interna === 'true' || item.resina_interna === 1));
+    if (resina) po = '<div style=\"display:inline-block;background:#dc2626;color:#fff;font-weight:900;font-size:10.5px;letter-spacing:.04em;padding:2px 7px;border-radius:5px;margin-bottom:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact\">COM RESINA INTERNA</div><br>' + po;
+    var linhaResina = resina ? '<tr style=\"display:table-row!important\" class=\"ccpx-linha-resina\">' : '<tr style=\"display:table-row!important\">';
     return ''
-      + '<tr style=\"display:table-row!important\">'
+      + linhaResina
       + '<td style=\"display:table-cell!important;padding:10px 12px;border:1px solid #0f172a;font-size:12px;font-weight:900;text-align:center;background:#f8fafc;color:#1e293b\">' + seq + '</td>'
       + '<td style=\"display:table-cell!important;padding:10px 12px;border:1px solid #0f172a;font-size:12px;text-align:center;background:#fff\">' + entrega + '</td>'
       + '<td style=\"display:table-cell!important;padding:10px 12px;border:1px solid #0f172a;font-size:12px;text-align:left;background:#fff;vertical-align:middle\">' + po + '</td>'
@@ -9413,6 +9419,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + 'table.planilha td{border:1px solid #334155;padding:8px 10px;font-size:11.5px;vertical-align:middle;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.4;background:#fff}'
     + 'table.planilha tbody tr:nth-child(even) td:nth-child(n):not(:last-child):not(:nth-last-child(2)):not(:nth-last-child(3)):not(:nth-last-child(4)){background:#f8fafc}'
     + 'table.planilha td.num{text-align:right;font-variant-numeric:tabular-nums}'
+    + 'table.planilha tr.ccpx-linha-resina td{background:#fee2e2!important;color:#991b1b!important;border-color:#dc2626!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + 'table.planilha tr.ccpx-linha-resina td:first-child{box-shadow:inset 5px 0 0 #dc2626}'
     + '.totais{display:flex;justify-content:flex-end;gap:16px;flex-wrap:wrap;margin-top:4px}'
     + '.total-chip{border:1px solid #cbd5e1;background:#fff;min-width:180px;padding:12px 14px;border-radius:10px;position:relative;overflow:hidden}'
     + '.total-chip::before{content:\'\';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#16a34a,#65a30d)}'
@@ -63757,6 +63765,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '    <div class="ccpx-item-field is-readonly span-2"><label>Valor p/mil</label><input data-ccpx-mil type="text" value="' + escAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
       + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : String(d.valor_total.toFixed(2))) + '"></div>'
         + '    <div class="ccpx-item-field span-4"><label>Obs</label><textarea data-field="observacao" rows="1">' + escHtml(item && item.observacao || '') + '</textarea></div>'
+        + '    <div class="ccpx-item-field span-3"><label>Resina interna</label><label class="ccpx-resina' + (item && (item.resina_interna === true || item.resina_interna === 'true') ? ' on' : '') + '"><input type="checkbox" data-field="resina_interna"' + (item && (item.resina_interna === true || item.resina_interna === 'true') ? ' checked' : '') + ' onchange="this.parentNode.classList.toggle(\'on\', this.checked)"><span>Com resina interna</span></label></div>'
         + '    <div class="ccpx-item-field span-4"><label data-ccpx-fornecedor-label>' + escHtml(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + escAttr(item && item.ped_fornecedor || '') + '" placeholder="' + escAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
         + '    <div class="ccpx-item-note-line">Agora voce pode adicionar quantos vincos forem necessarios em cada item, sem ficar limitado aos campos V1-V4.</div>'
         + '  </div>'
@@ -63799,7 +63808,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
         total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpxManual) || '') === '1',
         observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
-        ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
+        ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim(),
+        resina_interna: !!((row.querySelector('[data-field="resina_interna"]') || {}).checked)
       };
       var d = window._compraPapelaoResolveItemMetrics(item);
       item.vincos = vincosLista.join('/');
@@ -64562,7 +64572,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<table class="cmpx-detail-table"><thead><tr><th>#</th><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Vincos</th><th>Medidas</th><th class="num">Qtd</th><th class="num">Lote</th><th class="num">Área m²</th><th class="num">Valor m²</th><th class="num">Valor p/mil</th><th class="num">Valor Total</th><th>Obs</th></tr></thead><tbody>'
       + itens.map(function(item, idx) {
         var d = window._compraPapelaoResolveItemMetrics ? window._compraPapelaoResolveItemMetrics(item) : { area_m2: item && item.area_m2, valor_total: item && item.valor_total, vl_p_mil: item && item.vl_p_mil };
-        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.ped_cliente || '—')) + '</td><td>' + escHtml(String(item && item.data_entrega || '—')) + '</td><td>' + escHtml(String(item && item.po || '—')) + '</td><td>' + escHtml(String(window._compraPapelaoComposeVincos ? window._compraPapelaoComposeVincos(item) : item && item.vincos || '—')) + '</td><td>' + escHtml([item && item.largura, item && item.comprimento].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ') || '—') + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(item && item.lote_minimo || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(d && d.area_m2 || 0, 4)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_m2 || 0)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.vl_p_mil || 0)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.valor_total || 0)) + '</td><td>' + escHtml(String(item && item.observacao || '—')) + '</td></tr>';
+        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.ped_cliente || '—')) + '</td><td>' + escHtml(String(item && item.data_entrega || '—')) + '</td><td>' + escHtml(String(item && item.po || '—')) + (item && (item.resina_interna === true || item.resina_interna === 'true') ? ' <span style="display:inline-block;background:#dc2626;color:#fff;font-weight:800;font-size:10.5px;padding:1px 6px;border-radius:5px;white-space:nowrap">RESINA INTERNA</span>' : '') + '</td><td>' + escHtml(String(window._compraPapelaoComposeVincos ? window._compraPapelaoComposeVincos(item) : item && item.vincos || '—')) + '</td><td>' + escHtml([item && item.largura, item && item.comprimento].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ') || '—') + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(item && item.lote_minimo || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(d && d.area_m2 || 0, 4)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_m2 || 0)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.vl_p_mil || 0)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.valor_total || 0)) + '</td><td>' + escHtml(String(item && item.observacao || '—')) + '</td></tr>';
       }).join('')
       + '</tbody></table></div>';
   }

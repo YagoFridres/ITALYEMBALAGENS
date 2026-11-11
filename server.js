@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261111100847';
-const SW_RUNTIME_VERSION = '20261111100847';
+const PATCH_RUNTIME_VERSION = '20261111105533';
+const SW_RUNTIME_VERSION = '20261111105533';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30024,6 +30024,8 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   item.vl_p_mil = Number((vlPMilManual != null ? vlPMilManual : vlPMilCalc).toFixed(2));
   item.valor_total = Number((valorTotalManual != null ? valorTotalManual : valorTotalCalc).toFixed(2));
   item.observacao = _comprasChapasStr(item.observacao ?? item.obs);
+  // 11/11: chapa com resina interna (por item) — destaca em vermelho na impressão
+  item.resina_interna = item.resina_interna === true || item.resina_interna === 'true' || item.resina_interna === 1 || item.resina_interna === '1';
   return item;
 }
 
