@@ -79799,7 +79799,7 @@ window.__perTxt = function (p) {
       var w = new Date(D.dia + 'T12:00:00').getDay();
       return D.grupos.map(function (g, i) {
         var celDia = imp
-          ? '<td class="dia' + (i === 0 ? '' : ' cont') + '">' + (i === 0 ? esc(DIAS[w]) + ' <span>' + br(D.dia).slice(0, 5) + '</span>' : '') + '</td>'   // impressão: sem rowspan (não empurra o dia inteiro para a próxima folha)
+          ? '<td class="dia' + (i === 0 ? '' : ' cont') + '">' + (i === 0 ? esc(DIAS[w].replace('-Feira', '')) + ' <span>' + br(D.dia).slice(0, 5) + '</span>' : '') + '</td>'   // impressão: sem rowspan (não empurra o dia inteiro para a próxima folha)
           : (i === 0 ? '<td class="dia" rowspan="' + D.grupos.length + '">' + esc(DIAS[w]) + '<span>' + br(D.dia).slice(0, 5) + '</span></td>' : '');
         return '<tr' + (i === 0 ? ' class="ini"' : '') + '>' + celDia
           + '<td>' + esc(g.cli) + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
@@ -79838,7 +79838,8 @@ window.__perTxt = function (p) {
       + '@page{size:A4 landscape;margin:7mm}body{font-size:10.5px!important}.top{padding-bottom:4px!important;margin-bottom:4px!important}.top img{height:30px!important}.top b{font-size:14px!important}'
       + '.dsrs-t th,.dsrs-t td{padding:2.5px 5px!important;line-height:1.25}.dsrs-t th{font-size:9px!important}.dsrs-t td.dia{text-align:left!important;white-space:nowrap;font-size:10.5px!important;overflow:visible!important}.dsrs-t td.dia span{display:inline!important;font-size:10px!important}'
       + '.dsrs-t td.dia.cont{border-top:0!important;border-bottom:0!important}.dsrs-t tr td.dia{border-bottom:0}.dsrs-t td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dsrs-t td:nth-child(2),.dsrs-t td:nth-child(7){white-space:normal}.dsrs-t tr:not(.ini) td:nth-child(1){white-space:normal}.dsrs-t th{white-space:normal!important;text-align:center}'
-      + '.dsrs-t .c-dia{width:12%!important}.dsrs-t .c-cli{width:33%!important}.dsrs-t .c-mod{width:6%!important}.dsrs-t .c-ped{width:10%!important}.dsrs-t .c-ent{width:8%!important}.dsrs-t .c-entr{width:10%!important}.dsrs-t .c-cid{width:21%!important}'
+      + '.dsrs-t td:nth-child(2){font-size:12.5px!important}.dsrs-t td.dia{font-size:9.5px!important}.dsrs-t td.dia span{font-size:9px!important}'
+      + '.dsrs-t .c-dia{width:7.5%!important}.dsrs-t .c-cli{width:37.5%!important}.dsrs-t .c-mod{width:6%!important}.dsrs-t .c-ped{width:10%!important}.dsrs-t .c-ent{width:8%!important}.dsrs-t .c-entr{width:10%!important}.dsrs-t .c-cid{width:21%!important}'
       + '.dsrs-t{width:100%;border-collapse:collapse;margin-bottom:10px;page-break-inside:auto}.dsrs-t tr{page-break-inside:avoid}.dsrs-t th,.dsrs-t td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}'
       + '.dsrs-t th{background:#1e3a8a!important;color:#fff;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dsrs-t td.dia{font-weight:700;white-space:nowrap}.dsrs-t td.n{text-align:center;font-weight:700}.dsrs-t td.ofs{font-size:10px;color:#444}'
       + '.dsrs-t tr.tot td{background:#eff6ff;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dsrs-t td.at{color:#b91c1c;font-weight:700}td[style*="background"]{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
