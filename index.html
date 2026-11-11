@@ -4,7 +4,7 @@
 <head>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261111095101'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261111095537'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
 function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
 function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
@@ -3710,8 +3710,8 @@ function toast(msg,cor='var(--green)'){
     if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
   };
   if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
-  if(String(cor||'').includes('var(--red)')) return;
-  _toastTimer=setTimeout(()=>{ t.classList.remove('show'); },3000);
+  // erro fica 8 s (ou até clicar); aviso normal 3 s
+  _toastTimer=setTimeout(()=>{ t.classList.remove('show'); }, String(cor||'').includes('var(--red)') ? 8000 : 3000);
 }
 function fechar(id){document.getElementById(id).classList.remove('open');}
 function abrir(id){document.getElementById(id).classList.add('open');}
@@ -9105,6 +9105,7 @@ async function confirmarAlteracaoMaquinaOfmaq(){
     const body = {
       maquina: novaMaquina,
       maq: [novaMaquina],
+      maquina_agendada: novaMaquina,
       fluxo_maquinas: fluxoNovo,
       maquina_atual_index: idx,
     };
@@ -33950,7 +33951,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261111095101';
+      const swVersion = '20261111095537';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61430,6 +61431,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20261111095101"></script>
+<script src="/patch.js?v=20261111095537"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

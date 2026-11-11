@@ -432,7 +432,7 @@ function _abrirModalPadrao(opts) {
   try {
     if (typeof _ensureEstoqueStyle === 'function') _ensureEstoqueStyle();
   } catch (_) {}
-  var modalId = String(opts.id || ('estoque-modal-' + Date.now())).trim();
+  var modalId = String(opts.id || opts.modalId || ('estoque-modal-' + Date.now())).trim();
   var width = String(opts.largura || opts.width || '560px').trim() || '560px';
   var hero = String(opts.hero || '').trim();
   var accent = String(opts.accent || opts.variant || 'blue').trim().toLowerCase();
