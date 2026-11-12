@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261112095317';
-const SW_RUNTIME_VERSION = '20261112095317';
+const PATCH_RUNTIME_VERSION = '20261112095446';
+const SW_RUNTIME_VERSION = '20261112095446';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5539,6 +5539,9 @@ function clientesPayload(p) {
   Object.entries(map).forEach(([from, to]) => {
     if (b[from] !== undefined) out[to] = b[from];
   });
+  // 12/11: mantém as colunas antigas iguais (telefone = tel, documento = cnpj) para nada ficar escondido
+  if (out.tel !== undefined) out.telefone = out.tel;
+  if (out.cnpj !== undefined) out.documento = out.cnpj;
   // 11/11: outras cidades de entrega do cliente (além da cidade principal)
   if (out.cidades_entrega !== undefined) {
     const arr = Array.isArray(out.cidades_entrega) ? out.cidades_entrega : String(out.cidades_entrega || '').split(/[,;\n]+/);
@@ -5547,7 +5550,7 @@ function clientesPayload(p) {
   }
   out.updated_at = new Date().toISOString();
   // campo apagado no formulário ('' ) vira null para realmente apagar no banco
-  const _apagaveis = ['rs', 'cnpj', 'cpf', 'tel', 'email', 'cidade', 'uf', 'endereco', 'contato', 'observacoes', 'ramo'];
+  const _apagaveis = ['rs', 'cnpj', 'cpf', 'tel', 'email', 'cidade', 'uf', 'endereco', 'contato', 'observacoes', 'ramo', 'telefone', 'documento'];
   Object.keys(out).forEach(k => {
     if (out[k] === undefined) delete out[k];
     else if (out[k] === '') { if (_apagaveis.includes(k)) out[k] = null; else delete out[k]; }
@@ -15898,7 +15901,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     }
     let cols = !empId ? [null] : (cliEmpCol ? [cliEmpCol] : empColCandidatesCli);
     let lastErr = null;
-    let selectSlimRaw = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
+    let selectSlimRaw = 'id,nome,cnpj,tel,telefone,documento,email,cidade,cidades_entrega,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
     let selectSlim = _filterColsForTable('clientes', selectSlimRaw) || selectSlimRaw;
     const logClientes = (rows) => {
       try {
@@ -15918,7 +15921,8 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       return res.json(payload);
     };
     const enrichClientesWithOfs = async (rows) => {
-      const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
+      // 12/11: telefone/CNPJ que vieram da importação antiga (colunas telefone/documento) também aparecem na tela
+      const base = Array.isArray(rows) ? rows.map((r) => { const o = { ...r }; if (!String(o.tel || '').trim() && String(o.telefone || '').trim()) o.tel = o.telefone; if (!String(o.cnpj || '').trim() && String(o.documento || '').trim()) o.cnpj = o.documento; return o; }) : [];
       if (!base.length) return base;
       const normId = (v) => String(v || '').trim().toLowerCase();
       const clientIds = base
