@@ -80543,3 +80543,297 @@ window.__perTxt = function (p) {
     + '.ds-cid-m h3{margin:0 0 8px;font-size:17px}.ds-cid-m p{margin:0 0 14px;font-size:14px;color:var(--text2,#94a3b8)}.ds-cid-bts{display:flex;flex-direction:column;gap:8px}.ds-cid-bts button{min-height:42px;border-radius:10px;border:1px solid var(--b2,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font:inherit;font-weight:600;cursor:pointer}.ds-cid-bts button.pri{background:var(--accent,#3b82f6);border-color:var(--accent,#3b82f6);color:#fff}';
   (document.head || document.documentElement).appendChild(st);
 })();
+
+/* ===== Tipos de Caixa e Cores de Impressão — telas novas (12/11/2026) =====
+ * Cartões visuais no lugar das tabelas: busca, uso nas OFs, simulador de tempo (tipos de caixa),
+ * amostras de cor com prévia numa caixa (cores). Mesmo cadastro/rotas de antes. */
+(function () {
+  if (window.__dsCadVisual) return; window.__dsCadVisual = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function toast(m, c) { try { window.toast(m, c); } catch (_) {} }
+  function req(m, u, b) {
+    return window.apiFetch(u, b ? { method: m, body: b } : { method: m }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); return j && j.data !== undefined ? j.data : j; });
+    });
+  }
+  function N(n) { return (Number(n) || 0).toLocaleString('pt-BR'); }
+  function ofs() { try { return (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
+  function aberta(o) { return !o.deleted_at && !/conclu|cancel|entreg|finaliz/i.test(String(o.status || '')); }
+  function recente(o, dias) { var d = String(o.data_conclusao || o.created_at || '').slice(0, 10); if (!d) return false; return (Date.now() - new Date(d + 'T12:00:00').getTime()) / 86400000 <= dias; }
+  function tempoTxt(min) { min = Math.round(Number(min) || 0); if (min < 60) return min + ' min'; var h = Math.floor(min / 60), m = min % 60; return h + 'h' + (m ? String(m).padStart(2, '0') : ''); }
+  function baixarCSV(nome, linhas) {
+    var csv = '﻿' + linhas.map(function (l) { return l.map(function (v) { v = String(v == null ? '' : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\r\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function confirmar(titulo, msg, botao) {
+    return new Promise(function (ok) {
+      var ov = document.createElement('div'); ov.className = 'dcv-ov';
+      ov.innerHTML = '<div class="dcv-m dcv-m-s" role="dialog" aria-modal="true"><h3>' + esc(titulo) + '</h3><p>' + msg + '</p><footer><button type="button" data-r="0">Cancelar</button><button type="button" data-r="1" class="dcv-del">' + esc(botao || 'Excluir') + '</button></footer></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-r]'); if (e.target === ov || b) { ov.remove(); ok(!!(b && b.getAttribute('data-r') === '1')); } });
+    });
+  }
+  function abrirPagina(id, raizId, render) {
+    var p = document.getElementById(id); if (!p) return false;
+    var vis = p.classList.contains('active') || p.offsetParent !== null;
+    if (!vis) return false;
+    p.classList.add('dcv-ativa');
+    var r = document.getElementById(raizId);
+    if (!r) { r = document.createElement('div'); r.id = raizId; r.className = 'dcv'; p.insertBefore(r, p.firstChild); render(true); }
+    return true;
+  }
+
+  // ======================= TIPOS DE CAIXA =======================
+  var TC = { lista: [], busca: '', qtd: 1000, ord: 'nome', carregado: false };
+  function tcCarregar() { return req('GET', '/api/tipos-caixa?_=' + Date.now()).then(function (l) { TC.lista = Array.isArray(l) ? l : []; TC.carregado = true; return TC.lista; }); }
+  function tcUso(t) {
+    var n = norm(t.nome), id = String(t.id), tot = 0, ab = 0, cx = 0;
+    ofs().forEach(function (o) {
+      if (o.deleted_at) return;
+      var ok = String(o.tipo_caixa_id || '') === id || norm(o.tipo_caixa) === n; if (!ok) return;
+      if (aberta(o)) ab++;
+      if (recente(o, 90)) { tot++; cx += Number(o.qtd_produzida || o.qtd || o.quantidade || 0) || 0; }
+    });
+    return { ofs90: tot, abertas: ab, caixas90: cx };
+  }
+  function tcIcone(nome) {
+    var n = norm(nome), s = 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"';
+    if (/pizza|salgado|botinha/.test(n)) return '<svg viewBox="0 0 48 48" ' + s + '><path d="M6 20l18-8 18 8-18 8z"/><path d="M6 20v8l18 8 18-8v-8"/><path d="M24 28v8"/></svg>';
+    if (/tampa/.test(n)) return '<svg viewBox="0 0 48 48" ' + s + '><path d="M8 14l16-6 16 6-16 6z"/><path d="M8 14v4l16 6 16-6v-4"/><path d="M11 26l13 5 13-5v12l-13 5-13-5z"/></svg>';
+    if (/tira|cinta|envolt|painel/.test(n)) return '<svg viewBox="0 0 48 48" ' + s + '><rect x="6" y="12" width="36" height="8" rx="1.5"/><rect x="6" y="24" width="36" height="8" rx="1.5"/><path d="M15 12v8M24 12v8M33 12v8"/></svg>';
+    if (/corte|vinco|sem corte/.test(n)) return '<svg viewBox="0 0 48 48" ' + s + '><rect x="8" y="10" width="32" height="28" rx="2" stroke-dasharray="3 3"/><path d="M8 22h32M20 10v28"/></svg>';
+    if (/caixao/.test(n)) return '<svg viewBox="0 0 48 48" ' + s + '><path d="M4 18l20-8 20 8-20 8z"/><path d="M4 18v14l20 8 20-8V18"/><path d="M24 26v14"/></svg>';
+    return '<svg viewBox="0 0 48 48" ' + s + '><path d="M8 16l16-7 16 7-16 7z"/><path d="M8 16v16l16 7 16-7V16"/><path d="M24 23v16"/><path d="M16 12.5l16 7"/></svg>';
+  }
+  function tcTempo(t, q) { var p = Number(t.producao_hora) || 0, s = Number(t.setup_min) || 0; if (!(p > 0)) return null; return s + (q / p) * 60; }
+  function tcRender(forcar) {
+    var r = document.getElementById('ds-tc'); if (!r) return;
+    if (!r.querySelector('.dcv-head')) {
+      r.innerHTML = '<header class="dcv-head"><div><h1>Tipos de Caixa</h1><p>Tempo de preparo (setup) e velocidade de cada tipo — usados para calcular o tempo das OFs nas máquinas.</p></div>'
+        + '<div class="dcv-acoes"><button type="button" class="dcv-btn" data-tc="csv">Exportar Excel</button><button type="button" class="dcv-btn dcv-pri" data-tc="novo">+ Novo tipo</button></div></header>'
+        + '<div class="dcv-kpis"></div>'
+        + '<div class="dcv-barra"><label class="dcv-busca"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" data-tc="busca" placeholder="Buscar tipo de caixa…" autocomplete="off"></label>'
+        + '<label class="dcv-sim">Quanto tempo para <input type="number" min="1" step="100" data-tc="qtd" value="' + TC.qtd + '"> caixas?</label>'
+        + '<select class="dcv-sel" data-tc="ord"><option value="nome">Ordem: nome</option><option value="rapido">Mais rápidos</option><option value="lento">Mais lentos</option><option value="uso">Mais usados</option></select></div>'
+        + '<div class="dcv-grade"></div>';
+    }
+    var maxP = Math.max.apply(null, TC.lista.map(function (t) { return Number(t.producao_hora) || 0; }).concat([1]));
+    var q = norm(TC.busca);
+    var l = TC.lista.map(function (t) { return { t: t, u: tcUso(t) }; }).filter(function (x) { return !q || norm(x.t.nome + ' ' + (x.t.observacoes || '')).indexOf(q) >= 0; });
+    l.sort(function (a, b) {
+      if (TC.ord === 'rapido') return (Number(b.t.producao_hora) || 0) - (Number(a.t.producao_hora) || 0);
+      if (TC.ord === 'lento') return (Number(a.t.producao_hora) || 0) - (Number(b.t.producao_hora) || 0);
+      if (TC.ord === 'uso') return b.u.ofs90 - a.u.ofs90;
+      return String(a.t.nome).localeCompare(String(b.t.nome), 'pt-BR');
+    });
+    var todos = TC.lista.map(function (t) { return { t: t, u: tcUso(t) }; });
+    var mais = todos.slice().sort(function (a, b) { return b.u.ofs90 - a.u.ofs90; })[0];
+    var rap = todos.slice().sort(function (a, b) { return (Number(b.t.producao_hora) || 0) - (Number(a.t.producao_hora) || 0); })[0];
+    r.querySelector('.dcv-kpis').innerHTML = '<div><small>Tipos cadastrados</small><b>' + TC.lista.length + '</b></div>'
+      + '<div><small>Mais usado (90 dias)</small><b>' + esc(mais && mais.u.ofs90 ? mais.t.nome : '—') + '</b><span>' + (mais && mais.u.ofs90 ? N(mais.u.ofs90) + ' OFs' : '') + '</span></div>'
+      + '<div><small>Mais rápido</small><b>' + esc(rap ? rap.t.nome : '—') + '</b><span>' + (rap ? N(rap.t.producao_hora) + ' caixas/hora' : '') + '</span></div>';
+    var g = r.querySelector('.dcv-grade');
+    if (!TC.carregado) { g.innerHTML = '<div class="dcv-vazio">Carregando…</div>'; return; }
+    g.innerHTML = l.length ? l.map(function (x) {
+      var t = x.t, p = Number(t.producao_hora) || 0, s = Number(t.setup_min) || 0, tm = tcTempo(t, TC.qtd);
+      return '<article class="dcv-card dcv-tc" data-id="' + esc(t.id) + '"><div class="dcv-tc-top"><span class="dcv-ico">' + tcIcone(t.nome) + '</span><div><h2>' + esc(t.nome) + '</h2>'
+        + '<span class="dcv-uso">' + (x.u.ofs90 ? N(x.u.ofs90) + ' OFs em 90 dias' : 'Sem OFs nos últimos 90 dias') + (x.u.abertas ? ' · <b>' + N(x.u.abertas) + ' em aberto</b>' : '') + '</span></div></div>'
+        + '<div class="dcv-met"><div><small>Setup</small><b>' + N(s) + '<i>min</i></b></div><div><small>Produção</small><b>' + N(p) + '<i>cx/h</i></b></div></div>'
+        + '<div class="dcv-vel" title="Velocidade comparada com o tipo mais rápido"><span style="width:' + Math.max(4, Math.round(p / maxP * 100)) + '%"></span></div>'
+        + '<div class="dcv-tempo">' + (tm != null ? '<span>' + N(TC.qtd) + ' caixas</span><b>≈ ' + tempoTxt(tm) + '</b>' : '<span>Sem produção por hora cadastrada</span>') + '</div>'
+        + (t.observacoes ? '<p class="dcv-obs">' + esc(t.observacoes) + '</p>' : '')
+        + '<footer><button type="button" data-tc="editar">Editar</button><button type="button" data-tc="excluir" class="dcv-del">Excluir</button></footer></article>';
+    }).join('') : '<div class="dcv-vazio">' + (TC.lista.length ? 'Nenhum tipo encontrado.' : 'Nenhum tipo de caixa cadastrado.') + '</div>';
+    if (forcar) tcCarregar().then(function () { tcRender(); }).catch(function (e) { g.innerHTML = '<div class="dcv-vazio">Erro ao carregar: ' + esc(e.message) + '</div>'; });
+  }
+  function tcForm(t) {
+    t = t || {};
+    var ov = document.createElement('div'); ov.className = 'dcv-ov';
+    ov.innerHTML = '<form class="dcv-m" autocomplete="off"><header><h3>' + (t.id ? 'Editar tipo de caixa' : 'Novo tipo de caixa') + '</h3><button type="button" class="dcv-x" data-x="1" aria-label="Fechar">✕</button></header>'
+      + '<label class="dcv-f"><span>Nome *</span><input name="nome" required value="' + esc(t.nome || '') + '" placeholder="Ex.: PIZZA"></label>'
+      + '<div class="dcv-g2"><label class="dcv-f"><span>Setup (minutos para preparar a máquina)</span><input name="setup_min" type="number" min="0" inputmode="numeric" value="' + esc(t.setup_min != null ? t.setup_min : '') + '" placeholder="Ex.: 30"></label>'
+      + '<label class="dcv-f"><span>Produção (caixas por hora)</span><input name="producao_hora" type="number" min="0" inputmode="numeric" value="' + esc(t.producao_hora != null ? t.producao_hora : '') + '" placeholder="Ex.: 800"></label></div>'
+      + '<div class="dcv-prev"></div>'
+      + '<label class="dcv-f"><span>Observações</span><textarea name="observacoes" rows="2" placeholder="Opcional">' + esc(t.observacoes || '') + '</textarea></label>'
+      + '<footer><button type="button" data-x="1">Cancelar</button><button type="submit" class="dcv-pri">Salvar</button></footer></form>';
+    document.body.appendChild(ov);
+    var f = ov.querySelector('form');
+    function prev() {
+      var s = Number(f.setup_min.value) || 0, p = Number(f.producao_hora.value) || 0, pr = ov.querySelector('.dcv-prev');
+      pr.innerHTML = p > 0 ? [500, 1000, 5000].map(function (q) { return '<div><small>' + N(q) + ' caixas</small><b>' + tempoTxt(s + q / p * 60) + '</b></div>'; }).join('') : '<div class="dcv-prev-v">Preencha a produção por hora para ver quanto tempo leva.</div>';
+    }
+    f.addEventListener('input', prev); prev();
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var d = { nome: String(f.nome.value || '').trim().toUpperCase(), setup_min: Math.trunc(Number(f.setup_min.value) || 0), producao_hora: Math.trunc(Number(f.producao_hora.value) || 0), observacoes: String(f.observacoes.value || '').trim() };
+      if (!d.nome) return;
+      if (TC.lista.some(function (x) { return norm(x.nome) === norm(d.nome) && String(x.id) !== String(t.id || ''); })) { toast('Já existe um tipo com esse nome', 'var(--red)'); return; }
+      var b = f.querySelector('[type=submit]'); b.disabled = true; b.textContent = 'Salvando…';
+      (t.id ? req('PUT', '/api/tipos_caixa/' + encodeURIComponent(t.id), d) : req('POST', '/api/tipos_caixa', d))
+        .then(function () { ov.remove(); toast('Tipo de caixa salvo', 'var(--green)'); return tcCarregar(); }).then(function () { tcRender(); try { if (typeof window.renderTiposCaixa === 'function') window.renderTiposCaixa(); } catch (_) {} })
+        .catch(function (er) { b.disabled = false; b.textContent = 'Salvar'; toast('Erro ao salvar: ' + er.message, 'var(--red)'); });
+    });
+    setTimeout(function () { f.nome.focus(); }, 30);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#ds-tc [data-tc]'); if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
+    var a = b.getAttribute('data-tc'), card = b.closest('[data-id]'), t = card && TC.lista.find(function (x) { return String(x.id) === card.getAttribute('data-id'); });
+    if (a === 'novo') return tcForm(null);
+    if (a === 'editar' && t) return tcForm(t);
+    if (a === 'csv') return baixarCSV('tipos-de-caixa.csv', [['Tipo', 'Setup (min)', 'Produção (cx/h)', 'Tempo p/ ' + TC.qtd + ' caixas (min)', 'OFs 90 dias', 'Em aberto', 'Observações']].concat(TC.lista.map(function (t) { var u = tcUso(t), tm = tcTempo(t, TC.qtd); return [t.nome, t.setup_min, t.producao_hora, tm != null ? Math.round(tm) : '', u.ofs90, u.abertas, t.observacoes || '']; })));
+    if (a === 'excluir' && t) {
+      var u = tcUso(t);
+      confirmar('Excluir "' + t.nome + '"?', u.abertas ? 'Este tipo está em <b>' + u.abertas + ' OF(s) em aberto</b>. Elas continuam com o nome, mas o tempo delas deixa de ser calculado por este cadastro.' : 'Essa ação não pode ser desfeita.', 'Excluir tipo').then(function (sim) {
+        if (!sim) return;
+        req('DELETE', '/api/tipos_caixa/' + encodeURIComponent(t.id)).then(function () { toast('Tipo excluído'); return tcCarregar(); }).then(function () { tcRender(); }).catch(function (er) { toast('Erro ao excluir: ' + er.message, 'var(--red)'); });
+      });
+    }
+  });
+  document.addEventListener('input', function (e) {
+    var el = e.target; if (!el.closest || !el.closest('#ds-tc')) return;
+    var a = el.getAttribute('data-tc');
+    if (a === 'busca') { TC.busca = el.value; tcRender(); }
+    if (a === 'qtd') { TC.qtd = Math.max(1, Math.trunc(Number(el.value) || 1)); tcRender(); }
+  });
+  document.addEventListener('change', function (e) { var el = e.target; if (el.closest && el.closest('#ds-tc') && el.getAttribute('data-tc') === 'ord') { TC.ord = el.value; tcRender(); } });
+
+  // ======================= CORES DE IMPRESSÃO =======================
+  var CR = { lista: [], busca: '', carregado: false };
+  var PALETA = ['#1a1a1a', '#dc2626', '#ea580c', '#d97706', '#eab308', '#84cc16', '#16a34a', '#0d9488', '#0284c7', '#1e3a8a', '#7c3aed', '#db2777', '#800020', '#92400e', '#64748b', '#f8fafc'];
+  function crCarregar() { return req('GET', '/api/cores-impressao?_=' + Date.now()).then(function (l) { CR.lista = (Array.isArray(l) ? l : []).filter(function (c) { return c.ativo !== false; }); CR.carregado = true; return CR.lista; }); }
+  function semImp(c) { return /sem impress/i.test(String(c.nome || '')); }
+  function hexOk(h) { h = String(h || '').trim(); if (/^#?[0-9a-f]{3}$/i.test(h)) h = '#' + h.replace('#', '').split('').map(function (x) { return x + x; }).join(''); if (/^#?[0-9a-f]{6}$/i.test(h)) return ('#' + h.replace('#', '')).toLowerCase(); return ''; }
+  function luz(h) { h = hexOk(h); if (!h) return 0.5; var r = parseInt(h.substr(1, 2), 16) / 255, g = parseInt(h.substr(3, 2), 16) / 255, b = parseInt(h.substr(5, 2), 16) / 255; return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+  function crUso(c) {
+    var n = norm(c.nome), id = String(c.id), ab = 0, tot = 0;
+    ofs().forEach(function (o) {
+      if (o.deleted_at) return;
+      var cs = o.cores_impressao; if (typeof cs === 'string') { try { cs = JSON.parse(cs); } catch (_) { cs = cs.split(/\s*\+\s*|,\s*/); } }
+      var tem = (Array.isArray(cs) ? cs : []).some(function (x) { return x && (String(x.id || '') === id || norm(x.nome || x) === n); }); if (!tem) return;
+      if (aberta(o)) ab++; if (recente(o, 90)) tot++;
+    });
+    return { abertas: ab, ofs90: tot };
+  }
+  function caixaPrevia(hex, nome) {
+    var cor = hexOk(hex) || '#94a3b8', sem = /sem impress/i.test(nome || '');
+    return '<svg viewBox="0 0 160 120" class="dcv-caixa" aria-hidden="true"><path d="M20 42 80 18l60 24-60 24z" fill="#c8a06a"/><path d="M20 42v52l60 24V66z" fill="#b48a55"/><path d="M140 42v52l-60 24V66z" fill="#d6b07c"/>'
+      + (sem ? '' : '<g transform="matrix(1 -.4 0 1 88 82)"><rect x="0" y="-12" width="40" height="24" rx="3" fill="none" stroke="' + cor + '" stroke-width="3"/><text x="20" y="5" text-anchor="middle" font-size="11" font-weight="800" font-family="Arial" fill="' + cor + '">LOGO</text></g>'
+      + '<g transform="matrix(1 .4 0 1 30 58)"><rect x="0" y="0" width="38" height="5" rx="2" fill="' + cor + '"/><rect x="0" y="10" width="26" height="4" rx="2" fill="' + cor + '" opacity=".8"/></g>')
+      + '</svg>';
+  }
+  function crRender(forcar) {
+    var r = document.getElementById('ds-cores'); if (!r) return;
+    if (!r.querySelector('.dcv-head')) {
+      r.innerHTML = '<header class="dcv-head"><div><h1>Cores de Impressão</h1><p>As cores que aparecem para escolher na OF. Toque numa cor para editar.</p></div>'
+        + '<div class="dcv-acoes"><button type="button" class="dcv-btn" data-cr="csv">Exportar Excel</button><button type="button" class="dcv-btn dcv-pri" data-cr="nova">+ Nova cor</button></div></header>'
+        + '<div class="dcv-barra"><label class="dcv-busca"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" data-cr="busca" placeholder="Buscar cor…" autocomplete="off"></label><span class="dcv-cont"></span></div>'
+        + '<div class="dcv-grade dcv-grade-c"></div>';
+    }
+    var q = norm(CR.busca), l = CR.lista.filter(function (c) { return !q || norm(c.nome + ' ' + (c.hex || '')).indexOf(q) >= 0; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+    r.querySelector('.dcv-cont').textContent = CR.lista.length + ' cores';
+    var g = r.querySelector('.dcv-grade');
+    if (!CR.carregado) { g.innerHTML = '<div class="dcv-vazio">Carregando…</div>'; }
+    else g.innerHTML = l.length ? l.map(function (c) {
+      var h = hexOk(c.hex), u = crUso(c), escuro = luz(h) < 0.55;
+      return '<article class="dcv-card dcv-cor" data-id="' + esc(c.id) + '"><button type="button" class="dcv-amostra' + (semImp(c) ? ' dcv-sem' : '') + '" data-cr="editar" style="' + (h && !semImp(c) ? 'background:' + h + ';color:' + (escuro ? '#fff' : '#111') : '') + '" aria-label="Editar ' + esc(c.nome) + '">'
+        + '<span class="dcv-hex">' + esc(semImp(c) ? 'sem tinta' : (h || 'sem código').toUpperCase()) + '</span></button>'
+        + '<div class="dcv-cor-i"><h2>' + esc(c.nome) + '</h2><span class="dcv-uso">' + (u.abertas ? '<b>' + N(u.abertas) + ' OFs em aberto</b>' : 'Nenhuma OF em aberto') + (u.ofs90 ? ' · ' + N(u.ofs90) + ' em 90 dias' : '') + '</span></div>'
+        + '<footer><button type="button" data-cr="editar">Editar</button><button type="button" data-cr="excluir" class="dcv-del">Excluir</button></footer></article>';
+    }).join('') : '<div class="dcv-vazio">' + (CR.lista.length ? 'Nenhuma cor encontrada.' : 'Nenhuma cor cadastrada.') + '</div>';
+    if (forcar) crCarregar().then(function () { crRender(); }).catch(function (e) { g.innerHTML = '<div class="dcv-vazio">Erro ao carregar: ' + esc(e.message) + '</div>'; });
+  }
+  function crForm(c) {
+    c = c || {};
+    var h0 = hexOk(c.hex) || '#dc2626';
+    var ov = document.createElement('div'); ov.className = 'dcv-ov';
+    ov.innerHTML = '<form class="dcv-m" autocomplete="off"><header><h3>' + (c.id ? 'Editar cor' : 'Nova cor') + '</h3><button type="button" class="dcv-x" data-x="1" aria-label="Fechar">✕</button></header>'
+      + '<div class="dcv-cor-ed"><div class="dcv-cor-prev"></div><div class="dcv-cor-campos">'
+      + '<label class="dcv-f"><span>Nome *</span><input name="nome" required value="' + esc(c.nome || '') + '" placeholder="Ex.: Vermelho"></label>'
+      + '<div class="dcv-f"><span>Cor</span><div class="dcv-hexrow"><input type="color" name="pick" value="' + h0 + '" aria-label="Escolher a cor"><input name="hex" value="' + esc(c.id ? (hexOk(c.hex) || '') : h0) + '" placeholder="#RRGGBB" maxlength="7"></div></div>'
+      + '<div class="dcv-f"><span>Sugestões</span><div class="dcv-pal">' + PALETA.map(function (p) { return '<button type="button" data-pal="' + p + '" style="background:' + p + '" aria-label="' + p + '"></button>'; }).join('') + '</div></div>'
+      + '<label class="dcv-chk"><input type="checkbox" name="sem"' + (semImp(c) ? ' checked' : '') + '> É "sem impressão" (caixa sem tinta)</label>'
+      + '</div></div>'
+      + '<footer><button type="button" data-x="1">Cancelar</button><button type="submit" class="dcv-pri">Salvar</button></footer></form>';
+    document.body.appendChild(ov);
+    var f = ov.querySelector('form');
+    function prev() {
+      var h = hexOk(f.hex.value), sem = f.sem.checked;
+      ov.querySelector('.dcv-cor-prev').innerHTML = caixaPrevia(h, sem ? 'sem impressão' : f.nome.value) + '<div class="dcv-cor-nome" style="' + (h && !sem ? 'background:' + h + ';color:' + (luz(h) < 0.55 ? '#fff' : '#111') : '') + '">' + esc(f.nome.value || 'Nome da cor') + '</div>'
+        + (h && !sem && luz(h) > 0.85 ? '<small class="dcv-aviso">Cor muito clara: pode não aparecer bem no papelão.</small>' : '');
+    }
+    f.pick.addEventListener('input', function () { f.hex.value = f.pick.value; prev(); });
+    f.hex.addEventListener('input', function () { var h = hexOk(f.hex.value); if (h) f.pick.value = h; prev(); });
+    f.addEventListener('input', prev); f.addEventListener('change', prev);
+    ov.addEventListener('click', function (e) {
+      var p = e.target.closest('[data-pal]'); if (p) { f.hex.value = p.getAttribute('data-pal'); f.pick.value = f.hex.value; prev(); return; }
+      if (e.target === ov || e.target.closest('[data-x]')) ov.remove();
+    });
+    prev();
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var nome = String(f.nome.value || '').trim(); if (!nome) return;
+      var sem = f.sem.checked, h = hexOk(f.hex.value);
+      if (!sem && String(f.hex.value || '').trim() && !h) { toast('Código da cor inválido (use #RRGGBB)', 'var(--red)'); return; }
+      if (CR.lista.some(function (x) { return norm(x.nome) === norm(nome) && String(x.id) !== String(c.id || ''); })) { toast('Já existe uma cor com esse nome', 'var(--red)'); return; }
+      var d = { nome: sem && !/sem impress/i.test(nome) ? nome : nome, hex: sem ? '' : h };
+      var b = f.querySelector('[type=submit]'); b.disabled = true; b.textContent = 'Salvando…';
+      (c.id ? req('PUT', '/api/cores-impressao/' + encodeURIComponent(c.id), d) : req('POST', '/api/cores-impressao', d))
+        .then(function () { ov.remove(); toast('Cor salva', 'var(--green)'); return crCarregar(); }).then(function () { crRender(); try { if (typeof window.renderCoresImpressao === 'function') window.renderCoresImpressao(); } catch (_) {} })
+        .catch(function (er) { b.disabled = false; b.textContent = 'Salvar'; toast('Erro ao salvar: ' + er.message, 'var(--red)'); });
+    });
+    setTimeout(function () { f.nome.focus(); }, 30);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#ds-cores [data-cr]'); if (!b || b.tagName === 'INPUT') return;
+    var a = b.getAttribute('data-cr'), card = b.closest('[data-id]'), c = card && CR.lista.find(function (x) { return String(x.id) === card.getAttribute('data-id'); });
+    if (a === 'nova') return crForm(null);
+    if (a === 'editar' && c) return crForm(c);
+    if (a === 'csv') return baixarCSV('cores-de-impressao.csv', [['Cor', 'Código', 'OFs em aberto', 'OFs 90 dias']].concat(CR.lista.map(function (c) { var u = crUso(c); return [c.nome, hexOk(c.hex) || '', u.abertas, u.ofs90]; })));
+    if (a === 'excluir' && c) {
+      var u = crUso(c);
+      confirmar('Excluir a cor "' + c.nome + '"?', (u.abertas ? 'Ela está em <b>' + u.abertas + ' OF(s) em aberto</b> — essas OFs continuam com a cor. ' : '') + 'A cor deixa de aparecer para escolher nas OFs novas.', 'Excluir cor').then(function (sim) {
+        if (!sim) return;
+        req('DELETE', '/api/cores-impressao/' + encodeURIComponent(c.id)).then(function () { toast('Cor excluída'); return crCarregar(); }).then(function () { crRender(); }).catch(function (er) { toast('Erro ao excluir: ' + er.message, 'var(--red)'); });
+      });
+    }
+  });
+  document.addEventListener('input', function (e) { var el = e.target; if (el.closest && el.closest('#ds-cores') && el.getAttribute('data-cr') === 'busca') { CR.busca = el.value; crRender(); } });
+
+  // ---------- ligar nas páginas ----------
+  var vis = { tc: false, cr: false };
+  setInterval(function () {
+    var a = abrirPagina('page-tipos-caixa', 'ds-tc', tcRender); if (a && !vis.tc) tcRender(true); vis.tc = a;
+    var b = abrirPagina('page-cores-impressao', 'ds-cores', crRender); if (b && !vis.cr) crRender(true); vis.cr = b;
+  }, 400);
+
+  var st = document.createElement('style');
+  st.textContent = '#page-tipos-caixa.dcv-ativa > :not(#ds-tc):not(style):not(script),#page-cores-impressao.dcv-ativa > :not(#ds-cores):not(style):not(script){display:none!important}#page-tipos-caixa.dcv-ativa,#page-cores-impressao.dcv-ativa{overflow-y:auto}'
+    + '.dcv{padding:18px 20px 40px;color:var(--text);font-size:14px;box-sizing:border-box}.dcv *{box-sizing:border-box}'
+    + '.dcv-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}.dcv-head h1{margin:0;font-size:22px}.dcv-head p{margin:4px 0 0;color:var(--text2);font-size:13px;max-width:640px}.dcv-acoes{display:flex;gap:8px;flex-wrap:wrap}'
+    + '.dcv-btn{height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--s2);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dcv-btn:hover{background:var(--s3,var(--s2))}.dcv-pri,.dcv-m footer .dcv-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+    + '.dcv-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}.dcv-kpis>div{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:0}.dcv-kpis small{display:block;font-size:12px;color:var(--text2)}.dcv-kpis b{display:block;font-size:18px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dcv-kpis span{font-size:12px;color:var(--text3)}'
+    + '.dcv-barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.dcv-busca{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--b2,var(--border));border-radius:10px;background:var(--surface);color:var(--text2)}.dcv-busca input{flex:1;border:0;background:transparent;color:var(--text);font:inherit;outline:none;height:100%;min-width:0}'
+    + '.dcv-sim{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border-radius:10px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);font-size:13px;font-weight:600;color:var(--text)}.dcv-sim input{width:90px;height:30px;border-radius:7px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;font-weight:700;padding:0 8px;text-align:right}'
+    + '.dcv-sel{height:40px;border-radius:10px;border:1px solid var(--b2,var(--border));background:var(--surface);color:var(--text);font:inherit;font-size:13px;padding:0 10px}.dcv-cont{font-size:12.5px;color:var(--text3)}'
+    + '.dcv-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}.dcv-vazio{grid-column:1/-1;text-align:center;color:var(--text2);padding:30px}'
+    + '.dcv-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0;transition:border-color .15s,transform .15s}.dcv-card:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}'
+    + '.dcv-card footer{display:flex;gap:6px;margin-top:auto}.dcv-card footer button,.dcv-m footer button{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--b2,var(--border));background:var(--s2);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dcv-card footer button:first-child{flex:1}.dcv-del{color:#ef4444!important}'
+    + '.dcv-tc-top{display:flex;gap:12px;align-items:center;min-width:0}.dcv-ico{flex:0 0 46px;height:46px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,#f59e0b 16%,var(--s2));color:#d97706}.dcv-ico svg{width:32px;height:32px}.dcv-tc-top>div{min-width:0}.dcv-card h2{margin:0;font-size:15.5px;overflow-wrap:anywhere}.dcv-uso{display:block;font-size:12px;color:var(--text2);margin-top:2px}.dcv-uso b{color:#f59e0b}'
+    + '.dcv-met{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dcv-met>div{background:var(--s2);border-radius:10px;padding:8px 10px}.dcv-met small{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;font-weight:700}.dcv-met b{font-size:20px}.dcv-met i{font-style:normal;font-size:12px;color:var(--text2);margin-left:3px;font-weight:600}'
+    + '.dcv-vel{height:6px;border-radius:99px;background:var(--s2);overflow:hidden}.dcv-vel span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#22c55e,#16a34a)}'
+    + '.dcv-tempo{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:var(--text2)}.dcv-tempo b{font-size:16px;color:var(--text)}.dcv-obs{margin:0;font-size:12.5px;color:var(--text2);overflow-wrap:anywhere}'
+    + '.dcv-grade-c{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}.dcv-cor{padding:0;overflow:hidden;gap:0}.dcv-cor .dcv-cor-i{padding:10px 12px 4px}.dcv-cor footer{padding:8px 12px 12px}'
+    + '.dcv-amostra{display:flex;align-items:flex-end;justify-content:flex-end;height:96px;border:0;border-bottom:1px solid var(--border);cursor:pointer;padding:8px 10px;font:inherit;background:var(--s2);color:var(--text)}.dcv-hex{font-size:11.5px;font-weight:700;letter-spacing:.04em;background:rgba(0,0,0,.18);padding:2px 7px;border-radius:99px}'
+    + '.dcv-sem{background:repeating-linear-gradient(45deg,var(--s2) 0 10px,var(--surface) 10px 20px)!important;color:var(--text2)!important}.dcv-sem .dcv-hex{background:var(--s3,var(--s2))}'
+    + '.dcv-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dcv-m{width:min(560px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.45)}.dcv-m-s{width:min(420px,100%)}'
+    + '.dcv-m header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dcv-m h3{margin:0;font-size:18px}.dcv-m p{color:var(--text2);margin:0 0 14px;font-size:14px}.dcv-x{border:0;background:transparent;color:var(--text2);font-size:18px;cursor:pointer;width:36px;height:36px;border-radius:8px}'
+    + '.dcv-m footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.dcv-f{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;font-size:12.5px;color:var(--text2);font-weight:600}.dcv-f input,.dcv-f textarea{height:40px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;font-size:14px;padding:0 12px;font-weight:500}.dcv-f textarea{height:auto;padding:9px 12px;resize:vertical}'
+    + '.dcv-g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.dcv-prev{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}.dcv-prev>div{background:color-mix(in srgb,var(--accent) 10%,var(--s2));border-radius:10px;padding:8px 10px}.dcv-prev small{display:block;font-size:11.5px;color:var(--text2)}.dcv-prev b{font-size:16px}.dcv-prev .dcv-prev-v{grid-column:1/-1;font-size:12.5px;color:var(--text2);background:var(--s2)}'
+    + '.dcv-cor-ed{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}.dcv-cor-prev{background:var(--s2);border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px}.dcv-caixa{width:100%;height:auto}.dcv-cor-nome{width:100%;text-align:center;font-weight:800;border-radius:8px;padding:6px;background:var(--surface);overflow-wrap:anywhere}.dcv-aviso{color:#f59e0b;font-size:11.5px;text-align:center}'
+    + '.dcv-hexrow{display:flex;gap:8px}.dcv-hexrow input[type=color]{width:52px;height:40px;padding:2px;border-radius:9px;border:1px solid var(--b2,var(--border));background:transparent;cursor:pointer;flex:0 0 auto}.dcv-hexrow input[name=hex]{flex:1;text-transform:uppercase;font-family:var(--mono,monospace)}'
+    + '.dcv-pal{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}.dcv-pal button{aspect-ratio:1;border-radius:8px;border:1px solid rgba(127,127,127,.35);cursor:pointer}.dcv-chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text2);cursor:pointer}'
+    + '@media (max-width:700px){.dcv{padding:12px 12px 110px}.dcv-kpis{grid-template-columns:1fr 1fr}.dcv-kpis>div:first-child{grid-column:1/-1}.dcv-sim{width:100%}.dcv-grade{grid-template-columns:1fr}.dcv-grade-c{grid-template-columns:1fr 1fr}.dcv-cor-ed{grid-template-columns:1fr}.dcv-cor-prev{max-width:240px;margin:0 auto;width:100%}.dcv-g2{grid-template-columns:1fr}.dcv-acoes{width:100%}.dcv-acoes .dcv-btn{flex:1}}';
+  (document.head || document.documentElement).appendChild(st);
+})();
