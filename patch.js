@@ -80839,3 +80839,156 @@ window.__perTxt = function (p) {
     + '@media (max-width:700px){.dcv{padding:12px 12px 110px}.dcv-kpis{grid-template-columns:1fr 1fr}.dcv-kpis>div:first-child{grid-column:1/-1}.dcv-sim{width:100%}.dcv-grade{grid-template-columns:1fr}.dcv-grade-c{grid-template-columns:1fr 1fr}.dcv-cor-ed{grid-template-columns:1fr}.dcv-cor-prev{max-width:240px;margin:0 auto;width:100%}.dcv-g2{grid-template-columns:1fr}.dcv-acoes{width:100%}.dcv-acoes .dcv-btn{flex:1}}';
   (document.head || document.documentElement).appendChild(st);
 })();
+
+/* ===== Relatório: Clientes sem comprar, separado por vendedor (12/11/2026) =====
+ * Relatórios → "Clientes sem comprar (por vendedor)". Última compra = OF mais recente do cliente (canceladas não contam). */
+(function () {
+  if (window.__dsRelSemComprar) return; window.__dsRelSemComprar = true;
+  var TIPO = 'clientes-sem-comprar';
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function N(n) { return (Number(n) || 0).toLocaleString('pt-BR'); }
+  function R(n) { return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function br(d) { d = String(d || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.split('-').reverse().join('/') : '—'; }
+  function ofs() { try { return (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (window.OFs || []); } catch (_) { return window.OFs || []; } }
+  function clientes() { try { return (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : (window.CLIENTES || []); } catch (_) { return window.CLIENTES || []; } }
+  var E = { dias: 60, nunca: false, vend: '', busca: '', ordem: 'dias', vendedores: null };
+  try { var sv = JSON.parse(localStorage.getItem('ds_rel_semcomprar') || '{}'); if (sv.dias) E.dias = sv.dias; if (sv.ordem) E.ordem = sv.ordem; } catch (_) {}
+  function salvarPref() { try { localStorage.setItem('ds_rel_semcomprar', JSON.stringify({ dias: E.dias, ordem: E.ordem })); } catch (_) {} }
+  function carregarVendedores() {
+    if (E.vendedores) return Promise.resolve(E.vendedores);
+    return window.apiFetch('/api/vendedores').then(function (r) { return r.json(); }).then(function (j) { var l = Array.isArray(j) ? j : (j && (j.data || j.vendedores)) || []; E.vendedores = l; return l; }).catch(function () { E.vendedores = []; return []; });
+  }
+  function nomeVend(id) { var v = (E.vendedores || []).find(function (x) { return String(x.id) === String(id); }); return v ? String(v.nome || v.name || '').trim() : ''; }
+  function montar() {
+    var hoje = new Date(); hoje.setHours(12, 0, 0, 0);
+    var porCli = {};
+    ofs().forEach(function (o) {
+      if (!o || o.deleted_at || /cancel/i.test(String(o.status || ''))) return;
+      var id = String(o.cliId || o.cli_id || o.cliente_id || ''); var k = id || ('n:' + norm(o.cliNome || o.cliente));
+      if (k === 'n:') return;
+      var d = String(o.dia_pedido || o.dia || o.created_at || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) d = String(o.created_at || '').slice(0, 10);
+      var e = porCli[k] = porCli[k] || { n: 0, valor: 0, valor12: 0, ultima: '', ultProd: '', ultOF: '', vendNome: '' };
+      var v = Number(o.valor_total || o.valorTotal || o.val || o.valor_venda || 0) || 0;
+      e.n++; e.valor += v;
+      if (d && (hoje - new Date(d + 'T12:00:00')) / 86400000 <= 365) e.valor12 += v;
+      if (d > e.ultima) { e.ultima = d; e.ultProd = String(o.produto || o.prodDesc || o.descricao || ''); e.ultOF = String(o.of || o.numero || ''); e.vendNome = String(o.vendNome || o.vendedor_nome || o.vendedor || ''); }
+    });
+    var linhas = [];
+    clientes().forEach(function (c) {
+      if (!c || c.ativo === false) return;
+      var h = porCli[String(c.id)] || porCli['n:' + norm(c.nome)] || null;
+      if (!h && !E.nunca) return;
+      var dias = h && h.ultima ? Math.floor((hoje - new Date(h.ultima + 'T12:00:00')) / 86400000) : null;
+      if (h && dias < E.dias) return;
+      var vend = nomeVend(c.vendedor_id || c.vendId) || (h && h.vendNome) || 'Sem vendedor';
+      linhas.push({ c: c, h: h, dias: dias, vend: vend });
+    });
+    var q = norm(E.busca);
+    if (q) linhas = linhas.filter(function (l) { return norm([l.c.nome, l.c.cidade, l.vend, l.h && l.h.ultProd].join(' ')).indexOf(q) >= 0; });
+    if (E.vend) linhas = linhas.filter(function (l) { return norm(l.vend) === norm(E.vend); });
+    var grupos = {};
+    linhas.forEach(function (l) { (grupos[l.vend] = grupos[l.vend] || []).push(l); });
+    var ord = function (a, b) {
+      if (E.ordem === 'valor') return (b.h ? b.h.valor : 0) - (a.h ? a.h.valor : 0);
+      if (E.ordem === 'nome') return String(a.c.nome).localeCompare(String(b.c.nome), 'pt-BR');
+      return (b.dias == null ? 1e9 : b.dias) - (a.dias == null ? 1e9 : a.dias);
+    };
+    var lista = Object.keys(grupos).map(function (k) { grupos[k].sort(ord); return { vend: k, itens: grupos[k], valor: grupos[k].reduce(function (s, l) { return s + (l.h ? l.h.valor12 : 0); }, 0) }; })
+      .sort(function (a, b) { if (a.vend === 'Sem vendedor') return 1; if (b.vend === 'Sem vendedor') return -1; return a.vend.localeCompare(b.vend, 'pt-BR'); });
+    return { grupos: lista, total: linhas.length };
+  }
+  function corDias(d) { if (d == null) return 'dsr-cinza'; if (d >= 180) return 'dsr-verm'; if (d >= 90) return 'dsr-lar'; return 'dsr-ama'; }
+  function render() {
+    var w = document.getElementById('rel-content'); if (!w) return;
+    var dados = montar();
+    var vends = []; (E.vendedores || []).forEach(function (v) { var n = String(v.nome || '').trim(); if (n && vends.indexOf(n) < 0 && v.ativo !== false) vends.push(n); });
+    w.innerHTML = '<div class="dsr" id="dsr-raiz"><div class="dsr-top"><div><h2>Clientes sem comprar</h2><p>Clientes ativos cuja última OF foi há mais de <b>' + E.dias + ' dias</b>, separados por vendedor. Canceladas não contam como compra.</p></div>'
+      + '<div class="dsr-bts"><button type="button" data-r="csv">Exportar Excel</button><button type="button" data-r="imprimir" class="dsr-pri">Imprimir</button></div></div>'
+      + '<div class="dsr-filtros"><div class="dsr-chips">' + [30, 60, 90, 120, 180, 365].map(function (d) { return '<button type="button" data-dias="' + d + '"' + (E.dias === d ? ' class="on"' : '') + '>+' + d + ' dias</button>'; }).join('')
+      + '<label class="dsr-outro">ou <input type="number" min="1" data-r="dias" value="' + E.dias + '"> dias</label></div>'
+      + '<div class="dsr-linha2"><input type="search" data-r="busca" placeholder="Buscar cliente, cidade ou produto…" value="' + esc(E.busca) + '">'
+      + '<select data-r="vend"><option value="">Todos os vendedores</option>' + vends.map(function (n) { return '<option' + (norm(n) === norm(E.vend) ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '<option' + (E.vend === 'Sem vendedor' ? ' selected' : '') + '>Sem vendedor</option></select>'
+      + '<select data-r="ordem"><option value="dias"' + (E.ordem === 'dias' ? ' selected' : '') + '>Mais tempo sem comprar</option><option value="valor"' + (E.ordem === 'valor' ? ' selected' : '') + '>Quem mais comprou</option><option value="nome"' + (E.ordem === 'nome' ? ' selected' : '') + '>Nome</option></select>'
+      + '<label class="dsr-chk"><input type="checkbox" data-r="nunca"' + (E.nunca ? ' checked' : '') + '> Incluir quem nunca comprou</label></div></div>'
+      + '<div class="dsr-resumo"><b>' + N(dados.total) + '</b> clientes · <b>' + dados.grupos.length + '</b> vendedores</div>'
+      + (dados.grupos.length ? dados.grupos.map(function (g) {
+        return '<section class="dsr-g"><header><h3>' + esc(g.vend) + '</h3><span>' + N(g.itens.length) + ' cliente' + (g.itens.length > 1 ? 's' : '') + ' · compraram ' + R(g.valor) + ' nos últimos 12 meses</span></header>'
+          + '<div class="dsr-tw"><table class="dsr-t"><thead><tr><th>Cliente</th><th>Cidade</th><th>Telefone</th><th>Última compra</th><th class="n">Dias sem comprar</th><th class="n">OFs</th><th class="n">Total comprado</th><th>Último produto</th></tr></thead><tbody>'
+          + g.itens.map(function (l) {
+            var c = l.c, h = l.h;
+            return '<tr><td data-l="Cliente"><b>' + esc(c.nome) + '</b></td><td data-l="Cidade">' + esc([c.cidade, c.uf].filter(Boolean).join('/') || '—') + '</td><td data-l="Telefone">' + esc(c.tel || c.telefone || '—') + '</td>'
+              + '<td data-l="Última compra">' + (h ? br(h.ultima) + (h.ultOF ? ' <small>OF ' + esc(h.ultOF) + '</small>' : '') : 'Nunca comprou') + '</td>'
+              + '<td class="n" data-l="Dias"><span class="dsr-d ' + corDias(l.dias) + '">' + (l.dias == null ? '—' : N(l.dias)) + '</span></td>'
+              + '<td class="n" data-l="OFs">' + (h ? N(h.n) : 0) + '</td><td class="n" data-l="Total">' + (h ? R(h.valor) : '—') + '</td><td data-l="Último produto">' + esc(h && h.ultProd || '—') + '</td></tr>';
+          }).join('') + '</tbody></table></div></section>';
+      }).join('') : '<div class="dsr-vazio">Nenhum cliente sem comprar há mais de ' + E.dias + ' dias com esses filtros.</div>')
+      + '</div>';
+  }
+  function linhasCSV() {
+    var d = montar(), out = [['Vendedor', 'Cliente', 'Cidade', 'UF', 'Telefone', 'Última compra', 'Dias sem comprar', 'OFs', 'Total comprado', 'Último produto']];
+    d.grupos.forEach(function (g) { g.itens.forEach(function (l) { out.push([g.vend, l.c.nome, l.c.cidade || '', l.c.uf || '', l.c.tel || '', l.h ? br(l.h.ultima) : 'Nunca', l.dias == null ? '' : l.dias, l.h ? l.h.n : 0, l.h ? String((Math.round(l.h.valor * 100) / 100)).replace('.', ',') : '', l.h ? l.h.ultProd : '']); }); });
+    return out;
+  }
+  function csv() {
+    var t = '﻿' + linhasCSV().map(function (l) { return l.map(function (v) { v = String(v == null ? '' : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\r\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv;charset=utf-8' })); a.download = 'clientes-sem-comprar-' + E.dias + '-dias.csv'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function imprimir() {
+    var d = montar();
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>Clientes sem comprar há mais de ' + E.dias + ' dias</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font:10.5px Arial,Helvetica,sans-serif;color:#111;margin:0}'
+      + 'h1{font-size:16px;margin:0 0 2px}.sub{color:#555;margin-bottom:8px}h2{font-size:13px;margin:12px 0 4px;padding:4px 8px;background:#1e3a8a;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}h2 span{font-weight:400;font-size:11px;margin-left:8px}'
+      + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:3px 5px;text-align:left;vertical-align:top}th{background:#eef2ff;font-size:9.5px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}td.n,th.n{text-align:right}tr{page-break-inside:avoid}section{page-break-inside:auto}</style></head><body>'
+      + '<h1>Clientes sem comprar há mais de ' + E.dias + ' dias</h1><div class="sub">' + N(d.total) + ' clientes · gerado em ' + esc(new Date().toLocaleString('pt-BR')) + (E.vend ? ' · vendedor: ' + esc(E.vend) : '') + '</div>'
+      + d.grupos.map(function (g) {
+        return '<section><h2>' + esc(g.vend) + '<span>' + N(g.itens.length) + ' clientes</span></h2><table><thead><tr><th>Cliente</th><th>Cidade</th><th>Telefone</th><th>Última compra</th><th class="n">Dias</th><th class="n">OFs</th><th class="n">Total</th><th>Último produto</th></tr></thead><tbody>'
+          + g.itens.map(function (l) { return '<tr><td><b>' + esc(l.c.nome) + '</b></td><td>' + esc([l.c.cidade, l.c.uf].filter(Boolean).join('/')) + '</td><td>' + esc(l.c.tel || '') + '</td><td>' + (l.h ? br(l.h.ultima) : 'Nunca') + '</td><td class="n"><b>' + (l.dias == null ? '—' : N(l.dias)) + '</b></td><td class="n">' + (l.h ? N(l.h.n) : 0) + '</td><td class="n">' + (l.h ? R(l.h.valor) : '—') + '</td><td>' + esc(l.h ? l.h.ultProd : '') + '</td></tr>'; }).join('')
+          + '</tbody></table></section>';
+      }).join('') + '</body></html>';
+    var fr = document.getElementById('dsr-print'); if (fr) fr.remove();
+    fr = document.createElement('iframe'); fr.id = 'dsr-print'; fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(fr); var doc = fr.contentWindow.document; doc.open(); doc.write(html); doc.close();
+    setTimeout(function () { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }, 200);
+  }
+  function ativo() { var s = document.getElementById('rel-tipo'); return !!(s && s.value === TIPO); }
+  function abrir() { carregarVendedores().then(function () { if (ativo()) render(); }); render(); }
+  // opção no seletor + desvio das funções da tela de relatórios
+  function ligar() {
+    var s = document.getElementById('rel-tipo');
+    if (s && !s.querySelector('option[value="' + TIPO + '"]')) {
+      var o = document.createElement('option'); o.value = TIPO; o.textContent = '🕒 Clientes sem comprar (por vendedor)';
+      var ref = s.querySelector('option[value="clientes-inativos"]'); if (ref && ref.nextSibling) s.insertBefore(o, ref.nextSibling); else s.appendChild(o);
+    }
+    [['renderRelatorio', function () { abrir(); }], ['imprimirRel', imprimir], ['exportarRelExcel', csv], ['exportarRelCSV', csv]].forEach(function (p) {
+      var f = window[p[0]]; if (typeof f !== 'function' || f.__dsr) return;
+      var novo = function () { if (ativo()) return p[1](); return f.apply(this, arguments); }; novo.__dsr = true; window[p[0]] = novo;
+    });
+  }
+  setInterval(ligar, 1000); ligar();
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'rel-tipo' && ativo()) { setTimeout(abrir, 0); return; }
+    var el = e.target; if (!el.closest || !el.closest('#dsr-raiz')) return;
+    var r = el.getAttribute('data-r');
+    if (r === 'vend') { E.vend = el.value; render(); } else if (r === 'ordem') { E.ordem = el.value; salvarPref(); render(); } else if (r === 'nunca') { E.nunca = el.checked; render(); } else if (r === 'dias') { E.dias = Math.max(1, Math.trunc(Number(el.value) || 60)); salvarPref(); render(); }
+  });
+  var tBusca = null;
+  document.addEventListener('input', function (e) { var el = e.target; if (el.closest && el.closest('#dsr-raiz') && el.getAttribute('data-r') === 'busca') { E.busca = el.value; clearTimeout(tBusca); tBusca = setTimeout(function () { var p = el.selectionStart; render(); var n = document.querySelector('#dsr-raiz [data-r="busca"]'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (_) {} } }, 250); } });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#dsr-raiz [data-dias], #dsr-raiz [data-r]'); if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
+    if (b.hasAttribute('data-dias')) { E.dias = Number(b.getAttribute('data-dias')); salvarPref(); render(); return; }
+    var r = b.getAttribute('data-r'); if (r === 'csv') csv(); else if (r === 'imprimir') imprimir();
+  });
+  var st = document.createElement('style');
+  st.textContent = '.dsr{color:var(--text);font-size:14px;padding:4px 2px 30px}.dsr *{box-sizing:border-box}.dsr-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}.dsr-top h2{margin:0;font-size:20px}.dsr-top p{margin:4px 0 0;color:var(--text2);font-size:13px}'
+    + '.dsr-bts{display:flex;gap:8px}.dsr-bts button,.dsr-chips button{height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--s2);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.dsr-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+    + '.dsr-filtros{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px}.dsr-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.dsr-chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}'
+    + '.dsr-outro{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-left:4px}.dsr .dsr-outro input{width:80px!important;height:36px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;padding:0 8px;text-align:right}'
+    + '.dsr-linha2{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dsr .dsr-linha2 input[type=search]{flex:1;min-width:200px;height:38px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;padding:0 12px}.dsr .dsr-linha2 select{width:auto!important;height:38px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;font-size:13px;padding:0 10px}'
+    + '.dsr-chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer}.dsr .dsr-chk input{width:17px!important;height:17px;accent-color:var(--accent)}.dsr-resumo{font-size:13px;color:var(--text2);margin:0 0 10px}'
+    + '.dsr-g{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}.dsr-g header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding:10px 14px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-bottom:1px solid var(--border)}.dsr-g h3{margin:0;font-size:16px}.dsr-g header span{font-size:12.5px;color:var(--text2)}'
+    + '.dsr-tw{overflow-x:auto}.dsr-t{width:100%;border-collapse:collapse;font-size:13px}.dsr-t th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}.dsr-t td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}.dsr-t tr:last-child td{border-bottom:0}.dsr-t .n{text-align:right;white-space:nowrap}.dsr-t small{color:var(--text3);margin-left:4px}'
+    + '.dsr-d{display:inline-block;min-width:44px;text-align:center;font-weight:800;border-radius:99px;padding:2px 8px;font-size:12.5px}.dsr-ama{background:rgba(234,179,8,.18);color:#ca8a04}.dsr-lar{background:rgba(249,115,22,.18);color:#ea580c}.dsr-verm{background:rgba(239,68,68,.18);color:#dc2626}.dsr-cinza{background:var(--s2);color:var(--text2)}'
+    + '.dsr-vazio{text-align:center;color:var(--text2);padding:30px;background:var(--surface);border:1px solid var(--border);border-radius:12px}'
+    + '@media (max-width:760px){.dsr-t thead{display:none}.dsr-t,.dsr-t tbody,.dsr-t tr,.dsr-t td{display:block;width:100%}.dsr-t tr{padding:8px 12px;border-bottom:1px solid var(--border)}.dsr-t td{border:0;padding:2px 0;text-align:left!important}.dsr-t td::before{content:attr(data-l) ": ";color:var(--text3);font-size:12px}.dsr-t td:first-child::before{content:""}.dsr-bts{width:100%}.dsr-bts button{flex:1}}';
+  (document.head || document.documentElement).appendChild(st);
+})();
