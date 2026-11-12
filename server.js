@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261112112551';
-const SW_RUNTIME_VERSION = '20261112112551';
+const PATCH_RUNTIME_VERSION = '20261112112952';
+const SW_RUNTIME_VERSION = '20261112112952';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -19836,6 +19836,19 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
   }
 });
 
+// 12/11: juntar dois cadastros do mesmo cliente (tela "Possíveis duplicados") — só administrador
+app.post('/api/clientes-juntar', requireAdmin, async (req, res) => {
+  try {
+    const principal = String(req.body?.principal_id || '').trim(), outro = String(req.body?.outro_id || '').trim();
+    const nome = String(req.body?.nome || '').trim().replace(/\s+/g, ' ');
+    if (!_isUuid(principal) || !_isUuid(outro) || principal === outro) return res.status(400).json({ ok: false, error: 'Escolha dois cadastros diferentes' });
+    const { data, error } = await supabase.rpc('juntar_clientes', { p_principal: principal, p_outro: outro, p_nome: nome || null });
+    if (error) throw error;
+    try { cacheClearPrefix('clientes_'); cacheClearPrefix('cli_'); _clearOfsCaches && _clearOfsCaches(); } catch (_) {}
+    try { await logAuditoria('clientes', 'JUNTAR', principal, { outro_id: outro }, data, req); } catch (_) {}
+    return res.json({ ok: true, data });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
 app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     let antes = null;

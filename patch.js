@@ -81013,3 +81013,121 @@ window.__perTxt = function (p) {
     + '@media (max-width:760px){.dsr-t thead{display:none}.dsr-t,.dsr-t tbody,.dsr-t tr,.dsr-t td{display:block;width:100%}.dsr-t tr{padding:8px 12px;border-bottom:1px solid var(--border)}.dsr-t td{border:0;padding:2px 0;text-align:left!important}.dsr-t td::before{content:attr(data-l) ": ";color:var(--text3);font-size:12px}.dsr-t td:first-child::before{content:""}.dsr-bts{width:100%}.dsr-bts button{flex:1}}';
   (document.head || document.documentElement).appendChild(st);
 })();
+
+/* ===== Clientes: possíveis cadastros repetidos + juntar (12/11/2026) =====
+ * Botão "Possíveis repetidos" na tela de Clientes. Mostra pares com mesmo CNPJ / e-mail / telefone / nome parecido.
+ * "Juntar" (só administrador): escolhe qual cadastro fica e o nome final; OFs e o resto passam para ele. */
+(function () {
+  if (window.__dsCliDup) return; window.__dsCliDup = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(m, c) { try { window.toast(m, c); } catch (_) {} }
+  function clientes() { try { return (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : (window.CLIENTES || []); } catch (_) { return window.CLIENTES || []; } }
+  var EMP = { 'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy', 'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste', 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'Oestepack', E1: 'Italy', E2: 'Cartoeste', E3: 'Oestepack' };
+  var STOP = {}; 'LTDA ME EPP EIRELI SA S A DE DA DO DAS DOS E EM COMERCIO INDUSTRIA COM IND LTD MEI CIA EMPRESA EMPREENDIMENTOS SERVICOS SERV O OS AS'.split(' ').forEach(function (t) { STOP[t] = 1; });
+  var GEN = {}; 'MOVEIS MOVELARIA PIZZARIA PIZZAS PIZZA LANCHES LANCHONETE RESTAURANTE PANIFICADORA PADARIA MERCADO SUPERMERCADO MADEIREIRA MADEREIRA DISTRIBUIDORA ALIMENTOS EMBALAGENS INDUSTRIAL COMERCIAL AGRO AGROPECUARIA ELETRICA FERRAGENS MATERIAIS CONSTRUCAO TRANSPORTES CHOPERIA CONFEITARIA DOCES SALGADOS BAR GRUPO BRASIL SUL OESTE SC MAQUINAS EQUIPAMENTOS ESQUADRIAS MARCENARIA LOJA CASA DISK'.split(' ').forEach(function (t) { GEN[t] = 1; });
+  function toks(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/&/g, ' E ').replace(/\(.*?\)/g, ' ').replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).filter(function (t) { return t && !STOP[t]; }); }
+  function dist(t) { return t.filter(function (x) { return !GEN[x] && x.length >= 3; }); }
+  function dig(s) { return String(s || '').replace(/\D/g, ''); }
+  function tels(x) { var s = {}; String(x.tel || '').split('/').forEach(function (p) { var q = dig(p); if (q.length >= 8 && !/^(\d)\1+$/.test(q.slice(-8))) s[q.slice(-8)] = 1; }); return s; }
+  function ignorados() { try { return JSON.parse(localStorage.getItem('ds_cli_dup_ign') || '{}'); } catch (_) { return {}; } }
+  function ignorar(k) { var o = ignorados(); o[k] = 1; try { localStorage.setItem('ds_cli_dup_ign', JSON.stringify(o)); } catch (_) {} }
+  function calcular() {
+    var c = clientes().filter(function (x) { return x && x.ativo !== false; });
+    var T = c.map(function (x) { return { t: toks(x.nome), d: dig(x.cnpj), e: String(x.email || '').toLowerCase().trim(), p: tels(x) }; });
+    var f = {}; T.forEach(function (a) { if (a.d) f['d' + a.d] = (f['d' + a.d] || 0) + 1; if (a.e) f['e' + a.e] = (f['e' + a.e] || 0) + 1; Object.keys(a.p).forEach(function (p) { f['p' + p] = (f['p' + p] || 0) + 1; }); });
+    var ign = ignorados(), out = [];
+    for (var i = 0; i < c.length; i++) for (var j = i + 1; j < c.length; j++) {
+      var a = T[i], b = T[j], m = [];
+      var da = dist(a.t), db = dist(b.t), mesmoNome = a.t.length && a.t.join(' ') === b.t.join(' ');
+      var sub = false; if (da.length && db.length) { var s = da.length <= db.length ? da : db, l = da.length <= db.length ? db : da; sub = s.every(function (t) { return l.indexOf(t) >= 0; }) && s.join('').length >= 5; }
+      var pn = mesmoNome || sub || (da.some(function (t) { return t.length >= 5 && db.indexOf(t) >= 0; }));
+      var cn = (a.d.length === 14 || a.d.length === 11) && a.d === b.d && f['d' + a.d] <= 3;
+      var em = /@/.test(a.e) && a.e === b.e && f['e' + a.e] <= 3;
+      var te = Object.keys(a.p).some(function (p) { return b.p[p] && f['p' + p] <= 3; });
+      if (cn) m.push('mesmo CNPJ/CPF'); if (em) m.push('mesmo e-mail'); if (te) m.push('mesmo telefone'); if (mesmoNome) m.push('mesmo nome'); else if (pn) m.push('nome parecido');
+      var cat = null;
+      if (pn && (cn || em || te || mesmoNome)) cat = 'A'; else if (cn && !pn) cat = 'B'; else if (sub) cat = 'C';
+      if (!cat) continue;
+      var k = [c[i].id, c[j].id].sort().join('|'); if (ign[k]) continue;
+      out.push({ cat: cat, m: m, a: c[i], b: c[j], k: k });
+    }
+    out.sort(function (x, y) { return x.cat.localeCompare(y.cat) || ((y.a.total_ofs || 0) + (y.b.total_ofs || 0)) - ((x.a.total_ofs || 0) + (x.b.total_ofs || 0)); });
+    return out;
+  }
+  var CAT = { A: ['Provavelmente o mesmo cliente', 'Nome parecido e mesmo CNPJ, e-mail ou telefone — normalmente é só juntar.'], B: ['Mesmo CNPJ com nomes diferentes', 'Pode ser CNPJ digitado errado em um deles (corrigir no Editar) ou o mesmo dono com nome fantasia diferente.'], C: ['Nomes parecidos', 'Só o nome lembra — confira antes de juntar.'] };
+  var EST = { aba: 'A', busca: '' };
+  function cartao(x) { return '<div class="dcd-cli"><b>' + esc(x.nome) + '</b><span>' + esc([x.total_ofs != null ? (x.total_ofs + ' OFs') : '', [x.cidade, x.uf].filter(Boolean).join('/'), EMP[x.empresa_id || x.empId || x.emp_id] || ''].filter(Boolean).join(' · ')) + '</span>' + (x.cnpj ? '<small>CNPJ/CPF ' + esc(x.cnpj) + '</small>' : '') + '</div>'; }
+  function abrir() {
+    var ant = document.getElementById('dcd-ov'); if (ant) ant.remove();
+    var ov = document.createElement('div'); ov.id = 'dcd-ov';
+    ov.innerHTML = '<div class="dcd-m" role="dialog" aria-modal="true"><header><div><h2>Possíveis cadastros repetidos</h2><p>Revise cada par. "Juntar" passa as OFs e os dados para um cadastro só; "Não é repetido" tira o par da lista.</p></div><button type="button" class="dcd-x" data-x="1" aria-label="Fechar">✕</button></header><div class="dcd-abas"></div><input type="search" class="dcd-busca" placeholder="Buscar cliente…"><div class="dcd-lista"></div></div>';
+    document.body.appendChild(ov);
+    var L = calcular();
+    function desenhar() {
+      var cont = { A: 0, B: 0, C: 0 }; L.forEach(function (p) { cont[p.cat]++; });
+      ov.querySelector('.dcd-abas').innerHTML = ['A', 'B', 'C'].map(function (k) { return '<button type="button" data-aba="' + k + '"' + (EST.aba === k ? ' class="on"' : '') + '>' + CAT[k][0] + ' <span>' + cont[k] + '</span></button>'; }).join('');
+      var q = String(EST.busca || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      var l = L.filter(function (p) { return p.cat === EST.aba && (!q || (p.a.nome + ' ' + p.b.nome).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().indexOf(q) >= 0); });
+      ov.querySelector('.dcd-lista').innerHTML = '<p class="dcd-dica">' + CAT[EST.aba][1] + '</p>' + (l.length ? l.map(function (p) {
+        return '<div class="dcd-par" data-k="' + esc(p.k) + '"><div class="dcd-dois">' + cartao(p.a) + '<span class="dcd-eq">=</span>' + cartao(p.b) + '</div><div class="dcd-pe"><span class="dcd-mot">' + esc(p.m.join(' · ')) + '</span><div><button type="button" data-ign="1">Não é repetido</button><button type="button" data-jun="1" class="dcd-pri">Juntar…</button></div></div></div>';
+      }).join('') : '<div class="dcd-vazio">Nada aqui.</div>');
+    }
+    desenhar();
+    ov.addEventListener('input', function (e) { if (e.target.classList.contains('dcd-busca')) { EST.busca = e.target.value; desenhar(); } });
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; }
+      var ab = e.target.closest('[data-aba]'); if (ab) { EST.aba = ab.getAttribute('data-aba'); desenhar(); return; }
+      var parEl = e.target.closest('.dcd-par'); if (!parEl) return;
+      var p = L.find(function (x) { return x.k === parEl.getAttribute('data-k'); }); if (!p) return;
+      if (e.target.closest('[data-ign]')) { ignorar(p.k); L = L.filter(function (x) { return x !== p; }); desenhar(); return; }
+      if (e.target.closest('[data-jun]')) juntar(p, function () { L = L.filter(function (x) { return x.a.id !== p.b.id && x.b.id !== p.b.id && x.a.id !== p.a.id && x.b.id !== p.a.id; }); desenhar(); });
+    });
+  }
+  function juntar(p, depois) {
+    var prin = (p.a.total_ofs || 0) >= (p.b.total_ofs || 0) ? p.a : p.b, outro = prin === p.a ? p.b : p.a;
+    var ov = document.createElement('div'); ov.className = 'dcd-ov2';
+    ov.innerHTML = '<form class="dcd-m dcd-m2"><h3>Juntar cadastros</h3><p>Qual cadastro fica? O outro é apagado e tudo dele (OFs, orçamentos…) passa para o que ficar. Dados que faltarem no que fica são completados com os do outro.</p>'
+      + [p.a, p.b].map(function (x) { return '<label class="dcd-op"><input type="radio" name="fica" value="' + esc(x.id) + '"' + (x === prin ? ' checked' : '') + '>' + cartao(x) + '</label>'; }).join('')
+      + '<label class="dcd-f"><span>Nome que vai ficar</span><input name="nome" value="' + esc(prin.nome) + '"></label>'
+      + '<div class="dcd-bts"><button type="button" data-c="1">Cancelar</button><button type="submit" class="dcd-pri">Juntar</button></div></form>';
+    document.body.appendChild(ov);
+    var f = ov.querySelector('form');
+    f.addEventListener('change', function (e) { if (e.target.name === 'fica') { var x = e.target.value === String(p.a.id) ? p.a : p.b; f.nome.value = x.nome; } });
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-c]')) ov.remove(); });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fica = f.querySelector('[name=fica]:checked').value, sai = fica === String(p.a.id) ? p.b.id : p.a.id;
+      var b = f.querySelector('[type=submit]'); b.disabled = true; b.textContent = 'Juntando…';
+      window.apiFetch('/api/clientes-juntar', { method: 'POST', body: { principal_id: fica, outro_id: sai, nome: f.nome.value } }).then(function (r) { return r.json().then(function (j) { if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j.data; }); })
+        .then(function (d) {
+          ov.remove(); toast('Cadastros juntados: ' + (d && d.nome || ''), 'var(--green)');
+          try { var l = clientes(); var i = l.findIndex(function (x) { return String(x.id) === String(sai); }); if (i >= 0) l.splice(i, 1); var y = l.find(function (x) { return String(x.id) === String(fica); }); if (y && d && d.nome) y.nome = d.nome; } catch (_) {}
+          try { if (typeof window.carregarClientes === 'function') window.carregarClientes(true).then(function () { try { window.renderClientes && window.renderClientes(); } catch (_) {} }); } catch (_) {}
+          depois();
+        })
+        .catch(function (er) { b.disabled = false; b.textContent = 'Juntar'; toast('Não consegui juntar: ' + er.message, 'var(--red)'); });
+    });
+  }
+  window.dsClientesDuplicados = abrir;
+  // botão na tela de clientes
+  setInterval(function () {
+    var nb = Array.prototype.find.call(document.querySelectorAll('#page-clientes button'), function (b) { return /Novo Cliente/i.test(b.textContent) && b.getClientRects().length; });
+    if (!nb || document.getElementById('dcd-btn')) return;
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'dcd-btn'; b.className = nb.className.replace(/btn-accent|btn-primary/g, 'btn-ghost'); b.textContent = '🔎 Possíveis repetidos';
+    b.style.marginRight = '6px'; b.addEventListener('click', abrir);
+    nb.parentNode.insertBefore(b, nb);
+  }, 800);
+  var st = document.createElement('style');
+  st.textContent = '#dcd-ov,.dcd-ov2{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dcd-ov2{z-index:100001}'
+    + '.dcd-m{width:min(980px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);font-size:14px}.dcd-m *{box-sizing:border-box}.dcd-m2{width:min(560px,100%)}'
+    + '.dcd-m header{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dcd-m h2{margin:0;font-size:20px}.dcd-m h3{margin:0 0 6px;font-size:18px}.dcd-m p{margin:4px 0 10px;color:var(--text2);font-size:13px}.dcd-x{border:0;background:transparent;color:var(--text2);font-size:18px;cursor:pointer;width:36px;height:36px;border-radius:8px}'
+    + '.dcd-abas{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin:6px 0 10px}.dcd-abas button{border:0;background:transparent;color:var(--text2);font:inherit;font-weight:600;padding:9px 10px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.dcd-abas button.on{color:var(--accent);border-bottom-color:var(--accent)}.dcd-abas span{background:var(--s2);color:var(--text);border-radius:99px;padding:0 7px;font-size:12px;margin-left:3px}'
+    + '.dcd-m .dcd-busca{width:100%;height:38px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;padding:0 12px;margin-bottom:8px}.dcd-dica{font-size:12.5px!important}'
+    + '.dcd-par{border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--s2)}.dcd-dois{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.dcd-eq{font-weight:800;color:var(--text3)}'
+    + '.dcd-cli{min-width:0;background:var(--surface);border-radius:9px;padding:8px 10px}.dcd-cli b{display:block;overflow-wrap:anywhere}.dcd-cli span,.dcd-cli small{display:block;font-size:12px;color:var(--text2)}.dcd-cli small{color:var(--text3)}'
+    + '.dcd-pe{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}.dcd-mot{font-size:12px;color:#f59e0b;font-weight:600}.dcd-pe button,.dcd-bts button{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--b2,var(--border));background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-left:6px}.dcd-pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}'
+    + '.dcd-op{display:flex;gap:10px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px;margin-bottom:8px;cursor:pointer}.dcd-op input{width:18px!important;height:18px;accent-color:var(--accent);flex:0 0 auto}.dcd-op .dcd-cli{flex:1}'
+    + '.dcd-f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--text2);font-weight:600;margin:6px 0}.dcd-f input{height:40px;border-radius:9px;border:1px solid var(--b2,var(--border));background:var(--bg,var(--surface));color:var(--text);font:inherit;font-size:14px;padding:0 12px}.dcd-bts{display:flex;justify-content:flex-end;margin-top:10px}.dcd-vazio{text-align:center;color:var(--text2);padding:24px}'
+    + '@media (max-width:700px){#dcd-ov{padding:0}.dcd-m{max-height:100vh;height:100%;border-radius:0}.dcd-dois{grid-template-columns:1fr}.dcd-eq{display:none}}';
+  (document.head || document.documentElement).appendChild(st);
+})();
