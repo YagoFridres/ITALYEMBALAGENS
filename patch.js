@@ -80405,6 +80405,26 @@ window.__perTxt = function (p) {
     novo.__dsCliCid = true; Object.keys(orig).forEach(function (k) { try { novo[k] = orig[k]; } catch (_) {} });
     window.apiFetch = novo;
   })();
+  // a tela de clientes salva com fetch direto (corpo em texto JSON): acrescenta as outras cidades ali também
+  (function () {
+    var f0 = window.fetch; if (typeof f0 !== 'function' || f0.__dsCliCid) return;
+    var f1 = function (url, opts) {
+      try {
+        var u = String(url && url.url || url || '').replace(/^https?:\/\/[^/]+/, ''), m = String(opts && opts.method || 'GET').toUpperCase();
+        var inp = document.getElementById('cl-cidades-extra'), mod = document.getElementById('modal-cli');
+        if (inp && mod && mod.getClientRects().length && inp.dataset.carregado && (m === 'PUT' || m === 'POST') && /^\/?api\/clientes(\/[^/?]+)?\/?(\?|$)/.test(u) && opts && typeof opts.body === 'string') {
+          var b = JSON.parse(opts.body);
+          if (b && typeof b === 'object' && b.nome && b.cidades_entrega === undefined) {
+            b.cidades_entrega = lista(inp.value).filter(function (x) { return norm(x) !== norm(b.cidade); });
+            opts = Object.assign({}, opts, { body: JSON.stringify(b) });
+            var mId = u.match(/api\/clientes\/([^/?]+)/); if (mId) delete CACHE[decodeURIComponent(mId[1])];
+          }
+        }
+      } catch (_) {}
+      return f0.call(this, url, opts);
+    };
+    f1.__dsCliCid = true; window.fetch = f1;
+  })();
 
   // ---------- OF Rápida ----------
   var ESTADO = { cliId: '', cidades: [] };
