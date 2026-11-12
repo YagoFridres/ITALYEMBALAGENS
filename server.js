@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261112095446';
-const SW_RUNTIME_VERSION = '20261112095446';
+const PATCH_RUNTIME_VERSION = '20261112095612';
+const SW_RUNTIME_VERSION = '20261112095612';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5535,6 +5535,8 @@ function clientesPayload(p) {
     vendId: 'vendedor_id',
     ativo: 'ativo',
     cidades_entrega: 'cidades_entrega',
+    ie: 'ie',
+    inscricao_estadual: 'ie',
   };
   Object.entries(map).forEach(([from, to]) => {
     if (b[from] !== undefined) out[to] = b[from];
@@ -5550,7 +5552,7 @@ function clientesPayload(p) {
   }
   out.updated_at = new Date().toISOString();
   // campo apagado no formulário ('' ) vira null para realmente apagar no banco
-  const _apagaveis = ['rs', 'cnpj', 'cpf', 'tel', 'email', 'cidade', 'uf', 'endereco', 'contato', 'observacoes', 'ramo', 'telefone', 'documento'];
+  const _apagaveis = ['rs', 'cnpj', 'cpf', 'tel', 'email', 'cidade', 'uf', 'endereco', 'contato', 'observacoes', 'ramo', 'telefone', 'documento', 'ie'];
   Object.keys(out).forEach(k => {
     if (out[k] === undefined) delete out[k];
     else if (out[k] === '') { if (_apagaveis.includes(k)) out[k] = null; else delete out[k]; }

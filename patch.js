@@ -77976,6 +77976,7 @@ window.__perTxt = function (p) {
       + '<section class="dsch-sec"><h3><span>🪪</span>Cadastro</h3><div class="dscf-info">'
       + info('Vendedor', c.vendedor_nome || 'Sem vendedor') + info('Telefone', c.telefone) + info('E-mail', c.email) + info('Contato', c.contato)
       + info('Endereço', c.endereco) + info('Cidade', [c.cidade, c.uf].filter(Boolean).join(' / ')) + info('Ramo', c.ramo) + info('CNPJ', c.cnpj)
+      + info('Razão social', c.rs || c.razao_social) + info('Inscrição estadual', c.ie) + info('Outras cidades de entrega', (Array.isArray(c.cidades_entrega) ? c.cidades_entrega : []).join(', ')) + info('Observações', c.observacoes || c.obs)
       + info('Caixas por mês (média)', r.media_caixas_mes ? N(r.media_caixas_mes) : '') + info('Orçamentos', r.total_orcamentos ? N(r.total_orcamentos) + ' · ' + R(r.valor_orcamentos) : '')
       + '</div></section>'
       + '<section class="dsch-sec"><h3><span>📋</span>OFs em aberto (' + abertas.length + ')</h3>' + (abertas.length ? '<div class="dscf-lista">' + abertas.slice(0, 30).map(function (o) { var atr = o.data_entrega && String(o.data_entrega).slice(0, 10) < hoje; return '<div class="dscf-of"><b>OF ' + esc(o.numero) + '</b><span>' + esc(o.produto) + '</span><span>' + N(o.quantidade) + ' cx</span><span' + (atr ? ' style="color:#ef4444;font-weight:700"' : '') + '>Entrega ' + D(o.data_entrega) + (atr ? ' · atrasada' : '') + '</span><span class="dscf-st" style="--c:' + stCor(o.status) + '">' + esc(o.status) + '</span></div>'; }).join('') + '</div>' : '<div class="dscf-mut">Nenhuma OF em aberto.</div>') + '</section>'
@@ -80367,7 +80368,15 @@ window.__perTxt = function (p) {
   function cidadesDe(c) { if (!c) return []; return lista([c.cidade].concat(lista(c.cidades_entrega))); }
 
   // ---------- cadastro do cliente ----------
+  function campoIE() {
+    var cn = document.getElementById('cl-cnpj'); if (!cn || document.getElementById('cl-ie')) return;
+    var box = cn.closest('.mf') || cn.parentNode;
+    var w = document.createElement('div'); w.className = (box.className || 'mf') + ' ds-cl-ie';
+    w.innerHTML = '<label>INSCRIÇÃO ESTADUAL</label><input id="cl-ie" type="text" autocomplete="off" placeholder="IE (opcional)">';
+    box.parentNode.insertBefore(w, box.nextSibling);
+  }
   function campoCadastro() {
+    campoIE();
     var cc = document.getElementById('cl-cidade'); if (!cc || document.getElementById('cl-cidades-extra')) return;
     var box = cc.closest('.mf') || cc.parentNode;
     var w = document.createElement('div'); w.className = (box.className || 'mf') + ' ds-cl-cidextra'; w.style.gridColumn = '1 / -1';
@@ -80381,9 +80390,9 @@ window.__perTxt = function (p) {
     var m = document.getElementById('modal-cli'), inp = document.getElementById('cl-cidades-extra');
     var vis = !!(m && m.getClientRects().length && getComputedStyle(m).display !== 'none' && (m.classList.contains('open') || m.classList.contains('show') || getComputedStyle(m).visibility !== 'hidden'));
     if (vis && !modalAberto && inp) {
-      inp.value = ''; inp.dataset.carregado = '';
+      inp.value = ''; inp.dataset.carregado = ''; var ieI = document.getElementById('cl-ie'); if (ieI) ieI.value = '';
       var id = ''; try { id = String((typeof CLIENTE_ATUAL_ID !== 'undefined' && CLIENTE_ATUAL_ID) || (document.getElementById('cli-id') || {}).value || '').trim(); } catch (_) {}
-      if (id && id !== 'undefined') dadosCliente(id, true).then(function (c) { if (c) { inp.value = lista(c.cidades_entrega).join(', '); } inp.dataset.carregado = id; });
+      if (id && id !== 'undefined') dadosCliente(id, true).then(function (c) { if (c) { inp.value = lista(c.cidades_entrega).join(', '); if (ieI) ieI.value = c.ie || ''; } inp.dataset.carregado = id; });
       else inp.dataset.carregado = 'novo';
     }
     modalAberto = vis;
@@ -80397,6 +80406,7 @@ window.__perTxt = function (p) {
         var inp = document.getElementById('cl-cidades-extra'), mod = document.getElementById('modal-cli');
         if (inp && mod && mod.getClientRects().length && (m === 'PUT' || m === 'POST') && /^\/?api\/clientes(\/[^/?]+)?\/?(\?|$)/.test(u) && opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData) && opts.body.nome && inp.dataset.carregado) {
           opts.body.cidades_entrega = lista(inp.value).filter(function (x) { return norm(x) !== norm(opts.body.cidade); });
+          var ie1 = document.getElementById('cl-ie'); if (ie1) opts.body.ie = String(ie1.value || '').trim();
           var mId = u.match(/api\/clientes\/([^/?]+)/); if (mId) delete CACHE[decodeURIComponent(mId[1])];
         }
       } catch (_) {}
@@ -80416,6 +80426,7 @@ window.__perTxt = function (p) {
           var b = JSON.parse(opts.body);
           if (b && typeof b === 'object' && b.nome && b.cidades_entrega === undefined) {
             b.cidades_entrega = lista(inp.value).filter(function (x) { return norm(x) !== norm(b.cidade); });
+            var ie2 = document.getElementById('cl-ie'); if (ie2 && b.ie === undefined) b.ie = String(ie2.value || '').trim();
             opts = Object.assign({}, opts, { body: JSON.stringify(b) });
             var mId = u.match(/api\/clientes\/([^/?]+)/); if (mId) delete CACHE[decodeURIComponent(mId[1])];
           }
