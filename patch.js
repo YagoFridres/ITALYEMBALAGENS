@@ -79419,6 +79419,7 @@ window.__perTxt = function (p) {
     }, 5);
     window._salvarOfRapidaRegisterHook('__ds_cidade_cliente_salvar__', 'after', function (meta) {
       var r = meta && meta.result; if (!(r && r.ok === true)) return;
+      if (window.__dsCliCidades) return; // 12/11: quem cuida agora é o módulo de várias cidades (pergunta antes de mudar o cadastro)
       var c = window.__dsCidCli, cid = cidOF; if (!c || !c.id || !cid) return;
       if (norm(c.cidade) === norm(cid)) return;
       api('PUT', '/api/clientes/' + encodeURIComponent(c.id), { cidade: cid }).then(function () {
@@ -80343,4 +80344,159 @@ window.__perTxt = function (p) {
     } catch (_) {}
     return p;
   };
+})();
+
+/* ===== Cliente com mais de uma cidade de entrega (12/11/2026) =====
+ * Cadastro do cliente: campo "Outras cidades de entrega" (além da cidade principal).
+ * OF Rápida: se o cliente tem mais de uma cidade, a cidade não vem pronta — aparecem botões para escolher e a OF
+ * só salva depois de escolher. Cidade nova numa OF: pergunta se guarda no cadastro (como outra cidade ou como principal). */
+(function () {
+  if (window.__dsCliCidades) return; window.__dsCliCidades = true;
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(m, c) { try { window.toast(m, c); } catch (_) {} }
+  function api(m, u, b) { return window.apiFetch(u, b ? { method: m, body: b } : { method: m }).then(function (r) { return r.json().then(function (j) { if (!r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); return j && j.data !== undefined ? j.data : j; }); }); }
+  function lista(v) { var a = Array.isArray(v) ? v : String(v || '').split(/[,;\n]+/); var vis = {}; return a.map(function (x) { return String(x || '').trim().replace(/\s+/g, ' '); }).filter(function (x) { var k = norm(x); if (!x || vis[k]) return false; vis[k] = 1; return true; }); }
+  var CACHE = {};
+  function dadosCliente(id, forcar) {
+    id = String(id || ''); if (!id) return Promise.resolve(null);
+    if (!forcar && CACHE[id] && Date.now() - CACHE[id].t < 60000) return Promise.resolve(CACHE[id].v);
+    return api('GET', '/api/clientes/' + encodeURIComponent(id) + '?_=' + Date.now()).then(function (c) { c = (c && c.cliente) || c; CACHE[id] = { t: Date.now(), v: c }; return c; }).catch(function () { return null; });
+  }
+  window.__dsCliCidadesCache = CACHE;
+  function cidadesDe(c) { if (!c) return []; return lista([c.cidade].concat(lista(c.cidades_entrega))); }
+
+  // ---------- cadastro do cliente ----------
+  function campoCadastro() {
+    var cc = document.getElementById('cl-cidade'); if (!cc || document.getElementById('cl-cidades-extra')) return;
+    var box = cc.closest('.mf') || cc.parentNode;
+    var w = document.createElement('div'); w.className = (box.className || 'mf') + ' ds-cl-cidextra'; w.style.gridColumn = '1 / -1';
+    w.innerHTML = '<label>OUTRAS CIDADES DE ENTREGA</label><input id="cl-cidades-extra" type="text" autocomplete="off" placeholder="Se entrega em mais cidades: ex. São José, Curitiba, Porto Alegre (separe por vírgula)">'
+      + '<small style="display:block;font-size:11.5px;color:var(--text3,#64748b);margin-top:3px">Com mais de uma cidade, a OF pergunta para qual cidade vai.</small>';
+    box.parentNode.insertBefore(w, box.nextSibling);
+  }
+  var modalAberto = false;
+  setInterval(function () {
+    campoCadastro();
+    var m = document.getElementById('modal-cli'), inp = document.getElementById('cl-cidades-extra');
+    var vis = !!(m && m.getClientRects().length && getComputedStyle(m).display !== 'none' && (m.classList.contains('open') || m.classList.contains('show') || getComputedStyle(m).visibility !== 'hidden'));
+    if (vis && !modalAberto && inp) {
+      inp.value = ''; inp.dataset.carregado = '';
+      var id = ''; try { id = String((typeof CLIENTE_ATUAL_ID !== 'undefined' && CLIENTE_ATUAL_ID) || (document.getElementById('cli-id') || {}).value || '').trim(); } catch (_) {}
+      if (id && id !== 'undefined') dadosCliente(id, true).then(function (c) { if (c) { inp.value = lista(c.cidades_entrega).join(', '); } inp.dataset.carregado = id; });
+      else inp.dataset.carregado = 'novo';
+    }
+    modalAberto = vis;
+  }, 400);
+  // manda as outras cidades junto quando o cadastro do cliente é salvo
+  (function () {
+    var orig = window.apiFetch; if (typeof orig !== 'function' || orig.__dsCliCid) return;
+    var novo = function (url, opts) {
+      try {
+        var u = String(url || '').replace(/^https?:\/\/[^/]+/, ''), m = String(opts && opts.method || 'GET').toUpperCase();
+        var inp = document.getElementById('cl-cidades-extra'), mod = document.getElementById('modal-cli');
+        if (inp && mod && mod.getClientRects().length && (m === 'PUT' || m === 'POST') && /^\/?api\/clientes(\/[^/?]+)?\/?(\?|$)/.test(u) && opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData) && opts.body.nome && inp.dataset.carregado) {
+          opts.body.cidades_entrega = lista(inp.value).filter(function (x) { return norm(x) !== norm(opts.body.cidade); });
+          var mId = u.match(/api\/clientes\/([^/?]+)/); if (mId) delete CACHE[decodeURIComponent(mId[1])];
+        }
+      } catch (_) {}
+      return orig.apply(this, arguments);
+    };
+    novo.__dsCliCid = true; Object.keys(orig).forEach(function (k) { try { novo[k] = orig[k]; } catch (_) {} });
+    window.apiFetch = novo;
+  })();
+
+  // ---------- OF Rápida ----------
+  var ESTADO = { cliId: '', cidades: [] };
+  function cliOF() { try { var c = window.__dsOfrCliente && window.__dsOfrCliente(); return c && !c._so ? c : null; } catch (_) { return null; } }
+  function chips() {
+    var inp = document.getElementById('of-r-cidade'); if (!inp) return null;
+    var w = inp.closest('.ds-ofr-cidade') || inp.parentNode, b = w.querySelector('.ds-cid-chips');
+    if (!b) { b = document.createElement('div'); b.className = 'ds-cid-chips'; b.hidden = true; w.appendChild(b); }
+    return b;
+  }
+  function desenharChips() {
+    var b = chips(), inp = document.getElementById('of-r-cidade'); if (!b || !inp) return;
+    if (ESTADO.cidades.length < 2) { b.hidden = true; b.innerHTML = ''; inp.classList.remove('ds-cid-falta'); return; }
+    var at = norm(inp.value);
+    b.hidden = false;
+    b.innerHTML = '<span>Este cliente entrega em ' + ESTADO.cidades.length + ' cidades — para qual vai esta OF?</span>' + ESTADO.cidades.map(function (c) { return '<button type="button" data-cid="' + esc(c) + '"' + (norm(c) === at ? ' class="on"' : '') + '>' + esc(c) + '</button>'; }).join('');
+  }
+  function atualizar() {
+    var inp = document.getElementById('of-r-cidade'); if (!inp) return;
+    var c = cliOF(), id = c ? String(c.id || '') : '';
+    if (id === ESTADO.cliId) { desenharChips(); return; }
+    ESTADO = { cliId: id, cidades: [] }; desenharChips();
+    if (!id) return;
+    dadosCliente(id).then(function (d) {
+      if (ESTADO.cliId !== id) return;
+      ESTADO.cidades = cidadesDe(d || c);
+      // cliente com várias cidades: não deixa a principal pronta (a pessoa escolhe), a não ser que já tenha escolhido / seja edição
+      var editando = false; try { editando = !!(window.__getOfRapidaEditingId && window.__getOfRapidaEditingId()); } catch (_) {}
+      if (ESTADO.cidades.length > 1 && !inp.dataset.manual && !editando) { inp.value = ''; try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {} inp.dataset.manual = ''; var dd = inp.parentNode.querySelector('.drt-dd'); if (dd) dd.hidden = true; }
+      desenharChips();
+    });
+  }
+  setInterval(function () { var m = document.getElementById('modal-of-rapida'); if (m && m.getClientRects().length) atualizar(); else if (ESTADO.cliId) ESTADO = { cliId: '', cidades: [] }; }, 400);
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.ds-cid-chips [data-cid]'); if (!b) return;
+    var inp = document.getElementById('of-r-cidade'); if (!inp) return;
+    inp.value = b.getAttribute('data-cid'); inp.dataset.manual = '1'; inp.classList.remove('ds-cid-falta');
+    try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+    var dd = inp.parentNode.querySelector('.drt-dd'); if (dd) setTimeout(function () { dd.hidden = true; }, 0);
+    desenharChips();
+  });
+  document.addEventListener('input', function (e) { if (e.target && e.target.id === 'of-r-cidade') { e.target.classList.remove('ds-cid-falta'); setTimeout(desenharChips, 0); } }, true);
+
+  // perguntar o que fazer com cidade nova (em vez de trocar a cidade do cliente sozinho)
+  function perguntar(c, cid) {
+    var ov = document.createElement('div'); ov.className = 'ds-cid-ov';
+    ov.innerHTML = '<div class="ds-cid-m" role="dialog" aria-modal="true"><h3>Cidade nova para ' + esc(c.nome || 'o cliente') + '</h3>'
+      + '<p>A OF foi salva com a cidade <b>' + esc(cid) + '</b>, que não está no cadastro deste cliente' + (c.cidade ? ' (cidade principal: <b>' + esc(c.cidade) + '</b>)' : '') + '.</p>'
+      + '<div class="ds-cid-bts"><button type="button" data-r="add" class="pri">Guardar como outra cidade de entrega</button><button type="button" data-r="principal">Trocar a cidade principal</button><button type="button" data-r="nao">Não guardar (só esta OF)</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-r]'); if (!b) return; var r = b.getAttribute('data-r'); ov.remove();
+      if (r === 'nao') return;
+      dadosCliente(c.id, true).then(function (d) {
+        d = d || c; var extras = lista(d.cidades_entrega), body;
+        if (r === 'add') body = { nome: d.nome, cidades_entrega: lista(extras.concat([cid])).filter(function (x) { return norm(x) !== norm(d.cidade); }) };
+        else body = { nome: d.nome, cidade: cid, cidades_entrega: lista(extras.concat(d.cidade ? [d.cidade] : [])).filter(function (x) { return norm(x) !== norm(cid); }) };
+        return api('PUT', '/api/clientes/' + encodeURIComponent(c.id), body).then(function () { delete CACHE[c.id]; if (r === 'principal') c.cidade = cid; toast('Cidade ' + cid + ' guardada no cadastro de ' + (d.nome || 'cliente'), 'var(--green)'); });
+      }).catch(function (er) { toast('Não consegui guardar a cidade no cadastro: ' + er.message, 'var(--red)'); });
+    });
+  }
+  window.__dsCidadePerguntar = perguntar;
+  var cidSalvar = '', cliSalvar = null;
+  function registrar() {
+    if (typeof window._salvarOfRapidaRegisterHook !== 'function') return false;
+    window._salvarOfRapidaRegisterHook('__ds_cid_multi_antes__', 'before', function () {
+      var inp = document.getElementById('of-r-cidade'); cidSalvar = inp ? String(inp.value || '').trim() : ''; cliSalvar = cliOF();
+      if (inp && ESTADO.cidades.length > 1 && !cidSalvar) {
+        inp.classList.add('ds-cid-falta'); try { inp.scrollIntoView({ block: 'center' }); inp.focus(); } catch (_) {}
+        toast('Escolha para qual cidade vai esta OF (o cliente entrega em mais de uma cidade)', 'var(--red)');
+        return { __salvarOfRapidaHandled__: true, result: { ok: false, error: 'cidade' } };
+      }
+    }, 4);
+    window._salvarOfRapidaRegisterHook('__ds_cid_multi_depois__', 'after', function (meta) {
+      var r = meta && meta.result; if (!(r && r.ok === true)) return;
+      var c = cliSalvar, cid = cidSalvar; if (!c || !c.id || !cid) return;
+      dadosCliente(c.id, true).then(function (d) {
+        d = d || c;
+        if (!String(d.cidade || '').trim()) { return api('PUT', '/api/clientes/' + encodeURIComponent(c.id), { nome: d.nome, cidade: cid }).then(function () { delete CACHE[c.id]; c.cidade = cid; toast('Cidade ' + cid + ' salva no cadastro de ' + (d.nome || 'cliente')); }); }
+        if (cidadesDe(d).some(function (x) { return norm(x) === norm(cid); })) return;
+        setTimeout(function () { perguntar({ id: c.id, nome: d.nome, cidade: d.cidade }, cid); }, 600);
+      }).catch(function () {});
+    }, 50);
+    return true;
+  }
+  if (!registrar()) { var n = 0, t = setInterval(function () { if (registrar() || ++n > 40) clearInterval(t); }, 500); }
+
+  var st = document.createElement('style');
+  st.textContent = '.ds-cid-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.ds-cid-chips span{width:100%;font-size:12px;font-weight:700;color:var(--yellow,#f59e0b)}'
+    + '.ds-cid-chips button{border:1px solid var(--b2,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}.ds-cid-chips button.on{background:var(--accent,#3b82f6);border-color:var(--accent,#3b82f6);color:#fff}'
+    + '#of-r-cidade.ds-cid-falta{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,68,68,.35)!important}'
+    + '.ds-cid-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.ds-cid-m{width:min(480px,100%);background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#1e293b);border-radius:14px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}'
+    + '.ds-cid-m h3{margin:0 0 8px;font-size:17px}.ds-cid-m p{margin:0 0 14px;font-size:14px;color:var(--text2,#94a3b8)}.ds-cid-bts{display:flex;flex-direction:column;gap:8px}.ds-cid-bts button{min-height:42px;border-radius:10px;border:1px solid var(--b2,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font:inherit;font-weight:600;cursor:pointer}.ds-cid-bts button.pri{background:var(--accent,#3b82f6);border-color:var(--accent,#3b82f6);color:#fff}';
+  (document.head || document.documentElement).appendChild(st);
 })();

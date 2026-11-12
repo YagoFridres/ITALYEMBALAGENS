@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261111180034';
-const SW_RUNTIME_VERSION = '20261111180034';
+const PATCH_RUNTIME_VERSION = '20261112091117';
+const SW_RUNTIME_VERSION = '20261112091117';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5534,10 +5534,17 @@ function clientesPayload(p) {
     vendedor_id: 'vendedor_id',
     vendId: 'vendedor_id',
     ativo: 'ativo',
+    cidades_entrega: 'cidades_entrega',
   };
   Object.entries(map).forEach(([from, to]) => {
     if (b[from] !== undefined) out[to] = b[from];
   });
+  // 11/11: outras cidades de entrega do cliente (além da cidade principal)
+  if (out.cidades_entrega !== undefined) {
+    const arr = Array.isArray(out.cidades_entrega) ? out.cidades_entrega : String(out.cidades_entrega || '').split(/[,;\n]+/);
+    const vistos = new Set();
+    out.cidades_entrega = arr.map((x) => String(x || '').trim().replace(/\s+/g, ' ')).filter((x) => { const k = x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); if (!x || vistos.has(k)) return false; vistos.add(k); return true; });
+  }
   out.updated_at = new Date().toISOString();
   // campo apagado no formulário ('' ) vira null para realmente apagar no banco
   const _apagaveis = ['rs', 'cnpj', 'cpf', 'tel', 'email', 'cidade', 'uf', 'endereco', 'contato', 'observacoes', 'ramo'];
