@@ -80957,7 +80957,15 @@ window.__perTxt = function (p) {
     var s = document.getElementById('rel-tipo');
     if (s && !s.querySelector('option[value="' + TIPO + '"]')) {
       var o = document.createElement('option'); o.value = TIPO; o.textContent = '🕒 Clientes sem comprar (por vendedor)';
-      var ref = s.querySelector('option[value="clientes-inativos"]'); if (ref && ref.nextSibling) s.insertBefore(o, ref.nextSibling); else s.appendChild(o);
+      s.insertBefore(o, s.firstChild); // 12/11: primeiro da lista, fácil de achar
+    }
+    // botão direto na barra da tela de relatórios
+    var tb = s && s.closest('.ptoolbar');
+    if (tb && !tb.querySelector('.dsr-atalho')) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm dsr-atalho'; b.textContent = '🕒 Clientes sem comprar';
+      b.style.cssText = 'background:var(--accent);border:1px solid var(--accent);color:#fff;font-weight:700';
+      b.addEventListener('click', function () { s.value = TIPO; abrir(); });
+      tb.insertBefore(b, s.nextSibling);
     }
     [['renderRelatorio', function () { abrir(); }], ['imprimirRel', imprimir], ['exportarRelExcel', csv], ['exportarRelCSV', csv]].forEach(function (p) {
       var f = window[p[0]]; if (typeof f !== 'function' || f.__dsr) return;
