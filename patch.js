@@ -81131,3 +81131,24 @@ window.__perTxt = function (p) {
     + '@media (max-width:700px){#dcd-ov{padding:0}.dcd-m{max-height:100vh;height:100%;border-radius:0}.dcd-dois{grid-template-columns:1fr}.dcd-eq{display:none}}';
   (document.head || document.documentElement).appendChild(st);
 })();
+
+/* ===== Clientes: lista sempre atual (12/11/2026) =====
+ * A lista era carregada só no login — cadastros juntados/alterados por outra pessoa continuavam aparecendo.
+ * Ao abrir a tela de Clientes (e a cada 2 min com ela aberta) recarrega do servidor. */
+(function () {
+  if (window.__dsCliRecarga) return; window.__dsCliRecarga = true;
+  var aberta = false, ult = 0, rodando = false;
+  function recarregar() {
+    if (rodando || typeof window.carregarClientes !== 'function') return; rodando = true; ult = Date.now();
+    Promise.resolve(window.carregarClientes(true)).then(function () { try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {} }).catch(function () {}).then(function () { rodando = false; });
+  }
+  setInterval(function () {
+    var p = document.getElementById('page-clientes');
+    var vis = !!(p && (p.classList.contains('active') || p.offsetParent !== null));
+    if (vis && (!aberta || Date.now() - ult > 120000)) {
+      var editando = Array.prototype.some.call(document.querySelectorAll('#modal-cli.open, .dcd-ov2, #dcd-ov'), function (m) { return m.getClientRects().length; });
+      if (!editando) recarregar();
+    }
+    aberta = vis;
+  }, 1000);
+})();
