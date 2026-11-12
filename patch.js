@@ -80392,7 +80392,19 @@ window.__perTxt = function (p) {
     if (vis && !modalAberto && inp) {
       inp.value = ''; inp.dataset.carregado = ''; var ieI = document.getElementById('cl-ie'); if (ieI) ieI.value = '';
       var id = ''; try { id = String((typeof CLIENTE_ATUAL_ID !== 'undefined' && CLIENTE_ATUAL_ID) || (document.getElementById('cli-id') || {}).value || '').trim(); } catch (_) {}
-      if (id && id !== 'undefined') dadosCliente(id, true).then(function (c) { if (c) { inp.value = lista(c.cidades_entrega).join(', '); if (ieI) ieI.value = c.ie || ''; } inp.dataset.carregado = id; });
+      if (id && id !== 'undefined') dadosCliente(id, true).then(function (c) {
+        if (c) {
+          inp.value = lista(c.cidades_entrega).join(', '); if (ieI) ieI.value = c.ie || '';
+          // 12/11: a empresa do cliente aparece selecionada (a maioria só tem o código novo da empresa)
+          var se = document.getElementById('cl-emp');
+          if (se && !se.value) {
+            var MAPA = { 'df5f7672-0a6b-402d-ae65-296554236c31': 'E1', 'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'E2', 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'E3' };
+            var e = /^E[123]$/.test(String(c.emp_id || '')) ? c.emp_id : (MAPA[String(c.empresa_id || '')] || MAPA[String(c.emp_id || '')] || '');
+            if (e) { se.value = e; try { se.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {} }
+          }
+        }
+        inp.dataset.carregado = id;
+      });
       else inp.dataset.carregado = 'novo';
     }
     modalAberto = vis;
