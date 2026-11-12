@@ -80872,7 +80872,7 @@ window.__perTxt = function (p) {
       var v = Number(o.valor_total || o.valorTotal || o.val || o.valor_venda || 0) || 0;
       e.n++; e.valor += v;
       if (d && (hoje - new Date(d + 'T12:00:00')) / 86400000 <= 365) e.valor12 += v;
-      if (d > e.ultima) { e.ultima = d; e.ultProd = String(o.produto || o.prodDesc || o.descricao || ''); e.ultOF = String(o.of || o.numero || ''); e.vendNome = String(o.vendNome || o.vendedor_nome || o.vendedor || ''); }
+      if (d > e.ultima) { e.ultima = d; e.ultProd = String(o.produto || o.prodDesc || o.descricao || ''); e.ultOF = String(o.of || o.numero || '').replace(/^\s*N[º°o.]*\s*/i, ''); e.vendNome = String(o.vendNome || o.vendedor_nome || o.vendedor || ''); }
     });
     var linhas = [];
     clientes().forEach(function (c) {
