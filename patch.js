@@ -9334,6 +9334,27 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
   };
   var empIdCompra = String((payload && payload.emp_id) || (compra && (compra.emp_id || compra._emp_id_consulta)) || data && data._emp_id_consulta || '').trim();
   var empresa = window._compraPapelaoEmpresaNome(empIdCompra);
+  // 16/11: soma por gramatura/papel (ex.: tudo que é FCM07) — área, chapas e valor de cada um
+  var gruposGram = (function(){
+    var m = {}; var ordem = [];
+    (Array.isArray(data.itens) ? data.itens : []).forEach(function(item) {
+      var nome = String(item && (item.po || item.nomenclatura) || '').replace(/\s+/g, ' ').trim() || 'Sem nome';
+      var k = nome.toUpperCase();
+      if (!m[k]) { m[k] = { nome: nome, area: 0, qtd: 0, valor: 0, itens: 0 }; ordem.push(k); }
+      var d = window._compraPapelaoDeriveItem(item);
+      m[k].area += window._compraPapelaoNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2);
+      m[k].qtd += window._compraPapelaoNum(item && item.quantidade);
+      m[k].valor += window._compraPapelaoNum(item && item.valor_total != null ? item.valor_total : d.valor_total);
+      m[k].itens += 1;
+    });
+    return ordem.map(function(k){ return m[k]; });
+  })();
+  var gramHtml = !gruposGram.length ? '' : '<div class="por-gram"><div class="pg-tit">Soma por gramatura</div><div class="pg-lista">' + gruposGram.map(function(g) {
+    return '<div class="pg-box"><div class="pg-nome">' + window._compraPapelaoEsc(g.nome) + '</div>'
+      + '<div class="pg-area">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(g.area, 4)) + ' m²</div>'
+      + '<div class="pg-sub">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(g.qtd, 0)) + ' chapas · ' + g.itens + (g.itens === 1 ? ' item' : ' itens') + ' · ' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(g.valor)) + '</div></div>';
+  }).join('') + '</div></div>';
+
   var empresaInfo = (function(){
     // 03/11: dados reais vêm do cadastro de empresas (tabela empresas); nada inventado.
     var nome = String(empresa || 'Italy Embalagens').trim();
@@ -9452,6 +9473,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '.foot-sig{padding-top:18px!important;margin-top:0!important;gap:18px!important}.sig{padding-top:4px!important}.foot{margin-top:0!important;padding-top:4px!important;font-size:9.5px!important}'
     + '@media print{ .sheet{padding:0!important} }'
     + '.hdr1{display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;background:#1e3a8a;color:#fff;padding:5px 12px;border-radius:6px;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.hdr1 .t{font-size:13px;font-weight:900;letter-spacing:.02em;margin-right:auto}.hdr1 span{font-weight:800;white-space:nowrap}.hdr1 i{font-style:normal;font-weight:700;color:#bfdbfe;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-right:3px}'
+    + '.por-gram{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;break-inside:avoid;page-break-inside:avoid}.por-gram .pg-tit{font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#475569;align-self:center;margin-right:2px}.por-gram .pg-lista{display:flex;gap:8px;flex-wrap:wrap;flex:1}'
+    + '.pg-box{border:2px solid #1e3a8a;border-radius:7px;padding:4px 12px;background:#eff6ff;min-width:170px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pg-box .pg-nome{font-size:10px;font-weight:900;color:#1e3a8a;letter-spacing:.03em}.pg-box .pg-area{font-size:16px;font-weight:900;color:#0f172a;line-height:1.2}.pg-box .pg-sub{font-size:9.5px;font-weight:700;color:#475569}'
     + '</style></head><body><div class="sheet">'
     + '<div class="hdr1">'
     + '<b class="t">PEDIDO DE CHAPAS DE PAPELÃO</b>'
@@ -9463,6 +9486,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '<table class="planilha"><thead><tr><th style="width:3.0%!important">Nº</th><th style="width:7.2%!important">Entrega</th><th style="width:7.0%!important">PO / Nome</th><th style="width:9.0%!important">Larg × Comp (mm)</th><th style="width:20.0%!important">Posições dos Vincos (mm)</th><th style="width:5.2%!important">Qtd</th><th style="width:6.2%!important">Lote Min</th><th style="width:7.0%!important">Área m²</th><th style="width:7.0%!important">Valor m²</th><th style="width:7.2%!important">Valor / Mil</th><th style="width:8.0%!important">Total Item</th><th style="width:4.2%!important">Obs</th><th style="width:9.0%!important">Pedido Forn.</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="13" style="text-align:center;padding:22px;color:#64748b">Nenhum item informado nesta compra.</td></tr>')
     + '</tbody></table>'
+    + gramHtml
     + '<div class="totais">'
     + '  <div class="total-chip"><div class="lbl">Qtd. Total de Chapas</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</div></div>'
     + '  <div class="total-chip"><div class="lbl">Área Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + ' m²</div></div>'
