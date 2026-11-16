@@ -81276,6 +81276,9 @@ window.__perTxt = function (p) {
       // listas de sugestão / menus (pequenos e por cima) ficam como estão
       if (e.clientHeight < 140 && /(sug|drop|lista|menu|auto)/i.test(String(e.className))) return;
       e.classList.add('ds-sem-rol'); e.__dsRolOk = true;
+      // estilo direto (vence as regras antigas com !important)
+      e.style.setProperty('max-height', 'none', 'important'); e.style.setProperty('overflow-y', 'visible', 'important');
+      if (/px$/.test(cs.height) && e.scrollHeight > e.clientHeight + 4) e.style.setProperty('height', 'auto', 'important');
     });
   }
   function marcar() {
