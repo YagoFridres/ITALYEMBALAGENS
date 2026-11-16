@@ -81263,6 +81263,21 @@ window.__perTxt = function (p) {
       g.__dsGridOk = true;
     });
   }
+  // no celular, uma caixa que rola DENTRO de outra que já rola esconde os campos: deixa só a rolagem da janela
+  function semRolagemDupla(dlg) {
+    Array.prototype.forEach.call(dlg.querySelectorAll('*'), function (e) {
+      if (e.__dsRolOk || /^(TABLE|TBODY|SELECT|TEXTAREA|UL|OL|DATALIST)$/.test(e.tagName)) return;
+      var cs = getComputedStyle(e);
+      if (!/(auto|scroll)/.test(cs.overflowY) || cs.position === 'absolute' || cs.position === 'fixed') return;
+      if (e.scrollHeight <= e.clientHeight + 4) return;
+      var p = e.parentElement, temPai = false;
+      while (p && p !== dlg.parentElement) { var c2 = getComputedStyle(p); if (/(auto|scroll)/.test(c2.overflowY) && p.clientHeight > 0) { temPai = true; break; } p = p.parentElement; }
+      if (!temPai) return;
+      // listas de sugestão / menus (pequenos e por cima) ficam como estão
+      if (e.clientHeight < 140 && /(sug|drop|lista|menu|auto)/i.test(String(e.className))) return;
+      e.classList.add('ds-sem-rol'); e.__dsRolOk = true;
+    });
+  }
   function marcar() {
     if (window.innerWidth > 1024 || !document.body) return;
     var iw = window.innerWidth, ih = window.innerHeight;
@@ -81272,6 +81287,7 @@ window.__perTxt = function (p) {
       var r = o.getBoundingClientRect(); if (r.width < iw * 0.9 || r.height < ih * 0.6) return;
       if (!o.classList.contains('ds-ov-resp')) o.classList.add('ds-ov-resp');
       marcarGrids(o);
+      if (window.innerWidth <= 820) semRolagemDupla(o);
     });
   }
   function agendar() { clearTimeout(t); t = setTimeout(marcar, 80); }
@@ -81303,10 +81319,31 @@ window.__perTxt = function (p) {
     +   O + ' button{min-height:40px}'
     +   O + ' [class*="footer"],' + O + ' [class*="acoes"],' + O + ' [class*="actions"],' + O + ' [class*="botoes"]{flex-wrap:wrap!important;gap:8px}'
     + '}'
+    + '@media (max-width:820px){' + O + ' .ds-sem-rol{max-height:none!important;height:auto!important;overflow-y:visible!important}}'
     + '@media (max-width:520px){'
     +   D + '{max-width:100vw!important;border-radius:14px 14px 0 0}'
-    +   O + ' .ds-grid-resp{grid-template-columns:1fr!important}'
+    // celular: campos curtos 2 por linha; listas (select), textos longos e campos largos ocupam a linha toda
+    +   O + ' .ds-grid-resp{grid-template-columns:repeat(2,minmax(0,1fr))!important}'
+    +   O + ' .ds-grid-resp>*:has(select),' + O + ' .ds-grid-resp>*:has(textarea),' + O + ' .ds-grid-resp>*:has(input[type=date]),' + O + ' .ds-grid-resp>[class*="span-12"],' + O + ' .ds-grid-resp>[class*="full"],' + O + ' .ds-grid-resp>[class*="wide"],' + O + ' .ds-grid-resp>[style*="1/-1"],' + O + ' .ds-grid-resp>[style*="1 / -1"]{grid-column:1/-1!important}'
+    +   O + ' .ds-grid-resp>*:has(input[list]){grid-column:1/-1!important}'
     +   O + ' [class*="footer"] button,' + O + ' [class*="acoes"]>button{flex:1 1 auto}'
+    + '}'
+    // Compra de Papelão (janela da compra) no celular/tablet: tela cheia, cabeçalho e rodapé compactos, área dos itens grande
+    + '@media (max-width:820px){'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-shell{position:fixed!important;inset:0!important;top:0!important;transform:none!important;width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;display:flex!important;flex-direction:column!important;margin:0!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-header{flex:none;padding:8px 12px!important;gap:8px!important;align-items:center!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-title{font-size:17px!important;line-height:1.2!important}#ccpx-compra-fullscreen .ccpx-fs-subtitle{display:none!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-header-side{display:flex!important;align-items:center!important;gap:8px!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-badge{padding:2px 8px!important;display:flex!important;align-items:center;gap:6px}#ccpx-compra-fullscreen .ccpx-fs-badge .lbl{font-size:10px!important}#ccpx-compra-fullscreen .ccpx-fs-badge .val{font-size:16px!important;line-height:1.1!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-close{min-width:44px;min-height:44px}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding:10px!important;max-height:none!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-item-sheet-row{max-height:none!important;height:auto!important;overflow:visible!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-footer{flex:none;padding:6px 10px calc(6px + env(safe-area-inset-bottom))!important;gap:6px!important;flex-direction:column!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-summary{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-chip{padding:4px 6px!important;min-height:0!important}#ccpx-compra-fullscreen .ccpx-chip .lbl{font-size:9px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ccpx-compra-fullscreen .ccpx-chip .val{font-size:12px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-footer-actions{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:6px!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-footer-actions button{min-height:42px!important;font-size:13px!important;padding:0 6px!important;width:100%!important}'
+    +   '#ccpx-compra-fullscreen .ccpx-fs-footer-actions #ccpx-save-compra{grid-column:1/-1;grid-row:1;min-height:48px!important;font-size:16px!important}'
     + '}'
     // ajustes pontuais encontrados no teste (16/11)
     + '@media (max-width:820px){.dsp-al{white-space:normal!important;word-break:break-word;overflow-wrap:anywhere}'
