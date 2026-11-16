@@ -34093,7 +34093,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         _fecharModalPadrao('estoque-checklist-lote-modal');
         if (typeof done === 'function') done();
       };
-      setTimeout(function () { try { document.querySelector('#ckl-body .ckl-prod').focus(); } catch (_) {} }, 80);
+      setTimeout(function () { try { if (window.innerWidth > 820) document.querySelector('#ckl-body .ckl-prod').focus(); } catch (_) {} }, 80); // no celular não abre o teclado sozinho
       return wrap;
     }
     async function renderChecklistPage() {
@@ -81205,7 +81205,7 @@ window.__perTxt = function (p) {
     +   P + ' #ck-novo{width:100%!important;min-height:50px!important;font-size:16px!important}'
     +   P + ' .ckm-filtros{gap:8px!important}'
     +   P + ' .ckm-filtros>*{flex:1 1 100%!important;max-width:none!important;min-width:0!important;min-height:46px!important;font-size:16px!important;box-sizing:border-box}'
-    +   P + ' .ckm-filtros>button{flex:1 1 calc(50% - 8px)!important}' + P + ' .ckm-filtros>#ck-agrupar{flex-basis:100%!important}'
+    +   P + ' .ckm-filtros>button{flex:1 1 calc(50% - 8px)!important}' + P + ' .ckm-filtros>#ck-busca{order:-1}' + P + ' .ckm-filtros>#ck-agrupar{flex-basis:100%!important}'
     +   P + ' .ckm-panel{padding:8px!important}'
     // tabela vira cartões
     +   P + ' table.ckm-tab,' + P + ' table.ckm-tab tbody{display:block!important;width:100%!important;min-width:0!important}'
@@ -81223,6 +81223,9 @@ window.__perTxt = function (p) {
     // janelas (Novo / Editar Checklist)
     + '@media (max-width:820px){'
     +   '#estoque-checklist-modal .estoque-modal-grid-checklist{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}'
+    +   M.split(',').map(function (m) { return m + ' .estoque-modal-content'; }).join(',') + '{overflow-x:hidden!important;box-sizing:border-box}'
+    +   '#estoque-checklist-modal .estoque-modal-grid-checklist,.ckl-grid,.ckl-card,.ckl-it{width:auto!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}'
+    +   '#estoque-checklist-modal .estoque-modal-grid-checklist>*{min-width:0!important}#estoque-checklist-modal .estoque-modal-grid-checklist input{width:100%!important;max-width:100%!important;box-sizing:border-box}'
     +   M.split(',').map(function (m) { return m + ' input,' + m + ' select,' + m + ' textarea'; }).join(',') + '{font-size:16px!important;min-height:46px;box-sizing:border-box}'
     +   M.split(',').map(function (m) { return m + ' input[type=checkbox]'; }).join(',') + '{min-height:0}'
     +   '.ckl-it{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 46px!important;padding:12px!important}'
@@ -81231,6 +81234,7 @@ window.__perTxt = function (p) {
     +   '.ckl-tg{min-height:48px}'
     + '}'
     + '@media (max-width:520px){'
+    +   M.split(',').map(function (m) { return m + ' .estoque-modal-shell'; }).join(',') + '{height:100dvh!important;max-height:100dvh!important;width:100vw!important;max-width:100vw!important;border-radius:0!important;margin:0!important}'
     +   '#estoque-checklist-modal .estoque-modal-grid-checklist{grid-template-columns:1fr!important}'
     +   '.ckl-card{padding:12px!important}'
     +   '.ckl-it{grid-template-columns:minmax(0,1fr) 46px!important;gap:8px!important}'
