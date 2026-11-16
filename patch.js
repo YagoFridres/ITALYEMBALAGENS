@@ -81246,5 +81246,77 @@ window.__perTxt = function (p) {
   try { var st = document.createElement('style'); st.id = 'ds-ck-mobile-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
 
+/* ===== 16/11: RESPONSIVO GERAL — todas as janelas (modais) e telas no celular e tablet =====
+ * Só vale em telas até 1024px (PC não muda). Toda janela que abre por cima da tela (qualquer área do sistema)
+ * é marcada e ajustada: cabe na largura, rola por dentro, formulários viram 1 coluna no celular e 2 no tablet,
+ * campos grandes (sem zoom no iPhone), tabelas rolam para o lado dentro da janela e botões quebram linha. */
+(function () {
+  if (window.__dsResp) return; window.__dsResp = true;
+  var t = null;
+  function ehCampo(el) { return !!el.querySelector('input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea'); }
+  function marcarGrids(dlg) {
+    Array.prototype.forEach.call(dlg.querySelectorAll('*'), function (g) {
+      if (g.__dsGridOk) return;
+      var cs = getComputedStyle(g); if (cs.display !== 'grid' && cs.display !== 'inline-grid') return;
+      var cols = String(cs.gridTemplateColumns || '').trim().split(/\s+/).filter(Boolean).length;
+      if (cols >= 2 && ehCampo(g)) g.classList.add('ds-grid-resp');
+      g.__dsGridOk = true;
+    });
+  }
+  function marcar() {
+    if (window.innerWidth > 1024 || !document.body) return;
+    var iw = window.innerWidth, ih = window.innerHeight;
+    Array.prototype.forEach.call(document.body.children, function (o) {
+      if (o.id === 'ds-boot' || o.id === 'tst-aud') return;
+      var cs = getComputedStyle(o); if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') return;
+      var r = o.getBoundingClientRect(); if (r.width < iw * 0.9 || r.height < ih * 0.6) return;
+      if (!o.classList.contains('ds-ov-resp')) o.classList.add('ds-ov-resp');
+      marcarGrids(o);
+    });
+  }
+  function agendar() { clearTimeout(t); t = setTimeout(marcar, 80); }
+  function iniciar() {
+    try { new MutationObserver(agendar).observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['class', 'style'] }); } catch (_) {}
+    // janelas antigas ficam no meio da página e abrem com a classe "open"
+    document.addEventListener('click', function () { setTimeout(marcar, 250); setTimeout(marcar, 900); }, true);
+    window.addEventListener('resize', agendar);
+    setInterval(function () { if (document.querySelector('.ds-ov-resp,.modal-overlay.open')) marcar(); }, 1500);
+    marcar();
+  }
+  if (document.body) iniciar(); else document.addEventListener('DOMContentLoaded', iniciar);
+  var O = '.ds-ov-resp', D = O + '>*:not(script):not(style):not(link)';
+  var css = ''
+    + '@media (max-width:1024px){'
+    +   D + '{max-width:100vw!important;max-height:100dvh!important;box-sizing:border-box!important}'
+    +   O + ' img,' + O + ' canvas,' + O + ' video{max-width:100%!important;height:auto}'
+    +   O + ' .ds-grid-resp{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))!important}'
+    +   O + ' .ds-grid-resp>*{min-width:0!important}'
+    + '}'
+    + '@media (max-width:820px){'
+    +   D + '{min-width:0!important;max-width:calc(100vw - 12px)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch}'
+    +   O + ' input:not([type=checkbox]):not([type=radio]),' + O + ' select,' + O + ' textarea{font-size:16px!important;max-width:100%!important;box-sizing:border-box!important}'
+    +   O + ' input:not([type=checkbox]):not([type=radio]):not([type=color]),' + O + ' select{min-height:44px}'
+    +   O + ' table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}'
+    +   O + ' [style*="min-width"]{min-width:0!important}'
+    +   O + ' [style*="width:"]:not(table):not(td):not(th):not(svg):not(img){max-width:100%!important}'
+    +   O + ' pre,' + O + ' code{white-space:pre-wrap!important;word-break:break-word}'
+    +   O + ' button{min-height:40px}'
+    +   O + ' [class*="footer"],' + O + ' [class*="acoes"],' + O + ' [class*="actions"],' + O + ' [class*="botoes"]{flex-wrap:wrap!important;gap:8px}'
+    + '}'
+    + '@media (max-width:520px){'
+    +   D + '{max-width:100vw!important;border-radius:14px 14px 0 0}'
+    +   O + ' .ds-grid-resp{grid-template-columns:1fr!important}'
+    +   O + ' [class*="footer"] button,' + O + ' [class*="acoes"]>button{flex:1 1 auto}'
+    + '}'
+    // ajustes pontuais encontrados no teste (16/11)
+    + '@media (max-width:820px){.dsp-al{white-space:normal!important;word-break:break-word;overflow-wrap:anywhere}'
+    +   '#page-checklist-recebimento table.ckm-tab tr.ck-grupo td{white-space:normal!important;overflow-wrap:anywhere}'
+    +   '#page-checklist-recebimento table.ckm-tab tr.ck-grupo td>span{display:inline-block;margin-bottom:6px}'
+    + '}'
+    + '@media (max-width:1024px){#page-estoque,#page-estoque .pep-wrap,#page-estoque .pep-panel,#page-estoque .pep-cards,#page-estoque .dsest-abas{max-width:100%!important;min-width:0!important;box-sizing:border-box!important}'
+    +   '#page-estoque{overflow-x:hidden!important}#page-estoque .pep-panel table{display:block;overflow-x:auto;max-width:100%}}';
+  try { var st = document.createElement('style'); st.id = 'ds-resp-geral-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
