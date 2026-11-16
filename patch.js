@@ -33926,7 +33926,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div class="pep-sub">Data de Validade</div><input class="pep-input" id="ck-validade" type="date" value="' + esc(it.data_validade || '') + '"></div>'
         + '    <div><div class="pep-sub">Resp. pelo Recebimento</div><input class="pep-input" id="ck-resp" value="' + esc(it.responsavel || '') + '"></div>'
         + '    <div><div class="pep-sub">Cliente</div><input class="pep-input" id="ck-cliente" value="' + esc(it.cliente || '') + '"></div>'
-        + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:#0b1629"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
+        + '    <div style="grid-column:1/-1"><label class="ckm-dev" style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--border,rgba(148,163,184,.25));border-radius:12px;background:var(--s2,transparent);cursor:pointer;min-height:48px;box-sizing:border-box"><input id="ck-devolucao" type="checkbox" style="width:22px;height:22px"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:var(--text,#e5e7eb)">É devolução</span></label></div>'
         + '  </div>';
       var wrap = _abrirModalPadrao({
         id: 'estoque-checklist-modal',
@@ -33944,7 +33944,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
       try { _agendarReaplicacaoUiEstoque(wrap); } catch (_) {}
       document.getElementById('ck-save').onclick = async function() {
+        var btnSalvar = this; if (btnSalvar.disabled) return;
         try {
+          btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando…';
           var payload = {
             data_recebimento: String(document.getElementById('ck-data').value || '').trim(),
             placa_veiculo: String(document.getElementById('ck-placa').value || '').trim(),
@@ -33968,9 +33970,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             body: JSON.stringify(payload)
           });
           _fecharModalPadrao('estoque-checklist-modal');
+          try { window.toast('Checklist salvo ✓', 'var(--green)'); } catch (_) {}
           if (typeof done === 'function') done();
         } catch (e) {
-          alert(String(e && e.message || e || 'Falha ao salvar checklist'));
+          btnSalvar.disabled = false; btnSalvar.textContent = 'Salvar';
+          try { window.toast(String(e && e.message || e || 'Falha ao salvar checklist'), 'var(--red)'); } catch (_) { alert(String(e && e.message || e || 'Falha ao salvar checklist')); }
         }
       };
     }
@@ -34107,7 +34111,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-head"><div><div class="pep-title">📋 Checklist de Recebimento</div><div class="pep-sub">Registro manual do recebimento com os campos finais definidos para o estoque.</div></div><button class="pep-btn primary" id="ck-novo">Novo Checklist</button></div>'
-        + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '  <div class="pep-panel" style="margin-bottom:12px"><div class="ckm-filtros" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <select class="pep-input" id="ck-fil-mes" title="Mês do checklist" style="max-width:190px;font-weight:800">' + (function () { var nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'], h = new Date(), o = '<option value="todos"' + (st.mes === 'todos' ? ' selected' : '') + '>Todos os meses</option>'; for (var i = 0; i < 15; i++) { var d = new Date(h.getFullYear(), h.getMonth() - i, 1), v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); o += '<option value="' + v + '"' + (st.mes === v ? ' selected' : '') + '>📅 ' + nomes[d.getMonth()] + ' ' + d.getFullYear() + '</option>'; } return o; })() + '</select>'
         + '    <input class="pep-input" id="ck-busca" list="ck-dl-tudo" autocomplete="off" placeholder="🔎 Buscar qualquer coisa: placa, produto, fornecedor, NF, OC, cliente, responsável, data..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
         + '    <input class="pep-input" id="ck-fil-forn" list="ck-dl-forn" autocomplete="off" placeholder="Fornecedor" value="' + esc(st.fornecedor || '') + '" style="max-width:220px">'
@@ -34125,12 +34129,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn" id="ck-exportar">Exportar Excel</button>'
         + '    <button class="pep-btn' + (st.agrupar !== false ? ' primary' : '') + '" id="ck-agrupar" type="button">🚚 Agrupar por placa</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data de Rec.</th><th>Placa do Veiculo</th><th>N Nota Fiscal</th><th>Produto</th><th>Fornecedor</th><th>Quantidade Recebida</th><th>Ordem de Compra</th><th>Data de Validade</th><th>Resp. pelo Recebimento</th><th>Devolucao</th><th>Cliente</th><th>Acoes</th></tr></thead><tbody>'
+        + '  <div class="pep-panel ckm-panel"><div style="overflow:auto"><table class="pep-table no-card ckm-tab" data-no-mobile-cards="1"><thead><tr><th>Data de Rec.</th><th>Placa do Veiculo</th><th>N Nota Fiscal</th><th>Produto</th><th>Fornecedor</th><th>Quantidade Recebida</th><th>Ordem de Compra</th><th>Data de Validade</th><th>Resp. pelo Recebimento</th><th>Devolucao</th><th>Cliente</th><th>Acoes</th></tr></thead><tbody>'
         + (filtrada.length ? (function() {
           // agrupa por placa do veículo + data (cada caminhão recebido vira um bloco)
           var porPlaca = st.agrupar !== false;
           var linha = function(r) {
-          return '<tr data-cid="' + esc(r.id || '') + '"><td>' + esc(checklistFmtDate(r.data_recebimento)) + '</td><td><b>' + esc(r.placa_veiculo || '—') + '</b></td><td>' + esc(r.nota_fiscal || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td style="text-align:right">' + num(r.quantidade || 0, 0) + '</td><td>' + esc(r.ordem_compra || '—') + '</td><td>' + esc(checklistFmtDate(r.data_validade)) + '</td><td>' + esc(r.responsavel || '—') + '</td><td>' + esc(r.devolucao ? 'Sim' : 'Nao') + '</td><td>' + esc(r.cliente || '—') + '</td><td><button class="pep-btn" data-ck-edit="' + esc(r.id || '') + '">Editar</button> <button class="pep-btn danger" data-ck-del="' + esc(r.id || '') + '">Excluir</button></td></tr>';
+          // 16/11: data-l = nome do campo (no celular cada linha vira um cartão com o nome de cada campo)
+          return '<tr data-cid="' + esc(r.id || '') + '"><td data-l="Data de Rec." class="ckm-data">' + esc(checklistFmtDate(r.data_recebimento)) + '</td><td data-l="Placa"><b>' + esc(r.placa_veiculo || '—') + '</b></td><td data-l="Nota Fiscal">' + esc(r.nota_fiscal || '—') + '</td><td data-l="Produto" class="ckm-prod">' + esc(r.produto || '—') + '</td><td data-l="Fornecedor">' + esc(r.fornecedor || '—') + '</td><td data-l="Quantidade" class="ckm-qtd" style="text-align:right">' + num(r.quantidade || 0, 0) + '</td><td data-l="Ordem de Compra">' + esc(r.ordem_compra || '—') + '</td><td data-l="Validade">' + esc(checklistFmtDate(r.data_validade)) + '</td><td data-l="Recebido por">' + esc(r.responsavel || '—') + '</td><td data-l="Devolução">' + esc(r.devolucao ? 'Sim' : 'Não') + '</td><td data-l="Cliente">' + esc(r.cliente || '—') + '</td><td class="ckm-acoes"><button class="pep-btn" data-ck-edit="' + esc(r.id || '') + '">✏️ Editar</button> <button class="pep-btn danger" data-ck-del="' + esc(r.id || '') + '">🗑 Excluir</button></td></tr>';
           };
           if (!porPlaca) return filtrada.map(linha).join('');
           var grupos = {}, ordem = [];
@@ -36544,6 +36549,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     function openCustomPage(pageId) {
       var pid = facasPageAlias(pageId);
+      // 16/11: a área aberta é sempre a que aparece no cabeçalho e no menu (antes ficava o nome da área anterior)
+      if (['checklist-recebimento', 'gramaturas', 'facas1', 'toneladas-vendidas', 'entradas-estoque', 'saidas-estoque'].indexOf(pid) >= 0) { try { window._PAGE_ATUAL = pid; } catch (_) {} }
       if (pid === 'checklist-recebimento') { renderChecklistPage().catch(function() {}); return true; }
       if (pid === 'gramaturas') { renderGramaturasPage().catch(function() {}); return true; }
       if (pid === 'facas1') {
@@ -71262,8 +71269,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function paginaAtual() {
     // áreas que desenham por cima de outra página (Relatórios, Entradas, Saídas, Operadores…) só aparecem em _PAGE_ATUAL
-    try { var pa = String(window._PAGE_ATUAL || '').trim(); if (pa && (ITENS[pa] || document.getElementById('page-' + pa))) return pa; } catch (_) {}
+    // 16/11: se a página que está na tela é uma área própria do menu (não uma página "hospedeira" como a Central ou Inconformidades),
+    // ela manda — assim nunca aparece o nome de outra área no lugar da que foi aberta
     var a = document.querySelector('.page.active');
+    var HOSPEDEIRAS = { pcp: 1, inconformidades: 1, relatorios: 1 };
+    try {
+      var pa = String(window._PAGE_ATUAL || '').trim();
+      var ida = a && a.id ? a.id.replace(/^page-/, '') : '';
+      if (ida && ida !== pa && ITENS[ida] && !HOSPEDEIRAS[ida]) return ida;
+      if (pa && (ITENS[pa] || document.getElementById('page-' + pa))) return pa;
+    } catch (_) {}
     if (a && a.id) return a.id.replace(/^page-/, '');
     var vis = Array.prototype.find.call(document.querySelectorAll('[id^="page-"]'), function (p) { return p.offsetParent !== null && p.style.display !== 'none'; });
     return vis ? vis.id.replace(/^page-/, '') : '';
@@ -81169,6 +81184,60 @@ window.__perTxt = function (p) {
     }
     aberta = vis;
   }, 1000);
+})();
+
+/* ===== 16/11: Checklist de Recebimento no celular e tablet =====
+ * Lista vira cartões (com o nome de cada campo) e botões grandes; filtros um embaixo do outro;
+ * janelas de Novo/Editar Checklist ocupam a tela, campos grandes (sem zoom no iPhone) e botão Salvar sempre visível. */
+(function () {
+  if (window.__dsCkMobile) return; window.__dsCkMobile = true;
+  var P = '#page-checklist-recebimento';
+  var M = '#estoque-checklist-lote-modal,#estoque-checklist-modal';
+  var css = ''
+    // tablet: filtros em 2 colunas
+    + '@media (max-width:1100px){' + P + ' .ckm-filtros>*{flex:1 1 calc(50% - 10px)!important;max-width:none!important;min-width:0!important}' + P + ' .ckm-filtros>#ck-busca{flex-basis:100%!important}}'
+    + '@media (max-width:820px){'
+    +   P + ' .pep-wrap{padding:10px!important}'
+    +   P + ' .pep-head{display:flex!important;flex-wrap:wrap!important;gap:10px!important;align-items:flex-start!important}'
+    +   P + ' .pep-head>div{flex:1 1 100%;min-width:0}' + P + ' .pep-title{font-size:20px!important}'
+    +   P + ' #ck-novo{width:100%!important;min-height:50px!important;font-size:16px!important}'
+    +   P + ' .ckm-filtros{gap:8px!important}'
+    +   P + ' .ckm-filtros>*{flex:1 1 100%!important;max-width:none!important;min-width:0!important;min-height:46px!important;font-size:16px!important;box-sizing:border-box}'
+    +   P + ' .ckm-filtros>button{flex:1 1 calc(50% - 8px)!important}' + P + ' .ckm-filtros>#ck-agrupar{flex-basis:100%!important}'
+    +   P + ' .ckm-panel{padding:8px!important}'
+    // tabela vira cartões
+    +   P + ' table.ckm-tab,' + P + ' table.ckm-tab tbody{display:block!important;width:100%!important;min-width:0!important}'
+    +   P + ' table.ckm-tab thead{display:none!important}'
+    +   P + ' table.ckm-tab tr{display:block!important;margin:0 0 10px!important;border:1px solid var(--border,#334155)!important;border-radius:12px!important;background:var(--surface,#141518)!important;overflow:hidden}'
+    +   P + ' table.ckm-tab tr.ck-grupo{border:0!important;background:transparent!important;margin:16px 0 8px!important}'
+    +   P + ' table.ckm-tab tr.ck-grupo td{display:block!important;border-radius:10px;line-height:1.7;font-size:14px}'
+    +   P + ' table.ckm-tab tr:not(.ck-grupo) td{display:flex!important;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 12px!important;border:0!important;border-bottom:1px solid var(--border,rgba(148,163,184,.15))!important;text-align:right!important;font-size:14px!important;white-space:normal!important;word-break:break-word}'
+    +   P + ' table.ckm-tab tr:not(.ck-grupo) td[data-l]:before{content:attr(data-l);flex:none;font-weight:700;color:var(--text2,#94a3b8);text-align:left;font-size:12.5px}'
+    +   P + ' table.ckm-tab td.ckm-prod{font-weight:800;font-size:15px!important}'
+    +   P + ' table.ckm-tab td.ckm-qtd{font-weight:900;font-size:16px!important}'
+    +   P + ' table.ckm-tab td.ckm-acoes{display:flex!important;gap:8px;padding:10px 12px!important;border-bottom:0!important}'
+    +   P + ' table.ckm-tab td.ckm-acoes .pep-btn{flex:1 1 0;min-height:46px!important;font-size:15px!important;margin:0!important}'
+    + '}'
+    // janelas (Novo / Editar Checklist)
+    + '@media (max-width:820px){'
+    +   '#estoque-checklist-modal .estoque-modal-grid-checklist{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}'
+    +   M.split(',').map(function (m) { return m + ' input,' + m + ' select,' + m + ' textarea'; }).join(',') + '{font-size:16px!important;min-height:46px;box-sizing:border-box}'
+    +   M.split(',').map(function (m) { return m + ' input[type=checkbox]'; }).join(',') + '{min-height:0}'
+    +   '.ckl-it{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 46px!important;padding:12px!important}'
+    +   '.ckl-it .ckl-f-prod{grid-column:2/-1!important}.ckl-it .ckl-f-qtd{grid-column:2/3!important}.ckl-it .ckl-f-cli{grid-column:3/4!important}.ckl-it .ckl-f-oc{grid-column:2/4!important}.ckl-it .ckl-rm{grid-column:4!important;grid-row:2!important;align-self:end}'
+    +   '.ckl-it .ckl-n{grid-row:1!important;grid-column:1!important}'
+    +   '.ckl-tg{min-height:48px}'
+    + '}'
+    + '@media (max-width:520px){'
+    +   '#estoque-checklist-modal .estoque-modal-grid-checklist{grid-template-columns:1fr!important}'
+    +   '.ckl-card{padding:12px!important}'
+    +   '.ckl-it{grid-template-columns:minmax(0,1fr) 46px!important;gap:8px!important}'
+    +   '.ckl-it .ckl-n{display:none!important}'
+    +   '.ckl-it .ckl-f-prod{grid-column:1/-1!important;grid-row:auto!important}.ckl-it .ckl-f-qtd{grid-column:1/2!important}.ckl-it .ckl-rm{grid-column:2!important;grid-row:auto!important}'
+    +   '.ckl-it .ckl-f-cli,.ckl-it .ckl-f-oc{grid-column:1/-1!important}'
+    +   '.ckl-card-hd small{font-size:12px}'
+    + '}';
+  try { var st = document.createElement('style'); st.id = 'ds-ck-mobile-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
