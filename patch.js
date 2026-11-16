@@ -81170,3 +81170,6 @@ window.__perTxt = function (p) {
     aberta = vis;
   }, 1000);
 })();
+
+/* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
+window.__DS_PATCH_FIM = true;
