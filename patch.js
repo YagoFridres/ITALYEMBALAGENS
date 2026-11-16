@@ -71275,7 +71275,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var HOSPEDEIRAS = { pcp: 1, inconformidades: 1, relatorios: 1 };
     try {
       var pa = String(window._PAGE_ATUAL || '').trim();
-      var ida = a && a.id ? a.id.replace(/^page-/, '') : '';
+      // vale a página que está DE FATO visível (a marca .active às vezes fica presa na página anterior)
+      var vis0 = Array.prototype.find.call(document.querySelectorAll('[id^="page-"]'), function (p) { return p.offsetParent !== null && p.getBoundingClientRect().height > 50; });
+      var ida = vis0 && vis0.id ? vis0.id.replace(/^page-/, '') : '';
       if (ida && ida !== pa && ITENS[ida] && !HOSPEDEIRAS[ida]) return ida;
       if (pa && (ITENS[pa] || document.getElementById('page-' + pa))) return pa;
     } catch (_) {}
