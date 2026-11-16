@@ -70097,13 +70097,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * Só aparência: nenhum campo, botão ou regra muda. Visual antigo: abrir com ?ui=1 (volta com ?ui=3). */
 (function () {
   try {
-    var q = new URLSearchParams(location.search).get('ui');
-    if (q === '1') localStorage.setItem('erp_ui', '1');
-    if (q === '2' || q === '3') localStorage.removeItem('erp_ui');
+    // 16/11: o visual antigo foi desligado de vez (telas antigas não podem aparecer) — apaga a marca que ficava gravada no navegador
+    localStorage.removeItem('erp_ui');
   } catch (_) {}
-  var ativo = true;
-  try { ativo = localStorage.getItem('erp_ui') !== '1'; } catch (_) {}
-  if (!ativo) return;
   var root = document.documentElement;
   root.setAttribute('data-ds', '3');
 
@@ -71090,7 +71086,6 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * Os itens são MOVIDOS (não copiados): cliques, permissões e ids continuam os mesmos. */
 (function () {
   try { if (window.__ds3Nav) return; window.__ds3Nav = true; } catch (_) {}
-  try { if (localStorage.getItem('erp_ui') === '1') return; } catch (_) {}
   function svg(d) { return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>'; }
   var I = {
     home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
@@ -71576,7 +71571,6 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
  * "Tela anterior" volta para a tabela antiga (fica salvo) enquanto a nova é avaliada. */
 (function () {
   try { if (window.__dsCentral) return; window.__dsCentral = true; } catch (_) {}
-  try { if (localStorage.getItem('erp_ui') === '1') return; } catch (_) {}
 
   var E = { vista: 'abertas', busca: '', periodo: '', maquina: '', vendedor: '', empresa: '', semPapel: false, pedDe: '', pedAte: '', ordem: 'entrega', dir: 1, pagina: 1, porPagina: 50, avancado: false, sel: {} };
   try { var sv = JSON.parse(localStorage.getItem('ds_central_estado') || 'null'); if (sv) ['vista', 'periodo', 'maquina', 'vendedor', 'empresa', 'ordem', 'dir', 'porPagina'].forEach(function (k) { if (sv[k] !== undefined) E[k] = sv[k]; }); } catch (_) {}
