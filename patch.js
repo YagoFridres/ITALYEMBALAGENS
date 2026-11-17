@@ -81410,54 +81410,135 @@ window.__perTxt = function (p) {
   try { var st = document.createElement('style'); st.id = 'ds-resp-geral-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
 })();
 
-/* ===== 17/11: RETALHOS — mostra em quantos montes cada retalho está =====
+/* ===== 17/11: RETALHOS — montes e baixa =====
  * Cada entrada de quantidade no retalho (o cadastro e cada soma depois) é um monte separado.
- * Na aba Retalhos, a coluna Qtd mostra "N montes: 53 + 33" (passe o mouse/toque para ver as datas). */
+ * Na aba Retalhos, a coluna Qtd mostra "N montes: 53 + 33" e quanto já foi baixado; o botão "➖ Baixa"
+ * dá saída no retalho (usado em OF, perda, ajuste…) e fica registrado no histórico de movimentos. */
 (function () {
   if (window.__dsRetMontes) return; window.__dsRetMontes = true;
-  var cache = {}, buscando = false;
+  var cache = {}, cacheB = {}, buscando = false;
+  function N(v) { return Math.trunc(Number(v) || 0).toLocaleString('pt-BR'); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmtData(iso) { try { var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } }
+  function chapaPorId(id) {
+    var fontes = [];
+    try { if (Array.isArray(window._chapasCachedList)) fontes.push(window._chapasCachedList); } catch (_) {}
+    try { if (typeof _estoqueBase !== 'undefined' && Array.isArray(_estoqueBase)) fontes.push(_estoqueBase); } catch (_) {}
+    try { if (Array.isArray(window.__dsEstoqueLista)) fontes.push(window.__dsEstoqueLista); } catch (_) {}
+    for (var i = 0; i < fontes.length; i++) { var c = fontes[i].filter(function (x) { return String(x && x.id) === String(id); })[0]; if (c) return c; }
+    return null;
+  }
+  function saldoDe(c) { return Math.max(0, Math.trunc(Number(c && (c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd)) || 0) || 0)); }
+  function buscar(ids) {
+    return Promise.resolve(window.apiFetch('/api/chapas-montes?ids=' + encodeURIComponent(ids.slice(0, 300).join(','))))
+      .then(function (r) { return r && r.json ? r.json() : null; })
+      .then(function (j) { var d = (j && j.data) || {}, b = (j && j.baixas) || {}; ids.forEach(function (id) { cache[id] = d[id] || []; cacheB[id] = b[id] || []; }); })
+      .catch(function () { ids.forEach(function (id) { cache[id] = cache[id] || []; cacheB[id] = cacheB[id] || []; }); });
+  }
   function decorar() {
     if (String(window.__estoqueWireAba || '') !== 'retalhos') return;
     var pg = document.getElementById('page-estoque'); if (!pg || !pg.offsetParent) return;
     var trs = Array.prototype.slice.call(pg.querySelectorAll('tr[data-chapa-id]'));
     if (!trs.length) return;
     var faltam = trs.map(function (tr) { return tr.getAttribute('data-chapa-id'); }).filter(function (id) { return id && !(id in cache); });
-    if (faltam.length && !buscando) {
-      buscando = true;
-      Promise.resolve(window.apiFetch('/api/chapas-montes?ids=' + encodeURIComponent(faltam.slice(0, 300).join(','))))
-        .then(function (r) { return r && r.json ? r.json() : null; })
-        .then(function (j) { var d = (j && j.data) || {}; faltam.forEach(function (id) { cache[id] = d[id] || []; }); })
-        .catch(function () { faltam.forEach(function (id) { cache[id] = []; }); })
-        .then(function () { buscando = false; decorar(); });
-      return;
-    }
+    if (faltam.length && !buscando) { buscando = true; buscar(faltam).then(function () { buscando = false; decorar(); }); return; }
     trs.forEach(function (tr) {
-      var id = tr.getAttribute('data-chapa-id'), m = cache[id]; if (!m) return;
-      var assinatura = m.map(function (x) { return x.qtd; }).join('+');
+      var id = tr.getAttribute('data-chapa-id');
+      // botão de baixa na coluna de ações
+      var acoes = tr.lastElementChild;
+      if (acoes && !acoes.querySelector('[data-ret-baixa]')) {
+        var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'pep-btn ds-ret-baixa-btn'; bt.setAttribute('data-ret-baixa', id); bt.textContent = '➖ Baixa'; bt.title = 'Dar saída / baixa neste retalho';
+        bt.onclick = function (e) { e.preventDefault(); e.stopPropagation(); abrirBaixa(id); };
+        acoes.insertBefore(bt, acoes.firstChild);
+      }
+      var m = cache[id], b = cacheB[id]; if (!m) return;
+      var totB = (b || []).reduce(function (a, x) { return a + x.qtd; }, 0);
+      var assinatura = m.map(function (x) { return x.qtd; }).join('+') + '|' + totB;
       if (tr.getAttribute('data-montes') === assinatura) return;
       tr.setAttribute('data-montes', assinatura);
       var td = tr.querySelector('td.col-num'); if (!td) return;
       var velho = td.querySelector('.ds-montes'); if (velho) velho.remove();
-      if (m.length < 2) return; // um monte só: nada a mostrar
-      var div = document.createElement('div');
-      div.className = 'ds-montes';
-      div.textContent = m.length + ' montes: ' + m.map(function (x) { return x.qtd.toLocaleString('pt-BR'); }).join(' + ');
-      div.title = m.map(function (x, i) { return 'Monte ' + (i + 1) + ': ' + x.qtd.toLocaleString('pt-BR') + ' un. · ' + fmtData(x.em) + (x.por ? ' · ' + x.por : ''); }).join('\n');
+      if (m.length < 2 && !totB) return;
+      var div = document.createElement('div'); div.className = 'ds-montes';
+      div.textContent = (m.length >= 2 ? m.length + ' montes: ' + m.map(function (x) { return N(x.qtd); }).join(' + ') : '') + (totB ? (m.length >= 2 ? ' · ' : '') + 'baixado ' + N(totB) : '');
+      div.title = m.map(function (x, i) { return 'Monte ' + (i + 1) + ': ' + N(x.qtd) + ' un. · ' + fmtData(x.em) + (x.por ? ' · ' + x.por : ''); }).concat((b || []).map(function (x) { return 'Baixa: −' + N(x.qtd) + ' un. · ' + fmtData(x.em) + (x.obs ? ' · ' + x.obs : '') + (x.por ? ' · ' + x.por : ''); })).join('\n');
       td.appendChild(div);
     });
   }
-  // depois de somar (ou dar entrada) num retalho, busca de novo os montes dele
+  function abrirBaixa(id) {
+    var c = chapaPorId(id) || {};
+    var saldo = saldoDe(c), m = cache[id] || [];
+    var nome = [c.nomenclatura, c.tamanho, c.fornecedor].filter(Boolean).join(' · ') || (c.nome_uso || c.nome || 'Retalho');
+    var corpo = ''
+      + '<div class="drb-topo"><div><b>' + esc(nome) + '</b><small>' + esc(c.nome_uso || c.nome || '') + '</small></div><div class="drb-saldo"><span>Saldo</span><b>' + N(saldo) + '</b></div></div>'
+      + (m.length >= 2 ? '<div class="drb-montes"><span>Montes:</span>' + m.map(function (x, i) { return '<button type="button" data-q="' + x.qtd + '">Monte ' + (i + 1) + ': ' + N(x.qtd) + '</button>'; }).join('') + '</div>' : '')
+      + '<div class="drb-g">'
+      + '<label class="drb-f"><span>Quantidade que saiu *</span><input id="drb-qtd" type="number" min="1" max="' + saldo + '" step="1" inputmode="numeric" placeholder="0"></label>'
+      + '<label class="drb-f"><span>Motivo</span><select id="drb-mot"><option>Usado em OF</option><option>Perda / avaria</option><option>Ajuste de contagem</option><option>Venda / devolução</option><option>Outro</option></select></label>'
+      + '<label class="drb-f"><span>Nº da OF <i>(opcional)</i></span><input id="drb-of" inputmode="numeric" autocomplete="off" placeholder="Ex.: 5090"></label>'
+      + '<label class="drb-f"><span>Observação <i>(opcional)</i></span><input id="drb-obs" autocomplete="off" placeholder="Ex.: usado na caixa pizza"></label>'
+      + '</div>'
+      + '<div class="drb-rap"><button type="button" data-tudo>Baixar tudo (' + N(saldo) + ')</button></div>'
+      + '<div class="drb-res" id="drb-res">Fica: <b>' + N(saldo) + '</b></div>';
+    var wrap = window._abrirModalPadrao({ id: 'ds-retalho-baixa', titulo: 'Baixa de retalho', subtitulo: 'Dá saída na quantidade usada. Fica registrado no histórico.', largura: '620px', hero: '➖', accent: 'red', corpoHTML: corpo,
+      footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-red" id="drb-ok">➖ Dar baixa</button>' });
+    var q = document.getElementById('drb-qtd'), res = document.getElementById('drb-res');
+    function atual() { var v = Math.trunc(Number(q.value) || 0); var fica = saldo - v; res.innerHTML = v > saldo ? '<b style="color:#ef4444">Maior que o saldo (' + N(saldo) + ')</b>' : 'Fica: <b>' + N(Math.max(0, fica)) + '</b>'; }
+    q.addEventListener('input', atual);
+    Array.prototype.forEach.call(document.querySelectorAll('#ds-retalho-baixa [data-q]'), function (b) { b.onclick = function () { q.value = Math.min(saldo, Number(b.getAttribute('data-q')) || 0); atual(); }; });
+    var tudo = document.querySelector('#ds-retalho-baixa [data-tudo]'); if (tudo) tudo.onclick = function () { q.value = saldo; atual(); };
+    setTimeout(function () { try { if (window.innerWidth > 820) q.focus(); } catch (_) {} }, 80);
+    document.getElementById('drb-ok').onclick = async function () {
+      var btn = this; if (btn.disabled) return;
+      var v = Math.trunc(Number(q.value) || 0);
+      if (v <= 0) { try { window.toast('Informe a quantidade que saiu', 'var(--red)'); } catch (_) {} q.focus(); return; }
+      if (v > saldo) { try { window.toast('A quantidade é maior que o saldo (' + N(saldo) + ')', 'var(--red)'); } catch (_) {} q.focus(); return; }
+      var mot = document.getElementById('drb-mot').value, of = String(document.getElementById('drb-of').value || '').trim(), ob = String(document.getElementById('drb-obs').value || '').trim();
+      var obs = ['Baixa de retalho: ' + mot, of ? 'OF ' + of : '', ob].filter(Boolean).join(' · ');
+      btn.disabled = true; btn.textContent = 'Salvando…';
+      try {
+        var r = await window.apiFetch('/api/chapas_estoque/' + encodeURIComponent(id) + '/movimento', { method: 'POST', body: { tipo: 'saida', delta: v, obs: obs, origem: 'baixa_retalho', origem_id: of || null } });
+        var j = r ? await r.json().catch(function () { return {}; }) : {};
+        if (!r || !r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || 'falha ao salvar');
+        try { window._fecharModalPadrao('ds-retalho-baixa'); } catch (_) {}
+        try { window.toast('✓ Baixa de ' + N(v) + ' un. no retalho ' + (c.tamanho || ''), 'var(--green)'); } catch (_) {}
+        delete cache[id]; delete cacheB[id];
+        try { if (typeof window.chapasForcarReload === 'function') await window.chapasForcarReload(); } catch (_) {}
+        try { if (typeof window.renderEstoqueWireframePage === 'function') await window.renderEstoqueWireframePage(); } catch (_) {}
+        setTimeout(decorar, 800);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = '➖ Dar baixa';
+        try { window.toast('Não consegui dar baixa: ' + (e && e.message || e), 'var(--red)'); } catch (_) {}
+      }
+    };
+  }
+  window.dsRetalhoBaixa = abrirBaixa;
+  // depois de somar (ou dar entrada/saída) num retalho, busca de novo os montes dele
   try {
     var f0 = window.fetch;
     window.fetch = function (u, o) {
       var p = f0.apply(this, arguments);
-      try { var url = String(u && u.url || u || ''); var mm = url.match(/\/api\/chapas_estoque\/([^/?]+)\/movimento/); if (mm && String(o && o.method || '').toUpperCase() === 'POST') { delete cache[decodeURIComponent(mm[1])]; p.then(function () { setTimeout(decorar, 1500); setTimeout(decorar, 4000); }, function () {}); } } catch (_) {}
+      try { var url = String(u && u.url || u || ''); var mm = url.match(/\/api\/chapas_estoque\/([^/?]+)\/movimento/); if (mm && String(o && o.method || '').toUpperCase() === 'POST') { var cid = decodeURIComponent(mm[1]); delete cache[cid]; delete cacheB[cid]; p.then(function () { setTimeout(decorar, 1500); setTimeout(decorar, 4000); }, function () {}); } } catch (_) {}
       return p;
     };
   } catch (_) {}
   setInterval(decorar, 2000);
-  try { var st = document.createElement('style'); st.id = 'ds-montes-css'; st.textContent = '.ds-montes{margin-top:4px;font-size:11.5px;font-weight:800;color:#f59e0b;white-space:nowrap;cursor:help}body.light .ds-montes,html[data-theme="light"] .ds-montes{color:#b45309}'; document.head.appendChild(st); } catch (_) {}
+  try {
+    var st = document.createElement('style'); st.id = 'ds-montes-css';
+    st.textContent = '.ds-montes{margin-top:4px;font-size:11.5px;font-weight:800;color:#f59e0b;white-space:normal;cursor:help}body.light .ds-montes,html[data-theme="light"] .ds-montes{color:#b45309}'
+      + '.ds-ret-baixa-btn{background:rgba(239,68,68,.12)!important;border:1px solid rgba(239,68,68,.55)!important;color:#ef4444!important;font-weight:800!important;margin-right:6px}'
+      + '#ds-retalho-baixa .drb-topo{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--border,#334155);border-radius:12px;margin-bottom:12px}'
+      + '#ds-retalho-baixa .drb-topo b{display:block;font-size:16px}#ds-retalho-baixa .drb-topo small{color:var(--text2,#94a3b8)}'
+      + '#ds-retalho-baixa .drb-saldo{text-align:right}#ds-retalho-baixa .drb-saldo span{display:block;font-size:11px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:.06em}#ds-retalho-baixa .drb-saldo b{font-size:24px;color:#22c55e}'
+      + '#ds-retalho-baixa .drb-montes{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;font-size:13px}#ds-retalho-baixa .drb-montes button{min-height:36px;padding:0 12px;border-radius:99px;border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:800;cursor:pointer}'
+      + '#ds-retalho-baixa .drb-g{display:grid;grid-template-columns:1fr 1fr;gap:12px}#ds-retalho-baixa .drb-f{display:flex;flex-direction:column;gap:5px}#ds-retalho-baixa .drb-f>span{font-size:12px;font-weight:800;color:var(--text2,#94a3b8)}#ds-retalho-baixa .drb-f>span i{font-weight:500;font-style:normal}'
+      + '#ds-retalho-baixa .drb-f input,#ds-retalho-baixa .drb-f select{height:46px;padding:0 12px;border-radius:10px;border:1.5px solid var(--border,#334155);background:var(--surface,#0b1220);color:var(--text,#e2e8f0);font:inherit;font-size:16px;box-sizing:border-box;width:100%}'
+      + '#ds-retalho-baixa #drb-qtd{font-size:20px;font-weight:900;text-align:right}'
+      + '#ds-retalho-baixa .drb-rap{margin-top:10px}#ds-retalho-baixa .drb-rap button{min-height:40px;padding:0 14px;border-radius:10px;border:1px dashed var(--border,#475569);background:transparent;color:var(--text,#e2e8f0);font-weight:800;cursor:pointer}'
+      + '#ds-retalho-baixa .drb-res{margin-top:12px;font-size:15px}'
+      + '@media (max-width:520px){#ds-retalho-baixa .drb-g{grid-template-columns:1fr}}';
+    document.head.appendChild(st);
+  } catch (_) {}
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
