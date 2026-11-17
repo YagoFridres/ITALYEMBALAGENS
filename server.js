@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261117140915';
-const SW_RUNTIME_VERSION = '20261117140915';
+const PATCH_RUNTIME_VERSION = '20261117141237';
+const SW_RUNTIME_VERSION = '20261117141237';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -25125,7 +25125,7 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
     const _removidos = [];
     for (let i = 0; i < 10; i++) {
       const { data, error } = await supabase.from('facas_estoque').update(payload).eq('id', req.params.id).select();
-      if (!error) { if (_removidos.length) console.warn('[facas PUT] campos descartados:', _removidos.join(' | ')); return res.json({ ok: true, data: data[0], _campos: Object.keys(payload), _descartados: _removidos, _recebidos: Object.keys(req.body || {}) }); }
+      if (!error) { if (_removidos.length) console.warn('[facas PUT] campos descartados:', _removidos.join(' | ')); return res.json({ ok: true, data: data[0], _campos: payload, _descartados: _removidos, _recebidos: Object.keys(req.body || {}) }); }
       const msg = String(error.message || error);
       const m1 = msg.match(/Could not find the '([^']+)' column/);
       const m2 = msg.match(/column \"([^\"]+)\"/);
