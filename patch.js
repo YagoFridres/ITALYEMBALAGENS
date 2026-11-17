@@ -44408,7 +44408,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         u = String(url || '');
         m = String((opts && opts.method) || 'GET').toUpperCase();
         shouldRefreshFacas = u.indexOf('/facas_estoque') !== -1 && (m === 'POST' || m === 'PUT' || m === 'DELETE');
-        if ((m === 'POST' || m === 'PUT') && u.indexOf('/facas_estoque') !== -1 && opts && opts.body && typeof opts.body === 'string') {
+        // 17/11: só mexe no corpo quando o formulário ANTIGO de faca está aberto (a tela nova manda tudo certo)
+        var _fa1Aberto = (function(){ var el = document.getElementById('fa1-localizacao') || document.getElementById('fa1-numero'); return !!(el && el.offsetParent !== null); })();
+        if (_fa1Aberto && (m === 'POST' || m === 'PUT') && u.indexOf('/facas_estoque') !== -1 && opts && opts.body && typeof opts.body === 'string') {
           try {
             var o = JSON.parse(opts.body);
             if (o && typeof o === 'object') {
