@@ -77549,7 +77549,13 @@ window.__perTxt = function (p) {
       if (forn) x.f[forn] = (x.f[forn] || 0) + (peso || 1);
       if (gram && !x.gram) x.gram = String(gram).trim();
     }
-    try { (window.__dsEstoqueLista || window.ESTOQUE || []).forEach(function (c) { add(c && (c.nomenclatura || c.nom), c && (c.fornecedor || c.forn), c && c.gramatura); }); } catch (_) {}
+    // todas as chapas e retalhos (não só a aba que está aberta)
+    var fontes = [];
+    try { if (Array.isArray(window._chapasCachedList)) fontes.push(window._chapasCachedList); } catch (_) {}
+    try { if (typeof _estoqueBase !== 'undefined' && Array.isArray(_estoqueBase)) fontes.push(_estoqueBase); } catch (_) {}
+    try { if (typeof ESTOQUE !== 'undefined' && Array.isArray(ESTOQUE)) fontes.push(ESTOQUE); } catch (_) {}
+    try { if (Array.isArray(window.__dsEstoqueLista)) fontes.push(window.__dsEstoqueLista); } catch (_) {}
+    fontes.forEach(function (arr) { arr.forEach(function (c) { add(c && (c.nomenclatura || c.nom), c && (c.fornecedor || c.forn), c && c.gramatura); }); });
     try { var s = JSON.parse(localStorage.getItem(NOM_LS) || '{}') || {}; Object.keys(s).forEach(function (k) { add(k, s[k] && s[k].forn, s[k] && s[k].gram, 1000); }); } catch (_) {}
     return Object.keys(m).sort().map(function (k) {
       var x = m[k], forn = Object.keys(x.f).sort(function (a, b) { return x.f[b] - x.f[a]; })[0] || '';
