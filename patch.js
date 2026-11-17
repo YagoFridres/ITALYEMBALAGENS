@@ -82007,5 +82007,45 @@ window.__perTxt = function (p) {
   try { var stl = document.createElement('style'); stl.id = 'dfc-css'; stl.textContent = css; document.head.appendChild(stl); } catch (_) {}
 })();
 
+/* ===== Orçamentos: tabela alinhada e botões coloridos como na Compra de Papelão (17/11/2026) ===== */
+(function () {
+  if (document.getElementById('ds-orc-cores-css')) return;
+  var P = 'html body #page-orcamentos ';
+  var B = P + 'td .orx-actions-row ';
+  var T = P + '.orx-wrap table ';
+  function col(n, r) { return T + 'th:nth-child(' + n + '),' + T + 'td:nth-child(' + n + '){' + r + '}'; }
+  var css = ''
+    + '@media (min-width:761px){'
+    + T + 'th,' + T + 'td{vertical-align:top!important;padding:14px 12px!important}'
+    + T + 'th{white-space:nowrap;vertical-align:middle!important}'
+    + col(1, 'width:96px') + col(5, 'width:70px;text-align:center') + col(6, 'width:100px;text-align:center')
+    + col(7, 'width:56px;text-align:right') + col(8, 'width:110px;text-align:right;white-space:nowrap') + col(9, 'width:430px')
+    + T + 'td:nth-child(5) .orx-stack{align-items:center}}'
+    + T + 'td:nth-child(4) strong{word-break:break-word}'
+    + T + 'tbody tr:not(.orx-detail-row):hover td{background:color-mix(in srgb,var(--accent,#3b82f6) 6%,transparent)}'
+    + B + '{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px!important;align-items:stretch}'
+    + B + 'select.is-folder{grid-column:1/-1;width:100%!important;min-height:38px!important;background:var(--s2,#1e293b)!important;color:var(--text,#e2e8f0)!important;border:1px solid var(--b2,#334155)!important;border-radius:10px!important;font-weight:700}'
+    + B + 'button{min-height:38px!important;width:100%;margin:0!important;padding:0 8px!important;border-radius:10px!important;font-weight:700!important;font-size:13px!important;white-space:nowrap;justify-content:center;display:inline-flex!important;align-items:center;gap:4px;border-width:1px!important;border-style:solid!important;transition:filter .15s;color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}'
+    + B + 'button:hover{filter:brightness(1.1)}'
+    + B + 'button.is-edit{background:#2563eb!important;border-color:#1d4ed8!important}'
+    + B + 'button.is-copy{background:#db2777!important;border-color:#be185d!important}'
+    + B + 'button[onclick^="imprimirOrcamentoId"]{background:#475569!important;border-color:#334155!important}'
+    + B + 'button[data-dsce-orc]{background:#0891b2!important;border-color:#0e7490!important}'
+    + B + 'button[data-dswa-orc]{background:#16a34a!important;border-color:#15803d!important}'
+    + B + 'button.is-versions{background:#7c3aed!important;border-color:#6d28d9!important}'
+    + B + 'button.danger{background:#dc2626!important;border-color:#b91c1c!important}'
+    + P + '.orx-toggle-btn{background:color-mix(in srgb,var(--accent,#3b82f6) 14%,var(--s2,#1e293b))!important;border-color:color-mix(in srgb,var(--accent,#3b82f6) 45%,transparent)!important;color:var(--accent,#3b82f6)!important;font-weight:700!important;white-space:nowrap}'
+    + '@media (min-width:761px) and (max-width:1400px){' + col(9, 'width:330px') + B + '{grid-template-columns:repeat(3,minmax(0,1fr))}}'
+    + '@media (max-width:760px){' + B + '{grid-template-columns:repeat(2,minmax(0,1fr))}' + B + 'button{min-height:44px!important;font-size:14px!important}}';
+  var st = document.createElement('style'); st.id = 'ds-orc-cores-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
+  // algum trecho antigo põe cor direto no botão; aqui o texto branco vence
+  setInterval(function () {
+    var pg = document.getElementById('page-orcamentos'); if (!pg || !pg.classList.contains('active')) return;
+    pg.querySelectorAll('td .orx-actions-row button').forEach(function (b) {
+      if (b.style.getPropertyValue('color') !== '#fff' || b.style.getPropertyPriority('color') !== 'important') { b.style.setProperty('color', '#fff', 'important'); b.style.setProperty('-webkit-text-fill-color', '#fff', 'important'); }
+    });
+  }, 800);
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
