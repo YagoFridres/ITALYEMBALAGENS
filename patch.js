@@ -73888,7 +73888,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (rec === 'papelao' && id === 'solicitacoes' && met === 'POST' && b.descricao && !b.chapa_id) return ['Sugestão de compra enviada', String(b.descricao).slice(0, 120), 'ok'];
     if (rec === 'papelao' && id === 'solicitacoes') { var chp = [d.fornecedor || b.fornecedor, d.nomenclatura || b.nomenclatura, d.tamanho || b.tamanho].filter(Boolean).join(' '); if (met === 'POST') return ['Solicitação de compra registrada', [chp, (d.qtd_sugerida || b.qtd_sugerida) ? n(d.qtd_sugerida || b.qtd_sugerida) + ' chapas' : ''].filter(Boolean).join(' · '), 'ok']; return ['Solicitação de compra: ' + (b.status || d.status || 'atualizada'), chp, 'ok']; }
     if ((rec === 'chapas_estoque' || rec === 'chapas_estoque_v2') && id) {
-      if (sub === 'movimento') { var t = String(b.tipo || 'entrada'); return [(t === 'saida' ? 'Saída' : 'Entrada') + ' de ' + n(Math.abs(b.quantidade || b.qtd || 0)) + ' chapas registrada', b.nf ? 'NF ' + b.nf : '', 'ok']; }
+      if (sub === 'movimento') { var t = String(b.tipo || 'entrada'); return [(t === 'saida' ? 'Saída' : 'Entrada') + ' de ' + n(Math.abs(b.delta || b.quantidade || b.qtd || 0)) + ' chapas registrada', b.nf ? 'NF ' + b.nf : '', 'ok']; }
       if (sub === 'pin') return ['Compra de chapa sugerida', b.qtd_sugerida ? n(b.qtd_sugerida) + ' chapas' : '', 'ok'];
       if (sub === 'despin') return ['Sugestão de compra removida', '', 'info'];
       if (sub === 'cor' || sub === 'grupo' || sub === 'ignorar-sugestao' || sub === 'inline') return ['Chapa alterada', '', 'ok'];
@@ -81408,6 +81408,56 @@ window.__perTxt = function (p) {
     + '@media (max-width:1024px){#page-estoque,#page-estoque .pep-wrap,#page-estoque .pep-panel,#page-estoque .pep-cards,#page-estoque .dsest-abas{max-width:100%!important;min-width:0!important;box-sizing:border-box!important}'
     +   '#page-estoque{overflow-x:hidden!important}#page-estoque .pep-panel table{display:block;overflow-x:auto;max-width:100%}}';
   try { var st = document.createElement('style'); st.id = 'ds-resp-geral-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (_) {}
+})();
+
+/* ===== 17/11: RETALHOS — mostra em quantos montes cada retalho está =====
+ * Cada entrada de quantidade no retalho (o cadastro e cada soma depois) é um monte separado.
+ * Na aba Retalhos, a coluna Qtd mostra "N montes: 53 + 33" (passe o mouse/toque para ver as datas). */
+(function () {
+  if (window.__dsRetMontes) return; window.__dsRetMontes = true;
+  var cache = {}, buscando = false;
+  function fmtData(iso) { try { var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } }
+  function decorar() {
+    if (String(window.__estoqueWireAba || '') !== 'retalhos') return;
+    var pg = document.getElementById('page-estoque'); if (!pg || !pg.offsetParent) return;
+    var trs = Array.prototype.slice.call(pg.querySelectorAll('tr[data-chapa-id]'));
+    if (!trs.length) return;
+    var faltam = trs.map(function (tr) { return tr.getAttribute('data-chapa-id'); }).filter(function (id) { return id && !(id in cache); });
+    if (faltam.length && !buscando) {
+      buscando = true;
+      Promise.resolve(window.apiFetch('/api/chapas-montes?ids=' + encodeURIComponent(faltam.slice(0, 300).join(','))))
+        .then(function (r) { return r && r.json ? r.json() : null; })
+        .then(function (j) { var d = (j && j.data) || {}; faltam.forEach(function (id) { cache[id] = d[id] || []; }); })
+        .catch(function () { faltam.forEach(function (id) { cache[id] = []; }); })
+        .then(function () { buscando = false; decorar(); });
+      return;
+    }
+    trs.forEach(function (tr) {
+      var id = tr.getAttribute('data-chapa-id'), m = cache[id]; if (!m) return;
+      var assinatura = m.map(function (x) { return x.qtd; }).join('+');
+      if (tr.getAttribute('data-montes') === assinatura) return;
+      tr.setAttribute('data-montes', assinatura);
+      var td = tr.querySelector('td.col-num'); if (!td) return;
+      var velho = td.querySelector('.ds-montes'); if (velho) velho.remove();
+      if (m.length < 2) return; // um monte só: nada a mostrar
+      var div = document.createElement('div');
+      div.className = 'ds-montes';
+      div.textContent = m.length + ' montes: ' + m.map(function (x) { return x.qtd.toLocaleString('pt-BR'); }).join(' + ');
+      div.title = m.map(function (x, i) { return 'Monte ' + (i + 1) + ': ' + x.qtd.toLocaleString('pt-BR') + ' un. · ' + fmtData(x.em) + (x.por ? ' · ' + x.por : ''); }).join('\n');
+      td.appendChild(div);
+    });
+  }
+  // depois de somar (ou dar entrada) num retalho, busca de novo os montes dele
+  try {
+    var f0 = window.fetch;
+    window.fetch = function (u, o) {
+      var p = f0.apply(this, arguments);
+      try { var url = String(u && u.url || u || ''); var mm = url.match(/\/api\/chapas_estoque\/([^/?]+)\/movimento/); if (mm && String(o && o.method || '').toUpperCase() === 'POST') { delete cache[decodeURIComponent(mm[1])]; p.then(function () { setTimeout(decorar, 1500); setTimeout(decorar, 4000); }, function () {}); } } catch (_) {}
+      return p;
+    };
+  } catch (_) {}
+  setInterval(decorar, 2000);
+  try { var st = document.createElement('style'); st.id = 'ds-montes-css'; st.textContent = '.ds-montes{margin-top:4px;font-size:11.5px;font-weight:800;color:#f59e0b;white-space:nowrap;cursor:help}body.light .ds-montes,html[data-theme="light"] .ds-montes{color:#b45309}'; document.head.appendChild(st); } catch (_) {}
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */

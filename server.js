@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261117095735';
-const SW_RUNTIME_VERSION = '20261117095735';
+const PATCH_RUNTIME_VERSION = '20261117100607';
+const SW_RUNTIME_VERSION = '20261117100607';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27550,6 +27550,27 @@ app.get('/api/chapas/qr/:codigo', authMiddleware, async (req, res) => {
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
+});
+
+// 17/11: "montes" de cada retalho = cada entrada de quantidade (o cadastro inicial e cada soma feita depois),
+// para saber que o retalho está separado em vários montes. GET /api/chapas-montes?ids=a,b,c
+app.get('/api/chapas-montes', authMiddleware, async (req, res) => {
+  try {
+    const ids = String(req.query.ids || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 300);
+    if (!ids.length) return res.json({ ok: true, data: {} });
+    const { data, error } = await supabase.from('chapas_estoque_movimentos_v2')
+      .select('chapa_id,tipo,delta,qtd_anterior,qtd_nova,nf,obs,usuario,created_at,reverted')
+      .in('chapa_id', ids).eq('tipo', 'entrada').order('created_at', { ascending: true }).limit(3000);
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    const out = {};
+    (data || []).forEach((m) => {
+      if (m.reverted) return;
+      const q = Math.abs(Math.trunc(Number(m.delta ?? ((Number(m.qtd_nova) || 0) - (Number(m.qtd_anterior) || 0))) || 0));
+      if (!q) return;
+      (out[m.chapa_id] = out[m.chapa_id] || []).push({ qtd: q, em: m.created_at, por: m.usuario || '', obs: m.obs || '', nf: m.nf || '' });
+    });
+    return res.json({ ok: true, data: out });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
 });
 
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
