@@ -77538,6 +77538,29 @@ window.__perTxt = function (p) {
     try { (window.__dsEstoqueLista || []).forEach(function (c) { var f = String(c && c.fornecedor || '').trim().toUpperCase(); if (f) set[f] = 1; }); } catch (_) {}
     return Object.keys(set).sort();
   }
+  // 17/11: nomenclaturas já usadas no estoque (e as que foram salvas aqui), cada uma com o fornecedor e a gramatura dela
+  var NOM_LS = 'ds_nomenclatura_fornecedor';
+  function nomenclaturasConhecidas() {
+    var m = {};
+    function add(nom, forn, gram, peso) {
+      nom = String(nom || '').trim().toUpperCase().replace(/\s+/g, ' '); forn = String(forn || '').trim().toUpperCase();
+      if (!nom) return;
+      var x = m[nom] || (m[nom] = { nom: nom, f: {}, gram: '' });
+      if (forn) x.f[forn] = (x.f[forn] || 0) + (peso || 1);
+      if (gram && !x.gram) x.gram = String(gram).trim();
+    }
+    try { (window.__dsEstoqueLista || window.ESTOQUE || []).forEach(function (c) { add(c && (c.nomenclatura || c.nom), c && (c.fornecedor || c.forn), c && c.gramatura); }); } catch (_) {}
+    try { var s = JSON.parse(localStorage.getItem(NOM_LS) || '{}') || {}; Object.keys(s).forEach(function (k) { add(k, s[k] && s[k].forn, s[k] && s[k].gram, 1000); }); } catch (_) {}
+    return Object.keys(m).sort().map(function (k) {
+      var x = m[k], forn = Object.keys(x.f).sort(function (a, b) { return x.f[b] - x.f[a]; })[0] || '';
+      return { nom: x.nom, forn: forn, gram: x.gram };
+    });
+  }
+  function lembrarNomenclatura(nom, forn, gram) {
+    nom = String(nom || '').trim().toUpperCase(); forn = String(forn || '').trim().toUpperCase();
+    if (!nom || !forn) return;
+    try { var s = JSON.parse(localStorage.getItem(NOM_LS) || '{}') || {}; s[nom] = { forn: forn, gram: String(gram || '').trim() }; localStorage.setItem(NOM_LS, JSON.stringify(s)); } catch (_) {}
+  }
   function campo(id, label, opt) {
     opt = opt || {};
     return '<div class="dsch-f ' + (opt.cls || '') + '"><label for="dsch-' + id + '">' + esc(label) + (opt.req ? ' <b>*</b>' : '') + '</label>'
@@ -77559,9 +77582,10 @@ window.__perTxt = function (p) {
       +   '<div class="dsch-f s3"><label>Tipo</label><div class="dsch-seg" data-tipo><button type="button" data-v="chapa">🧱 Chapa inteira</button><button type="button" data-v="retalho">✂️ Retalho</button></div><small data-tipo-dica></small></div>'
       +   campo('nome', 'Nome / uso', { req: 1, cls: 's2', ph: 'Ex: ESTOQUE DUPLO, PIZZA 40X40…' })
       +   '<div class="dsch-f"><label for="dsch-cat-busca">Categoria <b>*</b></label><div class="dsch-cat"><input class="dsch-in" id="dsch-cat-busca" autocomplete="off" placeholder="Buscar ou criar categoria…"><span class="dsch-cat-seta">▾</span><div class="dsch-cat-dd" hidden></div></div><select id="dsch-categoria" data-orig="chapa-categoria" hidden>' + cats + '</select></div>'
-      +   campo('nomenclatura', 'Nomenclatura', { req: 1, ph: 'Ex: ADC21' })
+      +   campo('nomenclatura', 'Nomenclatura', { req: 1, ph: 'Ex: ADC21 — digite e escolha', attrs: ' list="dsch-nom-list"', dica: 'Ao escolher, o fornecedor vem junto' })
+      +   '<datalist id="dsch-nom-list">' + nomenclaturasConhecidas().map(function (n) { return '<option value="' + esc(n.nom) + '" label="' + esc(n.forn + (n.gram ? ' · ' + n.gram + ' g' : '')) + '">'; }).join('') + '</datalist>'
       +   campo('gramatura', 'Gramatura (g/m²)', { ph: 'Ex: 350', attrs: ' inputmode="decimal"', dica: 'Usada para calcular as toneladas' })
-      +   campo('tamanho', 'Tamanho (mm)', { ph: 'Ex: 1240X980', dica: 'Largura X comprimento' })
+      +   campo('tamanho', 'Tamanho (mm)', { req: 1, ph: 'Ex: 1240X980', dica: 'Largura X comprimento' })
       +   campo('vincos', 'Vincos', { cls: 's3', ph: 'Ex: 1 vinco / 2 vincos / sem vincos' })
       + '</div></section>'
       + '<section class="dsch-sec"><h3><span>🏭</span>De onde veio?</h3><div class="dsch-g">'
@@ -77622,6 +77646,25 @@ window.__perTxt = function (p) {
       el.addEventListener('input', function () { el.classList.remove('erro'); var val = el.value; if (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') val = String(num(val)); if (el.id === 'dsch-quantidade' || el.id === 'dsch-estoque-minimo') val = String(Math.max(0, Math.trunc(num(val)))); setOrig(el.getAttribute('data-orig'), (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') && !el.value.trim() ? '' : val); atualizar(); });
       el.addEventListener('change', function () { el.dispatchEvent(new Event('input')); });
     });
+    // ---- 17/11: nomenclatura com autocomplete — escolheu, já vem o fornecedor (e a gramatura) ----
+    (function () {
+      var nomIn = $('dsch-nomenclatura'); if (!nomIn) return;
+      var lista = nomenclaturasConhecidas();
+      function aplicar() {
+        var v = String(nomIn.value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+        var achou = lista.filter(function (n) { return n.nom === v; })[0];
+        if (!achou) return;
+        if (nomIn.value !== achou.nom) { nomIn.value = achou.nom; nomIn.dispatchEvent(new Event('input')); }
+        var f = $('dsch-fornecedor');
+        if (f && achou.forn && String(f.value || '').trim().toUpperCase() !== achou.forn) { f.value = achou.forn; f.classList.remove('erro'); f.dispatchEvent(new Event('input')); f.classList.add('dsch-auto'); setTimeout(function () { f.classList.remove('dsch-auto'); }, 1600); }
+        var g = $('dsch-gramatura');
+        if (g && achou.gram && !String(g.value || '').trim()) { g.value = achou.gram; g.dispatchEvent(new Event('input')); }
+      }
+      nomIn.addEventListener('change', aplicar);
+      nomIn.addEventListener('input', function (e) { if (e.inputType === 'insertReplacementText' || !e.inputType) aplicar(); });
+      nomIn.addEventListener('blur', aplicar);
+      if (!document.getElementById('dsch-auto-css')) { var st = document.createElement('style'); st.id = 'dsch-auto-css'; st.textContent = '.dsch-in.dsch-auto{box-shadow:0 0 0 3px rgba(34,197,94,.45)!important;border-color:#22c55e!important;transition:box-shadow .3s}'; document.head.appendChild(st); }
+    })();
     // ---- categoria: buscar / criar + tipo (chapa inteira ou retalho) ----
     var catSel = $('dsch-categoria'), catIn = $('dsch-cat-busca'), catDD = ov.querySelector('.dsch-cat-dd');
     function ehRet(nome) { return /^retalho/i.test(String(nome || '').trim()); }
@@ -77722,10 +77765,11 @@ window.__perTxt = function (p) {
     ov.querySelector('[data-salvar]').onclick = function () {
       var falta = [];
       if (!catSel.value || norm(catIn.value).trim() !== norm(catSel.value)) { catIn.classList.add('erro'); falta.push('Categoria (escolha ou crie na lista)'); }
-      [['dsch-nome', 'Nome / uso'], ['dsch-nomenclatura', 'Nomenclatura'], ['dsch-fornecedor', 'Fornecedor'], ['dsch-quantidade', 'Quantidade']].forEach(function (p) { var el = $(p[0]); if (!String(el.value || '').trim()) { el.classList.add('erro'); falta.push(p[1]); } });
-      if (falta.length) { var pr = $(falta.length ? ['dsch-nome', 'dsch-nomenclatura', 'dsch-fornecedor', 'dsch-quantidade'].find(function (i) { return $(i).classList.contains('erro'); }) : ''); if (pr) pr.focus(); try { window.toast('Preencha: ' + falta.join(', '), 'var(--red)'); } catch (_) { alert('Preencha: ' + falta.join(', ')); } return; }
+      [['dsch-nome', 'Nome / uso'], ['dsch-nomenclatura', 'Nomenclatura'], ['dsch-tamanho', 'Tamanho'], ['dsch-fornecedor', 'Fornecedor'], ['dsch-quantidade', 'Quantidade']].forEach(function (p) { var el = $(p[0]); if (!String(el.value || '').trim()) { el.classList.add('erro'); falta.push(p[1]); } });
+      if (falta.length) { var pr = $(falta.length ? ['dsch-nome', 'dsch-nomenclatura', 'dsch-tamanho', 'dsch-fornecedor', 'dsch-quantidade'].find(function (i) { return $(i).classList.contains('erro'); }) : ''); if (pr) pr.focus(); try { window.toast('Preencha: ' + falta.join(', '), 'var(--red)'); } catch (_) { alert('Preencha: ' + falta.join(', ')); } return; }
       // garante tudo copiado
       Array.prototype.forEach.call(ov.querySelectorAll('[data-orig]'), function (el) { el.dispatchEvent(new Event('input')); });
+      lembrarNomenclatura($('dsch-nomenclatura').value, $('dsch-fornecedor').value, $('dsch-gramatura') && $('dsch-gramatura').value);
       var btn = this; btn.disabled = true; btn.textContent = 'Salvando…';
       var salvarOrig = Array.prototype.find.call(mo.querySelectorAll('button'), function (b) { return /salvarChapa|Criar Chapa|Salvar/i.test((b.getAttribute('onclick') || '') + b.textContent) && !/Cancelar/i.test(b.textContent); });
       try { if (salvarOrig) salvarOrig.click(); else window.salvarChapa(); } catch (e) { alert('Erro ao salvar: ' + (e && e.message || e)); }

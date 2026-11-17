@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261116164743';
-const SW_RUNTIME_VERSION = '20261116164743';
+const PATCH_RUNTIME_VERSION = '20261117095555';
+const SW_RUNTIME_VERSION = '20261117095555';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -26769,6 +26769,8 @@ async function _chapasFindEntradaExistenteV2(criteria) {
       );
     });
     if (!filtro.length) return null;
+    // 17/11: chapa inteira e retalho podem ter a mesma medida — a entrada de nota vai para a chapa inteira
+    filtro.sort((x, y) => (/^retalho/i.test(String(x?.categoria || '')) ? 1 : 0) - (/^retalho/i.test(String(y?.categoria || '')) ? 1 : 0));
     if (empId) {
       const mesmaEmpresa = filtro.find((row) => String(row?.emp_id || '').trim() === empId);
       if (mesmaEmpresa) return mesmaEmpresa;
@@ -27583,6 +27585,17 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
           data = r2.data;
           error = r2.error;
         }
+      }
+      // 17/11: já existe uma chapa/retalho igual (mesmo fornecedor + nomenclatura + tamanho) — avisa com clareza e devolve qual é
+      if (error && (String(error.code || '') === '23505' || /duplicate key|unique/i.test(String(error.message || '')))) {
+        let existente = null;
+        const ehRet = /^retalho/i.test(String(payload.categoria || ''));
+        try {
+          const { data: rows } = await supabase.from('chapas_estoque_v2').select('id,nome_uso,nome,categoria,quantidade,quantidade_atual,fornecedor,nomenclatura,tamanho').eq('fornecedor', payload.fornecedor).eq('nomenclatura', payload.nomenclatura).eq('tamanho', payload.tamanho).limit(5);
+          existente = (rows || []).find((r) => /^retalho/i.test(String(r.categoria || '')) === ehRet) || (rows || [])[0] || null;
+        } catch (_) {}
+        const qtdEx = existente ? Math.trunc(Number(existente.quantidade_atual ?? existente.quantidade ?? 0)) : 0;
+        return res.status(409).json({ ok: false, duplicado: true, existente, error: `Já existe ${ehRet ? 'um retalho' : 'uma chapa'} ${payload.fornecedor} ${payload.nomenclatura} ${payload.tamanho} no estoque${existente ? ' (' + (existente.nome_uso || existente.nome || '') + ', ' + qtdEx + ' un.)' : ''}.` });
       }
       if (error) return res.status(500).json({ ok: false, error: error.message });
 
