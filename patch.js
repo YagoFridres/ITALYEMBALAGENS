@@ -81479,7 +81479,12 @@ window.__perTxt = function (p) {
       + '<label class="drb-f"><span>Observação <i>(opcional)</i></span><input id="drb-obs" autocomplete="off" placeholder="Ex.: usado na caixa pizza"></label>'
       + '</div>'
       + '<div class="drb-rap"><button type="button" data-tudo>Baixar tudo (' + N(saldo) + ')</button></div>'
-      + '<div class="drb-res" id="drb-res">Fica: <b>' + N(saldo) + '</b></div>';
+      + '<div class="drb-res" id="drb-res">Fica: <b>' + N(saldo) + '</b></div>'
+      // 17/11: corrigir montes/baixas lançados por engano (desfaz o lançamento e acerta o saldo)
+      + ((m.length || (cacheB[id] || []).length) ? '<details class="drb-cor"><summary>✏️ Corrigir lançamentos (apagar monte ou baixa lançados por engano)</summary><div class="drb-cor-l">'
+        + m.map(function (x, i) { return '<div class="drb-cor-i"><span><b>Monte ' + (i + 1) + ': +' + N(x.qtd) + '</b><small>' + esc(fmtData(x.em) + (x.por ? ' · ' + x.por : '')) + '</small></span>' + (x.id ? '<button type="button" data-apagar="' + esc(x.id) + '" data-desc="o monte ' + (i + 1) + ' (+' + N(x.qtd) + ')">🗑 Apagar</button>' : '') + '</div>'; }).join('')
+        + (cacheB[id] || []).map(function (x) { return '<div class="drb-cor-i baixa"><span><b>Baixa: −' + N(x.qtd) + '</b><small>' + esc(fmtData(x.em) + (x.obs ? ' · ' + x.obs : '')) + '</small></span>' + (x.id ? '<button type="button" data-apagar="' + esc(x.id) + '" data-desc="a baixa de ' + N(x.qtd) + '">↩ Desfazer</button>' : '') + '</div>'; }).join('')
+        + '</div></details>' : '');
     var wrap = window._abrirModalPadrao({ id: 'ds-retalho-baixa', titulo: 'Baixa de retalho', subtitulo: 'Dá saída na quantidade usada. Fica registrado no histórico.', largura: '620px', hero: '➖', accent: 'red', corpoHTML: corpo,
       footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-red" id="drb-ok">➖ Dar baixa</button>' });
     var q = document.getElementById('drb-qtd'), res = document.getElementById('drb-res');
@@ -81487,6 +81492,24 @@ window.__perTxt = function (p) {
     q.addEventListener('input', atual);
     Array.prototype.forEach.call(document.querySelectorAll('#ds-retalho-baixa [data-q]'), function (b) { b.onclick = function () { q.value = Math.min(saldo, Number(b.getAttribute('data-q')) || 0); atual(); }; });
     var tudo = document.querySelector('#ds-retalho-baixa [data-tudo]'); if (tudo) tudo.onclick = function () { q.value = saldo; atual(); };
+    Array.prototype.forEach.call(document.querySelectorAll('#ds-retalho-baixa [data-apagar]'), function (bt) {
+      bt.onclick = async function () {
+        var mid = bt.getAttribute('data-apagar'), desc = bt.getAttribute('data-desc');
+        if (!confirm('Apagar ' + desc + ' deste retalho?\n\nO saldo é acertado e fica registrado no histórico.')) return;
+        bt.disabled = true; bt.textContent = '…';
+        try {
+          var r = await window.apiFetch('/api/chapas_estoque_movimentos/' + encodeURIComponent(mid), { method: 'DELETE' });
+          var j = r ? await r.json().catch(function () { return {}; }) : {};
+          if (!r || !r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || 'falha');
+          try { window.toast('✓ Corrigido: ' + desc + ' foi apagado', 'var(--green)'); } catch (_) {}
+          try { window._fecharModalPadrao('ds-retalho-baixa'); } catch (_) {}
+          delete cache[id]; delete cacheB[id];
+          try { if (typeof window.chapasForcarReload === 'function') await window.chapasForcarReload(); } catch (_) {}
+          try { if (typeof window.renderEstoqueWireframePage === 'function') await window.renderEstoqueWireframePage(); } catch (_) {}
+          setTimeout(decorar, 800);
+        } catch (e) { bt.disabled = false; bt.textContent = '🗑 Apagar'; try { window.toast('Não consegui corrigir: ' + (e && e.message || e), 'var(--red)'); } catch (_) {} }
+      };
+    });
     setTimeout(function () { try { if (window.innerWidth > 820) q.focus(); } catch (_) {} }, 80);
     document.getElementById('drb-ok').onclick = async function () {
       var btn = this; if (btn.disabled) return;
@@ -81536,6 +81559,10 @@ window.__perTxt = function (p) {
       + '#ds-retalho-baixa #drb-qtd{font-size:20px;font-weight:900;text-align:right}'
       + '#ds-retalho-baixa .drb-rap{margin-top:10px}#ds-retalho-baixa .drb-rap button{min-height:40px;padding:0 14px;border-radius:10px;border:1px dashed var(--border,#475569);background:transparent;color:var(--text,#e2e8f0);font-weight:800;cursor:pointer}'
       + '#ds-retalho-baixa .drb-res{margin-top:12px;font-size:15px}'
+      + '#ds-retalho-baixa .drb-cor{margin-top:14px;border-top:1px solid var(--border,#334155);padding-top:10px}#ds-retalho-baixa .drb-cor summary{cursor:pointer;font-weight:800;font-size:13.5px;color:var(--text2,#94a3b8);min-height:32px;display:flex;align-items:center}'
+      + '#ds-retalho-baixa .drb-cor-l{display:flex;flex-direction:column;gap:6px;margin-top:8px}#ds-retalho-baixa .drb-cor-i{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border,#334155);border-radius:10px}'
+      + '#ds-retalho-baixa .drb-cor-i b{display:block;color:#22c55e}#ds-retalho-baixa .drb-cor-i.baixa b{color:#f87171}#ds-retalho-baixa .drb-cor-i small{color:var(--text2,#94a3b8);font-size:12px}'
+      + '#ds-retalho-baixa .drb-cor-i button{flex:none;min-height:38px;padding:0 12px;border-radius:9px;border:1px solid rgba(239,68,68,.55);background:rgba(239,68,68,.1);color:#ef4444;font-weight:800;cursor:pointer}'
       + '@media (max-width:520px){#ds-retalho-baixa .drb-g{grid-template-columns:1fr}}';
     document.head.appendChild(st);
   } catch (_) {}

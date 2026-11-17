@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261117101127';
-const SW_RUNTIME_VERSION = '20261117101127';
+const PATCH_RUNTIME_VERSION = '20261117101712';
+const SW_RUNTIME_VERSION = '20261117101712';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27559,15 +27559,16 @@ app.get('/api/chapas-montes', authMiddleware, async (req, res) => {
     const ids = String(req.query.ids || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 300);
     if (!ids.length) return res.json({ ok: true, data: {} });
     const { data, error } = await supabase.from('chapas_estoque_movimentos_v2')
-      .select('chapa_id,tipo,delta,qtd_anterior,qtd_nova,nf,obs,usuario,created_at,reverted')
+      .select('id,chapa_id,tipo,delta,qtd_anterior,qtd_nova,nf,obs,usuario,origem,created_at,reverted')
       .in('chapa_id', ids).in('tipo', ['entrada', 'saida']).order('created_at', { ascending: true }).limit(3000);
     if (error) return res.status(500).json({ ok: false, error: error.message });
     const out = {}, baixas = {};
     (data || []).forEach((m) => {
-      if (m.reverted) return;
+      // movimentos desfeitos e os lançamentos automáticos de "desfazer/ajustar" não contam como monte nem como baixa
+      if (m.reverted || /^(reversao_movimento|ajuste_movimento)$/.test(String(m.origem || ''))) return;
       const q = Math.abs(Math.trunc(Number(m.delta ?? ((Number(m.qtd_nova) || 0) - (Number(m.qtd_anterior) || 0))) || 0));
       if (!q) return;
-      const item = { qtd: q, em: m.created_at, por: m.usuario || '', obs: m.obs || '', nf: m.nf || '' };
+      const item = { id: m.id, qtd: q, em: m.created_at, por: m.usuario || '', obs: m.obs || '', nf: m.nf || '' };
       if (m.tipo === 'saida') (baixas[m.chapa_id] = baixas[m.chapa_id] || []).push(item);
       else (out[m.chapa_id] = out[m.chapa_id] || []).push(item);
     });
