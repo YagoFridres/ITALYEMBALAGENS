@@ -77507,7 +77507,8 @@ window.__perTxt = function (p) {
     + '@media (max-width:760px){.dsch-t .mh{display:none!important}.dsch-t th{white-space:normal!important}.dsch-t td,.dsch-t th{padding:9px 6px}.dsch-t{font-size:13px}}'
     + '@media (max-width:760px){.dsch-ov{padding:0;align-items:stretch}.dsch-m{border-radius:0;max-height:100vh;height:100%}.dsch-g{grid-template-columns:1fr 1fr}.dsch-g .s2{grid-column:1/-1}.dsch-kpis{grid-template-columns:1fr 1fr}.dsch-prev{flex-wrap:wrap}.dsch-ft .dsch-dica{width:100%}.dsch-ft .dsch-bt{flex:1}.dsch-hd{padding:14px 16px}.dsch-bd{padding:14px 16px}.dsch-tw{max-height:none}}'
     + '@media (max-width:460px){.dsch-g{grid-template-columns:1fr}.dsch-g .s2,.dsch-g .s3{grid-column:auto}}';
-  css.textContent += '.dsch-cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}'
+  css.textContent += '.dsch-oculto-ret{display:none!important}'
+    + '.dsch-cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}'
     + '.dsch-cores button[data-cor]{width:38px;height:38px;border-radius:10px;border:2px solid rgba(148,163,184,.5);cursor:pointer;padding:0;transition:transform .1s}'
     + '.dsch-cores button[data-cor]:hover{transform:scale(1.08)}.dsch-cores .on{outline:3px solid #22c55e!important;outline-offset:2px;transform:scale(1.08)}'
     + '.dsch-cores .dsch-cor-sem{width:auto!important;padding:0 12px!important;background:var(--s2,#1e293b)!important;color:var(--text,#e2e8f0);font:inherit;font-weight:700;font-size:13px}'
@@ -77557,9 +77558,18 @@ window.__perTxt = function (p) {
     try { if (Array.isArray(window.__dsEstoqueLista)) fontes.push(window.__dsEstoqueLista); } catch (_) {}
     fontes.forEach(function (arr) { arr.forEach(function (c) { add(c && (c.nomenclatura || c.nom), c && (c.fornecedor || c.forn), c && c.gramatura); }); });
     try { var s = JSON.parse(localStorage.getItem(NOM_LS) || '{}') || {}; Object.keys(s).forEach(function (k) { add(k, s[k] && s[k].forn, s[k] && s[k].gram, 1000); }); } catch (_) {}
+    // 17/11: o cadastro de Gramaturas ("CHADC21 - 638g - Adami") é quem manda na gramatura de cada nomenclatura
+    try {
+      (window.__dsGramCad || []).forEach(function (g) {
+        var partes = String(g && g.nome || '').split(/\s+-\s+/); var n = String(partes[0] || '').trim().toUpperCase(); if (!n) return;
+        var fo = String(partes[2] || '').trim().toUpperCase();
+        if (!m[n]) add(n, fo, '', 1);
+        if (m[n]) { if (g.gramatura != null && String(g.gramatura).trim()) m[n].gramCad = String(g.gramatura).trim(); if (fo && !Object.keys(m[n].f).length) m[n].f[fo] = 1; }
+      });
+    } catch (_) {}
     return Object.keys(m).sort().map(function (k) {
       var x = m[k], forn = Object.keys(x.f).sort(function (a, b) { return x.f[b] - x.f[a]; })[0] || '';
-      return { nom: x.nom, forn: forn, gram: x.gram };
+      return { nom: x.nom, forn: forn, gram: x.gramCad || x.gram };
     });
   }
   function lembrarNomenclatura(nom, forn, gram) {
@@ -77574,6 +77584,13 @@ window.__perTxt = function (p) {
       + (opt.dica ? '<small>' + opt.dica + '</small>' : '') + '</div>';
   }
   var CORES_LINHA = ['#7030A0', '#203864', '#2E75B6', '#0070C0', '#00B0F0', '#8FAADC', '#333F50', '#385724', '#00B050', '#92D050', '#FFFF00', '#FFD966', '#BF9000', '#C55A11', '#F4B183', '#843C0B', '#FF0000', '#AA2249'];
+  function carregarGramCad() {
+    if (window.__dsGramCadPromise) return window.__dsGramCadPromise;
+    window.__dsGramCadPromise = Promise.resolve(window.apiFetch('/api/gramaturas')).then(function (r) { return r && r.json ? r.json() : null; })
+      .then(function (j) { window.__dsGramCad = Array.isArray(j) ? j : ((j && j.data) || []); }).catch(function () { window.__dsGramCadPromise = null; });
+    return window.__dsGramCadPromise;
+  }
+  try { setTimeout(carregarGramCad, 4000); } catch (_) {}
   function abrirChapa() {
     var mo = $('modal-nova-chapa'); if (!mo) return;
     if (atual && atual.parentNode) return;
@@ -77652,10 +77669,19 @@ window.__perTxt = function (p) {
       el.addEventListener('input', function () { el.classList.remove('erro'); var val = el.value; if (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') val = String(num(val)); if (el.id === 'dsch-quantidade' || el.id === 'dsch-estoque-minimo') val = String(Math.max(0, Math.trunc(num(val)))); setOrig(el.getAttribute('data-orig'), (el.id === 'dsch-valor-unitario' || el.id === 'dsch-gramatura') && !el.value.trim() ? '' : val); atualizar(); });
       el.addEventListener('change', function () { el.dispatchEvent(new Event('input')); });
     });
+    // 17/11: cadastro NOVO não herda a gramatura/vincos do cadastro anterior (era o que deixava todos os retalhos com 649)
+    if (!edit) { ['dsch-gramatura', 'dsch-vincos'].forEach(function (i) { var e = $(i); if (e && e.value) { e.value = ''; e.dispatchEvent(new Event('input')); } }); }
     // ---- 17/11: nomenclatura com autocomplete — escolheu, já vem o fornecedor (e a gramatura) ----
     (function () {
       var nomIn = $('dsch-nomenclatura'); if (!nomIn) return;
       var lista = nomenclaturasConhecidas();
+      carregarGramCad().then(function () {
+        lista = nomenclaturasConhecidas();
+        var dl = $('dsch-nom-list'); if (dl) dl.innerHTML = lista.map(function (n) { return '<option value="' + esc(n.nom) + '" label="' + esc(n.forn + (n.gram ? ' · ' + n.gram + ' g' : '')) + '">'; }).join('');
+      });
+      var gIn = $('dsch-gramatura');
+      // se a pessoa digitar a gramatura na mão, o automático não mexe mais
+      if (gIn) gIn.addEventListener('input', function (e) { if (e.isTrusted) gIn.__dsManual = true; });
       function aplicar() {
         var v = String(nomIn.value || '').trim().toUpperCase().replace(/\s+/g, ' ');
         var achou = lista.filter(function (n) { return n.nom === v; })[0];
@@ -77664,8 +77690,8 @@ window.__perTxt = function (p) {
         var f = $('dsch-fornecedor');
         if (f && achou.forn && String(f.value || '').trim().toUpperCase() !== achou.forn) { f.value = achou.forn; f.classList.remove('erro'); f.dispatchEvent(new Event('input')); f.classList.add('dsch-auto'); setTimeout(function () { f.classList.remove('dsch-auto'); }, 1600); }
         var g = $('dsch-gramatura');
-        // gramatura: preenche se estava vazia ou se tinha sido preenchida automaticamente por outra nomenclatura
-        if (g && achou.gram && (!String(g.value || '').trim() || g.__dsAuto === g.value)) { g.value = achou.gram; g.__dsAuto = g.value; g.dispatchEvent(new Event('input')); }
+        // gramatura: sempre a da nomenclatura escolhida (cadastro de Gramaturas), a não ser que a pessoa tenha digitado outra
+        if (g && achou.gram && !g.__dsManual && String(g.value || '').trim() !== achou.gram) { g.value = achou.gram; g.dispatchEvent(new Event('input')); g.classList.add('dsch-auto'); setTimeout(function () { g.classList.remove('dsch-auto'); }, 1600); }
       }
       nomIn.addEventListener('change', aplicar);
       nomIn.addEventListener('input', function (e) { if (e.inputType === 'insertReplacementText' || !e.inputType) aplicar(); });
@@ -77732,6 +77758,14 @@ window.__perTxt = function (p) {
       tipo = t;
       ov.querySelectorAll('[data-tipo] button').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === t); });
       ov.querySelector('[data-tipo-dica]').textContent = t === 'retalho' ? 'Vai para a aba Retalhos do Estoque de Chapas. Use uma categoria que comece com “Retalho”.' : 'Vai para a aba Chapas do Estoque de Chapas.';
+      // 17/11: retalho mostra só: nome/uso, categoria, nomenclatura, gramatura, tamanho, fornecedor, empresa, quantidade, valor unit./total, estoque mínimo e observação
+      var soChapa = ['dsch-vincos', 'dsch-nf', 'dsch-data-entrada', 'dsch-risca-desc'].map(function (i) { var e = $(i); return e && e.closest('.dsch-f'); })
+        .concat([ov.querySelector('[data-ris]'), ov.querySelector('[data-cores]'), ov.querySelector('[data-foto]')].map(function (e) { return e && e.closest('.dsch-f'); }));
+      soChapa.forEach(function (bx) { if (bx) bx.classList.toggle('dsch-oculto-ret', t === 'retalho'); });
+      var secAc = ov.querySelector('[data-ris]') && ov.querySelector('[data-ris]').closest('.dsch-sec');
+      if (secAc) { var h3 = secAc.querySelector('h3'); if (h3) h3.lastChild.textContent = t === 'retalho' ? 'Observação' : 'Acabamento e observações'; }
+      var secOrig = $('dsch-nf') && $('dsch-nf').closest('.dsch-sec'); if (secOrig) { var h3b = secOrig.querySelector('h3'); if (h3b) h3b.lastChild.textContent = t === 'retalho' ? 'Fornecedor e empresa' : 'De onde veio?'; }
+      try { var pvn = ov.querySelector('[data-pv-nome]'); if (pvn && !$('dsch-nome').value.trim()) pvn.textContent = t === 'retalho' ? 'Novo retalho' : 'Nova chapa'; } catch (_) {}
       if (!auto) return;
       if (ehRet(catSel.value) === (t === 'retalho') && catSel.value) return;
       var l = catsDoTipo();
@@ -77760,7 +77794,7 @@ window.__perTxt = function (p) {
       var tot = q * vu;
       ov.querySelector('[data-tot]').textContent = R(tot);
       ov.querySelector('[data-pv-tot]').textContent = R(tot);
-      var nome = $('dsch-nome').value.trim() || (edit ? 'Chapa' : 'Nova chapa');
+      var nome = $('dsch-nome').value.trim() || (tipo === 'retalho' ? (edit ? 'Retalho' : 'Novo retalho') : (edit ? 'Chapa' : 'Nova chapa'));
       ov.querySelector('[data-pv-nome]').textContent = nome;
       var partes = [$('dsch-nomenclatura').value.trim(), $('dsch-tamanho').value.trim().toUpperCase(), $('dsch-fornecedor').value.trim().toUpperCase(), q ? N(q) + ' chapas' : ''].filter(Boolean);
       ov.querySelector('[data-pv-sub]').textContent = partes.join(' · ') || 'Preencha os campos abaixo';
@@ -81566,6 +81600,152 @@ window.__perTxt = function (p) {
       + '@media (max-width:520px){#ds-retalho-baixa .drb-g{grid-template-columns:1fr}}';
     document.head.appendChild(st);
   } catch (_) {}
+})();
+
+/* ===== 17/11: ABA RETALHOS — tela própria =====
+ * Cards por fornecedor (quantos retalhos e peças de cada um), lista separada por fornecedor com uma cor para cada,
+ * do maior para o menor tamanho, nome "NOMENCLATURA TAMANHO" (ex.: CHADC21 1010X2020), colunas = campos do retalho,
+ * área com rolagem própria e impressão da lista por fornecedor. Usa os mesmos botões de Alterar/Excluir do estoque. */
+(function () {
+  if (window.__dsRetView) return; window.__dsRetView = true;
+  var CORES_F = { ADAMI: '#2563eb', FAPOLPA: '#16a34a', KLABIN: '#ea580c', TROMBINI: '#9333ea' };
+  var PALETA = ['#0891b2', '#db2777', '#ca8a04', '#4f46e5', '#059669', '#dc2626', '#7c3aed', '#0d9488'];
+  function corForn(f) { f = String(f || '').toUpperCase(); if (CORES_F[f]) return CORES_F[f]; var h = 0; for (var i = 0; i < f.length; i++) h = (h * 31 + f.charCodeAt(i)) >>> 0; return PALETA[h % PALETA.length]; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function N(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function R(v) { return 'R$ ' + N(v, 2); }
+  function qtd(c) { return Math.max(0, Math.trunc(Number(c && (c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd)) || 0) || 0)); }
+  function forn(c) { return String(c && (c.fornecedor || c.forn) || '').trim().toUpperCase() || 'SEM FORNECEDOR'; }
+  function tam(c) { return String(c && (c.tamanho || c.tam) || '').trim().toUpperCase().replace(/\s+/g, ''); }
+  function nom(c) { return String(c && (c.nomenclatura || c.nom) || '').trim().toUpperCase(); }
+  function area(c) { var m = tam(c).match(/(\d+(?:[.,]\d+)?)\D+(\d+(?:[.,]\d+)?)/); return m ? (parseFloat(m[1].replace(',', '.')) || 0) * (parseFloat(m[2].replace(',', '.')) || 0) : 0; }
+  function emp(c) { var e = String(c && (c.qual_cnpj || c.empresa_vinculada || c.qual) || '').trim(); return e || '—'; }
+  function obs(c) { return String(c && c.observacao || '').replace(/\[\[[^\]]*\]\]/g, ' ').replace(/\s{2,}/g, ' ').trim(); }
+  function vu(c) { return Number(c && (c.valor_unitario != null ? c.valor_unitario : c.val) || 0) || 0; }
+  function tonDe(c) { try { if (typeof window.__dsEstTon === 'function') return window.__dsEstTon(c) || 0; } catch (_) {} var g = Number(c && c.gramatura) || 0, a = area(c); return g && a ? qtd(c) * a / 1e6 * g / 1e6 : 0; }
+  function nomeCompleto(c) { return [nom(c), tam(c)].filter(Boolean).join(' ') || String(c && (c.nome_uso || c.nome) || '—'); }
+  function todos() {
+    var src = Array.isArray(window._chapasCachedList) ? window._chapasCachedList : (window.__dsEstoqueLista || []);
+    return src.filter(function (c) { return c && !c.deleted_at && /^retalho/i.test(String(c.categoria || '')); });
+  }
+  function agrupar(lista) {
+    var g = {};
+    lista.forEach(function (c) { var f = forn(c); (g[f] = g[f] || []).push(c); });
+    var fs = Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length || a.localeCompare(b); });
+    fs.forEach(function (f) { g[f].sort(function (a, b) { return area(b) - area(a) || nom(a).localeCompare(nom(b)); }); });
+    return { g: g, fs: fs };
+  }
+  function cardsHtml(lista) {
+    var A = agrupar(lista), totI = lista.length, totP = lista.reduce(function (s, c) { return s + qtd(c); }, 0), totT = lista.reduce(function (s, c) { return s + tonDe(c); }, 0);
+    var h = '<div class="drv-cards">'
+      + '<div class="drv-card drv-tot"><span>Retalhos no estoque</span><b>' + N(totI) + '</b><small>' + N(totP) + ' peças · ' + N(totT, 3) + ' t</small></div>';
+    A.fs.forEach(function (f) {
+      var l = A.g[f], p = l.reduce(function (s, c) { return s + qtd(c); }, 0), t = l.reduce(function (s, c) { return s + tonDe(c); }, 0);
+      var noms = {}; l.forEach(function (c) { var n = nom(c) || '—'; noms[n] = (noms[n] || 0) + 1; });
+      h += '<button type="button" class="drv-card" data-drv-ir="' + esc(f) + '" style="--fc:' + corForn(f) + '"><span><i></i>' + esc(f) + '</span><b>' + N(l.length) + ' <em>retalhos</em></b><small>' + N(p) + ' peças · ' + N(t, 3) + ' t</small><small class="drv-noms">' + Object.keys(noms).sort().map(function (n) { return esc(n) + ' (' + noms[n] + ')'; }).join(' · ') + '</small></button>';
+    });
+    return h + '</div>';
+  }
+  function tabelaHtml(lista) {
+    var A = agrupar(lista);
+    var cab = '<tr><th>Retalho</th><th>Nome / uso</th><th>Categoria</th><th class="n">Gramatura</th><th>Fornecedor</th><th>Empresa (CNPJ)</th><th class="n">Quantidade</th><th class="n">Valor unit.</th><th class="n">Total</th><th class="n">Est. mínimo</th><th>Observação</th><th>Ações</th></tr>';
+    var corpo = '';
+    A.fs.forEach(function (f) {
+      var l = A.g[f], cor = corForn(f), p = l.reduce(function (s, c) { return s + qtd(c); }, 0);
+      corpo += '<tr class="drv-grp" id="drv-grp-' + esc(f.replace(/\W+/g, '-')) + '" style="--fc:' + cor + '"><td colspan="12"><i></i><b>' + esc(f) + '</b> — ' + N(l.length) + ' retalhos · ' + N(p) + ' peças <small>(do maior para o menor)</small></td></tr>';
+      l.forEach(function (c) {
+        var q = qtd(c), v = vu(c), min = Math.trunc(Number(c.estoque_minimo) || 0);
+        corpo += '<tr data-chapa-id="' + esc(c.id) + '" class="drv-lin" style="--fc:' + cor + '">'
+          + '<td class="drv-nome"><b>' + esc(nomeCompleto(c)) + '</b></td>'
+          + '<td>' + esc(c.nome_uso || c.nome || '—') + '</td>'
+          + '<td>' + esc(c.categoria || '—') + '</td>'
+          + '<td class="n">' + esc(c.gramatura || '—') + '</td>'
+          + '<td>' + esc(forn(c)) + '</td>'
+          + '<td>' + esc(emp(c)) + '</td>'
+          + '<td class="n col-num"><b>' + N(q) + '</b></td>'
+          + '<td class="n">' + R(v) + '</td>'
+          + '<td class="n">' + R(q * v) + '</td>'
+          + '<td class="n' + (min && q < min ? ' drv-baixo' : '') + '">' + (min ? N(min) : '—') + '</td>'
+          + '<td class="drv-obs">' + esc(obs(c) || '—') + '</td>'
+          + '<td class="drv-acoes"><button type="button" class="pep-btn" data-est-edit="' + esc(c.id) + '">✏️ Alterar</button><button type="button" class="pep-btn danger" data-est-del="' + esc(c.id) + '">🗑</button></td>'
+          + '</tr>';
+      });
+    });
+    if (!corpo) corpo = '<tr><td colspan="12" class="drv-vz">Nenhum retalho encontrado.</td></tr>';
+    return '<div class="drv-tw"><table class="drv-t no-card" data-no-mobile-cards="1"><thead>' + cab + '</thead><tbody>' + corpo + '</tbody></table></div>';
+  }
+  function imprimir() {
+    var A = agrupar(todos()), data = new Date().toLocaleString('pt-BR');
+    var css = '*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:18px}h1{font-size:20px;margin:0 0 2px}p.s{margin:0 0 14px;color:#555;font-size:12px}'
+      + 'h2{font-size:15px;margin:16px 0 6px;padding:6px 10px;color:#fff;border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      + 'table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}th{background:#f1f5f9;text-align:left;padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      + 'td{padding:5px 8px;border:1px solid #cbd5e1}td.n,th.n{text-align:right}td.nm{font-weight:700;border-left-width:5px}tr{page-break-inside:avoid}.tot{font-weight:700;background:#f8fafc}'
+      + '@page{size:A4 portrait;margin:12mm}';
+    var h = '<h1>Retalhos em estoque por fornecedor</h1><p class="s">Do maior para o menor tamanho · gerado em ' + esc(data) + '</p>';
+    A.fs.forEach(function (f) {
+      var l = A.g[f], cor = corForn(f), p = l.reduce(function (s, c) { return s + qtd(c); }, 0);
+      h += '<h2 style="background:' + cor + '">' + esc(f) + ' — ' + N(l.length) + ' retalhos · ' + N(p) + ' peças</h2>'
+        + '<table><thead><tr><th>Retalho</th><th>Nome / uso</th><th class="n">Gramatura</th><th>Empresa</th><th class="n">Qtd</th><th>Observação</th></tr></thead><tbody>'
+        + l.map(function (c) { return '<tr><td class="nm" style="border-left-color:' + cor + '">' + esc(nomeCompleto(c)) + '</td><td>' + esc(c.nome_uso || c.nome || '') + '</td><td class="n">' + esc(c.gramatura || '') + '</td><td>' + esc(emp(c)) + '</td><td class="n">' + N(qtd(c)) + '</td><td>' + esc(obs(c)) + '</td></tr>'; }).join('')
+        + '<tr class="tot"><td colspan="4">Total ' + esc(f) + '</td><td class="n">' + N(p) + '</td><td></td></tr></tbody></table>';
+    });
+    var w = window.open('', '_blank');
+    if (!w) { try { window.toast('Libere as janelas (pop-up) do navegador para imprimir', 'var(--red)'); } catch (_) {} return; }
+    w.document.open(); w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Retalhos por fornecedor</title><style>' + css + '</style></head><body>' + h + '<script>setTimeout(function(){window.print()},350)<\/script></body></html>'); w.document.close();
+  }
+  window.dsImprimirRetalhos = imprimir;
+  var ultimaAss = '';
+  function render() {
+    var pg = document.getElementById('page-estoque'); if (!pg) return;
+    var meu = pg.querySelector('#drv-wrap'), ret = String(window.__estoqueWireAba || '') === 'retalhos' && !!pg.offsetParent;
+    var origTab = Array.prototype.find.call(pg.querySelectorAll('table.pep-table'), function (t) { return !t.closest('#drv-wrap'); });
+    var origPanel = origTab && origTab.closest('.pep-panel'), origCards = pg.querySelector('.estoque-wire-cards');
+    if (!ret) {
+      if (meu) meu.remove(); ultimaAss = '';
+      if (origPanel) origPanel.style.removeProperty('display'); if (origCards) origCards.style.removeProperty('display');
+      return;
+    }
+    if (!origPanel) return;
+    // respeita a busca/filtros: mostra os retalhos que a tabela original mostraria
+    var ids = Array.prototype.map.call(origTab.querySelectorAll('tr[data-chapa-id]'), function (tr) { return tr.getAttribute('data-chapa-id'); });
+    var base = todos(), mapa = {}; base.forEach(function (c) { mapa[String(c.id)] = c; });
+    var lista = ids.map(function (id) { return mapa[id]; }).filter(Boolean);
+    var ass = ids.join(',') + '|' + lista.map(function (c) { return qtd(c) + ':' + (c.gramatura || '') + ':' + (c.valor_unitario || '') + ':' + (c.estoque_minimo || '') + ':' + tam(c); }).join(',');
+    origPanel.style.display = 'none'; if (origCards) origCards.style.display = 'none';
+    if (meu && ass === ultimaAss && meu.previousElementSibling) return;
+    ultimaAss = ass;
+    var scroll = meu ? (meu.querySelector('.drv-tw') || {}).scrollTop || 0 : 0;
+    if (!meu) { meu = document.createElement('div'); meu.id = 'drv-wrap'; }
+    meu.innerHTML = cardsHtml(base)
+      + '<div class="pep-panel drv-panel"><div class="drv-hd"><div><b>✂️ Retalhos por fornecedor</b><small>' + N(lista.length) + ' na lista · do maior para o menor tamanho</small></div>'
+      + '<div class="drv-hd-b"><button type="button" class="pep-btn" data-drv-print>🖨 Imprimir lista por fornecedor</button></div></div>'
+      + tabelaHtml(lista) + '</div>';
+    if (meu.parentNode !== origPanel.parentNode || meu.nextSibling !== origPanel) origPanel.parentNode.insertBefore(meu, origPanel);
+    var tw = meu.querySelector('.drv-tw'); if (tw && scroll) tw.scrollTop = scroll;
+    meu.querySelector('[data-drv-print]').onclick = imprimir;
+    Array.prototype.forEach.call(meu.querySelectorAll('[data-drv-ir]'), function (b) {
+      b.onclick = function () { var alvo = meu.querySelector('#drv-grp-' + String(b.getAttribute('data-drv-ir')).replace(/\W+/g, '-')); var tw2 = meu.querySelector('.drv-tw'); if (alvo && tw2) { tw2.scrollTop = alvo.offsetTop - 2; tw2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
+    });
+  }
+  setInterval(render, 700);
+  var css = ''
+    + '#drv-wrap{margin-bottom:14px}'
+    + '.drv-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}'
+    + '.drv-card{text-align:left;font:inherit;color:var(--text,#e2e8f0);background:var(--surface,#141518);border:1px solid var(--border,#2a2d33);border-left:6px solid var(--fc,#64748b);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;cursor:pointer;min-height:96px}'
+    + '.drv-card.drv-tot{cursor:default;border-left-color:#f59e0b}.drv-card:hover:not(.drv-tot){box-shadow:0 0 0 2px var(--fc) inset}'
+    + '.drv-card>span{font-size:11.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text2,#94a3b8);display:flex;align-items:center;gap:6px}.drv-card>span i{width:10px;height:10px;border-radius:50%;background:var(--fc)}'
+    + '.drv-card>b{font-size:24px;font-weight:900;line-height:1.1}.drv-card>b em{font-size:13px;font-style:normal;font-weight:700;color:var(--text2,#94a3b8)}.drv-card small{font-size:12px;color:var(--text2,#94a3b8)}.drv-card .drv-noms{font-size:11.5px;line-height:1.35}'
+    + '.drv-panel{padding:12px!important}.drv-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.drv-hd b{display:block;font-size:16px}.drv-hd small{color:var(--text2,#94a3b8);font-size:12.5px}'
+    + '.drv-tw{max-height:68vh;overflow:auto;border:1px solid var(--border,#2a2d33);border-radius:12px;-webkit-overflow-scrolling:touch}'
+    + '.drv-t{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:1150px}'
+    + '.drv-t th{position:sticky;top:0;z-index:2;background:var(--s2,#1b1d22);text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2,#94a3b8);padding:10px;white-space:nowrap;border-bottom:1px solid var(--border,#2a2d33)}'
+    + '.drv-t td{padding:9px 10px;border-bottom:1px solid var(--border,rgba(148,163,184,.15));vertical-align:middle}.drv-t .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}'
+    + '.drv-t tr.drv-grp td{position:sticky;top:37px;z-index:1;background:color-mix(in srgb,var(--fc) 22%,var(--surface,#141518));border-left:6px solid var(--fc);font-size:13.5px;padding:9px 12px}.drv-t tr.drv-grp b{font-size:15px}.drv-t tr.drv-grp small{color:var(--text2,#94a3b8)}'
+    + '.drv-t tr.drv-lin td{background:color-mix(in srgb,var(--fc) 9%,transparent)}.drv-t tr.drv-lin td:first-child{border-left:6px solid var(--fc)}.drv-t tr.drv-lin:hover td{background:color-mix(in srgb,var(--fc) 18%,transparent)}'
+    + '.drv-t .drv-nome b{font-size:14px;white-space:nowrap}.drv-t .drv-obs{max-width:240px;color:var(--text2,#94a3b8)}.drv-t .drv-baixo{color:#ef4444;font-weight:800}'
+    + '.drv-t .drv-acoes{white-space:nowrap}.drv-t .drv-acoes .pep-btn{min-height:34px;margin-left:4px}.drv-vz{text-align:center;padding:24px!important;color:var(--text2,#94a3b8)}'
+    + '@media (max-width:760px){.drv-cards{grid-template-columns:1fr 1fr}.drv-card>b{font-size:20px}.drv-tw{max-height:72vh}.drv-hd-b,.drv-hd-b .pep-btn{width:100%}.drv-t tr.drv-grp td{position:static}}';
+  try { var st = document.createElement('style'); st.id = 'drv-css'; st.textContent = css; document.head.appendChild(st); } catch (_) {}
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
