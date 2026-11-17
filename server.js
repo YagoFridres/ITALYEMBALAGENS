@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261117140139';
-const SW_RUNTIME_VERSION = '20261117140139';
+const PATCH_RUNTIME_VERSION = '20261117140652';
+const SW_RUNTIME_VERSION = '20261117140652';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -25122,14 +25122,15 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
     if (b.categoria !== undefined) payloadBase.categoria = b.categoria;
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
+    const _removidos = [];
     for (let i = 0; i < 10; i++) {
       const { data, error } = await supabase.from('facas_estoque').update(payload).eq('id', req.params.id).select();
-      if (!error) return ok(res, data[0]);
+      if (!error) { if (_removidos.length) console.warn('[facas PUT] campos descartados:', _removidos.join(' | ')); return ok(res, data[0]); }
       const msg = String(error.message || error);
       const m1 = msg.match(/Could not find the '([^']+)' column/);
       const m2 = msg.match(/column \"([^\"]+)\"/);
       const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
-      if (col && payload[col] !== undefined) { delete payload[col]; continue; }
+      if (col && payload[col] !== undefined) { _removidos.push(col + ': ' + msg.slice(0, 160)); delete payload[col]; continue; }
       throw error;
     }
     return res.status(500).json({ ok: false, error: 'Falha ao atualizar faca' });
