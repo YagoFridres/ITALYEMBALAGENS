@@ -81744,7 +81744,19 @@ window.__perTxt = function (p) {
     + '.drv-t tr.drv-lin td{background:color-mix(in srgb,var(--fc) 9%,transparent)}.drv-t tr.drv-lin td:first-child{border-left:6px solid var(--fc)}.drv-t tr.drv-lin:hover td{background:color-mix(in srgb,var(--fc) 18%,transparent)}'
     + '.drv-t .drv-nome b{font-size:14px;white-space:nowrap}.drv-t .drv-obs{max-width:240px;color:var(--text2,#94a3b8)}.drv-t .drv-baixo{color:#ef4444;font-weight:800}'
     + '.drv-t .drv-acoes{white-space:nowrap}.drv-t .drv-acoes .pep-btn{min-height:34px;margin-left:4px}.drv-vz{text-align:center;padding:24px!important;color:var(--text2,#94a3b8)}'
-    + '@media (max-width:760px){.drv-cards{grid-template-columns:1fr 1fr}.drv-card>b{font-size:20px}.drv-tw{max-height:72vh}.drv-hd-b,.drv-hd-b .pep-btn{width:100%}.drv-t tr.drv-grp td{position:static}}';
+    + '.drv-t tr.drv-lin td{background:color-mix(in srgb,var(--fc) 13%,transparent)}'
+    + '@media (max-width:760px){.drv-cards{grid-template-columns:1fr 1fr}.drv-card>b{font-size:20px}.drv-tw{max-height:72vh}.drv-hd-b,.drv-hd-b .pep-btn{width:100%}'
+    // celular: cada retalho vira um cartão — nome+tamanho e quantidade em destaque, detalhes embaixo, botões grandes
+    +   '.drv-t{min-width:0!important;display:block!important}.drv-t thead{display:none!important}.drv-t tbody{display:block!important}'
+    +   '.drv-t tr.drv-grp{display:block!important}.drv-t tr.drv-grp td{display:block!important;position:sticky!important;top:0;z-index:3}'
+    +   '.drv-t tr.drv-lin{display:grid!important;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border-left:6px solid var(--fc);border-bottom:1px solid var(--border,rgba(148,163,184,.2));background:color-mix(in srgb,var(--fc) 13%,transparent)}'
+    +   '.drv-t tr.drv-lin td{display:none!important;background:none!important;border:0!important;padding:0!important}'
+    +   '.drv-t tr.drv-lin td.drv-nome{display:block!important;grid-column:1}.drv-t tr.drv-lin td.drv-nome b{font-size:16px;white-space:normal}'
+    +   '.drv-t tr.drv-lin td.col-num{display:block!important;grid-column:2;grid-row:1;text-align:right;font-size:18px}'
+    +   '.drv-t tr.drv-lin td:nth-child(4){display:block!important;grid-column:1/-1;font-size:12.5px;color:var(--text2,#94a3b8);text-align:left!important}.drv-t tr.drv-lin td:nth-child(4):before{content:"Gramatura "}'
+    +   '.drv-t tr.drv-lin td.drv-obs{display:block!important;grid-column:1/-1;font-size:12.5px}.drv-t tr.drv-lin td.drv-obs:empty{display:none!important}'
+    +   '.drv-t tr.drv-lin td.drv-acoes{display:flex!important;grid-column:1/-1;gap:6px;margin-top:6px}.drv-t tr.drv-lin td.drv-acoes .pep-btn{flex:1;min-height:42px!important;margin:0!important}'
+    + '}';
   try { var st = document.createElement('style'); st.id = 'drv-css'; st.textContent = css; document.head.appendChild(st); } catch (_) {}
 })();
 
