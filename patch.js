@@ -77664,7 +77664,8 @@ window.__perTxt = function (p) {
         var f = $('dsch-fornecedor');
         if (f && achou.forn && String(f.value || '').trim().toUpperCase() !== achou.forn) { f.value = achou.forn; f.classList.remove('erro'); f.dispatchEvent(new Event('input')); f.classList.add('dsch-auto'); setTimeout(function () { f.classList.remove('dsch-auto'); }, 1600); }
         var g = $('dsch-gramatura');
-        if (g && achou.gram && !String(g.value || '').trim()) { g.value = achou.gram; g.dispatchEvent(new Event('input')); }
+        // gramatura: preenche se estava vazia ou se tinha sido preenchida automaticamente por outra nomenclatura
+        if (g && achou.gram && (!String(g.value || '').trim() || g.__dsAuto === g.value)) { g.value = achou.gram; g.__dsAuto = g.value; g.dispatchEvent(new Event('input')); }
       }
       nomIn.addEventListener('change', aplicar);
       nomIn.addEventListener('input', function (e) { if (e.inputType === 'insertReplacementText' || !e.inputType) aplicar(); });
