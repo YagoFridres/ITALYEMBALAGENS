@@ -81666,7 +81666,7 @@ window.__perTxt = function (p) {
           + '<td class="n">' + R(v) + '</td>'
           + '<td class="n">' + R(q * v) + '</td>'
           + '<td class="n' + (min && q < min ? ' drv-baixo' : '') + '">' + (min ? N(min) : '—') + '</td>'
-          + '<td class="drv-obs">' + esc(obs(c) || '—') + '</td>'
+          + '<td class="drv-obs' + (obs(c) ? '' : ' drv-sem') + '">' + esc(obs(c) || '—') + '</td>'
           + '<td class="drv-acoes"><button type="button" class="pep-btn" data-est-edit="' + esc(c.id) + '">✏️ Alterar</button><button type="button" class="pep-btn danger" data-est-del="' + esc(c.id) + '">🗑</button></td>'
           + '</tr>';
       });
@@ -81754,8 +81754,8 @@ window.__perTxt = function (p) {
     +   '.drv-t tr.drv-lin td.drv-nome{display:block!important;grid-column:1}.drv-t tr.drv-lin td.drv-nome b{font-size:16px;white-space:normal}'
     +   '.drv-t tr.drv-lin td.col-num{display:block!important;grid-column:2;grid-row:1;text-align:right;font-size:18px}'
     +   '.drv-t tr.drv-lin td:nth-child(4){display:block!important;grid-column:1/-1;font-size:12.5px;color:var(--text2,#94a3b8);text-align:left!important}.drv-t tr.drv-lin td:nth-child(4):before{content:"Gramatura "}'
-    +   '.drv-t tr.drv-lin td.drv-obs{display:block!important;grid-column:1/-1;font-size:12.5px}.drv-t tr.drv-lin td.drv-obs:empty{display:none!important}'
-    +   '.drv-t tr.drv-lin td.drv-acoes{display:flex!important;grid-column:1/-1;gap:6px;margin-top:6px}.drv-t tr.drv-lin td.drv-acoes .pep-btn{flex:1;min-height:42px!important;margin:0!important}'
+    +   '.drv-t tr.drv-lin td.drv-obs{display:block!important;grid-column:1/-1;font-size:12.5px}.drv-t tr.drv-lin td.drv-obs.drv-sem{display:none!important}'
+    +   '.drv-t tr.drv-lin td.drv-acoes{display:flex!important;flex-wrap:nowrap!important;grid-column:1/-1;gap:6px;margin-top:6px}.drv-t tr.drv-lin td.drv-acoes .pep-btn{flex:1 1 0;min-height:42px!important;margin:0!important}.drv-t tr.drv-lin td.drv-acoes .pep-btn.danger{flex:0 0 48px}'
     + '}';
   try { var st = document.createElement('style'); st.id = 'drv-css'; st.textContent = css; document.head.appendChild(st); } catch (_) {}
 })();
