@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261117132640';
-const SW_RUNTIME_VERSION = '20261117132640';
+const PATCH_RUNTIME_VERSION = '20261117140139';
+const SW_RUNTIME_VERSION = '20261117140139';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -25058,6 +25058,7 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
       emp_id: empresaCtx.emp_id || b.emp_id || b.empId || 'E1',
       empresa_id: empresaCtx.empresa_id,
       medidas: b.medidas || '',
+      localizacao: b.localizacao || b.local_armazenamento || '',
       valor: Number(b.valor ?? b.valor_unitario ?? 0) || 0,
       observacoes: b.observacoes || b.obs || '',
       obs: b.obs || b.observacoes || '',
@@ -25107,14 +25108,18 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
       emp_id: b.emp_id !== undefined || b.empId !== undefined ? (b.emp_id || b.empId) : empresaCtx.emp_id,
       empresa_id: b.empresa_id !== undefined || b.empresaId !== undefined ? (b.empresa_id || b.empresaId) : empresaCtx.empresa_id,
       medidas: b.medidas,
+      localizacao: b.localizacao !== undefined ? b.localizacao : b.local_armazenamento,
       valor: b.valor ?? b.valor_unitario,
-      observacoes: b.observacoes || b.obs,
-      obs: b.obs || b.observacoes,
+      // 17/11: observação e numero podem ser apagados (string vazia também é gravada)
+      observacoes: b.observacoes !== undefined ? b.observacoes : b.obs,
+      obs: b.obs !== undefined ? b.obs : b.observacoes,
       imagem_url: b.imagem_url || b.foto || b.imagem,
       foto: b.foto || b.imagem_url || b.imagem,
       maquinas: b.maquinas !== undefined ? parseArr(b.maquinas) : undefined,
       clientes: b.clientes !== undefined ? parseArr(b.clientes) : undefined,
     };
+    if (b.numero !== undefined) payloadBase.numero = b.numero;
+    if (b.categoria !== undefined) payloadBase.categoria = b.categoria;
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
     for (let i = 0; i < 10; i++) {

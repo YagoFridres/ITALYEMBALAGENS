@@ -81761,5 +81761,228 @@ window.__perTxt = function (p) {
   try { var st = document.createElement('style'); st.id = 'drv-css'; st.textContent = css; document.head.appendChild(st); } catch (_) {}
 })();
 
+/* ===== 17/11: ESTOQUE DE FACAS — reformulado =====
+ * Tela própria: cards (total, valor, por categoria, sem cliente), busca, filtro por categoria, lista (tabela no PC,
+ * cartões no celular), janela de Nova/Alterar faca com máquinas e clientes, foto, e excluir. Depois de criar,
+ * alterar ou excluir, a lista recarrega na hora do servidor (antes a tela não atualizava e parecia que não tinha feito nada). */
+(function () {
+  if (window.__dsFacasV2) return; window.__dsFacasV2 = true;
+  var st = { lista: null, cats: [], maqs: [], busca: '', cat: '', carregando: false, ass: '' };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function N(v, d) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function R(v) { return 'R$ ' + N(v, 2); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function toast(m, c) { try { window.toast(m, c); } catch (_) {} }
+  async function j(url, opt) { var r = await window.apiFetch(url, opt); var d = r ? await r.json().catch(function () { return {}; }) : {}; if (!r || !r.ok || (d && d.ok === false)) throw new Error((d && (d.error || d.message)) || ('falha (' + (r && r.status) + ')')); return d; }
+  function arr(v) { if (Array.isArray(v)) return v; if (typeof v === 'string' && v.trim()) { try { var a = JSON.parse(v); if (Array.isArray(a)) return a; } catch (_) {} return v.replace(/^\{|\}$/g, '').split(',').map(function (x) { return x.replace(/^"|"$/g, '').trim(); }).filter(Boolean); } return []; }
+  function nomeCli(id) { var c = (window.CLIENTES || []).filter(function (x) { return String(x && x.id) === String(id); })[0]; return c ? (c.nome || c.razao_social || id) : id; }
+  function obsDe(f) { return String(f && (f.obs || f.observacoes) || '').trim(); }
+  function fotoDe(f) { return String(f && (f.foto_url || f.foto || f.imagem_url) || '').trim(); }
+  function locDe(f) { return String(f && (f.localizacao || f.local_armazenamento) || '').trim(); }
+  async function carregar(forcar) {
+    if (st.carregando) return; st.carregando = true;
+    try {
+      var d = await j('/api/facas_estoque?t=' + Date.now());
+      st.lista = (Array.isArray(d) ? d : (d.data || [])).filter(function (f) { return f && f.ativo !== false; });
+      try { window.FACAS = st.lista.map(function (f) { return Object.assign({}, f, { maquinas: arr(f.maquinas), clientes: arr(f.clientes), obs: obsDe(f), foto: fotoDe(f) }); }); } catch (_) {}
+      try { var c = await j('/api/facas_categorias'); st.cats = (Array.isArray(c) ? c : (c.data || [])).map(function (x) { return x.nome; }).filter(Boolean); } catch (_) {}
+      if (!st.maqs.length) { try { var m = await j('/api/maquinas'); st.maqs = (Array.isArray(m) ? m : (m.data || [])).map(function (x) { return String(x && (x.nome || x.name) || '').trim(); }).filter(Boolean); } catch (_) {} }
+      if (!st.maqs.length) st.maqs = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA', 'RISCADOR', 'COLADEIRA', 'ACABAMENTO'];
+    } catch (e) { toast('Não consegui carregar as facas: ' + e.message, 'var(--red)'); if (!st.lista) st.lista = []; }
+    finally { st.carregando = false; st.ass = ''; render(true); }
+  }
+  function filtradas() {
+    var q = norm(st.busca).trim();
+    return (st.lista || []).filter(function (f) {
+      if (st.cat && String(f.categoria || '') !== st.cat) return false;
+      if (!q) return true;
+      var txt = norm([f.numero, f.nome, f.codigo, f.categoria, f.medidas, locDe(f), obsDe(f), arr(f.maquinas).join(' '), arr(f.clientes).map(nomeCli).join(' ')].join(' '));
+      return q.split(/\s+/).every(function (p) { return txt.indexOf(p) >= 0; });
+    }).sort(function (a, b) { var na = parseInt(a.numero, 10), nb = parseInt(b.numero, 10); if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb; return String(a.nome || '').localeCompare(String(b.nome || '')); });
+  }
+  function render(forcar) {
+    var pg = document.getElementById('page-facas1'); if (!pg || !pg.offsetParent) return;
+    if (st.lista === null) { if (!pg.querySelector('#dfc-wrap')) pg.innerHTML = '<div id="dfc-wrap" class="dfc"><div class="dfc-vz">Carregando facas…</div></div>'; carregar(); return; }
+    var wrap = pg.querySelector('#dfc-wrap');
+    var ass = st.busca + '|' + st.cat + '|' + (st.lista || []).map(function (f) { return f.id + ':' + (f.updated_at || ''); }).join(',');
+    if (wrap && !forcar && ass === st.ass && wrap.querySelector('.dfc-hd')) return;
+    st.ass = ass;
+    var todas = st.lista || [], lista = filtradas();
+    var valor = todas.reduce(function (s, f) { return s + (Number(f.valor || f.valor_unitario) || 0); }, 0);
+    var porCat = {}; todas.forEach(function (f) { var c = f.categoria || 'Sem categoria'; porCat[c] = (porCat[c] || 0) + 1; });
+    var semCli = todas.filter(function (f) { return !arr(f.clientes).length; }).length;
+    var focoBusca = document.activeElement && document.activeElement.id === 'dfc-busca', pos = focoBusca ? document.activeElement.selectionStart : 0;
+    var h = '<div id="dfc-wrap" class="dfc">'
+      + '<div class="dfc-hd"><div><h1>🔪 Estoque de Facas</h1><p>Cadastre, altere e exclua as facas. Vincule as máquinas e os clientes que usam cada uma.</p></div>'
+      + '<div class="dfc-hd-b"><button type="button" class="dfc-bt" data-dfc-rel>📊 Mais utilizadas</button><button type="button" class="dfc-bt" data-dfc-print>🖨 Imprimir</button><button type="button" class="dfc-bt ok" data-dfc-nova>＋ Nova faca</button></div></div>'
+      + '<div class="dfc-cards">'
+      +   '<div class="dfc-card"><span>Facas cadastradas</span><b>' + N(todas.length) + '</b><small>' + N(lista.length) + ' na lista</small></div>'
+      +   '<div class="dfc-card"><span>Valor das facas</span><b>' + R(valor) + '</b><small>Soma de todas</small></div>'
+      +   '<div class="dfc-card"><span>Por categoria</span><small class="dfc-cats">' + (Object.keys(porCat).sort().map(function (c) { return esc(c) + ': <b>' + porCat[c] + '</b>'; }).join(' · ') || '—') + '</small></div>'
+      +   '<div class="dfc-card"><span>Sem cliente vinculado</span><b>' + N(semCli) + '</b><small>Facas sem nenhum cliente</small></div>'
+      + '</div>'
+      + '<div class="dfc-bar"><input id="dfc-busca" class="dfc-in" placeholder="🔎 Buscar por número, nome, medida, cliente, máquina, localização…" value="' + esc(st.busca) + '" autocomplete="off">'
+      + '<div class="dfc-chips"><button type="button" data-dfc-cat="" class="' + (!st.cat ? 'on' : '') + '">Todas</button>' + st.cats.map(function (c) { return '<button type="button" data-dfc-cat="' + esc(c) + '" class="' + (st.cat === c ? 'on' : '') + '">' + esc(c) + ' <i>' + (porCat[c] || 0) + '</i></button>'; }).join('') + '</div></div>'
+      + '<div class="dfc-panel"><div class="dfc-tw"><table class="dfc-t no-card" data-no-mobile-cards="1"><thead><tr><th>Nº</th><th></th><th>Nome</th><th>Categoria</th><th>Medidas</th><th>Localização</th><th>Máquinas</th><th>Clientes</th><th class="n">Valor</th><th>Ações</th></tr></thead><tbody>'
+      + (lista.length ? lista.map(function (f) {
+          var maqs = arr(f.maquinas), clis = arr(f.clientes).map(nomeCli), foto = fotoDe(f);
+          return '<tr data-faca-id="' + esc(f.id) + '">'
+            + '<td class="dfc-num">' + esc(f.numero || '—') + '</td>'
+            + '<td class="dfc-foto">' + (foto ? '<img alt="" src="' + esc(foto) + '">' : '<span>🔪</span>') + '</td>'
+            + '<td class="dfc-nome"><b>' + esc(f.nome || f.codigo || '—') + '</b>' + (obsDe(f) ? '<small>' + esc(obsDe(f)) + '</small>' : '') + '</td>'
+            + '<td>' + (f.categoria ? '<span class="dfc-tag">' + esc(f.categoria) + '</span>' : '—') + '</td>'
+            + '<td>' + esc(f.medidas || '—') + '</td>'
+            + '<td>' + esc(locDe(f) || '—') + '</td>'
+            + '<td>' + (maqs.length ? maqs.map(function (m) { return '<span class="dfc-chip">' + esc(m) + '</span>'; }).join('') : '—') + '</td>'
+            + '<td class="dfc-clis">' + (clis.length ? esc(clis.join(', ')) : '<span class="dfc-sem">sem cliente</span>') + '</td>'
+            + '<td class="n">' + ((Number(f.valor || f.valor_unitario) || 0) ? R(f.valor || f.valor_unitario) : '—') + '</td>'
+            + '<td class="dfc-acoes"><button type="button" class="dfc-bt" data-dfc-edit="' + esc(f.id) + '">✏️ Alterar</button><button type="button" class="dfc-bt del" data-dfc-del="' + esc(f.id) + '" title="Excluir">🗑</button></td>'
+            + '</tr>';
+        }).join('') : '<tr><td colspan="10" class="dfc-vz">' + (todas.length ? 'Nenhuma faca com esse filtro.' : 'Nenhuma faca cadastrada ainda. Clique em <b>＋ Nova faca</b>.') + '</td></tr>')
+      + '</tbody></table></div></div></div>';
+    if (wrap) wrap.outerHTML = h; else pg.innerHTML = h;
+    var b = document.getElementById('dfc-busca');
+    if (focoBusca && b) { b.focus(); try { b.setSelectionRange(pos, pos); } catch (_) {} }
+  }
+  // cliques (delegados, valem mesmo depois de redesenhar)
+  document.addEventListener('click', function (e) {
+    var t = e.target; if (!t || !t.closest || !t.closest('#dfc-wrap')) return;
+    var b;
+    if ((b = t.closest('[data-dfc-nova]'))) return abrirForm(null);
+    if ((b = t.closest('[data-dfc-edit]'))) return abrirForm(b.getAttribute('data-dfc-edit'));
+    if ((b = t.closest('[data-dfc-del]'))) return excluir(b.getAttribute('data-dfc-del'), b);
+    if ((b = t.closest('[data-dfc-cat]'))) { st.cat = b.getAttribute('data-dfc-cat') || ''; return render(true); }
+    if (t.closest('[data-dfc-print]')) return imprimir();
+    if (t.closest('[data-dfc-rel]')) { try { if (typeof window.openFacasMaisUtilizadasReport === 'function') window.openFacasMaisUtilizadasReport(); else toast('Relatório indisponível', 'var(--red)'); } catch (_) {} return; }
+  });
+  document.addEventListener('input', function (e) { if (e.target && e.target.id === 'dfc-busca') { st.busca = e.target.value; render(true); } });
+  async function excluir(id, btn) {
+    var f = (st.lista || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!f) return;
+    if (!confirm('Excluir a faca "' + (f.nome || f.codigo || '') + '"' + (f.numero ? ' (nº ' + f.numero + ')' : '') + '?\n\nIsso não pode ser desfeito.')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try { await j('/api/facas_estoque/' + encodeURIComponent(id), { method: 'DELETE' }); toast('🗑 Faca excluída', 'var(--orange)'); }
+    catch (e2) { toast('Não consegui excluir: ' + e2.message, 'var(--red)'); }
+    await carregar(true);
+  }
+  function proximoNumero() { var mx = 0; (st.lista || []).forEach(function (f) { var n = parseInt(String(f.numero || '').replace(/\D/g, ''), 10); if (!isNaN(n) && n > mx) mx = n; }); return mx ? String(mx + 1) : ''; }
+  function abrirForm(id) {
+    var f = id ? (st.lista || []).filter(function (x) { return String(x.id) === String(id); })[0] : null;
+    var maqSel = f ? arr(f.maquinas) : [], cliSel = f ? arr(f.clientes) : [];
+    var foto = f ? fotoDe(f) : '';
+    var corpo = '<div class="dfc-f">'
+      + '<div class="dfc-g">'
+      +   '<label class="dfc-c"><span>Número</span><input id="dfcf-num" class="dfc-in" inputmode="numeric" value="' + esc(f ? (f.numero || '') : proximoNumero()) + '" placeholder="Ex.: 12"></label>'
+      +   '<label class="dfc-c s2"><span>Nome da faca *</span><input id="dfcf-nome" class="dfc-in" value="' + esc(f ? (f.nome || f.codigo || '') : '') + '" placeholder="Ex.: Pizza 35x35 octavada"></label>'
+      +   '<label class="dfc-c"><span>Categoria</span><input id="dfcf-cat" class="dfc-in" list="dfcf-cat-l" value="' + esc(f ? (f.categoria || '') : '') + '" placeholder="Escolha ou digite uma nova" autocomplete="off"><datalist id="dfcf-cat-l">' + st.cats.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></label>'
+      +   '<label class="dfc-c"><span>Medidas</span><input id="dfcf-med" class="dfc-in" value="' + esc(f ? (f.medidas || '') : '') + '" placeholder="Ex.: 350x350x40"></label>'
+      +   '<label class="dfc-c"><span>Localização</span><input id="dfcf-loc" class="dfc-in" value="' + esc(f ? locDe(f) : '') + '" placeholder="Ex.: Prateleira B3"></label>'
+      +   '<label class="dfc-c"><span>Valor (R$)</span><input id="dfcf-val" class="dfc-in" inputmode="decimal" value="' + esc(f && (f.valor || f.valor_unitario) ? String(f.valor || f.valor_unitario).replace('.', ',') : '') + '" placeholder="0,00"></label>'
+      + '</div>'
+      + '<div class="dfc-c"><span>Máquinas em que ela é usada</span><div class="dfc-maqs">' + st.maqs.map(function (m) { return '<button type="button" data-m="' + esc(m) + '" class="' + (maqSel.indexOf(m) >= 0 ? 'on' : '') + '">' + esc(m) + '</button>'; }).join('') + '</div></div>'
+      + '<div class="dfc-c"><span>Clientes que usam essa faca</span><div class="dfc-cli-box"><input id="dfcf-cli-q" class="dfc-in" placeholder="Digite o nome do cliente para adicionar…" autocomplete="off"><div class="dfc-cli-dd" hidden></div></div><div class="dfc-cli-sel"></div></div>'
+      + '<label class="dfc-c"><span>Observação</span><textarea id="dfcf-obs" class="dfc-in" rows="2" placeholder="Opcional">' + esc(f ? obsDe(f) : '') + '</textarea></label>'
+      + '<div class="dfc-c"><span>Foto</span><div class="dfc-foto-l"><div class="dfc-foto-p">' + (foto ? '<img alt="" src="' + esc(foto) + '">' : '🔪') + '</div><label class="dfc-bt"><input id="dfcf-foto" type="file" accept="image/*" capture="environment" hidden>📷 ' + (foto ? 'Trocar foto' : 'Adicionar foto') + '</label></div></div>'
+      + '</div>';
+    window._abrirModalPadrao({ id: 'dfc-modal', titulo: f ? 'Alterar faca' : 'Nova faca', subtitulo: f ? 'Altere o que precisar e salve.' : 'Preencha e salve. Só o nome é obrigatório.', largura: '760px', hero: '🔪', accent: 'blue', corpoHTML: corpo,
+      footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-primary" id="dfcf-salvar">' + (f ? '✓ Salvar alterações' : '＋ Criar faca') + '</button>' });
+    var M = document.getElementById('dfc-modal');
+    // máquinas
+    Array.prototype.forEach.call(M.querySelectorAll('.dfc-maqs button'), function (b) { b.onclick = function () { b.classList.toggle('on'); }; });
+    // clientes (autocomplete + chips)
+    var sel = cliSel.slice(), qIn = document.getElementById('dfcf-cli-q'), dd = M.querySelector('.dfc-cli-dd'), box = M.querySelector('.dfc-cli-sel');
+    function desenharSel() { box.innerHTML = sel.length ? sel.map(function (cid) { return '<span class="dfc-chip big">' + esc(nomeCli(cid)) + '<button type="button" data-rm="' + esc(cid) + '" aria-label="Remover">✕</button></span>'; }).join('') : '<small class="dfc-sem">Nenhum cliente vinculado</small>'; Array.prototype.forEach.call(box.querySelectorAll('[data-rm]'), function (x) { x.onclick = function () { sel = sel.filter(function (c) { return String(c) !== x.getAttribute('data-rm'); }); desenharSel(); }; }); }
+    desenharSel();
+    qIn.addEventListener('input', function () {
+      var q = norm(qIn.value).trim(); if (q.length < 2) { dd.hidden = true; return; }
+      var r = (window.CLIENTES || []).filter(function (c) { return c && norm(c.nome).indexOf(q) >= 0 && sel.indexOf(c.id) < 0; }).slice(0, 12);
+      dd.innerHTML = r.length ? r.map(function (c) { return '<button type="button" data-c="' + esc(c.id) + '">' + esc(c.nome) + (c.cidade ? ' <small>' + esc(c.cidade) + '</small>' : '') + '</button>'; }).join('') : '<div class="dfc-sem">Nenhum cliente encontrado</div>';
+      dd.hidden = false;
+      Array.prototype.forEach.call(dd.querySelectorAll('[data-c]'), function (x) { x.onmousedown = function (ev) { ev.preventDefault(); sel.push(x.getAttribute('data-c')); qIn.value = ''; dd.hidden = true; desenharSel(); qIn.focus(); }; });
+    });
+    qIn.addEventListener('blur', function () { setTimeout(function () { dd.hidden = true; }, 150); });
+    // foto
+    var fotoFile = null, fIn = document.getElementById('dfcf-foto');
+    fIn.onchange = function () { fotoFile = fIn.files && fIn.files[0]; if (!fotoFile) return; var rd = new FileReader(); rd.onload = function (ev) { M.querySelector('.dfc-foto-p').innerHTML = '<img alt="" src="' + ev.target.result + '">'; }; rd.readAsDataURL(fotoFile); };
+    setTimeout(function () { try { if (window.innerWidth > 820) document.getElementById('dfcf-nome').focus(); } catch (_) {} }, 80);
+    document.getElementById('dfcf-salvar').onclick = async function () {
+      var btn = this; if (btn.disabled) return;
+      var nome = String(document.getElementById('dfcf-nome').value || '').trim();
+      if (!nome) { toast('Informe o nome da faca', 'var(--red)'); document.getElementById('dfcf-nome').focus(); return; }
+      var cat = String(document.getElementById('dfcf-cat').value || '').trim();
+      var body = {
+        numero: String(document.getElementById('dfcf-num').value || '').trim(),
+        nome: nome, codigo: nome, descricao: nome, categoria: cat,
+        medidas: String(document.getElementById('dfcf-med').value || '').trim(),
+        localizacao: String(document.getElementById('dfcf-loc').value || '').trim(),
+        valor: Number(String(document.getElementById('dfcf-val').value || '').replace(/\./g, '').replace(',', '.')) || 0,
+        obs: String(document.getElementById('dfcf-obs').value || '').trim(),
+        maquinas: Array.prototype.map.call(M.querySelectorAll('.dfc-maqs button.on'), function (x) { return x.getAttribute('data-m'); }),
+        clientes: sel.slice()
+      };
+      btn.disabled = true; btn.textContent = 'Salvando…';
+      try {
+        if (cat && st.cats.map(norm).indexOf(norm(cat)) < 0) { try { await j('/api/facas_categorias', { method: 'POST', body: { nome: cat } }); } catch (_) {} }
+        var d = f ? await j('/api/facas_estoque/' + encodeURIComponent(f.id), { method: 'PUT', body: body }) : await j('/api/facas_estoque', { method: 'POST', body: body });
+        var novoId = f ? f.id : String((d && d.data && d.data.id) || (d && d.id) || '');
+        if (fotoFile && novoId && typeof window.estoqueUploadFoto === 'function') { try { await window.estoqueUploadFoto('faca', novoId, fotoFile); } catch (eF) { toast('Faca salva, mas a foto não subiu: ' + (eF && eF.message || eF), 'var(--orange)'); } }
+        try { window._fecharModalPadrao('dfc-modal'); } catch (_) {}
+        toast(f ? '✓ Faca atualizada' : '✓ Faca criada', 'var(--green)');
+        await carregar(true);
+      } catch (e3) { btn.disabled = false; btn.textContent = f ? '✓ Salvar alterações' : '＋ Criar faca'; toast('Não consegui salvar: ' + e3.message, 'var(--red)'); }
+    };
+  }
+  function imprimir() {
+    var lista = filtradas(), data = new Date().toLocaleString('pt-BR');
+    var css = 'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:18px}h1{font-size:20px;margin:0}p{margin:2px 0 12px;color:#555;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f1f5f9;text-align:left;padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}td{padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top}td.n{text-align:right}tr{page-break-inside:avoid}@page{size:A4 landscape;margin:10mm}';
+    var h = '<h1>Estoque de Facas</h1><p>' + N(lista.length) + ' facas' + (st.cat ? ' · categoria ' + esc(st.cat) : '') + (st.busca ? ' · busca "' + esc(st.busca) + '"' : '') + ' · gerado em ' + esc(data) + '</p>'
+      + '<table><thead><tr><th>Nº</th><th>Nome</th><th>Categoria</th><th>Medidas</th><th>Localização</th><th>Máquinas</th><th>Clientes</th><th>Valor</th></tr></thead><tbody>'
+      + lista.map(function (f) { return '<tr><td>' + esc(f.numero || '') + '</td><td><b>' + esc(f.nome || '') + '</b>' + (obsDe(f) ? '<br><small>' + esc(obsDe(f)) + '</small>' : '') + '</td><td>' + esc(f.categoria || '') + '</td><td>' + esc(f.medidas || '') + '</td><td>' + esc(locDe(f)) + '</td><td>' + esc(arr(f.maquinas).join(', ')) + '</td><td>' + esc(arr(f.clientes).map(nomeCli).join(', ')) + '</td><td class="n">' + ((Number(f.valor) || 0) ? R(f.valor) : '') + '</td></tr>'; }).join('')
+      + '</tbody></table>';
+    var w = window.open('', '_blank'); if (!w) { toast('Libere as janelas (pop-up) do navegador para imprimir', 'var(--red)'); return; }
+    w.document.open(); w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Estoque de Facas</title><style>' + css + '</style></head><body>' + h + '<script>setTimeout(function(){window.print()},350)<\/script></body></html>'); w.document.close();
+  }
+  window.dsFacasRecarregar = function () { return carregar(true); };
+  // quando a área de facas aparece, troca a tela antiga pela nova (e recarrega do servidor ao entrar)
+  var visivelAntes = false;
+  setInterval(function () {
+    var pg = document.getElementById('page-facas1'); var vis = !!(pg && pg.offsetParent);
+    if (vis && !visivelAntes) { st.ass = ''; if (st.lista !== null) carregar(true); }
+    visivelAntes = vis;
+    if (vis && !pg.querySelector('#dfc-wrap')) render(true); else if (vis) render(false);
+  }, 400);
+  var css = ''
+    + '.dfc{padding:4px 2px 24px}.dfc-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}.dfc-hd h1{margin:0;font-size:22px}.dfc-hd p{margin:4px 0 0;color:var(--text2,#94a3b8);font-size:13px}'
+    + '.dfc-hd-b{display:flex;gap:8px;flex-wrap:wrap}'
+    + '.dfc-bt{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--border,#2a2d33);background:var(--surface,#141518);color:var(--text,#e2e8f0);font:inherit;font-weight:800;font-size:13.5px;cursor:pointer}'
+    + '.dfc-bt.ok{background:#16a34a;border-color:#16a34a;color:#fff}.dfc-bt.del{color:#ef4444;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1)}.dfc-bt:disabled{opacity:.6;cursor:wait}'
+    + '.dfc-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}.dfc-card{background:var(--surface,#141518);border:1px solid var(--border,#2a2d33);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}'
+    + '.dfc-card span{font-size:11.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text2,#94a3b8)}.dfc-card>b{font-size:24px;font-weight:900}.dfc-card small{font-size:12px;color:var(--text2,#94a3b8)}.dfc-cats{font-size:13px!important;line-height:1.6}.dfc-cats b{color:var(--text,#e2e8f0)}'
+    + '.dfc-bar{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}.dfc-in{width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;border-radius:10px;border:1.5px solid var(--border,#2a2d33);background:var(--surface,#0f1012);color:var(--text,#e2e8f0);font:inherit;font-size:15px}textarea.dfc-in{padding:10px 12px;min-height:64px;resize:vertical}'
+    + '.dfc-chips{display:flex;gap:6px;flex-wrap:wrap}.dfc-chips button{min-height:36px;padding:0 14px;border-radius:99px;border:1px solid var(--border,#2a2d33);background:transparent;color:var(--text2,#94a3b8);font:inherit;font-weight:800;font-size:13px;cursor:pointer}.dfc-chips button i{font-style:normal;opacity:.7}.dfc-chips button.on{background:rgba(37,99,235,.2);border-color:#3b82f6;color:#93c5fd}'
+    + '.dfc-panel{background:var(--surface,#141518);border:1px solid var(--border,#2a2d33);border-radius:12px;overflow:hidden}.dfc-tw{max-height:70vh;overflow:auto}'
+    + '.dfc-t{width:100%;border-collapse:collapse;font-size:13.5px}.dfc-t th{position:sticky;top:0;z-index:1;background:var(--s2,#1b1d22);text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2,#94a3b8);padding:10px;white-space:nowrap}'
+    + '.dfc-t td{padding:9px 10px;border-top:1px solid var(--border,rgba(148,163,184,.15));vertical-align:middle}.dfc-t .n{text-align:right;white-space:nowrap}.dfc-num{font-weight:900;font-size:15px}'
+    + '.dfc-foto img,.dfc-foto span{width:44px;height:44px;border-radius:8px;object-fit:cover;display:flex;align-items:center;justify-content:center;background:var(--s2,#1b1d22);font-size:20px}'
+    + '.dfc-nome b{display:block}.dfc-nome small{color:var(--text2,#94a3b8);font-size:12px}.dfc-tag{display:inline-block;padding:2px 10px;border-radius:99px;background:rgba(245,158,11,.15);color:#f59e0b;font-weight:800;font-size:12px}'
+    + '.dfc-chip{display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;padding:2px 8px;border-radius:99px;background:rgba(37,99,235,.15);color:#93c5fd;font-size:12px;font-weight:700}.dfc-chip.big{font-size:13px;padding:4px 6px 4px 12px}.dfc-chip button{border:0;background:transparent;color:#f87171;cursor:pointer;font-size:14px;min-width:28px;min-height:28px}'
+    + '.dfc-sem{color:var(--text3,#64748b);font-style:italic;font-size:12.5px}.dfc-clis{max-width:260px}.dfc-acoes{white-space:nowrap}.dfc-acoes .dfc-bt{min-height:36px;margin-left:4px}.dfc-vz{text-align:center;padding:30px!important;color:var(--text2,#94a3b8)}'
+    + 'html[data-theme="light"] .dfc-chip,body.light .dfc-chip{color:#1d4ed8}html[data-theme="light"] .dfc-tag,body.light .dfc-tag{color:#b45309}'
+    + '#dfc-modal .dfc-f{display:flex;flex-direction:column;gap:14px}#dfc-modal .dfc-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}#dfc-modal .dfc-c{display:flex;flex-direction:column;gap:6px;min-width:0}#dfc-modal .dfc-c.s2{grid-column:span 2}'
+    + '#dfc-modal .dfc-c>span{font-size:12px;font-weight:800;color:var(--text2,#94a3b8)}'
+    + '#dfc-modal .dfc-maqs{display:flex;flex-wrap:wrap;gap:6px}#dfc-modal .dfc-maqs button{min-height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border,#334155);background:transparent;color:var(--text,#e2e8f0);font:inherit;font-weight:800;cursor:pointer}#dfc-modal .dfc-maqs button.on{background:rgba(37,99,235,.25);border-color:#3b82f6;color:#bfdbfe}'
+    + '#dfc-modal .dfc-cli-box{position:relative}#dfc-modal .dfc-cli-dd{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:5;max-height:240px;overflow:auto;background:var(--surface,#0f172a);border:1px solid var(--border,#334155);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.45);padding:4px}'
+    + '#dfc-modal .dfc-cli-dd button{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--text,#e2e8f0);font:inherit;padding:10px 12px;border-radius:8px;cursor:pointer;min-height:42px}#dfc-modal .dfc-cli-dd button:hover{background:rgba(37,99,235,.18)}#dfc-modal .dfc-cli-dd small{color:var(--text2,#94a3b8)}'
+    + '#dfc-modal .dfc-cli-sel{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}#dfc-modal .dfc-foto-l{display:flex;align-items:center;gap:12px}#dfc-modal .dfc-foto-p{width:72px;height:72px;border-radius:12px;background:var(--s2,#1b1d22);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden}#dfc-modal .dfc-foto-p img{width:100%;height:100%;object-fit:cover}'
+    + '#dfc-modal .dfc-in{font-size:16px}'
+    + '@media (max-width:900px){.dfc-cards{grid-template-columns:1fr 1fr}#dfc-modal .dfc-g{grid-template-columns:1fr 1fr}#dfc-modal .dfc-c.s2{grid-column:1/-1}}'
+    + '@media (max-width:760px){.dfc-hd-b{width:100%}.dfc-hd-b .dfc-bt{flex:1}.dfc-hd-b .dfc-bt.ok{flex-basis:100%;min-height:48px;font-size:16px;order:-1}.dfc-tw{max-height:none}'
+    +   '.dfc-t{display:block}.dfc-t thead{display:none}.dfc-t tbody{display:block}.dfc-t tr{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;padding:12px;border-top:1px solid var(--border,rgba(148,163,184,.2))}'
+    +   '.dfc-t td{display:none;padding:0!important;border:0!important}.dfc-t td.dfc-foto{display:block;grid-row:1/3}.dfc-t td.dfc-nome{display:block}.dfc-t td.dfc-num{display:block;grid-column:3;grid-row:1;text-align:right}'
+    +   '.dfc-t td:nth-child(5){display:block;grid-column:2;font-size:12.5px;color:var(--text2,#94a3b8)}.dfc-t td.dfc-clis{display:block;grid-column:1/-1;max-width:none;font-size:12.5px}.dfc-t td:nth-child(7){display:block;grid-column:1/-1}'
+    +   '.dfc-t td.dfc-acoes{display:flex;grid-column:1/-1;gap:6px;margin-top:4px}.dfc-t td.dfc-acoes .dfc-bt{flex:1;min-height:44px;margin:0}.dfc-t td.dfc-acoes .dfc-bt.del{flex:0 0 52px}.dfc-t td.dfc-vz{display:block;grid-column:1/-1}}'
+    + '@media (max-width:520px){#dfc-modal .dfc-g{grid-template-columns:1fr}}';
+  try { var stl = document.createElement('style'); stl.id = 'dfc-css'; stl.textContent = css; document.head.appendChild(stl); } catch (_) {}
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
