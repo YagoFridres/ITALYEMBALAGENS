@@ -83066,10 +83066,22 @@ window.__perTxt = function (p) {
     if (!itens.length) return;
     var ov = document.getElementById('drp-ov'); if (ov) ov.remove();
     try { window.abrirModalCompra(); } catch (e) { alert('Não deu para abrir a Nova Compra: ' + e.message); return; }
-    var t0 = Date.now();
+    var t0 = Date.now(), passouPrompt = false;
+    var visivel = function (el) { return !!(el && getComputedStyle(el).display !== 'none' && el.getClientRects().length); };
     (function esperar() {
+      if (Date.now() - t0 > 12000) return;
+      // 1º passo da Nova Compra: janelinha "Fornecedor do Pedido" — escolhe o fornecedor sozinho e continua
+      var pr = document.getElementById('ccpx-modal-fornecedor');
+      if (!passouPrompt && visivel(pr)) {
+        var ps = document.getElementById('ccpx-fornecedor-prompt-select'), pi = document.getElementById('ccpx-fornecedor-prompt-input'), ok = false;
+        if (ps) for (var j = 0; j < ps.options.length; j++) { if (String(ps.options[j].text || '').toUpperCase().trim() === forn) { ps.value = ps.options[j].value; ps.dispatchEvent(new Event('change', { bubbles: true })); ok = true; break; } }
+        if (!ok && pi) { pi.value = forn; pi.dispatchEvent(new Event('input', { bubbles: true })); }
+        passouPrompt = true;
+        var nx = document.getElementById('ccpx-fornecedor-prompt-next'); if (nx) nx.click();
+        return setTimeout(esperar, 400);
+      }
       var m = document.getElementById('modal-compra');
-      if (!m || !document.getElementById('cp-items-body') || typeof window.cmpAddItem !== 'function') { if (Date.now() - t0 < 8000) return setTimeout(esperar, 150); return; }
+      if (!visivel(m) || !document.getElementById('cp-items-body') || typeof window.cmpAddItem !== 'function') return setTimeout(esperar, 150);
       var set = function (id, v) { var e = document.getElementById(id); if (!e) return; e.value = v; ['input', 'change'].forEach(function (ev) { try { e.dispatchEvent(new Event(ev, { bubbles: true })); } catch (_) {} }); };
       var fsel = document.getElementById('cp-forn'), achou = false;
       var pFor = function () {
