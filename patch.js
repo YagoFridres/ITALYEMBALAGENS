@@ -7,7 +7,8 @@
   window.__dsAoMudar = function (fn) { if (typeof fn === 'function') fns.push(fn); };
   function iniciar() {
     if (!document.body) return setTimeout(iniciar, 50);
-    var cb = function () { if (rodando || pend) return; pend = true; requestAnimationFrame(rodar); };
+    // roda logo após a mudança (antes de qualquer desenho na tela); várias mudanças seguidas = uma execução
+    var cb = function () { if (rodando || pend) return; pend = true; (window.queueMicrotask || function (f) { Promise.resolve().then(f); })(rodar); };
     cb.__dsImediato = true;
     new MutationObserver(cb).observe(document.body, { childList: true, subtree: true });
   }
