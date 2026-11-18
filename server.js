@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261117155806';
-const SW_RUNTIME_VERSION = '20261117155806';
+const PATCH_RUNTIME_VERSION = '20261118091529';
+const SW_RUNTIME_VERSION = '20261118091529';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27720,6 +27720,9 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
       const payload = _chapasPayloadV2FromBody(b, req, true);
       await _chapasPreservarMetaObservacao(String(req.params.id || '').trim(), payload, b, 'chapas_estoque_v2');
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+      const _aj = await _chapasAjusteViaEdicao(String(req.params.id || '').trim(), payload, req);
+      if (!_aj.ok) return res.status(_chapasMovRpcIsSaldoInsuficiente(_aj.error) ? 409 : 500).json({ error: String(_aj.error?.message || _aj.error) });
+      if (!Object.keys(payload).length) payload.atualizado_por = req?.usuario?.nome || 'sistema';
       const { data, error } = await _chapasUpdateCompatV2(String(req.params.id || '').trim(), payload);
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
@@ -27777,6 +27780,9 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
       if (b.quantidade !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.quantidade, 0));
       if (b.qtd !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.qtd, 0));
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+      const _aj2 = await _chapasAjusteViaEdicao(String(req.params.id || '').trim(), payload, req);
+      if (!_aj2.ok) return res.status(_chapasMovRpcIsSaldoInsuficiente(_aj2.error) ? 409 : 500).json({ error: String(_aj2.error?.message || _aj2.error) });
+      if (!Object.keys(payload).length) payload.atualizado_por = req?.usuario?.nome || 'sistema';
       const { data, error } = await _chapasUpdateCompatV2(String(req.params.id || '').trim(), payload);
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
@@ -27857,6 +27863,32 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     return res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// 18/11: mudar a quantidade pela edição da chapa vira um lançamento de AJUSTE (antes mudava o saldo sem deixar registro)
+async function _chapasAjusteViaEdicao(chapaId, payload, req) {
+  try {
+    const id = String(chapaId || '').trim();
+    if (!id || !payload || payload.quantidade === undefined) return { ok: true };
+    const alvo = Math.trunc(Number(payload.quantidade));
+    if (!Number.isFinite(alvo) || alvo < 0) return { ok: true };
+    const r = await supabase.from('chapas_estoque_v2').select('*').eq('id', id).maybeSingle();
+    if (r?.error || !r?.data) return { ok: true };
+    const canon = _chapasCanonicalFromAny(r.data, 'chapas_estoque_v2');
+    const atual = Math.trunc(Number(r.data.quantidade_atual ?? canon.quantidade ?? 0) || 0);
+    delete payload.quantidade; delete payload.quantidade_atual; delete payload.qtd_estoque;
+    if (alvo === atual) return { ok: true };
+    const delta = alvo - atual;
+    const movRes = await _chapasMovimentarV2Rpc({
+      chapa_id: id, tipo: delta > 0 ? 'entrada' : 'saida', quantidade: Math.abs(delta), nf: null,
+      obs: `Ajuste pela edição da chapa (de ${atual} para ${alvo})`, origem: 'ajuste_edicao', origem_id: null,
+      usuario: req?.usuario?.nome || 'sistema', emp_id: r.data.emp_id || null,
+    });
+    if (movRes?.error) return { ok: false, error: movRes.error };
+    const upd = await _chapasAtualizarQtdEstoqueChapa(id, alvo, req, new Date().toISOString());
+    if (upd?.error) return { ok: false, error: upd.error };
+    return { ok: true, ajustado: true };
+  } catch (e) { return { ok: false, error: e }; }
+}
 
 async function _chapasAtualizarQtdEstoqueChapa(chapaId, qtdNova, req, updatedAt) {
   const id = String(chapaId || '').trim();
@@ -28236,7 +28268,7 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
     const empIdBody = String(b.emp_id ?? b.empId ?? '').trim();
 
     if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatórios' });
-    if (!motivo) return res.status(400).json({ ok: false, error: 'Motivo obrigatório' });
+    // 18/11: motivo deixou de ser obrigatório
 
     const itens = itensIn.map((it, idx) => {
       const id = String(it?.chapa_id ?? it?.chapaId ?? it?.id ?? '').trim();
@@ -28272,7 +28304,7 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
 
     for (const it of checks) {
       const newQtd = Math.trunc(it.qtdAtual - it.qtd);
-      const partesObs = ['Saída em lote', 'Motivo: ' + motivo];
+      const partesObs = ['Saída em lote', motivo ? 'Motivo: ' + motivo : ''];
       if (dataSaida) partesObs.push(dataSaida);
       if (responsavel) partesObs.push('Responsavel: ' + responsavel);
       if (ofNumero) partesObs.push('OF: ' + ofNumero);
@@ -28358,14 +28390,16 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
     const itensIn = Array.isArray(b.itens) ? b.itens : [];
 
     if (!dataEntrada) return res.status(400).json({ ok: false, error: 'Data da entrada obrigatória' });
-    if (!fornecedorCab) return res.status(400).json({ ok: false, error: 'Fornecedor obrigatório' });
+    // 18/11: entrada pode ter chapas de vários fornecedores; o fornecedor de cada chapa existente é mantido
+    if (!fornecedorCab && !itensIn.every((it) => it && (it.fornecedor || it.chapa_id || it.chapaId || it.id))) return res.status(400).json({ ok: false, error: 'Fornecedor obrigatório' });
     if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatórios' });
 
     const itens = itensIn.map((raw, idx) => {
       const item = raw && typeof raw === 'object' ? raw : {};
       const chapaId = String(item.chapa_id ?? item.chapaId ?? item.id ?? '').trim();
       const modo = String(item.modo || (chapaId ? 'existente' : 'nova')).trim().toLowerCase();
-      const fornecedor = String(item.fornecedor || fornecedorCab).trim();
+      const fornecedor = String(item.fornecedor || (chapaId ? '' : fornecedorCab)).trim();
+      const nfItem = String(item.nf ?? '').trim();
       const nomenclatura = String(item.nomenclatura ?? item.nom ?? '').trim();
       const tamanho = _chapasEntradaNormTamanho(item.tamanho ?? item.tam ?? '');
       const nomeUso = String(item.nome_uso ?? item.nomeUso ?? item.nome ?? nomenclatura ?? '').trim();
@@ -28393,6 +28427,7 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
         emp_id: empId,
         empresa_vinculada: String((item.empresa_vinculada ?? item.empresaVinculada ?? empresaVinculadaCab) || '').trim(),
         observacoes,
+        nf: nfItem,
       };
     });
 
@@ -28444,7 +28479,7 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
           gramatura: item.gramatura,
           qual_cnpj: item.qual_cnpj,
           empresa_vinculada: item.empresa_vinculada || item.qual_cnpj || null,
-          nf: nfCab || null,
+          nf: item.nf || nfCab || null,
           data_entrada: dataEntrada,
           emp_id: item.emp_id,
           valor_unitario: item.valor_unitario,
@@ -28474,7 +28509,7 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
         gramatura: item.gramatura != null ? item.gramatura : canonCur.gramatura,
         qual_cnpj: item.qual_cnpj || canonCur.qual_cnpj,
         empresa_vinculada: item.empresa_vinculada || canonCur.empresa_vinculada,
-        nf: nfCab || canonCur.nf,
+        nf: item.nf || nfCab || canonCur.nf,
         data_entrada: dataEntrada || canonCur.data_entrada,
         emp_id: item.emp_id || canonCur.emp_id || empIdCab,
         // entrada sem valor informado não pode zerar o valor da chapa
@@ -28491,8 +28526,8 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
         chapa_id: row.id,
         tipo: 'entrada',
         quantidade: item.quantidade,
-        nf: nfCab || null,
-        obs: _chapasEntradaObs(cabecalho, item),
+        nf: item.nf || nfCab || null,
+        obs: _chapasEntradaObs(Object.assign({}, cabecalho, { nf: item.nf || nfCab, fornecedor: item.fornecedor || canonCur.fornecedor || fornecedorCab }), item),
         origem: 'entrada_lote',
         origem_id: null,
         usuario: req?.usuario?.nome || 'sistema',
@@ -28517,6 +28552,7 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
         tamanho: canonUpd.tamanho,
         nome: canonUpd.nome || canonUpd.nome_uso || '',
         quantidade_entrada: item.quantidade,
+        nf_item: item.nf || nfCab || '',
         qtd_anterior: oldQtd,
         qtd_nova: Math.trunc(Number(canonUpd.quantidade || newQtd) || 0),
         valor_unitario: item.valor_unitario,
@@ -28540,9 +28576,9 @@ app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
       let payload = {
         data_recebimento: dataEntrada || new Date().toISOString().slice(0, 10),
         placa_veiculo: placaCab || null,
-        nota_fiscal: nfCab || null,
+        nota_fiscal: r.nf_item || nfCab || null,
         produto: [r.nomenclatura, r.tamanho, r.nome].filter(Boolean).join(' · ') || 'Chapa',
-        fornecedor: fornecedorCab || r.fornecedor || null,
+        fornecedor: r.fornecedor || fornecedorCab || null,
         quantidade: Math.trunc(Number(r.quantidade_entrada || 0) || 0),
         responsavel: responsavel || req?.usuario?.nome || null,
         devolucao: false,
