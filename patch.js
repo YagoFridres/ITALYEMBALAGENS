@@ -82635,16 +82635,64 @@ window.__perTxt = function (p) {
       var jaConc = lista.filter(function (o) { return /conclu/i.test(String(o.status || '')); });
       lista = lista.filter(function (o) { return !/conclu/i.test(String(o.status || '')) && !/cancel/i.test(String(o.status || '')); });
       if (!lista.length) { fechar(); toast(jaConc.length ? 'Essa OF já está concluída' : 'OF não encontrada', 'var(--yellow)'); return; }
-      return Promise.all(lista.map(function (of) {
-        var cli = String(of.cli_id || of.cliId || of.cliente_id || '').trim();
-        return Promise.all([
-          cli ? api('/api/conclusao/historico-cliente?cli_id=' + encodeURIComponent(cli)).then(function (j) { return (j && j.data) || {}; }).catch(function () { return {}; }) : {},
-          (H().tipos ? Promise.resolve(H().tipos(of)).catch(function () { return []; }) : [])
-        ]).then(function (x) { return { of: of, hist: x[0] || {}, tipos: (x[1] || []).map(function (t) { return H().normTipo ? H().normTipo(t) : t; }).filter(function (t) { return t && t.id && t.nome; }) }; });
-      })).then(function (itens) { D.ofs = itens.map(estadoInicial); pintar(); if (jaConc.length) toast(jaConc.length + ' OF(s) já concluída(s) ficaram de fora', 'var(--yellow)'); });
+      return Promise.all(lista.map(prepararOF)).then(function (itens) { D.ofs = itens.map(estadoInicial); pintar(); if (jaConc.length) toast(jaConc.length + ' OF(s) já concluída(s) ficaram de fora', 'var(--yellow)'); });
     }).catch(function (e) { fechar(); toast('Erro ao abrir a conclusão: ' + e.message, 'var(--red)'); });
   };
 
+  var HIST = {};
+  function prepararOF(of) {
+    var cli = String(of.cli_id || of.cliId || of.cliente_id || '').trim();
+    if (cli && !HIST[cli]) HIST[cli] = api('/api/conclusao/historico-cliente?cli_id=' + encodeURIComponent(cli)).then(function (j) { return (j && j.data) || {}; }).catch(function () { return {}; });
+    return Promise.all([cli ? HIST[cli] : {}, (H().tipos ? Promise.resolve(H().tipos(of)).catch(function () { return []; }) : [])])
+      .then(function (x) { return { of: of, hist: x[0] || {}, tipos: (x[1] || []).map(function (t) { return H().normTipo ? H().normTipo(t) : t; }).filter(function (t) { return t && t.id && t.nome; }) }; });
+  }
+  // ---------- 18/11: concluir junto — outras OFs em aberto do cliente + busca de qualquer OF em aberto ----------
+  function stN(o) { return String(o && o.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function normB(v) { return String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function abertas() {
+    var dentro = {}; (D && D.ofs || []).forEach(function (s) { dentro[String(s.of.id)] = 1; });
+    return (Array.isArray(window.OFs) ? window.OFs : []).filter(function (o) { return o && o.id && !dentro[String(o.id)] && !o.deleted_at && !/conclu|cancel/.test(stN(o)); });
+  }
+  function prodDe(o) { return String(o.descricao || o.produto || o.prodDesc || (Array.isArray(o.itens) && o.itens[0] && (o.itens[0].desc || o.itens[0].descricao)) || '').trim(); }
+  function linhaJunto(o) {
+    return '<div class="dcc-jl"><div><b>OF #' + esc(o.of ?? o.numero ?? '') + '</b> <span class="dcc-cli">' + esc(clienteNome(o)) + '</span><div class="dcc-sub">' + esc(prodDe(o).slice(0, 90)) + ' · ' + num(o.qtd ?? o.quantidade ?? 0) + ' un' + (o.entrega || o.data_entrega ? ' · entrega ' + esc(String(o.entrega || o.data_entrega).slice(0, 10).split('-').reverse().join('/')) : '') + '</div></div>'
+      + '<button type="button" class="dcc-b dcc-addof" data-addof="' + esc(o.id) + '">+ Adicionar</button></div>';
+  }
+  function juntoHtml() {
+    var clis = {}; D.ofs.forEach(function (s) { var c = String(s.of.cli_id || s.of.cliId || s.of.cliente_id || ''); if (c) clis[c] = 1; });
+    var sug = abertas().filter(function (o) { return clis[String(o.cli_id || o.cliId || o.cliente_id || '')]; }).sort(function (a, b) { return Number(a.of || 0) - Number(b.of || 0); });
+    return '<section class="dcc-junto"><h3>➕ Concluir junto</h3>'
+      + (sug.length ? '<div class="dcc-jh"><span>Outras OFs em aberto deste cliente (' + sug.length + ')</span>' + (sug.length > 1 ? '<button type="button" class="dcc-add" data-addtodas="' + esc(sug.map(function (o) { return o.id; }).join(',')) + '">+ Adicionar todas</button>' : '') + '</div><div class="dcc-jlist">' + sug.slice(0, 30).map(linhaJunto).join('') + '</div>'
+        : '<div class="dcc-sub">Este cliente não tem outras OFs em aberto.</div>')
+      + '<label class="dcc-f" style="margin-top:10px"><span>🔎 Buscar outra OF em aberto (número, cliente ou produto)</span><input id="dcc-busca" class="dcc-in" type="search" autocomplete="off" placeholder="Ex.: 5190, pizza, móveis ripke…" value="' + esc(D.busca || '') + '"></label>'
+      + '<div id="dcc-bres" class="dcc-jlist">' + resultadosBusca() + '</div></section>';
+  }
+  function resultadosBusca() {
+    var toks = normB(D && D.busca).split(/\s+/).filter(Boolean); if (!toks.length) return '';
+    var l = abertas().filter(function (o) { var t = normB(['#' + (o.of || ''), o.of, clienteNome(o), prodDe(o), o.vendedor || o.vendNome || ''].join(' ')); return toks.every(function (k) { return t.indexOf(k) >= 0; }); });
+    return l.length ? l.slice(0, 20).map(linhaJunto).join('') + (l.length > 20 ? '<div class="dcc-sub">Mostrando 20 de ' + l.length + ' — digite mais para filtrar</div>' : '') : '<div class="dcc-sub">Nenhuma OF em aberto encontrada.</div>';
+  }
+  function adicionarOFs(ids, btn) {
+    ids = ids.filter(function (id) { return id && !D.ofs.some(function (s) { return String(s.of.id) === String(id); }); });
+    if (!ids.length) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Adicionando…'; }
+    Promise.all(ids.map(function (id) { return carregarOF(id).catch(function () { return null; }); })).then(function (l) {
+      l = l.filter(function (o) { return o && !/conclu|cancel/.test(stN(o)); });
+      return Promise.all(l.map(prepararOF));
+    }).then(function (itens) {
+      if (!D) return;
+      var n0 = D.ofs.length; itens.forEach(function (it) { D.ofs.push(estadoInicial(it)); });
+      D.busca = ''; pintar();
+      var novo = document.querySelector('#dcc-ov .dcc-of[data-i="' + n0 + '"]'); if (novo) novo.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      toast(itens.length + ' OF(s) adicionada(s) — agora são ' + D.ofs.length, 'var(--green)');
+    }).catch(function (e) { toast('Erro ao adicionar: ' + e.message, 'var(--red)'); if (btn) { btn.disabled = false; btn.textContent = '+ Adicionar'; } });
+  }
+  document.addEventListener('input', function (e) { if (e.target && e.target.id === 'dcc-busca' && D) { D.busca = e.target.value; var r = document.getElementById('dcc-bres'); if (r) r.innerHTML = resultadosBusca(); } });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#dcc-ov [data-addof],#dcc-ov [data-addtodas]'); if (!b || !D || D.salvando) return;
+    e.preventDefault(); e.stopPropagation();
+    adicionarOFs(b.hasAttribute('data-addof') ? [b.getAttribute('data-addof')] : b.getAttribute('data-addtodas').split(','), b);
+  }, true);
   function estadoInicial(it) {
     var of = it.of, b = D.base;
     var ped = Math.trunc(Number(of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0);
@@ -82735,7 +82783,7 @@ window.__perTxt = function (p) {
       + '<div class="dcc-top"><label class="dcc-f"><span>📅 Data de faturamento *</span><input id="dcc-data" class="dcc-in" type="date" value="' + esc(D.data || hoje()) + '"></label>'
       + '<label class="dcc-f"><span>Concluído por</span><input class="dcc-in" value="' + esc(usuarioNome()) + '" readonly></label>'
       + (n > 1 ? '<div class="dcc-f"><span>Total</span><div class="dcc-totbox"><b>' + num(tot.p) + '</b> caixas · <b>' + rs(tot.v) + '</b></div></div>' : '') + '</div>'
-      + '<div class="dcc-body">' + D.ofs.map(cardOF).join('') + '</div>'
+      + '<div class="dcc-body">' + D.ofs.map(cardOF).join('') + (D.salvando ? '' : juntoHtml()) + '</div>'
       + '<datalist id="dcc-ops">' + D.base.ops.map(function (o) { return '<option value="' + esc(o) + '">'; }).join('') + '</datalist>'
       + '<div class="dcc-foot"><button type="button" class="dcc-b" data-fechar>Cancelar</button><button type="button" class="dcc-b dcc-pri" data-salvar' + (D.salvando ? ' disabled' : '') + '>' + (D.salvando ? 'Concluindo…' : '✓ Concluir ' + (pend > 1 ? pend + ' OFs' : 'OF')) + '</button></div></div>';
     var dt = document.getElementById('dcc-data'); if (dt) dt.onchange = function () { D.data = dt.value; };
@@ -82923,6 +82971,11 @@ window.__perTxt = function (p) {
     + '.dcc-res{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--s2,#111827);line-height:1.6}.dcc-bad{color:#dc2626}'
     + '.dcc-tag{padding:5px 10px;border-radius:8px;font-weight:800;font-size:13px}.dcc-tag.ok{background:#16a34a;color:#fff}.dcc-tag.err{background:#dc2626;color:#fff;max-width:420px}'
     + '.dcc-totbox{min-height:44px;display:flex;align-items:center;gap:6px;font-size:15px}'
+    + '.dcc-junto{border:2px dashed var(--border,#475569);border-radius:14px;padding:14px;display:grid;gap:8px}.dcc-junto h3{margin:0;font-size:16px}'
+    + '.dcc-jh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--text2,#94a3b8)}'
+    + '.dcc-jlist{display:grid;gap:6px;max-height:320px;overflow:auto}.dcc-jl{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:var(--s2,#111827);border:1px solid var(--border,#334155)}'
+    + '.dcc-addof{min-height:38px;padding:0 14px;font-size:13.5px;background:#2563eb;border-color:#1d4ed8;color:#fff;white-space:nowrap}'
+    + '[data-theme="light"] .dcc-jl,body.light .dcc-jl{background:#f1f5f9}'
     + '.dsc-lote-conc{background:#16a34a!important;border-color:#15803d!important;color:#fff!important;font-weight:800!important}'
     + '@media (max-width:640px){.dcc-ov{padding:0}.dcc-shell{width:100vw;max-height:100vh;height:100%;border-radius:0}.dcc-top{grid-template-columns:1fr}.dcc-body,.dcc-head,.dcc-top,.dcc-foot{padding-left:12px;padding-right:12px}'
     + '.dcc-mrow{grid-template-columns:1fr 90px 40px}.dcc-mrow[data-t="perda"]{grid-template-columns:1fr 80px 40px}.dcc-mrow [data-f="op"]{grid-column:1/3;grid-row:2}.dcc-foot .dcc-b{flex:1}.dcc-pri{min-width:0}}'
