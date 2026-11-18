@@ -71219,7 +71219,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (esc2.length && escolhido.hasAttribute('data-ds-dup')) { escolhido.removeAttribute('data-ds-dup'); escolhido.classList.remove('ds-oculto'); }
     });
     // itens que não existem no menu antigo (Entradas / Saídas de chapas) são criados aqui
-    ['entradas-estoque', 'saidas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento', 'roteiro-semana'].forEach(function (k) {
+    ['entradas-estoque', 'almoxarifado', 'gramaturas', 'toneladas-vendidas', 'checklist-recebimento', 'roteiro-semana'].forEach(function (k) {
       if (porChave[k]) return;
       var it = document.createElement('div');
       it.className = 'nav-item'; it.setAttribute('onclick', "go('" + k + "')"); it.setAttribute('data-ds-criado', '1');
@@ -81731,24 +81731,56 @@ window.__perTxt = function (p) {
     var lista = ids.map(function (id) { return mapa[id]; }).filter(Boolean);
     var ass = ids.join(',') + '|' + lista.map(function (c) { return qtd(c) + ':' + (c.gramatura || '') + ':' + (c.valor_unitario || '') + ':' + (c.estoque_minimo || '') + ':' + tam(c); }).join(',');
     origPanel.style.display = 'none'; if (origCards) origCards.style.display = 'none';
+    ultimaLista = lista;
     if (meu && ass === ultimaAss && meu.previousElementSibling) return;
     ultimaAss = ass;
     var scroll = meu ? (meu.querySelector('.drv-tw') || {}).scrollTop || 0 : 0;
     if (!meu) { meu = document.createElement('div'); meu.id = 'drv-wrap'; }
     meu.innerHTML = cardsHtml(base)
       + '<div class="pep-panel drv-panel"><div class="drv-hd"><div><b>✂️ Retalhos por fornecedor</b><small>' + N(lista.length) + ' na lista · do maior para o menor tamanho</small></div>'
-      + '<div class="drv-hd-b"><button type="button" class="pep-btn" data-drv-print>🖨 Imprimir lista por fornecedor</button></div></div>'
+      + '<div class="drv-hd-b"><button type="button" class="pep-btn dsef-btn" data-drv-fs>⛶ Ver retalhos em tela cheia</button><button type="button" class="pep-btn" data-drv-print>🖨 Imprimir lista por fornecedor</button></div></div>'
       + tabelaHtml(lista) + '</div>';
     if (meu.parentNode !== origPanel.parentNode || meu.nextSibling !== origPanel) origPanel.parentNode.insertBefore(meu, origPanel);
     var tw = meu.querySelector('.drv-tw'); if (tw && scroll) tw.scrollTop = scroll;
     meu.querySelector('[data-drv-print]').onclick = imprimir;
+    meu.querySelector('[data-drv-fs]').onclick = abrirFS;
+    pintarFS();
     Array.prototype.forEach.call(meu.querySelectorAll('[data-drv-ir]'), function (b) {
       b.onclick = function () { var alvo = meu.querySelector('#drv-grp-' + String(b.getAttribute('data-drv-ir')).replace(/\W+/g, '-')); var tw2 = meu.querySelector('.drv-tw'); if (alvo && tw2) { tw2.scrollTop = alvo.offsetTop - 2; tw2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
     });
   }
+  // 18/11: retalhos em TELA CHEIA (igual ao estoque de chapas)
+  var ultimaLista = [], fsOv = null;
+  function normFS(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function filtrarFS() {
+    if (!fsOv) return; var q = normFS(fsOv.querySelector('input').value).split(/\s+/).filter(Boolean), vis = 0, tot = 0, cab = null, cabVis = false;
+    var fim = function () { if (cab) cab.style.display = (cabVis || !q.length) ? '' : 'none'; };
+    fsOv.querySelectorAll('.dsef-bd tbody tr').forEach(function (tr) {
+      if (!tr.querySelector('[data-est-edit]')) { fim(); cab = tr; cabVis = false; return; }
+      tot++; var ok = !q.length || q.every(function (k) { return normFS(tr.textContent).indexOf(k) >= 0; }); tr.style.display = ok ? '' : 'none'; if (ok) { vis++; cabVis = true; }
+    });
+    fim(); fsOv.querySelector('.n').textContent = vis + ' de ' + tot + ' retalhos';
+  }
+  function pintarFS() { if (!fsOv) return; var bd = fsOv.querySelector('.dsef-bd'), st = bd.scrollTop; bd.innerHTML = tabelaHtml(ultimaLista); bd.scrollTop = st; filtrarFS(); }
+  function escFS(e) { if (e.key === 'Escape' && fsOv && !document.querySelector('.estoque-modal-overlay, .modal-overlay.active, .dsch-ov, .dmv-rap-ov')) fecharFS(); }
+  function fecharFS() { if (!fsOv) return; document.removeEventListener('keydown', escFS); fsOv.remove(); fsOv = null; }
+  function abrirFS() {
+    if (fsOv) return;
+    fsOv = document.createElement('div'); fsOv.className = 'dsef-ov drv-fs';
+    fsOv.innerHTML = '<div class="dsef-hd"><h2>✂️ Retalhos</h2><input type="search" placeholder="Buscar retalho (nomenclatura, tamanho, fornecedor, gramatura...)"><span class="n"></span><button type="button" data-drv-fs-print>🖨 Imprimir</button><button type="button" class="x">✕ Fechar</button></div><div class="dsef-bd"></div>';
+    document.body.appendChild(fsOv); pintarFS();
+    fsOv.querySelector('input').addEventListener('input', filtrarFS);
+    fsOv.querySelector('.x').addEventListener('click', fecharFS);
+    fsOv.querySelector('[data-drv-fs-print]').addEventListener('click', imprimir);
+    document.addEventListener('keydown', escFS);
+    setTimeout(function () { try { fsOv.querySelector('input').focus(); } catch (_) {} }, 50);
+  }
+  window.dsRetalhosTelaCheia = abrirFS;
+  setInterval(function () { if (fsOv && !document.getElementById('drv-wrap')) fecharFS(); }, 1500);
   setInterval(render, 700);
   var css = ''
     + '#drv-wrap{margin-bottom:14px}'
+    + '.drv-hd-b{display:flex;gap:8px;flex-wrap:wrap}.drv-fs .dsef-bd .drv-tw{max-height:none!important;overflow:visible!important}.drv-fs .dsef-bd table{font-size:15px!important}'
     + '.drv-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}'
     + '.drv-card{text-align:left;font:inherit;color:var(--text,#e2e8f0);background:var(--surface,#141518);border:1px solid var(--border,#2a2d33);border-left:6px solid var(--fc,#64748b);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;cursor:pointer;min-height:96px}'
     + '.drv-card.drv-tot{cursor:default;border-left-color:#f59e0b}.drv-card:hover:not(.drv-tot){box-shadow:0 0 0 2px var(--fc) inset}'
