@@ -81498,7 +81498,8 @@ window.__perTxt = function (p) {
       var id = tr.getAttribute('data-chapa-id');
       // botão de baixa na coluna de ações
       var acoes = tr.lastElementChild;
-      if (acoes && !acoes.querySelector('[data-ret-baixa]')) {
+      // 18/11: retalho agora usa os botões + e − (o botão "Baixa" saiu)
+      if (false && acoes && !acoes.querySelector('[data-ret-baixa]')) {
         var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'pep-btn ds-ret-baixa-btn'; bt.setAttribute('data-ret-baixa', id); bt.textContent = '➖ Baixa'; bt.title = 'Dar saída / baixa neste retalho';
         bt.onclick = function (e) { e.preventDefault(); e.stopPropagation(); abrirBaixa(id); };
         acoes.insertBefore(bt, acoes.firstChild);
