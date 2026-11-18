@@ -83097,9 +83097,12 @@ window.__perTxt = function (p) {
       });
       // empresa da compra = a empresa das chapas (quando todas são da mesma)
       var nrm = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, ''); };
-      var emps = {}; itens.forEach(function (c) { var e = nrm(c.empresa_vinculada || c.qual_cnpj); if (e) emps[e] = 1; });
-      var ek = Object.keys(emps); var empTxt = '';
-      if (ek.length === 1) { var eb = Array.prototype.find.call(ovl.querySelectorAll('[data-emp]'), function (b) { var t = nrm(b.textContent); return t.indexOf(ek[0]) >= 0 || ek[0].indexOf(t) >= 0; }); if (eb) { eb.click(); empTxt = eb.textContent.trim(); } }
+      var ebs = Array.prototype.slice.call(ovl.querySelectorAll('[data-emp]'));
+      var cont = new Map();
+      itens.forEach(function (c) { var e = nrm(c.empresa_vinculada || c.qual_cnpj); if (!e) return; var eb0 = ebs.find(function (b) { var t = nrm(b.textContent); return t && (t.indexOf(e) >= 0 || e.indexOf(t) >= 0); }); if (eb0) cont.set(eb0, (cont.get(eb0) || 0) + 1); });
+      var empTxt = '', misto = cont.size > 1, eb = null;
+      cont.forEach(function (n, b) { if (!eb || n > cont.get(eb)) eb = b; });
+      if (eb) { eb.click(); empTxt = eb.textContent.trim() + (misto ? ' (a maioria das chapas — confira)' : ''); }
       // pasta do fornecedor (ex.: "2 Fapolpa")
       var ps = ovl.querySelector('#ccpx-pasta');
       if (ps && !ps.value) { var po2 = Array.prototype.find.call(ps.options, function (o) { return o.value && nrm(o.text).indexOf(nrm(forn)) >= 0; }); if (po2) { ps.value = po2.value; ps.dispatchEvent(new Event('change', { bubbles: true })); } }
