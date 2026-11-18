@@ -82129,6 +82129,8 @@ window.__perTxt = function (p) {
     if (!g || !mt) return 0; return (parseFloat(mt[1].replace(',', '.')) * parseFloat(mt[2].replace(',', '.')) / 1e6) * g / 1000;
   }
   function valorMov(m) { var v = Number(m.valor_total); if (isFinite(v) && v > 0) return v; var vu = Number(m.valor_unitario || 0); if (!(vu > 0)) vu = vuChapa(chapaDe(m)); return vu * qtdMov(m); }
+  // 18/11: NF do lançamento; se não tiver, a NF do cadastro da chapa
+  function nfMov(m) { var c = chapaDe(m) || {}; return String(m.nf || c.nf || c.numero_nf || c.nf_entrada || '').trim(); }
   function tonMov(m) { return qtdMov(m) * kgUn(chapaDe(m)) / 1000; }
   function ton(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t'; }
 
@@ -82189,7 +82191,7 @@ window.__perTxt = function (p) {
       if (S.aba === 'saida' && !(Number(m.delta) < 0)) return false;
       if (S.forn && String(m.fornecedor || '').toUpperCase() !== S.forn) return false;
       if (!toks.length) return true;
-      var t = norm([m.fornecedor, m.chapa_label, m.nf, m.usuario, m.obs, m.origem, dataHora(m.created_at)].join(' '));
+      var t = norm([m.fornecedor, m.chapa_label, nfMov(m), m.usuario, m.obs, m.origem, dataHora(m.created_at)].join(' '));
       return toks.every(function (x) { return t.indexOf(x) >= 0; });
     }).sort(function (a, b) { return a.created_at < b.created_at ? 1 : -1; });
   }
@@ -82232,7 +82234,7 @@ window.__perTxt = function (p) {
         + '<td data-l="Fornecedor"><span class="dmv-dot"></span>' + esc(f || '—') + '</td><td data-l="Chapa"><b>' + esc(m.chapa_label || '—') + '</b></td>'
         + '<td data-l="Qtd" class="n ' + (ent ? 'ent' : 'sai') + '"><b>' + (ent ? '+' : '−') + num(qtdMov(m)) + '</b></td>'
         + '<td data-l="Saldo" class="n dmv-sub">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '—') + '</td>'
-        + '<td data-l="Peso" class="n">' + ton(tonMov(m)) + '</td><td data-l="Valor" class="n">' + rs(valorMov(m)) + '</td><td data-l="NF">' + esc(m.nf || '—') + '</td>'
+        + '<td data-l="Peso" class="n">' + ton(tonMov(m)) + '</td><td data-l="Valor" class="n">' + rs(valorMov(m)) + '</td><td data-l="NF">' + esc(nfMov(m) || '—') + '</td>'
         + '<td data-l="Responsável">' + esc(m.usuario || '—') + '</td>'
         + '<td data-l="" class="c">' + (podeDesfazer ? '<button type="button" class="dmv-b dmv-mini dmv-del" data-dmv-desf="' + esc(m.id) + '" title="Desfazer este lançamento (o saldo volta)">↶ Desfazer</button>' : '') + '</td></tr>';
     }).join('') || '<tr><td colspan="11" class="dmv-vazio">Nada encontrado' + (S.q || S.forn ? ' com esse filtro' : ' neste mês') + '.</td></tr>';
@@ -82292,7 +82294,7 @@ window.__perTxt = function (p) {
       + forns.map(function (f) { var F = r.forn[f]; return '<tr><td><span class="dot" style="background:' + corForn(f) + '"></span>' + esc(f) + '</td><td class="n">' + num(F.eq) + '</td><td class="n">' + ton(F.et) + '</td><td class="n">' + rs(F.ev) + '</td><td class="n">' + num(F.sq) + '</td><td class="n">' + ton(F.st) + '</td><td class="n">' + rs(F.sv) + '</td><td class="n">' + num(F.eq - F.sq) + '</td></tr>'; }).join('')
       + '<tr class="tot"><td>Total</td><td class="n">' + num(r.ent.q) + '</td><td class="n">' + ton(r.ent.t) + '</td><td class="n">' + rs(r.ent.v) + '</td><td class="n">' + num(r.sai.q) + '</td><td class="n">' + ton(r.sai.t) + '</td><td class="n">' + rs(r.sai.v) + '</td><td class="n">' + num(r.ent.q - r.sai.q) + '</td></tr></tbody></table>'
       + '<h2>Lançamentos (' + lista.length + ')</h2><table><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th class="n">Qtd</th><th class="n">Saldo</th><th class="n">Peso</th><th class="n">Valor</th><th>NF</th><th>Responsável</th></tr></thead><tbody>'
-      + lista.map(function (m) { var k = classe(m), ent = Number(m.delta) > 0; return '<tr class="' + (k === 'desfeito' ? 'x' : '') + '"><td>' + esc(dataHora(m.created_at)) + '</td><td>' + (k === 'desfeito' ? 'Desfeito' : (k === 'ajuste' ? 'Ajuste' : (k === 'cadastro' ? 'Cadastro' : (ent ? 'Entrada' : 'Saída')))) + '</td><td>' + esc(m.fornecedor || '') + '</td><td>' + esc(m.chapa_label || '') + '</td><td class="n">' + (ent ? '+' : '−') + num(qtdMov(m)) + '</td><td class="n">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '') + '</td><td class="n">' + ton(tonMov(m)) + '</td><td class="n">' + rs(valorMov(m)) + '</td><td>' + esc(m.nf || '') + '</td><td>' + esc(m.usuario || '') + '</td></tr>'; }).join('')
+      + lista.map(function (m) { var k = classe(m), ent = Number(m.delta) > 0; return '<tr class="' + (k === 'desfeito' ? 'x' : '') + '"><td>' + esc(dataHora(m.created_at)) + '</td><td>' + (k === 'desfeito' ? 'Desfeito' : (k === 'ajuste' ? 'Ajuste' : (k === 'cadastro' ? 'Cadastro' : (ent ? 'Entrada' : 'Saída')))) + '</td><td>' + esc(m.fornecedor || '') + '</td><td>' + esc(m.chapa_label || '') + '</td><td class="n">' + (ent ? '+' : '−') + num(qtdMov(m)) + '</td><td class="n">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '') + '</td><td class="n">' + ton(tonMov(m)) + '</td><td class="n">' + rs(valorMov(m)) + '</td><td>' + esc(nfMov(m) || '') + '</td><td>' + esc(m.usuario || '') + '</td></tr>'; }).join('')
       + '</tbody></table></body></html>';
     var w = window.open('', '_blank'); if (!w) { toast('Libere as janelas pop-up para imprimir', 'var(--red)'); return; }
     w.document.open(); w.document.write(html); w.document.close(); setTimeout(function () { try { w.focus(); w.print(); } catch (_) {} }, 400);
@@ -82465,6 +82467,7 @@ window.__perTxt = function (p) {
       + '<div class="dmv-rap-n" id="dmv-rap-nome">' + esc(linhaInfo(btn)) + '</div>'
       + '<div class="dmv-rap-s" id="dmv-rap-saldo">Carregando saldo…</div>'
       + '<input id="dmv-rap-q" type="number" min="1" inputmode="numeric" placeholder="Quantas chapas?" autocomplete="off">'
+      + (ent ? '<input id="dmv-rap-nf" class="dmv-in" type="text" placeholder="NF (opcional)" autocomplete="off">' : '')
       + '<div class="dmv-rap-p" id="dmv-rap-prev"></div>'
       + '<div class="dmv-rap-f"><button type="button" class="dmv-b" data-rap="x">Cancelar</button><button type="button" class="dmv-b ' + (ent ? 'dmv-ent' : 'dmv-sai') + '" data-rap="ok">' + (ent ? '✓ Somar' : '✓ Tirar') + '</button></div></div>';
     document.body.appendChild(ov);
@@ -82483,7 +82486,8 @@ window.__perTxt = function (p) {
       var v = Math.trunc(Number(q.value) || 0); if (!(v > 0)) { toast('Digite quantas chapas', 'var(--red)'); q.focus(); return; }
       if (!ent && saldo != null && v > saldo) { toast('Saldo insuficiente: tem ' + num(saldo), 'var(--red)'); return; }
       var ok = ov.querySelector('[data-rap="ok"]'); if (ok.disabled) return; ok.disabled = true; ok.textContent = 'Salvando…';
-      api('/api/chapas_estoque/' + encodeURIComponent(id) + '/movimento', { method: 'POST', body: { tipo: tipo, delta: v } }).then(function (j) {
+      var nfEl = document.getElementById('dmv-rap-nf'), corpo = { tipo: tipo, delta: v }; if (nfEl && nfEl.value.trim()) corpo.nf = nfEl.value.trim();
+      api('/api/chapas_estoque/' + encodeURIComponent(id) + '/movimento', { method: 'POST', body: corpo }).then(function (j) {
         var novo = j && (j.qtd_estoque != null ? j.qtd_estoque : (j.data && j.data.quantidade));
         toast((ent ? '+' : '−') + num(v) + ' chapas' + (novo != null ? ' · saldo agora ' + num(novo) : ''), 'var(--green)');
         fechar(); S.chapas = null; S.movs = null;
@@ -82492,6 +82496,7 @@ window.__perTxt = function (p) {
       }).catch(function (e) { ok.disabled = false; ok.textContent = ent ? '✓ Somar' : '✓ Tirar'; toast('Erro: ' + e.message, 'var(--red)'); });
     }
     q.addEventListener('input', prev);
+    var nfIn = document.getElementById('dmv-rap-nf'); if (nfIn) nfIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); salvar(); } else if (e.key === 'Escape') fechar(); });
     q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); salvar(); } else if (e.key === 'Escape') fechar(); });
     ov.addEventListener('click', function (e) { if (e.target === ov) return fechar(); var b = e.target.closest('[data-rap]'); if (!b) return; if (b.getAttribute('data-rap') === 'x') fechar(); else salvar(); });
   }
