@@ -83065,46 +83065,39 @@ window.__perTxt = function (p) {
     var itens = lista.filter(function (c) { return SEL[c.id] && String(c.fornecedor || 'SEM FORNECEDOR').toUpperCase() === forn; });
     if (!itens.length) return;
     var ov = document.getElementById('drp-ov'); if (ov) ov.remove();
-    try { window.abrirModalCompra(); } catch (e) { alert('Não deu para abrir a Nova Compra: ' + e.message); return; }
-    var t0 = Date.now(), passouPrompt = false;
-    var visivel = function (el) { return !!(el && getComputedStyle(el).display !== 'none' && el.getClientRects().length); };
-    (function esperar() {
-      if (Date.now() - t0 > 12000) return;
-      // 1º passo da Nova Compra: janelinha "Fornecedor do Pedido" — escolhe o fornecedor sozinho e continua
-      var pr = document.getElementById('ccpx-modal-fornecedor');
-      if (!passouPrompt && visivel(pr)) {
-        var ps = document.getElementById('ccpx-fornecedor-prompt-select'), pi = document.getElementById('ccpx-fornecedor-prompt-input'), ok = false;
-        if (ps) for (var j = 0; j < ps.options.length; j++) { if (String(ps.options[j].text || '').toUpperCase().trim() === forn) { ps.value = ps.options[j].value; ps.dispatchEvent(new Event('change', { bubbles: true })); ok = true; break; } }
-        if (!ok && pi) { pi.value = forn; pi.dispatchEvent(new Event('input', { bubbles: true })); }
-        passouPrompt = true;
-        var nx = document.getElementById('ccpx-fornecedor-prompt-next'); if (nx) nx.click();
-        return setTimeout(esperar, 400);
-      }
-      var m = document.getElementById('modal-compra');
-      if (!visivel(m) || !document.getElementById('cp-items-body') || typeof window.cmpAddItem !== 'function') return setTimeout(esperar, 150);
-      var set = function (id, v) { var e = document.getElementById(id); if (!e) return; e.value = v; ['input', 'change'].forEach(function (ev) { try { e.dispatchEvent(new Event(ev, { bubbles: true })); } catch (_) {} }); };
-      var fsel = document.getElementById('cp-forn'), achou = false;
-      var pFor = function () {
-        if (fsel && fsel.options) { for (var i = 0; i < fsel.options.length; i++) { if (String(fsel.options[i].text || '').toUpperCase().indexOf(forn) >= 0) { fsel.value = fsel.options[i].value; fsel.dispatchEvent(new Event('change', { bubbles: true })); achou = true; break; } } }
-        if (!achou) set('cp-forn-manual', forn);
-      };
-      pFor(); setTimeout(function () { if (!achou) pFor(); }, 1500);
-      var tb = document.getElementById('cp-items-body'), base = tb.querySelectorAll('tr').length;
-      // se a compra abriu com uma linha vazia, usa ela
-      var vazia = base === 1 && !String((document.getElementById('ci-nom-0') || {}).value || '').trim() ? 0 : -1;
-      itens.forEach(function (c, k) {
-        var i;
-        if (k === 0 && vazia === 0) i = 0; else { window.cmpAddItem(); i = tb.querySelectorAll('tr').length - 1; }
-        var m2 = String(c.tamanho || '').toUpperCase().match(/(\d+)\D+(\d+)/);
-        set('ci-nom-' + i, String(c.nomenclatura || '').trim());
-        if (m2) { set('ci-larg-' + i, m2[1]); set('ci-comp-' + i, m2[2]); }
-        if (c.vincos) set('ci-vincos-' + i, String(c.vincos));
-        set('ci-qtd-' + i, String(sugestaoDe(c)));
-        set('ci-obsitem-' + i, 'Reposição de estoque — tinha ' + qtd(c));
+    var linhas = itens.map(function (c) {
+      var it = (typeof window._compraPapelaoBlankItem === 'function') ? window._compraPapelaoBlankItem() : {};
+      var m2 = String(c.tamanho || '').toUpperCase().match(/(\d+)\D+(\d+)/);
+      it.ped_cliente = 'ESTOQUE'; it.po = String(c.nomenclatura || '').trim();
+      if (m2) { it.largura = m2[1]; it.comprimento = m2[2]; }
+      if (c.vincos) it.vincos = String(c.vincos);
+      it.quantidade = String(sugestaoDe(c));
+      it.observacao = 'Reposição de estoque — tinha ' + qtd(c);
+      return it;
+    });
+    try {
+      // abre a Nova Compra já com o fornecedor e as chapas (pula a janelinha do fornecedor)
+      window._compraPapelaoOpenCompraModal(null, { skipFornecedorPrompt: true, prefill: { fornecedor: forn, itens: linhas } });
+    } catch (e) { alert('Não deu para abrir a Nova Compra: ' + e.message); return; }
+    // troca o código (ex.: ADC21) pela gramatura cadastrada do fornecedor (ex.: CHADC21 - 638g - Adami) e puxa o R$/m²
+    var t0 = Date.now();
+    (function ajustar() {
+      var dl = document.getElementById('ccpx-po-gram-forn'), ovl = document.getElementById('ccpx-compra-fullscreen');
+      if (!ovl || !dl || !dl.options.length) { if (Date.now() - t0 < 8000) setTimeout(ajustar, 200); return; }
+      var ops = Array.prototype.map.call(dl.options, function (o) { return { v: o.value, t: o.textContent || '' }; });
+      ovl.querySelectorAll('[data-ccpx-item-row]').forEach(function (row) {
+        var po = row.querySelector('[data-field="po"]'); if (!po || !po.value) return;
+        var cod = po.value.toUpperCase().replace(/\s+/g, '');
+        var hit = ops.filter(function (o) { var k = String(o.v.split(' - ')[0] || '').toUpperCase().replace(/\s+/g, ''); return (k === cod || k === 'CH' + cod) && String(o.v).toUpperCase().indexOf(forn) >= 0; })[0]
+          || ops.filter(function (o) { var k = String(o.v.split(' - ')[0] || '').toUpperCase().replace(/\s+/g, ''); return k === cod || k === 'CH' + cod; })[0];
+        if (!hit) return;
+        po.value = hit.v; po.dispatchEvent(new Event('input', { bubbles: true })); po.dispatchEvent(new Event('change', { bubbles: true }));
+        var vm = row.querySelector('[data-field="valor_m2"]'), pr = String(hit.t).match(/R\$\s*([\d.,]+)\s*\/m/);
+        if (vm && !Number(String(vm.value || '0').replace(',', '.')) && pr) { vm.value = pr[1].replace(/\./g, '').replace(',', '.'); vm.dispatchEvent(new Event('input', { bubbles: true })); }
       });
-      try { window.toast('Compra montada com ' + itens.length + ' chapa(s) da ' + forn + ' — confira quantidades e preços e salve', 'var(--green)'); } catch (_) {}
-      itens.forEach(function (c) { delete SEL[c.id]; });
+      try { window.toast('Compra montada com ' + itens.length + ' chapa(s) da ' + forn + ' — escolha a empresa, confira e salve', 'var(--green)'); } catch (_) {}
     })();
+    itens.forEach(function (c) { delete SEL[c.id]; });
   }
   function abrir() {
     var ov = document.createElement('div'); ov.id = 'drp-ov'; ov.className = 'drp-ov';
