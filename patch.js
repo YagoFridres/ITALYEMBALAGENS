@@ -8907,7 +8907,8 @@ window._compraPapelaoRenderPage = async function() {
   window._compraPapelaoEnsureToolbar();
   var host = document.getElementById('cmp-body');
   if (!host) return null;
-  host.innerHTML = '<div class="ccpx-empty">Carregando compras de papelão...</div>';
+  // 18/11: não apaga a tela que já está aberta (piscava ao recarregar)
+  if (!host.querySelector('table, .pep-cards, .pep-card')) host.innerHTML = '<div class="ccpx-empty">Carregando compras de papelão...</div>';
   var st = window._compraPapelaoStateRef();
   st.sectionErrors = [];
   if (!window._compraPapelaoEmpresaIdsConsulta().length) {
@@ -10794,7 +10795,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       host.innerHTML = '<div class="ccp-empty">Empresas não carregadas. Abra a área após autenticar e selecionar a empresa.</div>';
       return;
     }
-    host.innerHTML = '<div class="ccp-empty">Carregando compras de papelão...</div>';
+    // 18/11: não apaga a tela que já está aberta (piscava ao recarregar)
+    if (!host.querySelector('table, .pep-cards, .pep-card')) host.innerHTML = '<div class="ccp-empty">Carregando compras de papelão...</div>';
     try {
       var settled = await Promise.allSettled([cLoadPastas(), cLoadCompras()]);
       if (settled[0] && settled[0].status === 'rejected') {
