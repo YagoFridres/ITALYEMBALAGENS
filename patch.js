@@ -1,3 +1,18 @@
+/* ===== 18/11: "a tela chacoalha ao abrir" — o que os módulos colocam na tela (botões, trocas de tabela) roda ANTES do navegador desenhar,
+ * logo depois de cada mudança na página, em vez de esperar o próximo "vigia" de 0,5–1 s. ===== */
+(function () {
+  if (window.__dsAoMudar) return;
+  var fns = [], pend = false, rodando = false;
+  function rodar() { pend = false; if (rodando) return; rodando = true; for (var i = 0; i < fns.length; i++) { try { fns[i](); } catch (_) {} } rodando = false; }
+  window.__dsAoMudar = function (fn) { if (typeof fn === 'function') fns.push(fn); };
+  function iniciar() {
+    if (!document.body) return setTimeout(iniciar, 50);
+    var cb = function () { if (rodando || pend) return; pend = true; requestAnimationFrame(rodar); };
+    cb.__dsImediato = true;
+    new MutationObserver(cb).observe(document.body, { childList: true, subtree: true });
+  }
+  iniciar();
+})();
 /* ===== DESEMPENHO (26/10/2026): observadores de DOM agrupados =====
  * Dezenas de módulos antigos observam a página inteira e rodam varreduras pesadas a CADA alteração.
  * Aqui os callbacks são agrupados: no máximo uma execução a cada 120 ms por observador, recebendo
@@ -79714,7 +79729,7 @@ window.__perTxt = function (p) {
       for (var k in COR) { if (b.hasAttribute(k)) { if (b.style.getPropertyValue('color') !== COR[k] || b.style.getPropertyPriority('color') !== 'important') { b.style.setProperty('color', COR[k], 'important'); b.style.setProperty('-webkit-text-fill-color', COR[k], 'important'); b.style.setProperty('opacity', '1', 'important'); } break; } }
     });
   }
-  setInterval(corTexto, 700);
+  setInterval(corTexto, 700); if (window.__dsAoMudar) window.__dsAoMudar(corTexto);
 })();
 
 /* ===== Compra de Papelão: busca acha qualquer coisa da compra (nº, fornecedor, pasta, empresa, itens, status, datas...) ===== */
@@ -79891,7 +79906,7 @@ window.__perTxt = function (p) {
   }
   window.dsEstoqueTelaCheia = abrir;
   // a página do estoque se redesenha depois de editar uma chapa: a tabela nova vem para a janela aberta
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var pg = document.getElementById('page-estoque'); if (!pg) return;
     var w = wrapDaPagina();
     if (ov && w && w !== wrapAtual) { if (wrapAtual) wrapAtual.remove(); if (lugar) lugar.remove(); trazer(w); }
@@ -79905,7 +79920,7 @@ window.__perTxt = function (p) {
       var b = document.createElement('button'); b.type = 'button'; b.className = 'pep-btn dsef-btn'; b.textContent = '⛶ Ver estoque em tela cheia'; b.style.margin = '0 0 10px';
       b.onclick = abrir; painel.insertBefore(b, painel.firstChild);
     }
-  }, 700);
+  }; setInterval(_dsF, 700); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
 })();
 
 /* ===== Central de OFs: botão azul "Relatório da semana" — o que sai em cada dia, como na planilha Pedidos 2026 (09/11/2026) =====
@@ -80078,11 +80093,11 @@ window.__perTxt = function (p) {
   function onKey(e) { if (e.key === 'Escape' && ov) { e.stopPropagation(); fechar(); } }
   function fechar() { document.removeEventListener('keydown', onKey, true); if (ov) { clearInterval(ov.__tm); clearInterval(ov.__tm2); ov.remove(); } ov = null; }
   window.dsRelatorioSemana = abrir;
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var box = document.querySelector('#page-pcp .dsc-head-acoes'); if (!box || box.querySelector('.dsrs-btn')) return;
     var b = document.createElement('button'); b.type = 'button'; b.className = 'dsc-btn dsrs-btn'; b.textContent = '📋 Relatório da semana'; b.title = 'O que vai sair em cada dia da semana (como a planilha Pedidos)';
     b.onclick = abrir; box.insertBefore(b, box.firstChild);
-  }, 800);
+  }; setInterval(_dsF, 800); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
 })();
 
 /* ===== 09/11: avisos (toast) grandes e visíveis + erro repetido dentro das janelas de Entrada/Saída de chapas ===== */
@@ -81260,13 +81275,13 @@ window.__perTxt = function (p) {
   }
   window.dsClientesDuplicados = abrir;
   // botão na tela de clientes
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var nb = Array.prototype.find.call(document.querySelectorAll('#page-clientes button'), function (b) { return /Novo Cliente/i.test(b.textContent) && b.getClientRects().length; });
     if (!nb || document.getElementById('dcd-btn')) return;
     var b = document.createElement('button'); b.type = 'button'; b.id = 'dcd-btn'; b.className = nb.className.replace(/btn-accent|btn-primary/g, 'btn-ghost'); b.textContent = '🔎 Possíveis repetidos';
     b.style.marginRight = '6px'; b.addEventListener('click', abrir);
     nb.parentNode.insertBefore(b, nb);
-  }, 800);
+  }; setInterval(_dsF, 800); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
   var st = document.createElement('style');
   st.textContent = '#dcd-ov,.dcd-ov2{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.dcd-ov2{z-index:100001}'
     + '.dcd-m{width:min(980px,100%);max-height:92vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);font-size:14px}.dcd-m *{box-sizing:border-box}.dcd-m2{width:min(560px,100%)}'
@@ -81292,7 +81307,7 @@ window.__perTxt = function (p) {
     if (rodando || typeof window.carregarClientes !== 'function') return; rodando = true; ult = Date.now();
     Promise.resolve(window.carregarClientes(true)).then(function () { try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {} }).catch(function () {}).then(function () { rodando = false; });
   }
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var p = document.getElementById('page-clientes');
     var vis = !!(p && (p.classList.contains('active') || p.offsetParent !== null));
     if (vis && (!aberta || Date.now() - ult > 120000)) {
@@ -81300,7 +81315,7 @@ window.__perTxt = function (p) {
       if (!editando) recarregar();
     }
     aberta = vis;
-  }, 1000);
+  }; setInterval(_dsF, 1000); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
 })();
 
 /* ===== 16/11: Checklist de Recebimento no celular e tablet =====
@@ -81789,7 +81804,7 @@ window.__perTxt = function (p) {
   }
   window.dsRetalhosTelaCheia = abrirFS;
   setInterval(function () { if (fsOv && !document.getElementById('drv-wrap')) fecharFS(); }, 1500);
-  setInterval(render, 700);
+  setInterval(render, 700); if (window.__dsAoMudar) window.__dsAoMudar(render);
   var css = ''
     + '#drv-wrap{margin-bottom:14px}'
     + '.drv-hd-b{display:flex;gap:8px;flex-wrap:wrap}.drv-fs .dsef-bd .drv-tw{max-height:none!important;overflow:visible!important}.drv-fs .dsef-bd table{font-size:15px!important}'
@@ -82007,12 +82022,12 @@ window.__perTxt = function (p) {
   window.dsFacasRecarregar = function () { return carregar(true); };
   // quando a área de facas aparece, troca a tela antiga pela nova (e recarrega do servidor ao entrar)
   var visivelAntes = false;
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var pg = document.getElementById('page-facas1'); var vis = !!(pg && pg.offsetParent);
     if (vis && !visivelAntes) { st.ass = ''; if (st.lista !== null) carregar(true); }
     visivelAntes = vis;
     if (vis && !pg.querySelector('#dfc-wrap')) render(true); else if (vis) render(false);
-  }, 400);
+  }; setInterval(_dsF, 400); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
   var css = ''
     + '.dfc{padding:4px 2px 24px}.dfc-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}.dfc-hd h1{margin:0;font-size:22px}.dfc-hd p{margin:4px 0 0;color:var(--text2,#94a3b8);font-size:13px}'
     + '.dfc-hd-b{display:flex;gap:8px;flex-wrap:wrap}'
@@ -82080,12 +82095,12 @@ window.__perTxt = function (p) {
     + '@media (max-width:760px){' + B + '{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}' + B + 'select.is-folder{grid-column:1/-1;width:100%!important}' + B + 'button{width:100%!important;min-height:44px!important;font-size:14px!important}}';
   var st = document.createElement('style'); st.id = 'ds-orc-cores-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
   // algum trecho antigo põe cor direto no botão; aqui o texto branco vence
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var pg = document.getElementById('page-orcamentos'); if (!pg || !pg.classList.contains('active')) return;
     pg.querySelectorAll('td .orx-actions-row button').forEach(function (b) {
       if (b.style.getPropertyValue('color') !== '#fff' || b.style.getPropertyPriority('color') !== 'important') { b.style.setProperty('color', '#fff', 'important'); b.style.setProperty('-webkit-text-fill-color', '#fff', 'important'); }
     });
-  }, 800);
+  }; setInterval(_dsF, 800); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
 })();
 
 /* ===== 18/11: Entradas e Saídas de chapas por MÊS (igual Comissões) + lançamento com vários fornecedores, direto do Estoque de Chapas ===== */
@@ -82189,11 +82204,11 @@ window.__perTxt = function (p) {
     return { el: h, pg: pg };
   }
   var ultimaPg = '';
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var h = host(); if (!h) { ultimaPg = ''; return; }
     if (h.pg !== ultimaPg) { ultimaPg = h.pg; S.aba = h.pg === 'saidas-estoque' ? 'saida' : 'tudo'; if (!S.mes) S.mes = mesAtual(); }
     if (!h.el.querySelector('#dmv-wrap')) render(h.el);
-  }, 500);
+  }; setInterval(_dsF, 500); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
 
   function linhasFiltradas() {
     var toks = norm(S.q).split(/\s+/).filter(Boolean);
@@ -82440,7 +82455,7 @@ window.__perTxt = function (p) {
   }
 
   // ---------- botões no Estoque de Chapas ----------
-  setInterval(function () {
+  (function () { var _dsF = function () {
     var nova = document.getElementById('estoque-wire-nova');
     if (nova && nova.offsetParent !== null && !document.getElementById('dmv-est-ent')) {
       var a = document.createElement('button'); a.type = 'button'; a.id = 'dmv-est-ent'; a.className = nova.className + ' dmv-est-b dmv-ent'; a.textContent = '📥 Dar entrada'; a.onclick = function () { abrirLancamento('entrada'); };
@@ -82456,7 +82471,7 @@ window.__perTxt = function (p) {
       var menos = document.createElement('button'); menos.type = 'button'; menos.className = 'dmv-pm dmv-pm-menos'; menos.title = 'Dar SAÍDA (tirar chapas)'; menos.textContent = '−'; menos.setAttribute('data-dmv-pm', 'saida'); menos.setAttribute('data-id', id);
       ed.parentNode.insertBefore(mais, ed.parentNode.firstChild); mais.insertAdjacentElement('afterend', menos);
     }); });
-  }, 800);
+  }; setInterval(_dsF, 800); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
   // 18/11: com o estoque em TELA CHEIA aberto, qualquer janela nova aparece por cima dele (antes ficava atrás)
   new MutationObserver(function (muts) {
     var fs = document.querySelector('.dsef-ov'); if (!fs) return;
@@ -83006,14 +83021,14 @@ window.__perTxt = function (p) {
   function atualizarBotao() { var b = document.getElementById('drp-btn'); if (b) b.innerHTML = '⚠ Repor estoque <span>' + lista.length + '</span>'; pintarBotao(); }
   // 18/11: o estilo da barra de botões vencia o vermelho — aplica direto no botão
   function pintarBotao() { var b = document.getElementById('drp-btn'); if (!b) return; [['background', '#dc2626'], ['background-image', 'none'], ['border-color', '#b91c1c'], ['color', '#fff'], ['-webkit-text-fill-color', '#fff'], ['box-shadow', '0 10px 24px rgba(220,38,38,.35)']].forEach(function (x) { if (b.style.getPropertyValue(x[0]) !== x[1]) b.style.setProperty(x[0], x[1], 'important'); }); }
-  setInterval(pintarBotao, 1000);
-  setInterval(function () {
+  setInterval(pintarBotao, 1000); if (window.__dsAoMudar) window.__dsAoMudar(pintarBotao);
+  (function () { var _dsF = function () {
     var nova = document.getElementById('cmpx-btn-nova');
     if (nova && nova.offsetParent !== null && !document.getElementById('drp-btn')) {
       var b = document.createElement('button'); b.type = 'button'; b.id = 'drp-btn'; b.className = nova.className.replace(/\b(primary|is-main)\b/g, '') + ' drp-btn'; b.textContent = '⚠ Repor estoque';
       b.onclick = abrir; nova.insertAdjacentElement('afterend', b); pintarBotao(); carregar(false).catch(function () {});
     }
-  }, 900);
+  }; setInterval(_dsF, 900); if (window.__dsAoMudar) window.__dsAoMudar(_dsF); })();
   function filtrada() { return lista.filter(function (c) { return filtro === 'todas' || (filtro === 'zeradas' ? qtd(c) === 0 : qtd(c) > 0); }); }
   function pintar() {
     var ov = document.getElementById('drp-ov'); if (!ov) return;
