@@ -13,6 +13,8 @@
     new MutationObserver(cb).observe(document.body, { childList: true, subtree: true });
   }
   iniciar();
+  // botão "📥 Excel" das tabelas (sistema antigo) entrava com atraso e empurrava a tabela
+  setTimeout(function () { if (typeof window._injectExcelButtons === 'function') window.__dsAoMudar(window._injectExcelButtons); }, 0);
 })();
 /* ===== DESEMPENHO (26/10/2026): observadores de DOM agrupados =====
  * Dezenas de módulos antigos observam a página inteira e rodam varreduras pesadas a CADA alteração.
