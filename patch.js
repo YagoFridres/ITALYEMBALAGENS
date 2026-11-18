@@ -34196,8 +34196,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function estoqueWireValor(chapa) {
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
       var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
-      var total = Number(chapa && chapa.valor_total || 0) || 0;
-      return total > 0 ? total : (qtd * vunit);
+      // 18/11: total sempre = quantidade x valor (chapa zerada = total zero)
+      return qtd * vunit;
     }
     function estoqueWireTon(chapa) {
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
