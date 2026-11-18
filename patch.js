@@ -82668,11 +82668,14 @@ window.__perTxt = function (p) {
       if (!fl.length && (of.maquina || of.maquina_agendada)) fl = [String(of.maquina || of.maquina_agendada)];
       pas = Array.from(new Set(fl.map(nmq))).filter(function (m) { return MAQS_OK.indexOf(m) >= 0; }).map(function (m) { return { maq: m, q: ped }; });
     }
-    pas.forEach(function (p) { p.maq = acharMaq(p.maq); p.op = opsDe(p.maq); p.auto = true; });
+    var vistos = {}; pas = pas.filter(function (p) { var k = nmq(p.maq); if (vistos[k]) { vistos[k].q = Math.max(vistos[k].q || 0, p.q || 0); return false; } vistos[k] = p; return true; });
+    pas.forEach(function (p) { p.maq = acharMaq(p.maq); p.auto = true; });
     return { of: of, hist: it.hist, tipos: it.tipos, ped: ped, prod: ped, vu: vu, emp: emp, vend: String(of.vendedor_id || of.vendId || of.vend_id || '').trim(), vendNome: String(of.vendedor || of.vendedor_nome || of.vendNome || '').trim(), gram: gId, tipo: tId, pas: pas, perdas: [], st: '', erro: '' };
   }
   function acharMaq(n) { var x = (D.base.maqs || []).find(function (m) { return nmq(m) === nmq(n); }); return x || n; }
-  function opsDe(maq) { var l = (D.base.mapa || {})[nmq(maq)]; return Array.isArray(l) ? l.join(', ') : (l || ''); }
+  // 18/11: cada máquina guarda COMBINAÇÕES de operadores (ex.: "Hércules, Thiago"); a primeira é a padrão
+  function combosDe(maq) { var l = (D.base.mapa || {})[nmq(maq)]; return (Array.isArray(l) ? l : (l ? [l] : [])).map(function (x) { return String(x || '').trim(); }).filter(Boolean); }
+  function opsDe(maq) { return combosDe(maq)[0] || ''; }
 
   // ---------- desenho ----------
   function fechar() { var o = document.getElementById('dcc-ov'); if (o) o.remove(); D = null; document.removeEventListener('keydown', teclas, true); }
@@ -82683,8 +82686,9 @@ window.__perTxt = function (p) {
   function linhaMaq(i, k, p, perda) {
     return '<div class="dcc-mrow" data-i="' + i + '" data-k="' + k + '" data-t="' + (perda ? 'perda' : 'pas') + '"><select class="dcc-in" data-f="maq">' + optMaqs(p.maq) + '</select>'
       + '<input class="dcc-in dcc-n" data-f="q" type="number" min="0" inputmode="numeric" value="' + (p.q || '') + '" placeholder="' + (perda ? 'Perdidas' : 'Caixas') + '">'
-      + '<input class="dcc-in" data-f="op" list="dcc-ops" value="' + esc(p.op || '') + '" placeholder="Operador(es) — separe com vírgula">'
-      + '<button type="button" class="dcc-x" data-rm title="Tirar">✕</button></div>';
+      + (perda ? '<input class="dcc-in" data-f="op" list="dcc-ops" value="' + esc(p.op || '') + '" placeholder="Operador(es) — separe com vírgula">' : '')
+      + '<button type="button" class="dcc-x" data-rm title="Tirar">✕</button>'
+      + (perda ? '<div class="dcc-combos">' + combosDe(p.maq).map(function (c) { return '<button type="button" class="dcc-chip' + (c === p.op ? ' on' : '') + '" data-combo="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' : '') + '</div>';
   }
   function cardOF(st, i) {
     var of = st.of, b = D.base, nOF = String(of.of ?? of.numero ?? '').trim();
@@ -82711,7 +82715,7 @@ window.__perTxt = function (p) {
       + '<label class="dcc-f"><span>Vendedor</span><select class="dcc-in" data-f="vend">' + vendOpts + '</select></label></div>'
       + '<div class="dcc-g2"><label class="dcc-f"><span>Tipo de caixa *</span><select class="dcc-in" data-f="tipo">' + optT + '</select>' + (chipsT ? '<div class="dcc-chips"><em>Este cliente usa:</em>' + chipsT + '</div>' : '') + '</label>'
       + '<label class="dcc-f"><span>Gramatura *</span><select class="dcc-in" data-f="gram">' + optG + '</select>' + (chipsG ? '<div class="dcc-chips"><em>Este cliente usa:</em>' + chipsG + '</div>' : '') + '</label></div>'
-      + '<div class="dcc-g2"><div class="dcc-f"><span>🧭 Máquinas e operadores</span><div class="dcc-mlist">' + st.pas.map(function (p, k) { return linhaMaq(i, k, p, false); }).join('') + '</div><button type="button" class="dcc-add" data-add="pas">+ Máquina</button></div>'
+      + '<div class="dcc-g2"><div class="dcc-f"><span>🧭 Máquinas que as caixas passaram</span><div class="dcc-mlist">' + st.pas.map(function (p, k) { return linhaMaq(i, k, p, false); }).join('') + '</div><button type="button" class="dcc-add" data-add="pas">+ Máquina</button></div>'
       + '<div class="dcc-f"><span>💥 Caixas perdidas</span><div class="dcc-mlist">' + st.perdas.map(function (p, k) { return linhaMaq(i, k, p, true); }).join('') + '</div><button type="button" class="dcc-add" data-add="perda">+ Perda</button></div></div>'
       + '<div class="dcc-res" data-res="' + i + '">' + resumoTxt(st) + '</div>'
       + '</section>';
@@ -82727,7 +82731,7 @@ window.__perTxt = function (p) {
     var n = D.ofs.length, pend = D.ofs.filter(function (s) { return s.st !== 'ok'; }).length;
     var tot = D.ofs.reduce(function (a, s) { return { p: a.p + s.prod, v: a.v + s.vu * s.prod }; }, { p: 0, v: 0 });
     ov.innerHTML = '<div class="dcc-shell" role="dialog" aria-modal="true">'
-      + '<div class="dcc-head"><div><h2>✔ ' + (n > 1 ? 'Concluir ' + n + ' OFs' : 'Concluir OF #' + esc(D.ofs[0].of.of ?? D.ofs[0].of.numero ?? '')) + '</h2><div class="dcc-sub">Tudo já vem preenchido — confira e confirme. O operador de cada máquina fica salvo para as próximas.</div></div><button type="button" class="dcc-x dcc-fechar" data-fechar title="Fechar">✕</button></div>'
+      + '<div class="dcc-head"><div><h2>✔ ' + (n > 1 ? 'Concluir ' + n + ' OFs' : 'Concluir OF #' + esc(D.ofs[0].of.of ?? D.ofs[0].of.numero ?? '')) + '</h2><div class="dcc-sub">Tudo já vem preenchido — confira e confirme. Em "Máquinas" informe por onde as caixas passaram; o operador vai nas perdas.</div></div><button type="button" class="dcc-x dcc-fechar" data-fechar title="Fechar">✕</button></div>'
       + '<div class="dcc-top"><label class="dcc-f"><span>📅 Data de faturamento *</span><input id="dcc-data" class="dcc-in" type="date" value="' + esc(D.data || hoje()) + '"></label>'
       + '<label class="dcc-f"><span>Concluído por</span><input class="dcc-in" value="' + esc(usuarioNome()) + '" readonly></label>'
       + (n > 1 ? '<div class="dcc-f"><span>Total</span><div class="dcc-totbox"><b>' + num(tot.p) + '</b> caixas · <b>' + rs(tot.v) + '</b></div></div>' : '') + '</div>'
@@ -82748,7 +82752,7 @@ window.__perTxt = function (p) {
     var i = Number(sec.getAttribute('data-i')), st = D.ofs[i]; if (!st) return;
     if (row) {
       var lista = row.getAttribute('data-t') === 'perda' ? st.perdas : st.pas, p = lista[Number(row.getAttribute('data-k'))]; if (!p) return;
-      if (f === 'maq') { var ant = p.maq; p.maq = t.value; var opIn = row.querySelector('[data-f="op"]'); if (opIn && (!p.op || p.op === opsDe(ant))) { p.op = opsDe(p.maq); opIn.value = p.op; } }
+      if (f === 'maq') { var ant = p.maq; p.maq = t.value; var opIn = row.querySelector('[data-f="op"]'); if (opIn && (!p.op || combosDe(ant).indexOf(p.op) >= 0)) { p.op = opsDe(p.maq); opIn.value = p.op; } var cb = row.querySelector('.dcc-combos'); if (cb) cb.innerHTML = combosDe(p.maq).map(function (c) { return '<button type="button" class="dcc-chip' + (c === p.op ? ' on' : '') + '" data-combo="' + esc(c) + '">' + esc(c) + '</button>'; }).join(''); }
       else if (f === 'q') { p.q = Math.trunc(nr(t.value)); p.auto = false; }
       else if (f === 'op') p.op = t.value;
       atualizarRes(i); return;
@@ -82762,14 +82766,15 @@ window.__perTxt = function (p) {
     t.classList.remove('dcc-falta'); atualizarRes(i);
   }
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('#dcc-ov [data-fechar],#dcc-ov [data-salvar],#dcc-ov [data-add],#dcc-ov [data-rm],#dcc-ov [data-chip],#dcc-ov [data-tirar]'); if (!t || !D) return;
+    var t = e.target.closest && e.target.closest('#dcc-ov [data-fechar],#dcc-ov [data-salvar],#dcc-ov [data-add],#dcc-ov [data-rm],#dcc-ov [data-chip],#dcc-ov [data-tirar],#dcc-ov [data-combo]'); if (!t || !D) return;
     e.preventDefault();
+    if (t.hasAttribute('data-combo')) { var rw = t.closest('.dcc-mrow'), sc = t.closest('.dcc-of'), stc = D.ofs[Number(sc.getAttribute('data-i'))], pp = stc && stc.perdas[Number(rw.getAttribute('data-k'))]; if (!pp) return; pp.op = t.getAttribute('data-combo'); var oi = rw.querySelector('[data-f="op"]'); if (oi) oi.value = pp.op; rw.querySelectorAll('[data-combo]').forEach(function (c) { c.classList.toggle('on', c === t); }); return; }
     if (t.hasAttribute('data-fechar')) { if (D.salvando) return; var fezAlgo = D.ofs.some(function (s) { return s.st === 'ok'; }); var cb = D.aoTerminar; fechar(); if (fezAlgo && cb) cb(); return; }
     if (t.hasAttribute('data-salvar')) return salvar();
     var sec = t.closest('.dcc-of'), i = Number(sec && sec.getAttribute('data-i')), st = D.ofs[i]; if (!st) return;
     if (t.hasAttribute('data-tirar')) { D.ofs.splice(i, 1); if (!D.ofs.length) fechar(); else pintar(); return; }
     if (t.hasAttribute('data-chip')) { var k = t.getAttribute('data-chip'), v = t.getAttribute('data-v'); st[k] = v; var sel = sec.querySelector('[data-f="' + k + '"]'); if (sel) { sel.value = v; sel.classList.remove('dcc-falta'); } sec.querySelectorAll('[data-chip="' + k + '"]').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-v') === v); }); atualizarRes(i); return; }
-    if (t.hasAttribute('data-add')) { var perda = t.getAttribute('data-add') === 'perda', m = (st.pas[0] && st.pas[0].maq) || ''; (perda ? st.perdas : st.pas).push({ maq: m, q: perda ? '' : st.prod, op: opsDe(m), auto: !perda }); pintar(); return; }
+    if (t.hasAttribute('data-add')) { var perda = t.getAttribute('data-add') === 'perda', m = (st.pas[0] && st.pas[0].maq) || ''; (perda ? st.perdas : st.pas).push({ maq: m, q: perda ? '' : st.prod, op: perda ? opsDe(m) : '', auto: !perda }); pintar(); return; }
     if (t.hasAttribute('data-rm')) { var row = t.closest('.dcc-mrow'); (row.getAttribute('data-t') === 'perda' ? st.perdas : st.pas).splice(Number(row.getAttribute('data-k')), 1); pintar(); }
   });
 
@@ -82779,12 +82784,12 @@ window.__perTxt = function (p) {
     var vend = D.base.vends.find(function (v) { return v.id === st.vend; });
     var opsSplit = function (s) { return String(s || '').split(/[,;]+/).map(function (x) { return x.trim(); }).filter(Boolean); };
     var mobj = function (n) { var o = D.base.maqObjs[nmq(n)]; return o && o.id && /^[0-9a-f-]{36}$/i.test(String(o.id)) ? String(o.id) : null; };
-    var pas = st.pas.filter(function (p) { return p.maq && Math.trunc(nr(p.q)) > 0; }).map(function (p) { var q = Math.trunc(nr(p.q)); return { maquina: p.maq, maquina_nome: p.maq, maquina_id: mobj(p.maq), qtd_caixas: q, quantidade: q, operadores: opsSplit(p.op), operador: opsSplit(p.op).join(', ') || null }; });
+    var pas = st.pas.filter(function (p) { return p.maq && Math.trunc(nr(p.q)) > 0; }).map(function (p) { var q = Math.trunc(nr(p.q)); return { maquina: p.maq, maquina_nome: p.maq, maquina_id: mobj(p.maq), qtd_caixas: q, quantidade: q }; });
     var perdas = st.perdas.filter(function (p) { return p.maq && Math.trunc(nr(p.q)) > 0; }).map(function (p) {
       var q = Math.trunc(nr(p.q)), mt = {}; try { mt = H().perdaMetricas(of, q, g, st.vu, m.areaUnitM2); } catch (_) { mt = { qtdPerdida: q, valorPerdido: q * st.vu, toneladasPerdidas: 0 }; }
       return { maquina: p.maq, maquina_nome: p.maq, maquina_id: mobj(p.maq), qtd_perdida: mt.qtdPerdida, quantidade: mt.qtdPerdida, valor_perdido: mt.valorPerdido, toneladas_perdidas: mt.toneladasPerdidas, operadores: opsSplit(p.op) };
     });
-    var ops = Array.from(new Set([].concat.apply([], pas.map(function (p) { return p.operadores; }).concat(perdas.map(function (p) { return p.operadores; })))));
+    var ops = Array.from(new Set([].concat.apply([], perdas.map(function (p) { return p.operadores; }))));
     var perdQ = perdas.reduce(function (s, p) { return s + p.qtd_perdida; }, 0), novoTotal = Math.round(st.vu * st.prod * 100) / 100;
     var empNome = (EMPRESAS.find(function (e) { return e[0] === st.emp; }) || [])[1] || 'Italy Embalagens';
     var vendNome = (vend && vend.nome) || st.vendNome || '';
@@ -82856,10 +82861,10 @@ window.__perTxt = function (p) {
       var mapa = JSON.parse(JSON.stringify(D.base.mapa || {})), mudou = false;
       D.ofs.forEach(function (st) {
         if (st.st !== 'ok') return;
-        st.pas.concat(st.perdas).forEach(function (p) {
-          var ops = String(p.op || '').split(/[,;]+/).map(function (x) { return x.trim(); }).filter(Boolean); if (!p.maq || !ops.length) return;
-          var k = nmq(p.maq), atual = Array.isArray(mapa[k]) ? mapa[k] : [], novo = ops.concat(atual.filter(function (x) { return ops.indexOf(x) < 0; })).slice(0, 4);
-          if (JSON.stringify(novo.slice(0, ops.length)) !== JSON.stringify(atual.slice(0, ops.length))) { mapa[k] = ops; mudou = true; }
+        st.perdas.forEach(function (p) {
+          var combo = String(p.op || '').split(/[,;]+/).map(function (x) { return x.trim(); }).filter(Boolean).join(', '); if (!p.maq || !combo) return;
+          var k = nmq(p.maq), atual = (Array.isArray(mapa[k]) ? mapa[k] : (mapa[k] ? [mapa[k]] : [])).map(String);
+          if (atual.indexOf(combo) < 0) { mapa[k] = atual.concat([combo]).slice(0, 6); mudou = true; }
         });
       });
       if (mudou) api('/api/conclusao/operadores-maquina', { method: 'PUT', body: { mapa: mapa } }).then(function () { CACHE.mapa = null; }).catch(function () {});
@@ -82893,35 +82898,34 @@ window.__perTxt = function (p) {
   // ---------- visual ----------
   var css = ''
     + '.dcc-ov{position:fixed;inset:0;z-index:100100;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:14px}'
-    + '.dcc-shell{width:min(1400px,97vw);max-height:94vh;display:flex;flex-direction:column;background:var(--card,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-top:6px solid #16a34a;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}'
+    + '.dcc-shell{width:min(1000px,97vw);max-height:94vh;display:flex;flex-direction:column;background:var(--card,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-top:6px solid #16a34a;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}'
     + '.dcc-shell.dcc-peq{width:min(560px,96vw);border-top-color:#dc2626}.dcc-peq ul{margin:6px 0 0;padding-left:20px;line-height:1.6}'
     + '.dcc-load{padding:40px;text-align:center;color:var(--text2,#94a3b8)}'
     + '.dcc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border,#334155)}.dcc-head h2{margin:0;font-size:22px}'
     + '.dcc-sub{color:var(--text2,#94a3b8);font-size:13px;margin-top:3px}'
-    + '.dcc-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px 20px;border-bottom:1px solid var(--border,#334155);background:var(--s2,#111827)}'
+    + '.dcc-top{display:grid;grid-template-columns:1fr;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border,#334155);background:var(--s2,#111827)}'
     + '.dcc-body{flex:1 1 auto;overflow:auto;padding:14px 20px;display:grid;gap:14px}'
     + '.dcc-foot{display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid var(--border,#334155)}'
     + '.dcc-b{min-height:46px;padding:0 20px;border-radius:12px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-weight:800;font-size:15px;cursor:pointer}.dcc-b:disabled{opacity:.6}'
     + '.dcc-pri{background:#16a34a;border-color:#15803d;color:#fff;min-width:220px}.dcc-perigo{background:#dc2626;border-color:#b91c1c;color:#fff}'
     + '.dcc-of{border:1px solid var(--border,#334155);border-left:6px solid #2563eb;border-radius:14px;padding:14px;background:var(--s1,#0b1220);display:grid;gap:12px}.dcc-of.ok{border-left-color:#16a34a;opacity:.75}.dcc-of.err{border-left-color:#dc2626}'
     + '.dcc-of header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.dcc-of header b{font-size:17px}.dcc-cli{color:#60a5fa;font-weight:700;margin-left:6px}'
-    + '.dcc-g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.dcc-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+    + '.dcc-g4,.dcc-g2{display:grid;grid-template-columns:1fr;gap:12px}'
     + '.dcc-f{display:grid;gap:5px;align-content:start;min-width:0}.dcc-f>span{font-size:12px;font-weight:800;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:.04em}'
     + '.dcc-in{min-height:44px;width:100%;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid var(--border,#334155);background:var(--bg2,var(--bg,#020617));color:var(--text,#e2e8f0);font-size:15px}'
     + '.dcc-in.dcc-falta{border:2px solid #dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.2)}'
     + '.dcc-big{font-size:22px;font-weight:900;text-align:right;border:2px solid #16a34a}'
     + '.dcc-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px}.dcc-chips em{font-style:normal;font-size:12px;color:var(--text2,#94a3b8)}'
     + '.dcc-chip{padding:5px 10px;border-radius:999px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-size:12.5px;font-weight:700;cursor:pointer}.dcc-chip small{opacity:.7}.dcc-chip.on{background:#2563eb;border-color:#2563eb;color:#fff}'
-    + '.dcc-mlist{display:grid;gap:6px}.dcc-mrow{display:grid;grid-template-columns:minmax(120px,1.1fr) 100px minmax(140px,1.6fr) 40px;gap:6px}.dcc-n{text-align:right;font-weight:800}'
+    + '.dcc-mlist{display:grid;gap:6px}.dcc-mrow{display:grid;grid-template-columns:minmax(120px,1fr) 110px 40px;gap:6px}.dcc-mrow[data-t="perda"]{grid-template-columns:minmax(120px,1.1fr) 90px minmax(140px,1.6fr) 40px}.dcc-combos{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}.dcc-combos:empty{display:none}.dcc-n{text-align:right;font-weight:800}'
     + '.dcc-x{width:40px;min-height:40px;border-radius:10px;border:1px solid var(--border,#334155);background:transparent;color:#dc2626;font-weight:900;cursor:pointer}.dcc-fechar{color:var(--text,#e2e8f0)}'
     + '.dcc-add{justify-self:start;min-height:36px;padding:0 12px;border-radius:9px;border:1px dashed var(--border,#475569);background:transparent;color:var(--accent,#60a5fa);font-weight:800;cursor:pointer}'
     + '.dcc-res{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--s2,#111827);line-height:1.6}.dcc-bad{color:#dc2626}'
     + '.dcc-tag{padding:5px 10px;border-radius:8px;font-weight:800;font-size:13px}.dcc-tag.ok{background:#16a34a;color:#fff}.dcc-tag.err{background:#dc2626;color:#fff;max-width:420px}'
     + '.dcc-totbox{min-height:44px;display:flex;align-items:center;gap:6px;font-size:15px}'
     + '.dsc-lote-conc{background:#16a34a!important;border-color:#15803d!important;color:#fff!important;font-weight:800!important}'
-    + '@media (max-width:1000px){.dcc-g4{grid-template-columns:repeat(2,minmax(0,1fr))}.dcc-g2{grid-template-columns:1fr}}'
-    + '@media (max-width:640px){.dcc-ov{padding:0}.dcc-shell{width:100vw;max-height:100vh;height:100%;border-radius:0}.dcc-top{grid-template-columns:1fr 1fr}.dcc-body,.dcc-head,.dcc-top,.dcc-foot{padding-left:12px;padding-right:12px}'
-    + '.dcc-mrow{grid-template-columns:1fr 90px 40px}.dcc-mrow [data-f="op"]{grid-column:1/3;grid-row:2}.dcc-foot .dcc-b{flex:1}.dcc-pri{min-width:0}}'
+    + '@media (max-width:640px){.dcc-ov{padding:0}.dcc-shell{width:100vw;max-height:100vh;height:100%;border-radius:0}.dcc-top{grid-template-columns:1fr}.dcc-body,.dcc-head,.dcc-top,.dcc-foot{padding-left:12px;padding-right:12px}'
+    + '.dcc-mrow{grid-template-columns:1fr 90px 40px}.dcc-mrow[data-t="perda"]{grid-template-columns:1fr 80px 40px}.dcc-mrow [data-f="op"]{grid-column:1/3;grid-row:2}.dcc-foot .dcc-b{flex:1}.dcc-pri{min-width:0}}'
     + '[data-theme="light"] .dcc-shell,body.light .dcc-shell{background:#fff;color:#0f172a}[data-theme="light"] .dcc-of,body.light .dcc-of{background:#f8fafc}[data-theme="light"] .dcc-in,body.light .dcc-in{background:#fff;color:#0f172a;border-color:#cbd5e1}[data-theme="light"] .dcc-top,[data-theme="light"] .dcc-res,body.light .dcc-top,body.light .dcc-res{background:#f1f5f9}';
   var stl = document.createElement('style'); stl.id = 'dcc-css'; stl.textContent = css; (document.head || document.documentElement).appendChild(stl);
 })();
