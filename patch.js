@@ -83070,7 +83070,7 @@ window.__perTxt = function (p) {
       var m2 = String(c.tamanho || '').toUpperCase().match(/(\d+)\D+(\d+)/);
       it.ped_cliente = 'ESTOQUE'; it.po = String(c.nomenclatura || '').trim();
       if (m2) { it.largura = m2[1]; it.comprimento = m2[2]; }
-      if (c.vincos) it.vincos = String(c.vincos);
+      if (c.vincos) { var vs = String(c.vincos).split(/[\/;,x]+/).map(function (x) { return x.trim(); }).filter(Boolean); it.vincos = vs.join('/'); it.vinco1 = vs[0] || ''; it.vinco2 = vs[1] || ''; it.vinco3 = vs[2] || ''; it.vinco4 = vs[3] || ''; it.vincos_extra = vs.slice(4); }
       it.quantidade = String(sugestaoDe(c));
       it.observacao = 'Reposição de estoque — tinha ' + qtd(c);
       return it;
@@ -83095,7 +83095,15 @@ window.__perTxt = function (p) {
         var vm = row.querySelector('[data-field="valor_m2"]'), pr = String(hit.t).match(/R\$\s*([\d.,]+)\s*\/m/);
         if (vm && !Number(String(vm.value || '0').replace(',', '.')) && pr) { vm.value = pr[1].replace(/\./g, '').replace(',', '.'); vm.dispatchEvent(new Event('input', { bubbles: true })); }
       });
-      try { window.toast('Compra montada com ' + itens.length + ' chapa(s) da ' + forn + ' — escolha a empresa, confira e salve', 'var(--green)'); } catch (_) {}
+      // empresa da compra = a empresa das chapas (quando todas são da mesma)
+      var nrm = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, ''); };
+      var emps = {}; itens.forEach(function (c) { var e = nrm(c.empresa_vinculada || c.qual_cnpj); if (e) emps[e] = 1; });
+      var ek = Object.keys(emps); var empTxt = '';
+      if (ek.length === 1) { var eb = Array.prototype.find.call(ovl.querySelectorAll('[data-emp]'), function (b) { var t = nrm(b.textContent); return t.indexOf(ek[0]) >= 0 || ek[0].indexOf(t) >= 0; }); if (eb) { eb.click(); empTxt = eb.textContent.trim(); } }
+      // pasta do fornecedor (ex.: "2 Fapolpa")
+      var ps = ovl.querySelector('#ccpx-pasta');
+      if (ps && !ps.value) { var po2 = Array.prototype.find.call(ps.options, function (o) { return o.value && nrm(o.text).indexOf(nrm(forn)) >= 0; }); if (po2) { ps.value = po2.value; ps.dispatchEvent(new Event('change', { bubbles: true })); } }
+      try { window.toast('Compra montada: ' + itens.length + ' chapa(s) da ' + forn + (empTxt ? ' · empresa ' + empTxt : ' — escolha a empresa') + '. Confira e salve.', 'var(--green)'); } catch (_) {}
     })();
     itens.forEach(function (c) { delete SEL[c.id]; });
   }
