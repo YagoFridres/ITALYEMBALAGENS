@@ -82983,5 +82983,84 @@ window.__perTxt = function (p) {
   var stl = document.createElement('style'); stl.id = 'dcc-css'; stl.textContent = css; (document.head || document.documentElement).appendChild(stl);
 })();
 
+/* ===== 18/11: Compra de Papelão — botão vermelho "Repor estoque": chapas zeradas ou abaixo de 200 ===== */
+(function () {
+  if (window.__dsRepor) return; window.__dsRepor = true;
+  var LIM = 200;
+  var CORES_F = { ADAMI: '#2563eb', FAPOLPA: '#16a34a', KLABIN: '#ea580c', TROMBINI: '#9333ea' };
+  function cor(f) { f = String(f || '').toUpperCase(); if (CORES_F[f]) return CORES_F[f]; var h = 0; for (var i = 0; i < f.length; i++) h = (h * 31 + f.charCodeAt(i)) >>> 0; return ['#0891b2', '#db2777', '#ca8a04', '#4f46e5'][h % 4]; }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function num(v) { return Number(v || 0).toLocaleString('pt-BR'); }
+  function rs(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function qtd(c) { return Math.max(0, Math.trunc(Number(c && (c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd)) || 0) || 0)); }
+  var lista = [], filtro = 'todas', ts = 0;
+  function carregar(forcar) {
+    if (!forcar && Date.now() - ts < 60000) return Promise.resolve(lista);
+    return window.apiFetch('/api/chapas_estoque?limit=5000&_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
+      var l = Array.isArray(j) ? j : (j.data || []);
+      lista = l.filter(function (c) { return c && !c.deleted_at && !/^retalho/i.test(String(c.categoria || '')) && qtd(c) < LIM; });
+      lista.sort(function (a, b) { return String(a.fornecedor || '').localeCompare(String(b.fornecedor || '')) || qtd(a) - qtd(b) || String(a.nomenclatura || '').localeCompare(String(b.nomenclatura || '')); });
+      ts = Date.now(); atualizarBotao(); return lista;
+    });
+  }
+  function atualizarBotao() { var b = document.getElementById('drp-btn'); if (b) b.innerHTML = '⚠ Repor estoque <span>' + lista.length + '</span>'; }
+  setInterval(function () {
+    var nova = document.getElementById('cmpx-btn-nova');
+    if (nova && nova.offsetParent !== null && !document.getElementById('drp-btn')) {
+      var b = document.createElement('button'); b.type = 'button'; b.id = 'drp-btn'; b.className = nova.className.replace(/\b(primary|is-main)\b/g, '') + ' drp-btn'; b.textContent = '⚠ Repor estoque';
+      b.onclick = abrir; nova.insertAdjacentElement('afterend', b); carregar(false).catch(function () {});
+    }
+  }, 900);
+  function filtrada() { return lista.filter(function (c) { return filtro === 'todas' || (filtro === 'zeradas' ? qtd(c) === 0 : qtd(c) > 0); }); }
+  function pintar() {
+    var ov = document.getElementById('drp-ov'); if (!ov) return;
+    var l = filtrada(), z = lista.filter(function (c) { return qtd(c) === 0; }).length, g = {};
+    l.forEach(function (c) { var f = String(c.fornecedor || 'SEM FORNECEDOR').toUpperCase(); (g[f] = g[f] || []).push(c); });
+    var corpo = Object.keys(g).sort().map(function (f) {
+      return '<tr class="drp-g" style="--fc:' + cor(f) + '"><td colspan="7"><span class="drp-dot"></span>' + esc(f) + ' — ' + g[f].length + ' chapa(s)</td></tr>' + g[f].map(function (c) {
+        var q = qtd(c), min = Number(c.estoque_minimo || LIM) || LIM;
+        return '<tr style="--fc:' + cor(f) + '"><td><b>' + esc([c.nomenclatura, c.tamanho].filter(Boolean).join(' ')) + '</b><small>' + esc(c.nome_uso || c.nome || '') + '</small></td><td>' + esc(c.gramatura || '') + '</td><td>' + esc(c.categoria || '') + '</td>'
+          + '<td class="n"><span class="drp-q ' + (q === 0 ? 'z' : 'b') + '">' + (q === 0 ? 'ZERADA' : num(q)) + '</span></td><td class="n">' + num(min) + '</td><td class="n"><b>' + num(Math.max(0, min - q)) + '</b></td><td class="n">' + rs(c.valor_unitario || 0) + '</td></tr>';
+      }).join('');
+    }).join('') || '<tr><td colspan="7" class="drp-vazio">Nenhuma chapa nessa situação. 👍</td></tr>';
+    ov.querySelector('.drp-body').innerHTML = '<div class="drp-tabs"><button type="button" data-f="todas" class="' + (filtro === 'todas' ? 'on' : '') + '">Todas (' + lista.length + ')</button><button type="button" data-f="zeradas" class="' + (filtro === 'zeradas' ? 'on' : '') + '">Zeradas (' + z + ')</button><button type="button" data-f="baixo" class="' + (filtro === 'baixo' ? 'on' : '') + '">Abaixo de ' + LIM + ' (' + (lista.length - z) + ')</button></div>'
+      + '<div class="drp-tw"><table class="drp-t"><thead><tr><th>Chapa</th><th>Gramatura</th><th>Categoria</th><th class="n">Tem</th><th class="n">Mínimo</th><th class="n">Sugestão de compra</th><th class="n">Valor un.</th></tr></thead><tbody>' + corpo + '</tbody></table></div>';
+  }
+  function abrir() {
+    var ov = document.createElement('div'); ov.id = 'drp-ov'; ov.className = 'drp-ov';
+    ov.innerHTML = '<div class="drp-m"><div class="drp-hd"><div><h2>⚠ Sugestão para repor o estoque</h2><small>Chapas zeradas ou com menos de ' + LIM + ' unidades (retalhos ficam de fora). Sugestão = mínimo − o que tem.</small></div><div class="drp-hb"><button type="button" class="drp-b" data-p>🖨 Imprimir</button><button type="button" class="drp-b drp-x" data-x>✕</button></div></div><div class="drp-body"><div class="drp-vazio">Carregando…</div></div><div class="drp-ft"><button type="button" class="drp-b" data-est>Ver no Estoque de Chapas</button><button type="button" class="drp-b drp-pri" data-nova>＋ Nova Compra</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov || e.target.closest('[data-x]')) return ov.remove();
+      var f = e.target.closest('[data-f]'); if (f) { filtro = f.getAttribute('data-f'); return pintar(); }
+      if (e.target.closest('[data-p]')) return imprimir();
+      if (e.target.closest('[data-nova]')) { ov.remove(); var n = document.getElementById('cmpx-btn-nova'); if (n) n.click(); return; }
+      if (e.target.closest('[data-est]')) { ov.remove(); try { window.__estoqueWireAba = ''; window.go('estoque'); setTimeout(function () { var z = document.getElementById('estoque-wire-fil-baixo'); if (z) z.click(); }, 1500); } catch (_) {} }
+    });
+    document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { var o = document.getElementById('drp-ov'); if (o) o.remove(); document.removeEventListener('keydown', k); } });
+    carregar(true).then(pintar).catch(function (e) { ov.querySelector('.drp-body').innerHTML = '<div class="drp-vazio">Erro: ' + esc(e.message) + '</div>'; });
+  }
+  function imprimir() {
+    var t = document.querySelector('#drp-ov .drp-tw'); if (!t) return;
+    var w = window.open('', '_blank'); if (!w) return;
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Sugestão para repor o estoque</title><style>body{font-family:Arial;margin:16px;font-size:12px;color:#111}h1{font-size:18px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:5px 6px;text-align:left}th{background:#e2e8f0}.n{text-align:right}.drp-g td{background:#f1f5f9;font-weight:bold}small{display:block;color:#475569}.drp-dot{display:none}</style></head><body><h1>Sugestão para repor o estoque — ' + new Date().toLocaleDateString('pt-BR') + '</h1>' + t.innerHTML + '</body></html>');
+    w.document.close(); setTimeout(function () { w.focus(); w.print(); }, 300);
+  }
+  var css = ''
+    + '.drp-btn{background:#dc2626!important;border-color:#b91c1c!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font-weight:800!important}.drp-btn span{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#fff;color:#dc2626;-webkit-text-fill-color:#dc2626;font-size:12px}'
+    + '.drp-ov{position:fixed;inset:0;z-index:100100;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:14px}'
+    + '.drp-m{width:min(1100px,97vw);max-height:92vh;display:flex;flex-direction:column;background:var(--card,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-top:6px solid #dc2626;border-radius:16px;overflow:hidden}'
+    + '.drp-hd{display:flex;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border,#334155)}.drp-hd h2{margin:0;font-size:20px}.drp-hd small{color:var(--text2,#94a3b8)}.drp-hb{display:flex;gap:8px;align-items:flex-start}'
+    + '.drp-body{flex:1;overflow:auto;padding:12px 18px}.drp-ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border,#334155)}'
+    + '.drp-b{min-height:42px;padding:0 16px;border-radius:10px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-weight:800;cursor:pointer}.drp-pri{background:#2563eb;border-color:#1d4ed8;color:#fff}.drp-x{width:42px;padding:0}'
+    + '.drp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.drp-tabs button{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-weight:700;cursor:pointer}.drp-tabs .on{background:#dc2626;border-color:#dc2626;color:#fff}'
+    + '.drp-t{width:100%;border-collapse:collapse;font-size:14px}.drp-t th{text-align:left;font-size:12px;color:var(--text2,#94a3b8);padding:8px;border-bottom:1px solid var(--border,#334155);position:sticky;top:-12px;background:var(--card,#0f172a)}.drp-t td{padding:8px;border-bottom:1px solid color-mix(in srgb,var(--border,#334155) 60%,transparent)}.drp-t td small{display:block;color:var(--text2,#94a3b8);font-size:12px}'
+    + '.drp-t tbody tr{box-shadow:inset 4px 0 0 var(--fc)}.drp-t .n{text-align:right;white-space:nowrap}.drp-g td{font-weight:800;background:color-mix(in srgb,var(--fc) 14%,transparent)}.drp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--fc);margin-right:8px}'
+    + '.drp-q{padding:3px 8px;border-radius:6px;font-weight:900}.drp-q.z{background:#dc2626;color:#fff}.drp-q.b{background:#f59e0b;color:#1f1300}.drp-vazio{padding:24px;text-align:center;color:var(--text2,#94a3b8)}'
+    + '@media (max-width:700px){.drp-ov{padding:0}.drp-m{width:100vw;max-height:100vh;height:100%;border-radius:0}.drp-t th:nth-child(2),.drp-t td:nth-child(2),.drp-t th:nth-child(3),.drp-t td:nth-child(3),.drp-t th:nth-child(7),.drp-t td:nth-child(7){display:none}}'
+    + '[data-theme="light"] .drp-m,body.light .drp-m{background:#fff;color:#0f172a}[data-theme="light"] .drp-t th,body.light .drp-t th{background:#fff}';
+  var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
