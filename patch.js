@@ -58717,10 +58717,20 @@ function _ocultarGraficoComissoes() {
     try {
       ofId = String(ofId || '').trim();
       if (!ofId) return;
+      // 18/11: janela nova de conclusão (uma ou várias OFs)
+      if (typeof window.dsConcluirOFs === 'function' && !window.__dsConcAntiga) return window.dsConcluirOFs([ofId]);
       await _abrirModalConclusaoFallback(ofId, ofObj || null);
     } catch (_) {}
   }
 
+  try {
+    window.__dsConcHelpers = {
+      maquinas: _carregarMaquinasParaConclusao, operadores: _carregarOperadoresParaConclusao, gramaturas: _carregarGramaturasParaConclusao,
+      tipos: _carregarTiposCaixaParaConclusao, vendedores: _loadVendedoresLista, materia: _calcularResumoMateriaPrimaConclusao,
+      perdaMetricas: _calcularMetricasPerdaConclusao, normGram: _normalizarGramaturaConclusao, labelGram: _labelGramaturaConclusao,
+      popup: _mostrarPopupConclusaoOF, antiga: _abrirModalConclusaoFallback, normTipo: _normalizarTipoCaixaConclusao
+    };
+  } catch (_) {}
   function _instalarAberturaConclusaoOF() {
     function opener(ofId, ofObj) {
       return _abrirFluxoConclusaoOF(ofId, ofObj || null);
@@ -71785,7 +71795,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<label>Pedido de<input type="date" data-f="pedDe"></label><label>até<input type="date" data-f="pedAte"></label>'
       + '<label class="dsc-chk-l"><input type="checkbox" data-f="semPapel"> Só sem papelão</label>'
       + '<button type="button" class="dsc-link" data-a="limpar">Limpar filtros</button></div>'
-      + '<div class="dsc-lote" hidden><span class="dsc-lote-n"></span><button type="button" class="dsc-btn dsc-btn-sec" data-a="loteEditar">' + svg(IC.editar) + 'Editar</button><button type="button" class="dsc-btn dsc-btn-sec" data-a="loteFluxo">Aplicar fluxo</button><button type="button" class="dsc-btn dsc-btn-perigo" data-a="loteCancelar">' + svg(IC.cancelar) + 'Cancelar OFs</button><button type="button" class="dsc-link" data-a="loteLimpar">Limpar seleção</button></div>'
+      + '<div class="dsc-lote" hidden><span class="dsc-lote-n"></span><button type="button" class="dsc-btn dsc-btn-sec" data-a="loteEditar">' + svg(IC.editar) + 'Editar</button><button type="button" class="dsc-btn dsc-lote-conc" data-a="loteConcluir">✓ Concluir selecionadas</button><button type="button" class="dsc-btn dsc-btn-sec" data-a="loteFluxo">Aplicar fluxo</button><button type="button" class="dsc-btn dsc-btn-perigo" data-a="loteCancelar">' + svg(IC.cancelar) + 'Cancelar OFs</button><button type="button" class="dsc-link" data-a="loteLimpar">Limpar seleção</button></div>'
       + '<div class="dsc-tabela-wrap"><table class="dsc-tabela"><thead></thead><tbody></tbody></table><div class="dsc-vazio" hidden></div></div>'
       + '<footer class="dsc-rodape"><span class="dsc-pag-info"></span><div class="dsc-pag"></div></footer>';
     var abas = page.querySelector(':scope > .ds-abas-central');
@@ -71937,11 +71947,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (a === 'menu' && n) {
           var of = acharOF(n), urg = of && (sim(of.urg) || sim(of.urgente)), fech = of && /concluida|cancelada/.test(stNorm(of));
           // OF concluída ou cancelada: só o que faz sentido (alterar, clonar, imprimir)
-          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]]
+          var conc = of && /concluida/.test(stNorm(of));
+          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]].concat(conc ? ['-', ['reabrir', 'Desfazer conclusão', IC.cancelar, 'dsc-m-perigo']] : [])
             : [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:concluir', 'Concluir', IC.avancar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir],
             ['#Produção / máquina'], ['d:passoumaq', 'Passou pela máquina', IC.avancar], ['urgente', urg ? 'Remover urgência' : 'Marcar como urgente', IC.fogo], ['d:papelcompra', 'Papel/chapa comprado', IC.vazio], ['d:movermaq', 'Mover de máquina', IC.avancar], ['d:alterardata', 'Alterar data', IC.editar], ['d:movermaqdata', 'Mover máquina + data', IC.avancar],
             ['#Ordem / prioridade'], ['d:priorizar', 'Mover para cima (priorizar)', IC.cima], ['d:adiar', 'Mover para baixo (adiar)', IC.baixo],
-            '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { acao(k, n); });
+            '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { if (k === 'reabrir') { if (typeof window.dsReabrirOF === 'function') window.dsReabrirOF(of, function () { try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} }); return; } acao(k, n); });
           return;
         }
         if (a === 'maisHead') {
@@ -71960,6 +71971,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (a === 'loteLimpar') { E.sel = {}; setSel([]); render(); return; }
         if (a === 'loteEditar') { var ks = Object.keys(E.sel); if (ks.length === 1) editar(ks[0]); return; }
         if (a === 'loteCancelar') { setSel(Object.keys(E.sel)); try { window.cancelarOFSel(); } catch (e) { console.warn(e); } setTimeout(function () { E.sel = {}; render(); }, 1500); return; }
+        if (a === 'loteConcluir') { var idsC = Object.keys(E.sel).map(function (k) { return acharOF(k); }).filter(function (o) { return o && !/concluida|cancelada/.test(stNorm(o)); }).map(function (o) { return o.id; }); if (!idsC.length) { toastMsg('Nenhuma OF em aberto na seleção.', 'var(--yellow)'); return; } if (typeof window.dsConcluirOFs === 'function') window.dsConcluirOFs(idsC, function () { E.sel = {}; setSel([]); try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} render(); }); return; }
         if (a === 'loteFluxo') { setSel(Object.keys(E.sel)); cliqueAntigo('#pcp-batchbar button', /Aplicar fluxo/); return; }
         return;
       }
@@ -82558,6 +82570,360 @@ window.__perTxt = function (p) {
     + '.dmv-mg{grid-template-columns:1fr 1fr}.dmvm-it,#dmv-modal.dmvm-sai .dmvm-it{grid-template-columns:1fr 1fr}.dmvm-nome{grid-column:1/-1}.dmvm-it .dmv-del{grid-column:1/-1;justify-content:center}}'
     + '[data-theme="light"] .dmv-sug,body.light .dmv-sug{background:#fff;border-color:#cbd5e1}[data-theme="light"] .dmv-t th,body.light .dmv-t th{background:#fff}';
   var st = document.createElement('style'); st.id = 'dmv-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
+})();
+
+/* ===== 18/11: CONCLUSÃO DE OF nova — maior, mais simples, uma ou várias OFs de uma vez; operador lembrado por máquina; tipos de caixa e gramaturas mais usados pelo cliente; desfazer conclusão ===== */
+(function () {
+  if (window.__dsConcV2) return; window.__dsConcV2 = true;
+  var MAQS_OK = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA', 'COLADEIRA', 'ACABAMENTO', 'RISCADOR'];
+  var EMPRESAS = [['df5f7672-0a6b-402d-ae65-296554236c31', 'Italy Embalagens'], ['e9b734dc-c7d5-4b04-898d-1ec7affa721e', 'Cartoeste'], ['a6e5f5d8-4743-4ebe-885e-c2f0741a667a', 'Oestepack']];
+  var SIGLA = { E1: EMPRESAS[0][0], E2: EMPRESAS[1][0], E3: EMPRESAS[2][0] };
+  function H() { return window.__dsConcHelpers || {}; }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function num(v, d) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function rs(v) { return 'R$ ' + num(v, 2); }
+  function nmq(v) { return String(v || '').toUpperCase().trim(); }
+  function nr(v) { var x = Number(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return isFinite(x) ? x : 0; }
+  function hoje() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function toast(m, c) { try { window.toast(m, c); } catch (_) {} }
+  function api(url, opt) { return window.apiFetch(url, opt || {}).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || (j && j.ok === false)) throw new Error((j && (j.error || j.message)) || ('Erro ' + r.status)); return j; }); }); }
+  function arr(v) { if (Array.isArray(v)) return v; if (typeof v === 'string' && v.trim()) { try { var p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return v.split(/[,;|]+/); } } return []; }
+  function nomeMaq(x) { return x && typeof x === 'object' ? String(x.nome || x.name || x.maquina || x.maquina_nome || x.col || x.id || '').trim() : String(x || '').trim(); }
+  function usuarioNome() { try { return String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { return 'Usuário'; } }
+
+  var CACHE = {};
+  function uma(chave, fn) { if (!CACHE[chave]) CACHE[chave] = Promise.resolve().then(fn).catch(function (e) { CACHE[chave] = null; throw e; }); return CACHE[chave]; }
+  function base() {
+    var h = H();
+    return Promise.all([
+      uma('maq', function () { return h.maquinas ? h.maquinas() : []; }).catch(function () { return []; }),
+      uma('ops', function () { return h.operadores ? h.operadores() : []; }).catch(function () { return []; }),
+      uma('gram', function () { return h.gramaturas ? h.gramaturas() : []; }).catch(function () { return []; }),
+      uma('vend', function () { return h.vendedores ? h.vendedores() : []; }).catch(function () { return []; }),
+      api('/api/conclusao/operadores-maquina').then(function (j) { return (j && j.data) || {}; }).catch(function () { return {}; })
+    ]).then(function (r) {
+      var maqs = (r[0] || []).map(nomeMaq).filter(function (n) { return MAQS_OK.indexOf(nmq(n)) >= 0; });
+      MAQS_OK.forEach(function (m) { if (!maqs.some(function (x) { return nmq(x) === m; })) maqs.push(m); });
+      var maqObjs = {}; (r[0] || []).forEach(function (m) { if (m && typeof m === 'object') maqObjs[nmq(nomeMaq(m))] = m; });
+      var ops = (r[1] || []).map(function (o) { return o && typeof o === 'object' ? String(o.nome || o.descricao || o.email || '').trim() : String(o || '').trim(); }).filter(Boolean);
+      var grams = (r[2] || []).map(function (g) { return H().normGram ? H().normGram(g) : g; }).filter(function (g) { return g && !g.fallback && g.ativo !== false && (g.id || g.option_value); });
+      var vends = (r[3] || []).map(function (v) { return { id: String(v && (v.id || v.vendedor_id || '') || '').trim(), nome: String(v && (v.nome || v.vendedor || v.vendedor_nome) || '').trim() }; }).filter(function (v) { return v.id; });
+      return { maqs: maqs, maqObjs: maqObjs, ops: Array.from(new Set(ops)).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); }), grams: grams, vends: vends, mapa: r[4] || {} };
+    });
+  }
+  function carregarOF(id) { return api('/api/ofs/' + encodeURIComponent(id)).then(function (j) { return (j && (j.data || j)) || null; }); }
+  function clienteNome(of) {
+    var n = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || '').trim(); if (n) return n;
+    var id = String(of && (of.cli_id || of.cliId || of.cliente_id) || '').trim();
+    try { var c = (window.CLIENTES || []).find(function (x) { return String(x.id) === id; }); if (c) return c.nome || c.razao_social || c.fantasia || id; } catch (_) {}
+    return 'Cliente não identificado';
+  }
+
+  // ---------- estado ----------
+  var D = null;  // { base, ofs:[{of, hist, tipos, st}], aoTerminar }
+  window.dsConcluirOFs = function (ids, aoTerminar) {
+    ids = (ids || []).map(function (x) { return String(x || '').trim(); }).filter(Boolean);
+    if (!ids.length) return;
+    fechar();
+    var ov = document.createElement('div'); ov.className = 'dcc-ov'; ov.id = 'dcc-ov';
+    ov.innerHTML = '<div class="dcc-shell" role="dialog" aria-modal="true"><div class="dcc-load">Carregando ' + (ids.length > 1 ? ids.length + ' OFs' : 'a OF') + '…</div></div>';
+    document.body.appendChild(ov);
+    D = { ofs: [], aoTerminar: aoTerminar || null };
+    Promise.all([base(), Promise.all(ids.map(carregarOF))]).then(function (r) {
+      D.base = r[0];
+      var lista = (r[1] || []).filter(Boolean);
+      var jaConc = lista.filter(function (o) { return /conclu/i.test(String(o.status || '')); });
+      lista = lista.filter(function (o) { return !/conclu/i.test(String(o.status || '')) && !/cancel/i.test(String(o.status || '')); });
+      if (!lista.length) { fechar(); toast(jaConc.length ? 'Essa OF já está concluída' : 'OF não encontrada', 'var(--yellow)'); return; }
+      return Promise.all(lista.map(function (of) {
+        var cli = String(of.cli_id || of.cliId || of.cliente_id || '').trim();
+        return Promise.all([
+          cli ? api('/api/conclusao/historico-cliente?cli_id=' + encodeURIComponent(cli)).then(function (j) { return (j && j.data) || {}; }).catch(function () { return {}; }) : {},
+          (H().tipos ? Promise.resolve(H().tipos(of)).catch(function () { return []; }) : [])
+        ]).then(function (x) { return { of: of, hist: x[0] || {}, tipos: (x[1] || []).map(function (t) { return H().normTipo ? H().normTipo(t) : t; }).filter(function (t) { return t && t.id && t.nome; }) }; });
+      })).then(function (itens) { D.ofs = itens.map(estadoInicial); pintar(); if (jaConc.length) toast(jaConc.length + ' OF(s) já concluída(s) ficaram de fora', 'var(--yellow)'); });
+    }).catch(function (e) { fechar(); toast('Erro ao abrir a conclusão: ' + e.message, 'var(--red)'); });
+  };
+
+  function estadoInicial(it) {
+    var of = it.of, b = D.base;
+    var ped = Math.trunc(Number(of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0);
+    var vu = Number(of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0;
+    if (!(vu > 0) && ped > 0) { var vt = Number(of.valor_total ?? of.valor_venda ?? 0) || 0; if (vt > 0) vu = Math.round(vt / ped * 10000) / 10000; }
+    var emp = String(of.empresa_id || of.emp_id || of.empId || '').trim(); if (SIGLA[emp.toUpperCase()]) emp = SIGLA[emp.toUpperCase()];
+    if (!EMPRESAS.some(function (e) { return e[0] === emp; })) emp = '';
+    // gramatura: a da OF; senão a que o cliente mais usa
+    var gId = String(of.gramatura_id || '').trim(), topG = (it.hist.gramaturas || [])[0];
+    if (!b.grams.some(function (g) { return (g.id || g.option_value) === gId; })) gId = '';
+    if (!gId && topG && b.grams.some(function (g) { return g.id === topG.id; })) gId = topG.id;
+    // tipo de caixa: o da OF; senão o que o cliente mais usa
+    var tId = String(of.tipo_caixa_id || of.tipoCaixaId || '').trim();
+    if (!tId && of.tipo_caixa) { var hit = it.tipos.find(function (t) { return String(t.nome).toLowerCase() === String(of.tipo_caixa).toLowerCase(); }); if (hit) tId = hit.id; }
+    var topT = (it.hist.tipos || [])[0];
+    if (!tId && topT && it.tipos.some(function (t) { return t.id === topT.id; })) tId = topT.id;
+    // máquinas: as que já passaram / o fluxo da OF
+    var pas = arr(of.passagens_maquina || of.passagens_por_maquina).map(function (p) { return { maq: nomeMaq(p), q: Math.trunc(Number(p.qtd_caixas ?? p.quantidade ?? p.qtd ?? 0) || 0) }; }).filter(function (p) { return p.maq; });
+    if (!pas.length) {
+      var fl = arr(of.fluxo_maquinas).map(nomeMaq); if (!fl.length) fl = arr(of.maq).map(nomeMaq);
+      if (!fl.length && (of.maquina || of.maquina_agendada)) fl = [String(of.maquina || of.maquina_agendada)];
+      pas = Array.from(new Set(fl.map(nmq))).filter(function (m) { return MAQS_OK.indexOf(m) >= 0; }).map(function (m) { return { maq: m, q: ped }; });
+    }
+    pas.forEach(function (p) { p.maq = acharMaq(p.maq); p.op = opsDe(p.maq); p.auto = true; });
+    return { of: of, hist: it.hist, tipos: it.tipos, ped: ped, prod: ped, vu: vu, emp: emp, vend: String(of.vendedor_id || of.vendId || of.vend_id || '').trim(), vendNome: String(of.vendedor || of.vendedor_nome || of.vendNome || '').trim(), gram: gId, tipo: tId, pas: pas, perdas: [], st: '', erro: '' };
+  }
+  function acharMaq(n) { var x = (D.base.maqs || []).find(function (m) { return nmq(m) === nmq(n); }); return x || n; }
+  function opsDe(maq) { var l = (D.base.mapa || {})[nmq(maq)]; return Array.isArray(l) ? l.join(', ') : (l || ''); }
+
+  // ---------- desenho ----------
+  function fechar() { var o = document.getElementById('dcc-ov'); if (o) o.remove(); D = null; document.removeEventListener('keydown', teclas, true); }
+  function teclas(e) {
+    if (e.key === 'Escape' && document.getElementById('dcc-ov')) { e.stopPropagation(); if (D && D.salvando) return; if (D && D.ofs.length > 1 && !window.confirm('Fechar sem concluir?')) return; fechar(); }
+  }
+  function optMaqs(sel) { return '<option value="">Máquina…</option>' + D.base.maqs.map(function (m) { return '<option' + (nmq(m) === nmq(sel) ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join(''); }
+  function linhaMaq(i, k, p, perda) {
+    return '<div class="dcc-mrow" data-i="' + i + '" data-k="' + k + '" data-t="' + (perda ? 'perda' : 'pas') + '"><select class="dcc-in" data-f="maq">' + optMaqs(p.maq) + '</select>'
+      + '<input class="dcc-in dcc-n" data-f="q" type="number" min="0" inputmode="numeric" value="' + (p.q || '') + '" placeholder="' + (perda ? 'Perdidas' : 'Caixas') + '">'
+      + '<input class="dcc-in" data-f="op" list="dcc-ops" value="' + esc(p.op || '') + '" placeholder="Operador(es) — separe com vírgula">'
+      + '<button type="button" class="dcc-x" data-rm title="Tirar">✕</button></div>';
+  }
+  function cardOF(st, i) {
+    var of = st.of, b = D.base, nOF = String(of.of ?? of.numero ?? '').trim();
+    var histG = (st.hist.gramaturas || []).filter(function (h) { return b.grams.some(function (g) { return g.id === h.id; }); });
+    var histT = (st.hist.tipos || []).filter(function (h) { return st.tipos.some(function (t) { return t.id === h.id; }); });
+    var lbl = function (g) { try { return H().labelGram ? H().labelGram(g) : (g.nome || g.descricao); } catch (_) { return g.nome || ''; } };
+    var optG = '<option value="">Escolha a gramatura…</option>'
+      + (histG.length ? '<optgroup label="★ Mais usadas por este cliente">' + histG.map(function (h) { var g = b.grams.find(function (x) { return x.id === h.id; }); return '<option value="' + esc(h.id) + '"' + (st.gram === h.id ? ' selected' : '') + '>' + esc(lbl(g)) + ' (' + h.vezes + 'x)</option>'; }).join('') + '</optgroup>' : '')
+      + '<optgroup label="Todas">' + b.grams.map(function (g) { var v = g.id || g.option_value; return '<option value="' + esc(v) + '"' + (st.gram === v && !histG.some(function (h) { return h.id === v; }) ? ' selected' : '') + '>' + esc(lbl(g)) + '</option>'; }).join('') + '</optgroup>';
+    var optT = '<option value="">Escolha o tipo de caixa…</option>'
+      + (histT.length ? '<optgroup label="★ Mais usados por este cliente">' + histT.map(function (h) { var t = st.tipos.find(function (x) { return x.id === h.id; }); return '<option value="' + esc(h.id) + '"' + (st.tipo === h.id ? ' selected' : '') + '>' + esc(t.nome) + ' (' + h.vezes + 'x)</option>'; }).join('') + '</optgroup>' : '')
+      + '<optgroup label="Todos">' + st.tipos.map(function (t) { return '<option value="' + esc(t.id) + '"' + (st.tipo === t.id && !histT.some(function (h) { return h.id === t.id; }) ? ' selected' : '') + '>' + esc(t.nome) + '</option>'; }).join('') + '</optgroup>';
+    var chipsT = histT.slice(0, 4).map(function (h) { var t = st.tipos.find(function (x) { return x.id === h.id; }); return '<button type="button" class="dcc-chip' + (st.tipo === h.id ? ' on' : '') + '" data-chip="tipo" data-v="' + esc(h.id) + '">' + esc(t.nome) + ' <small>' + h.vezes + 'x</small></button>'; }).join('');
+    var chipsG = histG.slice(0, 4).map(function (h) { var g = b.grams.find(function (x) { return x.id === h.id; }); return '<button type="button" class="dcc-chip' + (st.gram === h.id ? ' on' : '') + '" data-chip="gram" data-v="' + esc(h.id) + '">' + esc(g.nome || g.descricao || g.codigo) + ' <small>' + h.vezes + 'x</small></button>'; }).join('');
+    var vendOpts = '<option value="">' + esc(st.vendNome || '—') + '</option>' + b.vends.map(function (v) { return '<option value="' + esc(v.id) + '"' + (v.id === st.vend ? ' selected' : '') + '>' + esc(v.nome) + '</option>'; }).join('');
+    var empOpts = '<option value="">Escolha…</option>' + EMPRESAS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === st.emp ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('');
+    var prod = (of.descricao || of.produto || of.prodDesc || (Array.isArray(of.itens) && of.itens[0] && (of.itens[0].desc || of.itens[0].descricao)) || '').toString();
+    return '<section class="dcc-of' + (st.st === 'ok' ? ' ok' : (st.st === 'erro' ? ' err' : '')) + '" data-i="' + i + '">'
+      + '<header><div><b>OF #' + esc(nOF) + '</b> <span class="dcc-cli">' + esc(clienteNome(of)) + '</span><div class="dcc-sub">' + esc(prod.slice(0, 120)) + ' · pedido <b>' + num(st.ped) + '</b> un</div></div>'
+      + (st.st === 'ok' ? '<span class="dcc-tag ok">✓ Concluída</span>' : (st.st === 'erro' ? '<span class="dcc-tag err">✕ ' + esc(st.erro) + '</span>' : (D.ofs.length > 1 ? '<button type="button" class="dcc-x" data-tirar title="Tirar esta OF da conclusão">✕</button>' : ''))) + '</header>'
+      + '<div class="dcc-g4"><label class="dcc-f"><span>Caixas produzidas *</span><input class="dcc-in dcc-big" data-f="prod" type="number" min="0" inputmode="numeric" value="' + st.prod + '"></label>'
+      + '<label class="dcc-f"><span>Valor unitário (R$)</span><input class="dcc-in" data-f="vu" type="text" inputmode="decimal" value="' + String(st.vu).replace('.', ',') + '"></label>'
+      + '<label class="dcc-f"><span>Empresa *</span><select class="dcc-in" data-f="emp">' + empOpts + '</select></label>'
+      + '<label class="dcc-f"><span>Vendedor</span><select class="dcc-in" data-f="vend">' + vendOpts + '</select></label></div>'
+      + '<div class="dcc-g2"><label class="dcc-f"><span>Tipo de caixa *</span><select class="dcc-in" data-f="tipo">' + optT + '</select>' + (chipsT ? '<div class="dcc-chips"><em>Este cliente usa:</em>' + chipsT + '</div>' : '') + '</label>'
+      + '<label class="dcc-f"><span>Gramatura *</span><select class="dcc-in" data-f="gram">' + optG + '</select>' + (chipsG ? '<div class="dcc-chips"><em>Este cliente usa:</em>' + chipsG + '</div>' : '') + '</label></div>'
+      + '<div class="dcc-g2"><div class="dcc-f"><span>🧭 Máquinas e operadores</span><div class="dcc-mlist">' + st.pas.map(function (p, k) { return linhaMaq(i, k, p, false); }).join('') + '</div><button type="button" class="dcc-add" data-add="pas">+ Máquina</button></div>'
+      + '<div class="dcc-f"><span>💥 Caixas perdidas</span><div class="dcc-mlist">' + st.perdas.map(function (p, k) { return linhaMaq(i, k, p, true); }).join('') + '</div><button type="button" class="dcc-add" data-add="perda">+ Perda</button></div></div>'
+      + '<div class="dcc-res" data-res="' + i + '">' + resumoTxt(st) + '</div>'
+      + '</section>';
+  }
+  function gramObj(st) { return D.base.grams.find(function (g) { return (g.id || g.option_value) === st.gram; }) || null; }
+  function materia(st) { try { return H().materia(st.of, st.prod, gramObj(st)); } catch (_) { return { toneladaVendida: 0, areaUnitM2: 0 }; } }
+  function resumoTxt(st) {
+    var perd = st.perdas.reduce(function (s, p) { return s + (Math.trunc(nr(p.q)) || 0); }, 0), m = materia(st), exc = st.prod - st.ped;
+    return 'Pedido <b>' + num(st.ped) + '</b> · Produzidas <b>' + num(st.prod) + '</b> · ' + (exc >= 0 ? 'Excedente <b>' + num(exc) + '</b>' : 'Faltaram <b class="dcc-bad">' + num(-exc) + '</b>') + ' · Perdas <b>' + num(perd) + '</b> · Toneladas <b>' + num(m.toneladaVendida || 0, 3) + ' t</b> · Novo total <b>' + rs(st.vu * st.prod) + '</b>';
+  }
+  function pintar() {
+    var ov = document.getElementById('dcc-ov'); if (!ov || !D) return;
+    var n = D.ofs.length, pend = D.ofs.filter(function (s) { return s.st !== 'ok'; }).length;
+    var tot = D.ofs.reduce(function (a, s) { return { p: a.p + s.prod, v: a.v + s.vu * s.prod }; }, { p: 0, v: 0 });
+    ov.innerHTML = '<div class="dcc-shell" role="dialog" aria-modal="true">'
+      + '<div class="dcc-head"><div><h2>✔ ' + (n > 1 ? 'Concluir ' + n + ' OFs' : 'Concluir OF #' + esc(D.ofs[0].of.of ?? D.ofs[0].of.numero ?? '')) + '</h2><div class="dcc-sub">Tudo já vem preenchido — confira e confirme. O operador de cada máquina fica salvo para as próximas.</div></div><button type="button" class="dcc-x dcc-fechar" data-fechar title="Fechar">✕</button></div>'
+      + '<div class="dcc-top"><label class="dcc-f"><span>📅 Data de faturamento *</span><input id="dcc-data" class="dcc-in" type="date" value="' + esc(D.data || hoje()) + '"></label>'
+      + '<label class="dcc-f"><span>Concluído por</span><input class="dcc-in" value="' + esc(usuarioNome()) + '" readonly></label>'
+      + (n > 1 ? '<div class="dcc-f"><span>Total</span><div class="dcc-totbox"><b>' + num(tot.p) + '</b> caixas · <b>' + rs(tot.v) + '</b></div></div>' : '') + '</div>'
+      + '<div class="dcc-body">' + D.ofs.map(cardOF).join('') + '</div>'
+      + '<datalist id="dcc-ops">' + D.base.ops.map(function (o) { return '<option value="' + esc(o) + '">'; }).join('') + '</datalist>'
+      + '<div class="dcc-foot"><button type="button" class="dcc-b" data-fechar>Cancelar</button><button type="button" class="dcc-b dcc-pri" data-salvar' + (D.salvando ? ' disabled' : '') + '>' + (D.salvando ? 'Concluindo…' : '✓ Concluir ' + (pend > 1 ? pend + ' OFs' : 'OF')) + '</button></div></div>';
+    var dt = document.getElementById('dcc-data'); if (dt) dt.onchange = function () { D.data = dt.value; };
+    document.removeEventListener('keydown', teclas, true); document.addEventListener('keydown', teclas, true);
+  }
+  function atualizarRes(i) { var el = document.querySelector('#dcc-ov [data-res="' + i + '"]'); if (el && D.ofs[i]) el.innerHTML = resumoTxt(D.ofs[i]); }
+
+  // ---------- eventos ----------
+  document.addEventListener('input', onCampo, true); document.addEventListener('change', onCampo, true);
+  function onCampo(e) {
+    var t = e.target; if (!D || !t.closest || !t.closest('#dcc-ov')) return;
+    var f = t.getAttribute('data-f'); if (!f) return;
+    var row = t.closest('.dcc-mrow'), sec = t.closest('.dcc-of'); if (!sec) return;
+    var i = Number(sec.getAttribute('data-i')), st = D.ofs[i]; if (!st) return;
+    if (row) {
+      var lista = row.getAttribute('data-t') === 'perda' ? st.perdas : st.pas, p = lista[Number(row.getAttribute('data-k'))]; if (!p) return;
+      if (f === 'maq') { var ant = p.maq; p.maq = t.value; var opIn = row.querySelector('[data-f="op"]'); if (opIn && (!p.op || p.op === opsDe(ant))) { p.op = opsDe(p.maq); opIn.value = p.op; } }
+      else if (f === 'q') { p.q = Math.trunc(nr(t.value)); p.auto = false; }
+      else if (f === 'op') p.op = t.value;
+      atualizarRes(i); return;
+    }
+    if (f === 'prod') { var velho = st.prod; st.prod = Math.max(0, Math.trunc(nr(t.value))); st.pas.forEach(function (p, k) { if (p.auto || p.q === velho) { p.q = st.prod; p.auto = true; var q = sec.querySelector('.dcc-mrow[data-t="pas"][data-k="' + k + '"] [data-f="q"]'); if (q) q.value = st.prod; } }); }
+    else if (f === 'vu') st.vu = nr(t.value);
+    else if (f === 'emp') st.emp = t.value;
+    else if (f === 'vend') st.vend = t.value;
+    else if (f === 'tipo') { st.tipo = t.value; sec.querySelectorAll('[data-chip="tipo"]').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-v') === st.tipo); }); }
+    else if (f === 'gram') { st.gram = t.value; sec.querySelectorAll('[data-chip="gram"]').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-v') === st.gram); }); }
+    t.classList.remove('dcc-falta'); atualizarRes(i);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('#dcc-ov [data-fechar],#dcc-ov [data-salvar],#dcc-ov [data-add],#dcc-ov [data-rm],#dcc-ov [data-chip],#dcc-ov [data-tirar]'); if (!t || !D) return;
+    e.preventDefault();
+    if (t.hasAttribute('data-fechar')) { if (D.salvando) return; var fezAlgo = D.ofs.some(function (s) { return s.st === 'ok'; }); var cb = D.aoTerminar; fechar(); if (fezAlgo && cb) cb(); return; }
+    if (t.hasAttribute('data-salvar')) return salvar();
+    var sec = t.closest('.dcc-of'), i = Number(sec && sec.getAttribute('data-i')), st = D.ofs[i]; if (!st) return;
+    if (t.hasAttribute('data-tirar')) { D.ofs.splice(i, 1); if (!D.ofs.length) fechar(); else pintar(); return; }
+    if (t.hasAttribute('data-chip')) { var k = t.getAttribute('data-chip'), v = t.getAttribute('data-v'); st[k] = v; var sel = sec.querySelector('[data-f="' + k + '"]'); if (sel) { sel.value = v; sel.classList.remove('dcc-falta'); } sec.querySelectorAll('[data-chip="' + k + '"]').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-v') === v); }); atualizarRes(i); return; }
+    if (t.hasAttribute('data-add')) { var perda = t.getAttribute('data-add') === 'perda', m = (st.pas[0] && st.pas[0].maq) || ''; (perda ? st.perdas : st.pas).push({ maq: m, q: perda ? '' : st.prod, op: opsDe(m), auto: !perda }); pintar(); return; }
+    if (t.hasAttribute('data-rm')) { var row = t.closest('.dcc-mrow'); (row.getAttribute('data-t') === 'perda' ? st.perdas : st.pas).splice(Number(row.getAttribute('data-k')), 1); pintar(); }
+  });
+
+  // ---------- salvar ----------
+  function corpo(st, data) {
+    var of = st.of, g = gramObj(st), t = st.tipos.find(function (x) { return x.id === st.tipo; }) || null, m = materia(st);
+    var vend = D.base.vends.find(function (v) { return v.id === st.vend; });
+    var opsSplit = function (s) { return String(s || '').split(/[,;]+/).map(function (x) { return x.trim(); }).filter(Boolean); };
+    var mobj = function (n) { var o = D.base.maqObjs[nmq(n)]; return o && o.id && /^[0-9a-f-]{36}$/i.test(String(o.id)) ? String(o.id) : null; };
+    var pas = st.pas.filter(function (p) { return p.maq && Math.trunc(nr(p.q)) > 0; }).map(function (p) { var q = Math.trunc(nr(p.q)); return { maquina: p.maq, maquina_nome: p.maq, maquina_id: mobj(p.maq), qtd_caixas: q, quantidade: q, operadores: opsSplit(p.op), operador: opsSplit(p.op).join(', ') || null }; });
+    var perdas = st.perdas.filter(function (p) { return p.maq && Math.trunc(nr(p.q)) > 0; }).map(function (p) {
+      var q = Math.trunc(nr(p.q)), mt = {}; try { mt = H().perdaMetricas(of, q, g, st.vu, m.areaUnitM2); } catch (_) { mt = { qtdPerdida: q, valorPerdido: q * st.vu, toneladasPerdidas: 0 }; }
+      return { maquina: p.maq, maquina_nome: p.maq, maquina_id: mobj(p.maq), qtd_perdida: mt.qtdPerdida, quantidade: mt.qtdPerdida, valor_perdido: mt.valorPerdido, toneladas_perdidas: mt.toneladasPerdidas, operadores: opsSplit(p.op) };
+    });
+    var ops = Array.from(new Set([].concat.apply([], pas.map(function (p) { return p.operadores; }).concat(perdas.map(function (p) { return p.operadores; })))));
+    var perdQ = perdas.reduce(function (s, p) { return s + p.qtd_perdida; }, 0), novoTotal = Math.round(st.vu * st.prod * 100) / 100;
+    var empNome = (EMPRESAS.find(function (e) { return e[0] === st.emp; }) || [])[1] || 'Italy Embalagens';
+    var vendNome = (vend && vend.nome) || st.vendNome || '';
+    return {
+      status: 'Concluído', data_conclusao: data + 'T12:00:00.000Z', data_faturamento: data, dia: data,
+      qtd_produzida: st.prod, caixas_produzidas: st.prod, caixas_boas: st.prod, preco: st.vu, valor_unitario: st.vu, quantidade: st.prod, qtd: st.prod,
+      qtd_pedida: st.ped || st.prod, valor_total: novoTotal, valor_venda: novoTotal, usuario_conclusao: usuarioNome(),
+      tipo_caixa_id: t ? t.id : null, tipo_caixa: t ? t.nome : null,
+      gramatura_id: g && g.id ? g.id : null, gramatura_nome: g ? String(g.nome || g.descricao || '') : '', gramatura: g ? Number(g.gramatura || 0) : 0, valor_unitario_gramatura: g ? Number(g.valor_unitario || 0) : 0,
+      area_total_m2: Number(m.areaTotalM2 || 0) || 0, peso_utilizado_kg: Number(m.pesoKg || 0) || 0, toneladas_utilizadas: Number(m.toneladaVendida || 0) || 0, tonelada_vendida: Number(m.toneladaVendida || 0) || 0,
+      custo_m2_venda: Number(m.custoM2Venda || 0) || 0, consumo_chapas_estimado: Number(m.consumoChapas || 0) || 0,
+      passagens_maquina: pas, maq: pas.map(function (p) { return p.maquina; }), maquina_producao: pas.length ? pas[pas.length - 1].maquina : null,
+      caixas_perdidas: perdQ, perdas_por_maquina: perdas, operadores_conclusao: ops, operador_conclusao: ops[0] || null,
+      empresa_id: st.emp || null, empresa: empNome, empNome: empNome,
+      vendedor_id: st.vend || null, vendId: st.vend || null, vendedor: vendNome || null, vendedor_nome: vendNome || null, vendNome: vendNome || null, _allow_partial: '1'
+    };
+  }
+  function validar() {
+    var data = (document.getElementById('dcc-data') || {}).value || '', falta = [];
+    if (!data) { falta.push('a data de faturamento'); var d = document.getElementById('dcc-data'); if (d) d.classList.add('dcc-falta'); }
+    D.ofs.forEach(function (st, i) {
+      if (st.st === 'ok') return;
+      var sec = document.querySelector('#dcc-ov .dcc-of[data-i="' + i + '"]'), n = '#' + (st.of.of ?? st.of.numero ?? '');
+      var marca = function (f, txt) { falta.push(txt + ' da OF ' + n); var el = sec && sec.querySelector('[data-f="' + f + '"]'); if (el) el.classList.add('dcc-falta'); };
+      if (!(st.prod > 0)) marca('prod', 'as caixas produzidas');
+      if (!st.emp) marca('emp', 'a empresa');
+      if (!st.tipo) marca('tipo', 'o tipo de caixa');
+      if (!gramObj(st)) marca('gram', 'a gramatura');
+      if (st.pas.some(function (p) { return (!!p.maq) !== (Math.trunc(nr(p.q)) > 0); })) falta.push('máquina e quantidade nas máquinas da OF ' + n);
+    });
+    return { data: data, falta: falta };
+  }
+  function salvar() {
+    if (!D || D.salvando) return;
+    var v = validar();
+    if (v.falta.length) { toast('Falta preencher: ' + v.falta.slice(0, 3).join('; ') + (v.falta.length > 3 ? '…' : ''), 'var(--red)'); var f = document.querySelector('#dcc-ov .dcc-falta'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); try { f.focus(); } catch (_) {} } return; }
+    D.salvando = true; D.data = v.data; pintar();
+    var fila = D.ofs.filter(function (s) { return s.st !== 'ok'; }), feitos = 0, erros = 0;
+    var passo = function (k) {
+      if (!D) return;
+      if (k >= fila.length) return terminar();
+      var st = fila[k];
+      api('/api/ofs/' + encodeURIComponent(st.of.id) + '/concluir', { method: 'POST', body: corpo(st, v.data) }).then(function (j) {
+        st.st = 'ok'; feitos++;
+        try { var at = j.data || j.of; if (at && Array.isArray(window.OFs)) { var ix = window.OFs.findIndex(function (o) { return String(o.id) === String(st.of.id); }); if (ix >= 0) window.OFs[ix] = Object.assign({}, window.OFs[ix], at); } } catch (_) {}
+        if (j && j.caixas_perdidas_erro) toast('OF #' + (st.of.of || '') + ': perda não gravou — ' + j.caixas_perdidas_erro, 'var(--orange)');
+      }).catch(function (e) { st.st = 'erro'; st.erro = e.message; erros++; }).then(function () { pintar(); passo(k + 1); });
+    };
+    passo(0);
+    function terminar() {
+      if (!D) return;
+      D.salvando = false;
+      aprender();
+      try { if (typeof window.refreshOfmaq === 'function') window.refreshOfmaq('conclusao-of'); } catch (_) {}
+      try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+      var cb = D.aoTerminar;
+      if (!erros) {
+        var st0 = D.ofs[0];
+        fechar();
+        if (fila.length === 1) { try { H().popup({ numero: st0.of.of ?? st0.of.numero, cliente_nome: clienteNome(st0.of), quantidade_produzida: st0.prod, quantidade: st0.prod }); } catch (_) {} }
+        toast(feitos > 1 ? '✅ ' + feitos + ' OFs concluídas' : '✅ OF concluída', 'var(--green)');
+        if (cb) cb();
+        try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }); } catch (_) {}
+      } else { pintar(); toast(feitos + ' concluída(s), ' + erros + ' com erro — veja em vermelho', 'var(--red)'); }
+    }
+  }
+  function aprender() {
+    try {
+      var mapa = JSON.parse(JSON.stringify(D.base.mapa || {})), mudou = false;
+      D.ofs.forEach(function (st) {
+        if (st.st !== 'ok') return;
+        st.pas.concat(st.perdas).forEach(function (p) {
+          var ops = String(p.op || '').split(/[,;]+/).map(function (x) { return x.trim(); }).filter(Boolean); if (!p.maq || !ops.length) return;
+          var k = nmq(p.maq), atual = Array.isArray(mapa[k]) ? mapa[k] : [], novo = ops.concat(atual.filter(function (x) { return ops.indexOf(x) < 0; })).slice(0, 4);
+          if (JSON.stringify(novo.slice(0, ops.length)) !== JSON.stringify(atual.slice(0, ops.length))) { mapa[k] = ops; mudou = true; }
+        });
+      });
+      if (mudou) api('/api/conclusao/operadores-maquina', { method: 'PUT', body: { mapa: mapa } }).then(function () { CACHE.mapa = null; }).catch(function () {});
+    } catch (_) {}
+  }
+
+  // ---------- desfazer conclusão ----------
+  window.dsReabrirOF = function (of, cb) {
+    if (!of || !of.id) return;
+    var n = of.of ?? of.numero ?? '';
+    var ov = document.createElement('div'); ov.className = 'dcc-ov'; ov.id = 'dcc-reabrir';
+    ov.innerHTML = '<div class="dcc-shell dcc-peq"><div class="dcc-head"><div><h2>↶ Desfazer conclusão da OF #' + esc(n) + '</h2><div class="dcc-sub">' + esc(clienteNome(of)) + '</div></div></div>'
+      + '<div class="dcc-body"><p>A OF volta para <b>Em aberto</b>, como estava antes de concluir:</p><ul><li>quantidade, valor e dados da conclusão voltam ao que eram;</li><li>as caixas perdidas lançadas na conclusão são apagadas;</li><li>a baixa de chapa feita na conclusão volta para o estoque;</li><li>a comissão dessa OF sai do mês.</li></ul></div>'
+      + '<div class="dcc-foot"><button type="button" class="dcc-b" data-r="x">Cancelar</button><button type="button" class="dcc-b dcc-perigo" data-r="ok">↶ Desfazer conclusão</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-r]'); if (!b && e.target !== ov) return;
+      if (!b || b.getAttribute('data-r') === 'x') { ov.remove(); return; }
+      b.disabled = true; b.textContent = 'Desfazendo…';
+      api('/api/ofs/' + encodeURIComponent(of.id) + '/reabrir', { method: 'POST', body: {} }).then(function (j) {
+        ov.remove();
+        toast('OF #' + n + ' voltou para Em aberto' + (j.chapas_devolvidas ? ' · ' + j.chapas_devolvidas + ' chapa(s) de volta ao estoque' : '') + (j.perdas_removidas ? ' · ' + j.perdas_removidas + ' perda(s) apagada(s)' : ''), 'var(--green)');
+        try { if (j.data && Array.isArray(window.OFs)) { var ix = window.OFs.findIndex(function (o) { return String(o.id) === String(of.id); }); if (ix >= 0) window.OFs[ix] = Object.assign({}, window.OFs[ix], j.data); } } catch (_) {}
+        try { if (typeof window.refreshOfmaq === 'function') window.refreshOfmaq('reabrir-of'); } catch (_) {}
+        try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+        if (cb) cb(j);
+      }).catch(function (e2) { b.disabled = false; b.textContent = '↶ Desfazer conclusão'; toast('Não deu para desfazer: ' + e2.message, 'var(--red)'); });
+    });
+  };
+
+  // ---------- visual ----------
+  var css = ''
+    + '.dcc-ov{position:fixed;inset:0;z-index:100100;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:14px}'
+    + '.dcc-shell{width:min(1400px,97vw);max-height:94vh;display:flex;flex-direction:column;background:var(--card,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-top:6px solid #16a34a;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}'
+    + '.dcc-shell.dcc-peq{width:min(560px,96vw);border-top-color:#dc2626}.dcc-peq ul{margin:6px 0 0;padding-left:20px;line-height:1.6}'
+    + '.dcc-load{padding:40px;text-align:center;color:var(--text2,#94a3b8)}'
+    + '.dcc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border,#334155)}.dcc-head h2{margin:0;font-size:22px}'
+    + '.dcc-sub{color:var(--text2,#94a3b8);font-size:13px;margin-top:3px}'
+    + '.dcc-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px 20px;border-bottom:1px solid var(--border,#334155);background:var(--s2,#111827)}'
+    + '.dcc-body{flex:1 1 auto;overflow:auto;padding:14px 20px;display:grid;gap:14px}'
+    + '.dcc-foot{display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid var(--border,#334155)}'
+    + '.dcc-b{min-height:46px;padding:0 20px;border-radius:12px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-weight:800;font-size:15px;cursor:pointer}.dcc-b:disabled{opacity:.6}'
+    + '.dcc-pri{background:#16a34a;border-color:#15803d;color:#fff;min-width:220px}.dcc-perigo{background:#dc2626;border-color:#b91c1c;color:#fff}'
+    + '.dcc-of{border:1px solid var(--border,#334155);border-left:6px solid #2563eb;border-radius:14px;padding:14px;background:var(--s1,#0b1220);display:grid;gap:12px}.dcc-of.ok{border-left-color:#16a34a;opacity:.75}.dcc-of.err{border-left-color:#dc2626}'
+    + '.dcc-of header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.dcc-of header b{font-size:17px}.dcc-cli{color:#60a5fa;font-weight:700;margin-left:6px}'
+    + '.dcc-g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.dcc-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+    + '.dcc-f{display:grid;gap:5px;align-content:start;min-width:0}.dcc-f>span{font-size:12px;font-weight:800;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:.04em}'
+    + '.dcc-in{min-height:44px;width:100%;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid var(--border,#334155);background:var(--bg2,var(--bg,#020617));color:var(--text,#e2e8f0);font-size:15px}'
+    + '.dcc-in.dcc-falta{border:2px solid #dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.2)}'
+    + '.dcc-big{font-size:22px;font-weight:900;text-align:right;border:2px solid #16a34a}'
+    + '.dcc-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px}.dcc-chips em{font-style:normal;font-size:12px;color:var(--text2,#94a3b8)}'
+    + '.dcc-chip{padding:5px 10px;border-radius:999px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:var(--text,#e2e8f0);font-size:12.5px;font-weight:700;cursor:pointer}.dcc-chip small{opacity:.7}.dcc-chip.on{background:#2563eb;border-color:#2563eb;color:#fff}'
+    + '.dcc-mlist{display:grid;gap:6px}.dcc-mrow{display:grid;grid-template-columns:minmax(120px,1.1fr) 100px minmax(140px,1.6fr) 40px;gap:6px}.dcc-n{text-align:right;font-weight:800}'
+    + '.dcc-x{width:40px;min-height:40px;border-radius:10px;border:1px solid var(--border,#334155);background:transparent;color:#dc2626;font-weight:900;cursor:pointer}.dcc-fechar{color:var(--text,#e2e8f0)}'
+    + '.dcc-add{justify-self:start;min-height:36px;padding:0 12px;border-radius:9px;border:1px dashed var(--border,#475569);background:transparent;color:var(--accent,#60a5fa);font-weight:800;cursor:pointer}'
+    + '.dcc-res{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--s2,#111827);line-height:1.6}.dcc-bad{color:#dc2626}'
+    + '.dcc-tag{padding:5px 10px;border-radius:8px;font-weight:800;font-size:13px}.dcc-tag.ok{background:#16a34a;color:#fff}.dcc-tag.err{background:#dc2626;color:#fff;max-width:420px}'
+    + '.dcc-totbox{min-height:44px;display:flex;align-items:center;gap:6px;font-size:15px}'
+    + '.dsc-lote-conc{background:#16a34a!important;border-color:#15803d!important;color:#fff!important;font-weight:800!important}'
+    + '@media (max-width:1000px){.dcc-g4{grid-template-columns:repeat(2,minmax(0,1fr))}.dcc-g2{grid-template-columns:1fr}}'
+    + '@media (max-width:640px){.dcc-ov{padding:0}.dcc-shell{width:100vw;max-height:100vh;height:100%;border-radius:0}.dcc-top{grid-template-columns:1fr 1fr}.dcc-body,.dcc-head,.dcc-top,.dcc-foot{padding-left:12px;padding-right:12px}'
+    + '.dcc-mrow{grid-template-columns:1fr 90px 40px}.dcc-mrow [data-f="op"]{grid-column:1/3;grid-row:2}.dcc-foot .dcc-b{flex:1}.dcc-pri{min-width:0}}'
+    + '[data-theme="light"] .dcc-shell,body.light .dcc-shell{background:#fff;color:#0f172a}[data-theme="light"] .dcc-of,body.light .dcc-of{background:#f8fafc}[data-theme="light"] .dcc-in,body.light .dcc-in{background:#fff;color:#0f172a;border-color:#cbd5e1}[data-theme="light"] .dcc-top,[data-theme="light"] .dcc-res,body.light .dcc-top,body.light .dcc-res{background:#f1f5f9}';
+  var stl = document.createElement('style'); stl.id = 'dcc-css'; stl.textContent = css; (document.head || document.documentElement).appendChild(stl);
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */

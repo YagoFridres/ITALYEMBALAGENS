@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261118102131';
-const SW_RUNTIME_VERSION = '20261118102131';
+const PATCH_RUNTIME_VERSION = '20261118110504';
+const SW_RUNTIME_VERSION = '20261118110504';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12027,6 +12027,121 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
   }
 });
 
+// ===== 18/11: conclusão de OF mais prática =====
+// Operadores que trabalham em cada máquina (para já vir preenchido na conclusão). Qualquer usuário logado pode salvar.
+app.get('/api/conclusao/operadores-maquina', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('configuracoes').select('valor').eq('chave', 'operadores_por_maquina').maybeSingle();
+    if (error) return ok(res, {});
+    let v = data ? data.valor : null;
+    if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = {}; } }
+    return ok(res, v && typeof v === 'object' ? v : {});
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/conclusao/operadores-maquina', authMiddleware, async (req, res) => {
+  try {
+    const entrada = (req.body && typeof req.body.mapa === 'object') ? req.body.mapa : (req.body || {});
+    const mapa = {};
+    Object.keys(entrada || {}).forEach((k) => {
+      const maq = String(k || '').trim().toUpperCase(); if (!maq) return;
+      const lista = (Array.isArray(entrada[k]) ? entrada[k] : [entrada[k]]).map((x) => String(x || '').trim()).filter(Boolean);
+      if (lista.length) mapa[maq] = Array.from(new Set(lista)).slice(0, 6);
+    });
+    const { error } = await supabase.from('configuracoes').upsert([{ chave: 'operadores_por_maquina', valor: mapa, atualizado_por: req.usuario?.nome || 'sistema', updated_at: new Date().toISOString() }], { onConflict: 'chave' });
+    if (error) throw error;
+    return ok(res, mapa);
+  } catch (e) { return err(res, e); }
+});
+// Tipos de caixa e gramaturas que o cliente mais usa (pelas OFs concluídas dele)
+app.get('/api/conclusao/historico-cliente', authMiddleware, async (req, res) => {
+  try {
+    const cli = String(req.query.cli_id || '').trim();
+    if (!cli) return ok(res, { tipos: [], gramaturas: [] });
+    const { data, error } = await supabase.from('ofs').select('tipo_caixa_id,tipo_caixa,gramatura_id,gramatura_nome,data_conclusao,status').eq('cli_id', cli).ilike('status', 'conclu%').order('data_conclusao', { ascending: false, nullsFirst: false }).limit(500);
+    if (error) throw error;
+    const cont = (lista, kId, kNome) => {
+      const m = new Map();
+      (lista || []).forEach((r, i) => {
+        const id = String(r[kId] || '').trim(); if (!id) return;
+        const x = m.get(id) || { id, nome: String(r[kNome] || '').trim(), vezes: 0, recente: i };
+        x.vezes += 1; if (!x.nome && r[kNome]) x.nome = String(r[kNome]).trim(); m.set(id, x);
+      });
+      return Array.from(m.values()).sort((a, b) => b.vezes - a.vezes || a.recente - b.recente).slice(0, 6);
+    };
+    return ok(res, { tipos: cont(data, 'tipo_caixa_id', 'tipo_caixa'), gramaturas: cont(data, 'gramatura_id', 'gramatura_nome'), total: (data || []).length });
+  } catch (e) { return err(res, e); }
+});
+// Desfazer conclusão: a OF volta como estava antes de concluir; perdas lançadas na conclusão e a baixa de chapa da conclusão são desfeitas
+app.post('/api/ofs/:id/reabrir', authMiddleware, async (req, res) => {
+  try {
+    const sid = String(req.params.id || '').trim();
+    const { data: of, error } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
+    if (error) throw error;
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!/conclu/i.test(String(of.status || ''))) return res.status(400).json({ ok: false, error: 'Esta OF não está concluída' });
+    const ofNum = String(of.of ?? of.numero ?? '').trim();
+    // 1) estado de antes da conclusão (auditoria)
+    let antes = null;
+    try {
+      const { data: aud } = await supabase.from('audit_log').select('dados_antes,dados_depois,created_at,operacao').eq('tabela', 'ofs').eq('registro_id', sid).in('operacao', ['UPDATE', 'CONCLUIR']).order('created_at', { ascending: false }).limit(60);
+      const hit = (aud || []).find((a) => a && a.dados_antes && !/conclu/i.test(String(a.dados_antes.status || '')) && (a.operacao === 'CONCLUIR' || /conclu/i.test(String(a.dados_depois && a.dados_depois.status || ''))));
+      antes = hit ? hit.dados_antes : null;
+    } catch (_) {}
+    const patch = {};
+    const NAO = new Set(['id', 'created_at', 'updated_at', 'deleted_at', 'of', 'numero', 'cli_id', 'cliente_id', 'itens', 'imagem', 'imagem_url', 'img', 'arte']);
+    if (antes && typeof antes === 'object') {
+      Object.keys(antes).forEach((k) => { if (!NAO.has(k) && Object.prototype.hasOwnProperty.call(of, k) && JSON.stringify(antes[k]) !== JSON.stringify(of[k])) patch[k] = antes[k]; });
+    }
+    if (!patch.status || /conclu/i.test(String(patch.status))) patch.status = (antes && antes.status && !/conclu/i.test(antes.status)) ? antes.status : 'Em aberto';
+    ['data_conclusao', 'data_faturamento', 'qtd_produzida', 'caixas_boas', 'caixas_perdidas', 'qtd_perdida', 'operador_conclusao', 'usuario_conclusao'].forEach((k) => {
+      if (Object.prototype.hasOwnProperty.call(of, k) && !Object.prototype.hasOwnProperty.call(patch, k)) patch[k] = (antes && Object.prototype.hasOwnProperty.call(antes, k)) ? antes[k] : null;
+    });
+    if (!antes) {
+      const qp = Number(of.qtd_pedida || 0);
+      if (qp > 0) { if ('qtd' in of) patch.qtd = qp; if ('quantidade' in of) patch.quantidade = qp; const pu = Number(of.preco || of.valor_unitario || 0); if (pu > 0) { if ('valor_total' in of) patch.valor_total = Math.round(pu * qp * 100) / 100; if ('valor_venda' in of) patch.valor_venda = Math.round(pu * qp * 100) / 100; } }
+      ['perdas_por_maquina', 'operadores_conclusao'].forEach((k) => { if (k in of) patch[k] = Array.isArray(of[k]) ? [] : null; });
+    }
+    patch.updated_at = new Date().toISOString();
+    let upd = null;
+    for (let t = 0; t < 8; t++) {
+      upd = await supabase.from('ofs').update(patch).eq('id', sid).select('*').maybeSingle();
+      if (!upd.error) break;
+      const msg = String(upd.error.message || ''); const m = msg.match(/Could not find the '([^']+)' column/i) || msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+.*does not exist/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(patch, m[1])) { delete patch[m[1]]; continue; }
+      throw upd.error;
+    }
+    const feito = { perdas_removidas: 0, chapas_devolvidas: 0 };
+    // 2) perdas lançadas pela conclusão
+    try {
+      const { data: perdas } = await supabase.from('caixas_perdidas').select('id,obs').eq('of_id', sid);
+      for (const p of (perdas || [])) { if (/conclus/i.test(String(p.obs || ''))) { const d = await supabase.from('caixas_perdidas').delete().eq('id', p.id); if (!d.error) feito.perdas_removidas++; } }
+    } catch (_) {}
+    // 3) baixa automática de chapa feita NA conclusão (não a da criação da OF)
+    try {
+      if (ofNum) {
+        const criada = new Date(of.created_at || 0).getTime();
+        const { data: movs } = await supabase.from('chapas_estoque_movimentos_v2').select('*').eq('origem', 'of').eq('origem_id', ofNum).eq('tipo', 'saida');
+        for (const mv of (movs || [])) {
+          if (mv.reverted) continue;
+          if (criada && new Date(mv.created_at).getTime() - criada < 10 * 60 * 1000) continue; // baixa da criação: fica
+          const q = Math.abs(Math.trunc(Number(mv.delta || 0)));
+          if (!(q > 0)) continue;
+          const r = await _chapasMovimentarV2Rpc({ chapa_id: mv.chapa_id, tipo: 'entrada', quantidade: q, nf: null, obs: `Devolução: conclusão da OF #${ofNum} desfeita`, origem: 'reversao_movimento', origem_id: String(mv.id), usuario: req.usuario?.nome || 'sistema', emp_id: mv.emp_id || null });
+          if (r?.error) continue;
+          await supabase.from('chapas_estoque_movimentos_v2').update({ reverted: true, reverted_by: req.usuario?.nome || 'sistema', reverted_at: new Date().toISOString() }).eq('id', mv.id);
+          try { const { data: c } = await supabase.from('chapas_estoque_v2').select('quantidade_atual,quantidade').eq('id', mv.chapa_id).maybeSingle(); await _chapasAtualizarQtdEstoqueChapa(mv.chapa_id, Math.trunc(Number(c?.quantidade_atual ?? c?.quantidade ?? 0) || 0), req, new Date().toISOString()); } catch (_) {}
+          feito.chapas_devolvidas += q;
+        }
+        if (feito.chapas_devolvidas) try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+      }
+    } catch (_) {}
+    try { await supabase.from('historico_acoes').insert([{ data_hora: new Date().toISOString(), tipo_acao: 'of_reaberta', descricao: `OF #${ofNum} reaberta (conclusão desfeita)${feito.perdas_removidas ? ' · ' + feito.perdas_removidas + ' perda(s) removida(s)' : ''}${feito.chapas_devolvidas ? ' · ' + feito.chapas_devolvidas + ' chapa(s) devolvida(s) ao estoque' : ''}`, usuario: req.usuario?.nome || 'sistema' }]); } catch (_) {}
+    try { await logAuditoria('ofs', 'REABRIR', sid, of, upd && upd.data, req); } catch (_) {}
+    _clearOfsCaches();
+    return res.json({ ok: true, data: upd && upd.data, restaurado_da_auditoria: !!antes, ...feito });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
 app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -12476,6 +12591,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       try { console.error('[concluir OF] colunas ignoradas (não existem em ofs):', colunasDescartadas); } catch (_) {}
     }
     console.debug('[CONCLUIR OF] updateSeguro:', JSON.stringify(updateSeguro));
+    // 18/11: guarda como a OF estava antes de concluir (para poder desfazer a conclusão)
+    try { await logAuditoria('ofs', 'CONCLUIR', sid, of, updateSeguro, req); } catch (_) {}
     const upd = await supabase.from('ofs').update(updateSeguro).eq('id', sid).select('*').single();
     if (upd.error) {
       try {
