@@ -33094,8 +33094,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro', senha: true },
 
     { id: 'estoque',             label: 'Estoque de Chapas',   icone: '🟦', grupo: 'Estoques' },
-    { id: 'entradas-estoque',    label: 'Entradas',            icone: '📥', grupo: 'Estoques' },
-    { id: 'saidas-estoque',      label: 'Saídas',              icone: '📤', grupo: 'Estoques' },
+    { id: 'entradas-estoque',    label: 'Entradas e Saídas',   icone: '🔄', grupo: 'Estoques' },
     { id: 'checklist-recebimento', label: 'Checklist de Recebimento', icone: '📋', grupo: 'Estoques' },
     { id: 'gramaturas',          label: 'Gramaturas',          icone: '📐', grupo: 'Estoques' },
     { id: 'toneladas-vendidas',  label: 'Toneladas Vendidas',  icone: '⚖️', grupo: 'Estoques' },
@@ -36559,8 +36558,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return true;
       }
       if (pid === 'toneladas-vendidas') { renderToneladasPage().catch(function() {}); return true; }
-      if (pid === 'entradas-estoque') { _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas')); return true; }
-      if (pid === 'saidas-estoque') { _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas')); return true; }
+      if (pid === 'entradas-estoque') { _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '🔄 Entradas e Saídas')); return true; }
+      if (pid === 'saidas-estoque') { _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '🔄 Entradas e Saídas')); return true; }
       return false;
     }
     try {
@@ -36582,8 +36581,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.carregarGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.renderToneladasVendidas = renderToneladasPage; } catch (_) {}
-    try { window.__patchRenderEntradasEstoque = function() { return _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas')); }; } catch (_) {}
-    try { window.__patchRenderSaidasEstoque = function() { return _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas')); }; } catch (_) {}
+    try { window.__patchRenderEntradasEstoque = function() { return _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '🔄 Entradas e Saídas')); }; } catch (_) {}
+    try { window.__patchRenderSaidasEstoque = function() { return _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '🔄 Entradas e Saídas')); }; } catch (_) {}
     try { _ensureVendedoresMap(); } catch (_) {}
   })();
 
@@ -46384,8 +46383,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var pageChapas = _pageFromOnclick(document.getElementById('menu-estoque'), 'estoque') || 'estoque';
     return [
       { icon: '🟦', label: 'Estoque de Chapas', tela: pageChapas },
-      { icon: '📥', label: 'Entradas', tela: 'entradas-estoque' },
-      { icon: '📤', label: 'Saídas', tela: 'saidas-estoque' },
+      { icon: '🔄', label: 'Entradas e Saídas', tela: 'entradas-estoque' },
       { icon: '📋', label: 'Checklist de Recebimento', tela: 'checklist-recebimento' },
       { icon: '📐', label: 'Gramaturas', tela: 'gramaturas' },
       { icon: '⚖️', label: 'Toneladas Vendidas', tela: 'toneladas-vendidas' },
@@ -49131,7 +49129,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     host.innerHTML = '<div style="padding:18px;color:var(--text2)">Carregando entradas...</div>';
     try {
       window.__estoqueEntradasRefresh = async function() {
-        var target = getMainPatchHost('entradas-estoque', '📥 Entradas');
+        var target = getMainPatchHost('entradas-estoque', '🔄 Entradas e Saídas');
         await _renderEntradasEstoque(target);
       };
       var raw = await _carregarDadosMovimentacaoEstoque('entrada');
@@ -49485,7 +49483,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     host.innerHTML = '<div style="padding:18px;color:var(--text2)">Carregando saídas...</div>';
     try {
       window.__estoqueSaidasRefresh = async function() {
-        var target = getMainPatchHost('saidas-estoque', '📤 Saídas');
+        var target = getMainPatchHost('saidas-estoque', '🔄 Entradas e Saídas');
         await _renderSaidasEstoque(target);
       };
       var raw = await _carregarDadosMovimentacaoEstoque('saida');
@@ -50803,11 +50801,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return;
       }
       if (page === 'entradas-estoque') {
-        _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas'));
+        _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '🔄 Entradas e Saídas'));
         return;
       }
       if (page === 'saidas-estoque') {
-        _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas'));
+        _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '🔄 Entradas e Saídas'));
         return;
       }
       if (page === 'lotes-estoque') {
@@ -71139,7 +71137,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     'produtos': ['doc', 'Produtos'], 'orcamentos': ['doc', 'Orçamentos'], 'clientes': ['pessoas', 'Clientes'], 'mapa-clientes': ['mapa', 'Mapa de Clientes'],
     'vendedores': ['maleta', 'Vendedores'], 'comissoes': ['pct', 'Comissões'],
     '@papelao': ['carrinho', 'Compra de Papelão'], 'fornecedores': ['caminhao', 'Fornecedores'], 'estoque': ['camadas', 'Estoque de Chapas'],
-    'entradas-estoque': ['entrada', 'Entradas'], 'saidas-estoque': ['saida', 'Saídas'], 'checklist-recebimento': ['check', 'Checklist de Recebimento'],
+    'entradas-estoque': ['entrada', 'Entradas e Saídas'], 'saidas-estoque': ['saida', 'Entradas e Saídas'], 'checklist-recebimento': ['check', 'Checklist de Recebimento'],
     'facas1': ['faca', 'Estoque de Facas'], 'cliches': ['carimbo', 'Estoque de Clichês'], 'gramaturas': ['balanca', 'Gramaturas'],
     'simd': ['reciclar', 'Simulador de Desperdício'], 'almoxarifado': ['caixa', 'Almoxarifado'],
     'inconformidades': ['alerta', 'Inconformidades'], 'caixas-perdidas': ['caixax', 'Caixas Perdidas'],
@@ -71154,7 +71152,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     { id: 'ng-ds-producao', nome: 'Produção', ico: 'fabrica', itens: ['pcp', 'ofmaq', 'historico-passagens'] },
     { id: 'ng-ds-comercial', nome: 'Cadastros', ico: 'pessoas', itens: ['clientes', 'tipos-caixa', 'cores-impressao', 'gramaturas', 'operadores', 'vendedores', 'mapa-clientes', 'roteiro-semana'] },
     { id: 'ng-ds-compras', nome: 'Compras', ico: 'carrinho', itens: ['@papelao', 'almoxarifado', 'fornecedores'] },
-    { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'saidas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'simd'] },
+    { id: 'ng-ds-estoque', nome: 'Estoque', ico: 'camadas', itens: ['estoque', 'entradas-estoque', 'checklist-recebimento', 'facas1', 'cliches', 'simd'] },
     { id: 'ng-ds-qualidade', nome: 'Qualidade', ico: 'escudo', itens: ['inconformidades', 'caixas-perdidas'] },
     { id: 'ng-ds-fabrica', nome: 'Máquinas', ico: 'maquina', itens: ['maquinas', 'tempos-reais'] },
     { id: 'ng-ds-gestao', nome: 'Financeiro', ico: 'carteira', itens: ['orcamentos', 'comissoes', 'toneladas-vendidas', 'central-custos', 'relatorios'] },
@@ -71167,7 +71165,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   // um emoji por área — o mesmo no computador, tablet e celular
   var EMO = { 'hub': '🏠', 'pcp': '📋', 'ofmaq': '🛠️', 'historico-passagens': '🕒', 'roteiro-semana': '🗓️', 'clientes': '👥', 'tipos-caixa': '🗃️', 'cores-impressao': '🎨',
     'operadores': '👷', 'vendedores': '💼', 'mapa-clientes': '🗺️', '@papelao': '🛒', 'compras': '🛒', 'almoxarifado': '🧰', 'fornecedores': '🚚', 'estoque': '🧱',
-    'entradas-estoque': '📥', 'saidas-estoque': '📤', 'checklist-recebimento': '✅', 'facas1': '🔪', 'cliches': '🖋️', 'gramaturas': '⚖️',
+    'entradas-estoque': '🔄', 'saidas-estoque': '🔄', 'checklist-recebimento': '✅', 'facas1': '🔪', 'cliches': '🖋️', 'gramaturas': '⚖️',
     'toneladas-vendidas': '🏋️', 'simd': '♻️', 'inconformidades': '⚠️', 'caixas-perdidas': '🗑️', 'maquinas': '🖨️', 'fluxos': '🔀', 'tempos-reais': '⏱️',
     'orcamentos': '🧾', 'comissoes': '💵', 'central-custos': '🏦', 'relatorios': '📊', '@chat': '💬', 'agenda': '📅', 'usuarios': '👤', 'configuracoes': '🔧',
     'dashboard': '📈', 'lancamento': '🗄️', '@jarvis': '🤖' };
@@ -82089,7 +82087,17 @@ window.__perTxt = function (p) {
     return String(m.tipo) === 'saida' ? 'saida' : 'entrada';
   }
   function qtdMov(m) { return Math.abs(Math.trunc(Number(m.delta || 0))) || Math.trunc(Number(m.quantidade || 0)) || 0; }
-  function valorMov(m) { var v = Number(m.valor_total); if (isFinite(v) && v) return v; var vu = Number(m.valor_unitario || 0); return vu * qtdMov(m); }
+  // 18/11: valor e peso puxados da chapa quando o lançamento não tem
+  function chapaDe(m) { var l = S.chapas || []; if (!S._mapa || S._mapaSrc !== l) { S._mapa = {}; l.forEach(function (c) { S._mapa[c.id] = c; }); S._mapaSrc = l; } return S._mapa[m.chapa_id] || null; }
+  function vuChapa(c) { return Number(c && (c.valor_unitario != null ? c.valor_unitario : c.val) || 0) || 0; }
+  function kgUn(c) {
+    if (!c) return 0; var k = Number(c.peso_kg_unidade || 0) || 0; if (k > 0) return k;
+    var g = Number(String(c.gramatura || '').replace(',', '.')) || 0, mt = String(c.tamanho || c.tam || '').match(/(\d+(?:[.,]\d+)?)\D+(\d+(?:[.,]\d+)?)/);
+    if (!g || !mt) return 0; return (parseFloat(mt[1].replace(',', '.')) * parseFloat(mt[2].replace(',', '.')) / 1e6) * g / 1000;
+  }
+  function valorMov(m) { var v = Number(m.valor_total); if (isFinite(v) && v > 0) return v; var vu = Number(m.valor_unitario || 0); if (!(vu > 0)) vu = vuChapa(chapaDe(m)); return vu * qtdMov(m); }
+  function tonMov(m) { return qtdMov(m) * kgUn(chapaDe(m)) / 1000; }
+  function ton(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t'; }
 
   function carregarMes(forcar) {
     if (S.carregando) return Promise.resolve();
@@ -82099,6 +82107,7 @@ window.__perTxt = function (p) {
     return api('/api/chapas_estoque_movimentos?de=' + de + '&ate=' + ate + '&limit=5000&_=' + Date.now()).then(function (j) {
       var l = Array.isArray(j) ? j : (j.data || []);
       S.movs = l.filter(function (x) { return x && x.chapa_id; }); S.mesCarregado = m; S.conf = null;
+      return carregarChapas(false).catch(function () {});
     }).finally(function () { S.carregando = false; });
   }
 
@@ -82135,7 +82144,7 @@ window.__perTxt = function (p) {
   var ultimaPg = '';
   setInterval(function () {
     var h = host(); if (!h) { ultimaPg = ''; return; }
-    if (h.pg !== ultimaPg) { ultimaPg = h.pg; S.aba = h.pg === 'saidas-estoque' ? 'saida' : 'entrada'; if (!S.mes) S.mes = mesAtual(); }
+    if (h.pg !== ultimaPg) { ultimaPg = h.pg; S.aba = h.pg === 'saidas-estoque' ? 'saida' : 'tudo'; if (!S.mes) S.mes = mesAtual(); }
     if (!h.el.querySelector('#dmv-wrap')) render(h.el);
   }, 500);
 
@@ -82152,14 +82161,14 @@ window.__perTxt = function (p) {
     }).sort(function (a, b) { return a.created_at < b.created_at ? 1 : -1; });
   }
   function resumo() {
-    var r = { ent: { q: 0, v: 0, n: 0 }, sai: { q: 0, v: 0, n: 0 }, aj: 0, cad: 0, forn: {} };
+    var r = { ent: { q: 0, v: 0, n: 0, t: 0 }, sai: { q: 0, v: 0, n: 0, t: 0 }, aj: 0, cad: 0, forn: {} };
     (S.movs || []).forEach(function (m) {
       var k = classe(m), f = String(m.fornecedor || 'SEM FORNECEDOR').toUpperCase();
       if (k === 'ajuste') { r.aj++; return; } if (k === 'cadastro') { r.cad++; return; }
       if (k !== 'entrada' && k !== 'saida') return;
-      var q = qtdMov(m), v = valorMov(m), F = r.forn[f] = r.forn[f] || { eq: 0, ev: 0, sq: 0, sv: 0, en: 0, sn: 0 };
-      if (k === 'entrada') { r.ent.q += q; r.ent.v += v; r.ent.n++; F.eq += q; F.ev += v; F.en++; }
-      else { r.sai.q += q; r.sai.v += v; r.sai.n++; F.sq += q; F.sv += v; F.sn++; }
+      var q = qtdMov(m), v = valorMov(m), tt = tonMov(m), F = r.forn[f] = r.forn[f] || { eq: 0, ev: 0, sq: 0, sv: 0, en: 0, sn: 0, et: 0, st: 0 };
+      if (k === 'entrada') { r.ent.q += q; r.ent.v += v; r.ent.t += tt; r.ent.n++; F.eq += q; F.ev += v; F.et += tt; F.en++; }
+      else { r.sai.q += q; r.sai.v += v; r.sai.t += tt; r.sai.n++; F.sq += q; F.sv += v; F.st += tt; F.sn++; }
     });
     return r;
   }
@@ -82178,9 +82187,9 @@ window.__perTxt = function (p) {
     var forns = Object.keys(r.forn).sort();
     var fornRows = forns.map(function (f) {
       var F = r.forn[f], c = corForn(f);
-      return '<tr style="--fc:' + c + '"><td><span class="dmv-dot"></span><b>' + esc(f) + '</b></td><td class="n ent">' + num(F.eq) + '</td><td class="n">' + rs(F.ev) + '</td><td class="n sai">' + num(F.sq) + '</td><td class="n">' + rs(F.sv) + '</td><td class="n"><b>' + (F.eq - F.sq >= 0 ? '+' : '') + num(F.eq - F.sq) + '</b></td><td class="c"><button type="button" class="dmv-b dmv-mini" data-dmv-fil="' + esc(f) + '">' + (S.forn === f ? '✓ Filtrando' : 'Ver') + '</button></td></tr>';
-    }).join('') || '<tr><td colspan="7" class="dmv-vazio">Nenhuma entrada ou saída neste mês.</td></tr>';
-    var tot = '<tr class="dmv-tot"><td>Total do mês</td><td class="n ent">' + num(r.ent.q) + '</td><td class="n">' + rs(r.ent.v) + '</td><td class="n sai">' + num(r.sai.q) + '</td><td class="n">' + rs(r.sai.v) + '</td><td class="n">' + (r.ent.q - r.sai.q >= 0 ? '+' : '') + num(r.ent.q - r.sai.q) + '</td><td></td></tr>';
+      return '<tr style="--fc:' + c + '"><td><span class="dmv-dot"></span><b>' + esc(f) + '</b></td><td class="n ent">' + num(F.eq) + '</td><td class="n">' + ton(F.et) + '</td><td class="n">' + rs(F.ev) + '</td><td class="n sai">' + num(F.sq) + '</td><td class="n">' + ton(F.st) + '</td><td class="n">' + rs(F.sv) + '</td><td class="n"><b>' + (F.eq - F.sq >= 0 ? '+' : '') + num(F.eq - F.sq) + '</b></td><td class="c"><button type="button" class="dmv-b dmv-mini" data-dmv-fil="' + esc(f) + '">' + (S.forn === f ? '✓ Filtrando' : 'Ver') + '</button></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="dmv-vazio">Nenhuma entrada ou saída neste mês.</td></tr>';
+    var tot = '<tr class="dmv-tot"><td>Total do mês</td><td class="n ent">' + num(r.ent.q) + '</td><td class="n">' + ton(r.ent.t) + '</td><td class="n">' + rs(r.ent.v) + '</td><td class="n sai">' + num(r.sai.q) + '</td><td class="n">' + ton(r.sai.t) + '</td><td class="n">' + rs(r.sai.v) + '</td><td class="n">' + (r.ent.q - r.sai.q >= 0 ? '+' : '') + num(r.ent.q - r.sai.q) + '</td><td></td></tr>';
     var linhas = lista.map(function (m) {
       var k = classe(m), f = String(m.fornecedor || '').toUpperCase(), ent = Number(m.delta) > 0;
       var tag = k === 'desfeito' ? '<span class="dmv-tag x">Desfeito</span>' : (k === 'ajuste' ? '<span class="dmv-tag aj">Ajuste</span>' : (k === 'cadastro' ? '<span class="dmv-tag aj">Cadastro</span>' : (ent ? '<span class="dmv-tag e">Entrada</span>' : '<span class="dmv-tag s">Saída</span>')));
@@ -82190,29 +82199,29 @@ window.__perTxt = function (p) {
         + '<td data-l="Fornecedor"><span class="dmv-dot"></span>' + esc(f || '—') + '</td><td data-l="Chapa"><b>' + esc(m.chapa_label || '—') + '</b></td>'
         + '<td data-l="Qtd" class="n ' + (ent ? 'ent' : 'sai') + '"><b>' + (ent ? '+' : '−') + num(qtdMov(m)) + '</b></td>'
         + '<td data-l="Saldo" class="n dmv-sub">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '—') + '</td>'
-        + '<td data-l="Valor" class="n">' + rs(valorMov(m)) + '</td><td data-l="NF">' + esc(m.nf || '—') + '</td>'
+        + '<td data-l="Peso" class="n">' + ton(tonMov(m)) + '</td><td data-l="Valor" class="n">' + rs(valorMov(m)) + '</td><td data-l="NF">' + esc(m.nf || '—') + '</td>'
         + '<td data-l="Responsável">' + esc(m.usuario || '—') + '</td>'
         + '<td data-l="" class="c">' + (podeDesfazer ? '<button type="button" class="dmv-b dmv-mini dmv-del" data-dmv-desf="' + esc(m.id) + '" title="Desfazer este lançamento (o saldo volta)">↶ Desfazer</button>' : '') + '</td></tr>';
-    }).join('') || '<tr><td colspan="10" class="dmv-vazio">Nada encontrado' + (S.q || S.forn ? ' com esse filtro' : ' neste mês') + '.</td></tr>';
+    }).join('') || '<tr><td colspan="11" class="dmv-vazio">Nada encontrado' + (S.q || S.forn ? ' com esse filtro' : ' neste mês') + '.</td></tr>';
     var cf = S.conf;
     var confHtml = !cf ? '<button type="button" class="dmv-b" data-dmv-conf>🔎 Conferir saldos agora</button><span class="dmv-sub">Confere se o saldo de cada chapa bate com tudo que foi lançado.</span>'
       : (cf.prob.length ? '<b class="dmv-bad">⚠ ' + cf.prob.length + ' ponto(s) não batem</b> <button type="button" class="dmv-b dmv-mini" data-dmv-conf>Conferir de novo</button><ul class="dmv-conf-l">' + cf.prob.map(function (p) { return '<li style="--fc:' + corForn(p.forn) + '"><span class="dmv-dot"></span><b>' + esc(p.nome) + '</b> — ' + esc(p.txt) + '</li>'; }).join('') + '</ul>'
         : '<b class="dmv-ok">✓ Tudo confere</b> — ' + num(cf.chapas) + ' chapas e ' + num(cf.movs) + ' lançamentos conferidos às ' + cf.em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. <button type="button" class="dmv-b dmv-mini" data-dmv-conf>Conferir de novo</button>');
     w.innerHTML = ''
-      + '<div class="dmv-top"><div><h2>📦 Entradas e Saídas de Chapas</h2><div class="dmv-sub">Cada mês começa do zero e mostra só o que entrou e saiu naquele mês.</div></div>'
+      + '<div class="dmv-top"><div><h2>🔄 Entradas e Saídas de Chapas</h2><div class="dmv-sub">Cada mês começa do zero e mostra só o que entrou e saiu naquele mês.</div></div>'
       + '<div class="dmv-acts"><button type="button" class="dmv-b dmv-ent" data-dmv-novo="entrada">📥 Dar entrada</button><button type="button" class="dmv-b dmv-sai" data-dmv-novo="saida">📤 Dar saída</button><button type="button" class="dmv-b" data-dmv-print>🖨 Imprimir mês</button><button type="button" class="dmv-b" data-dmv-rel title="Recarregar">↻</button></div></div>'
       + '<div class="dmv-mesbar"><button type="button" class="dmv-b" data-dmv-mes="-1" title="Mês anterior">◀</button><select id="dmv-mes-sel" class="dmv-in">' + opMes + '</select><button type="button" class="dmv-b" data-dmv-mes="1" title="Próximo mês"' + (ehAtual ? ' disabled' : '') + '>▶</button>' + (ehAtual ? '<span class="dmv-pill on">Mês em andamento</span>' : '<span class="dmv-pill">Mês fechado</span><button type="button" class="dmv-b dmv-mini" data-dmv-hoje>Voltar ao mês atual</button>') + '</div>'
       + '<div class="dmv-cards">'
-      + '<div class="dmv-card e"><span>Entrou no mês</span><b>' + num(r.ent.q) + ' <small>chapas</small></b><em>' + rs(r.ent.v) + ' · ' + r.ent.n + ' lançamento(s)</em></div>'
-      + '<div class="dmv-card s"><span>Saiu no mês</span><b>' + num(r.sai.q) + ' <small>chapas</small></b><em>' + rs(r.sai.v) + ' · ' + r.sai.n + ' lançamento(s)</em></div>'
-      + '<div class="dmv-card"><span>Diferença do mês</span><b>' + (r.ent.q - r.sai.q >= 0 ? '+' : '') + num(r.ent.q - r.sai.q) + ' <small>chapas</small></b><em>entrou − saiu</em></div>'
+      + '<div class="dmv-card e"><span>Entrou no mês</span><b>' + num(r.ent.q) + ' <small>chapas</small></b><em>' + rs(r.ent.v) + ' · ' + ton(r.ent.t) + ' · ' + r.ent.n + ' lançamento(s)</em></div>'
+      + '<div class="dmv-card s"><span>Saiu no mês</span><b>' + num(r.sai.q) + ' <small>chapas</small></b><em>' + rs(r.sai.v) + ' · ' + ton(r.sai.t) + ' · ' + r.sai.n + ' lançamento(s)</em></div>'
+      + '<div class="dmv-card"><span>Diferença do mês</span><b>' + (r.ent.q - r.sai.q >= 0 ? '+' : '') + num(r.ent.q - r.sai.q) + ' <small>chapas</small></b><em>' + (r.ent.v - r.sai.v >= 0 ? '+' : '−') + rs(Math.abs(r.ent.v - r.sai.v)).replace('R$ ', 'R$ ') + ' · ' + (r.ent.t - r.sai.t >= 0 ? '+' : '−') + ton(Math.abs(r.ent.t - r.sai.t)) + '</em></div>'
       + '<div class="dmv-card"><span>Fornecedores no mês</span><b>' + forns.length + '</b><em>' + (r.aj ? r.aj + ' ajuste(s) · ' : '') + (r.cad ? r.cad + ' cadastro(s) inicial(is), fora da conta' : 'só entradas e saídas contam') + '</em></div>'
       + '</div>'
-      + '<section class="dmv-box"><h3>Por fornecedor — ' + esc(nomeMes(S.mes)) + '</h3><div class="dmv-tw"><table class="dmv-t dmv-tf"><thead><tr><th>Fornecedor</th><th class="n">Entrou (un)</th><th class="n">Entrou (R$)</th><th class="n">Saiu (un)</th><th class="n">Saiu (R$)</th><th class="n">Diferença</th><th></th></tr></thead><tbody>' + fornRows + (forns.length ? tot : '') + '</tbody></table></div></section>'
+      + '<section class="dmv-box"><h3>Por fornecedor — ' + esc(nomeMes(S.mes)) + '</h3><div class="dmv-tw"><table class="dmv-t dmv-tf"><thead><tr><th>Fornecedor</th><th class="n">Entrou (un)</th><th class="n">Entrou (t)</th><th class="n">Entrou (R$)</th><th class="n">Saiu (un)</th><th class="n">Saiu (t)</th><th class="n">Saiu (R$)</th><th class="n">Diferença</th><th></th></tr></thead><tbody>' + fornRows + (forns.length ? tot : '') + '</tbody></table></div></section>'
       + '<section class="dmv-box dmv-conf">' + confHtml + '</section>'
       + '<section class="dmv-box"><div class="dmv-lh"><div class="dmv-abas"><button type="button" class="dmv-aba' + (S.aba === 'entrada' ? ' on' : '') + '" data-dmv-aba="entrada">📥 Entradas</button><button type="button" class="dmv-aba' + (S.aba === 'saida' ? ' on' : '') + '" data-dmv-aba="saida">📤 Saídas</button><button type="button" class="dmv-aba' + (S.aba === 'tudo' ? ' on' : '') + '" data-dmv-aba="tudo">Tudo</button></div>'
       + '<input id="dmv-q" class="dmv-in" type="search" placeholder="Buscar chapa, fornecedor, NF, responsável…" value="' + esc(S.q) + '" autocomplete="off">' + (S.forn ? '<button type="button" class="dmv-b dmv-mini" data-dmv-fil="">✕ ' + esc(S.forn) + '</button>' : '') + '<span class="dmv-sub">' + lista.length + ' lançamento(s)</span></div>'
-      + '<div class="dmv-tw"><table class="dmv-t dmv-tl"><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th class="n">Qtd</th><th class="n">Saldo</th><th class="n">Valor</th><th>NF</th><th>Responsável</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></section>';
+      + '<div class="dmv-tw"><table class="dmv-t dmv-tl"><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th class="n">Qtd</th><th class="n">Saldo</th><th class="n">Peso</th><th class="n">Valor</th><th>NF</th><th>Responsável</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></section>';
     var q = document.getElementById('dmv-q');
     if (q) { q.addEventListener('input', function () { S.q = q.value; var pos = q.selectionStart; pintar(); var q2 = document.getElementById('dmv-q'); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (_) {} } }); }
     var sel = document.getElementById('dmv-mes-sel'); if (sel) sel.onchange = function () { trocarMes(sel.value); };
@@ -82246,11 +82255,11 @@ window.__perTxt = function (p) {
     var tit = (S.aba === 'entrada' ? 'Entradas' : (S.aba === 'saida' ? 'Saídas' : 'Entradas e Saídas')) + ' de Chapas — ' + nomeMes(S.mes);
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(tit) + '</title><style>body{font-family:Arial,sans-serif;color:#111;margin:18px;font-size:12px}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:16px 0 6px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:5px 6px;text-align:left}th{background:#e2e8f0}.n{text-align:right}.tot td{font-weight:bold;background:#f1f5f9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.sub{color:#475569}.x{text-decoration:line-through;color:#94a3b8}@page{size:A4 landscape;margin:10mm}</style></head><body>'
       + '<h1>' + esc(tit) + '</h1><div class="sub">Impresso em ' + new Date().toLocaleString('pt-BR') + (S.forn ? ' · Fornecedor: ' + esc(S.forn) : '') + (S.q ? ' · Busca: ' + esc(S.q) : '') + '</div>'
-      + '<h2>Resumo por fornecedor</h2><table><thead><tr><th>Fornecedor</th><th class="n">Entrou (un)</th><th class="n">Entrou (R$)</th><th class="n">Saiu (un)</th><th class="n">Saiu (R$)</th><th class="n">Diferença</th></tr></thead><tbody>'
-      + forns.map(function (f) { var F = r.forn[f]; return '<tr><td><span class="dot" style="background:' + corForn(f) + '"></span>' + esc(f) + '</td><td class="n">' + num(F.eq) + '</td><td class="n">' + rs(F.ev) + '</td><td class="n">' + num(F.sq) + '</td><td class="n">' + rs(F.sv) + '</td><td class="n">' + num(F.eq - F.sq) + '</td></tr>'; }).join('')
-      + '<tr class="tot"><td>Total</td><td class="n">' + num(r.ent.q) + '</td><td class="n">' + rs(r.ent.v) + '</td><td class="n">' + num(r.sai.q) + '</td><td class="n">' + rs(r.sai.v) + '</td><td class="n">' + num(r.ent.q - r.sai.q) + '</td></tr></tbody></table>'
-      + '<h2>Lançamentos (' + lista.length + ')</h2><table><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th class="n">Qtd</th><th class="n">Saldo</th><th class="n">Valor</th><th>NF</th><th>Responsável</th></tr></thead><tbody>'
-      + lista.map(function (m) { var k = classe(m), ent = Number(m.delta) > 0; return '<tr class="' + (k === 'desfeito' ? 'x' : '') + '"><td>' + esc(dataHora(m.created_at)) + '</td><td>' + (k === 'desfeito' ? 'Desfeito' : (k === 'ajuste' ? 'Ajuste' : (k === 'cadastro' ? 'Cadastro' : (ent ? 'Entrada' : 'Saída')))) + '</td><td>' + esc(m.fornecedor || '') + '</td><td>' + esc(m.chapa_label || '') + '</td><td class="n">' + (ent ? '+' : '−') + num(qtdMov(m)) + '</td><td class="n">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '') + '</td><td class="n">' + rs(valorMov(m)) + '</td><td>' + esc(m.nf || '') + '</td><td>' + esc(m.usuario || '') + '</td></tr>'; }).join('')
+      + '<h2>Resumo por fornecedor</h2><table><thead><tr><th>Fornecedor</th><th class="n">Entrou (un)</th><th class="n">Entrou (t)</th><th class="n">Entrou (R$)</th><th class="n">Saiu (un)</th><th class="n">Saiu (t)</th><th class="n">Saiu (R$)</th><th class="n">Diferença</th></tr></thead><tbody>'
+      + forns.map(function (f) { var F = r.forn[f]; return '<tr><td><span class="dot" style="background:' + corForn(f) + '"></span>' + esc(f) + '</td><td class="n">' + num(F.eq) + '</td><td class="n">' + ton(F.et) + '</td><td class="n">' + rs(F.ev) + '</td><td class="n">' + num(F.sq) + '</td><td class="n">' + ton(F.st) + '</td><td class="n">' + rs(F.sv) + '</td><td class="n">' + num(F.eq - F.sq) + '</td></tr>'; }).join('')
+      + '<tr class="tot"><td>Total</td><td class="n">' + num(r.ent.q) + '</td><td class="n">' + ton(r.ent.t) + '</td><td class="n">' + rs(r.ent.v) + '</td><td class="n">' + num(r.sai.q) + '</td><td class="n">' + ton(r.sai.t) + '</td><td class="n">' + rs(r.sai.v) + '</td><td class="n">' + num(r.ent.q - r.sai.q) + '</td></tr></tbody></table>'
+      + '<h2>Lançamentos (' + lista.length + ')</h2><table><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th class="n">Qtd</th><th class="n">Saldo</th><th class="n">Peso</th><th class="n">Valor</th><th>NF</th><th>Responsável</th></tr></thead><tbody>'
+      + lista.map(function (m) { var k = classe(m), ent = Number(m.delta) > 0; return '<tr class="' + (k === 'desfeito' ? 'x' : '') + '"><td>' + esc(dataHora(m.created_at)) + '</td><td>' + (k === 'desfeito' ? 'Desfeito' : (k === 'ajuste' ? 'Ajuste' : (k === 'cadastro' ? 'Cadastro' : (ent ? 'Entrada' : 'Saída')))) + '</td><td>' + esc(m.fornecedor || '') + '</td><td>' + esc(m.chapa_label || '') + '</td><td class="n">' + (ent ? '+' : '−') + num(qtdMov(m)) + '</td><td class="n">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '') + '</td><td class="n">' + ton(tonMov(m)) + '</td><td class="n">' + rs(valorMov(m)) + '</td><td>' + esc(m.nf || '') + '</td><td>' + esc(m.usuario || '') + '</td></tr>'; }).join('')
       + '</tbody></table></body></html>';
     var w = window.open('', '_blank'); if (!w) { toast('Libere as janelas pop-up para imprimir', 'var(--red)'); return; }
     w.document.open(); w.document.write(html); w.document.close(); setTimeout(function () { try { w.focus(); w.print(); } catch (_) {} }, 400);
@@ -82327,7 +82336,7 @@ window.__perTxt = function (p) {
     if (!M.itens.length) { box.innerHTML = '<div class="dmv-vazio">Nenhuma chapa na lista ainda. Busque acima e escolha.</div>'; resumoModal(); return; }
     box.innerHTML = M.itens.map(function (it, i) {
       var c = it.c, s = saldoChapa(c), q = Math.trunc(n(it.q)), depois = ent ? s + q : s - q;
-      return '<div class="dmvm-it" style="--fc:' + corForn(c.fornecedor) + '"><div class="dmvm-nome"><span class="dmv-dot"></span><b>' + esc(c.fornecedor || '—') + '</b> ' + esc(rotuloChapa(c)) + (ehRetalho(c) ? ' <span class="dmv-tag aj">Retalho</span>' : '') + '<small>Saldo agora: <b>' + num(s) + '</b>' + (q ? ' → depois: <b class="' + (depois < 0 ? 'dmv-bad' : '') + '">' + num(depois) + '</b>' : '') + '</small></div>'
+      return '<div class="dmvm-it" style="--fc:' + corForn(c.fornecedor) + '"><div class="dmvm-nome"><span class="dmv-dot"></span><b>' + esc(c.fornecedor || '—') + '</b> ' + esc(rotuloChapa(c)) + (ehRetalho(c) ? ' <span class="dmv-tag aj">Retalho</span>' : '') + '<small class="dmvm-vp">' + rs(vuChapa(c)) + '/un · ' + (kgUn(c) ? Number(kgUn(c)).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) + ' kg/un' : 'sem peso') + '</small><small class="dmvm-sd">Saldo agora: <b>' + num(s) + '</b>' + (q ? ' → depois: <b class="' + (depois < 0 ? 'dmv-bad' : '') + '">' + num(depois) + '</b>' : '') + '</small></div>'
         + '<label><span>Quantidade</span><input class="dmv-in" data-k="q" data-id="' + esc(c.id) + '" data-i="' + i + '" type="number" min="1" inputmode="numeric" value="' + esc(it.q) + '"></label>'
         + (ent ? '<label><span>NF</span><input class="dmv-in" data-k="nf" data-i="' + i + '" type="text" value="' + esc(it.nf) + '" placeholder="Nº da nota"></label><label><span>Valor un. (R$)</span><input class="dmv-in" data-k="vu" data-i="' + i + '" type="text" inputmode="decimal" value="' + esc(it.vu === '' ? '' : String(it.vu).replace('.', ',')) + '"></label>' : '')
         + '<button type="button" class="dmv-b dmv-mini dmv-del" data-dmvm-rm="' + i + '" title="Tirar da lista">✕</button></div>';
@@ -82336,15 +82345,16 @@ window.__perTxt = function (p) {
   }
   function resumoModal() {
     var el = document.getElementById('dmvm-res'); if (!el) return;
-    var por = {}, tq = 0; M.itens.forEach(function (it) { var q = Math.trunc(n(it.q)); if (!q) return; var f = String(it.c.fornecedor || '—').toUpperCase(); por[f] = (por[f] || 0) + q; tq += q; });
+    var por = {}, tq = 0, tv = 0, tt = 0; M.itens.forEach(function (it) { var q = Math.trunc(n(it.q)); if (!q) return; var f = String(it.c.fornecedor || '—').toUpperCase(); por[f] = (por[f] || 0) + q; tq += q; var vu = M.tipo === 'entrada' && it.vu !== '' && n(it.vu) > 0 ? n(it.vu) : vuChapa(it.c); tv += vu * q; tt += q * kgUn(it.c) / 1000; });
     var ks = Object.keys(por);
-    el.innerHTML = ks.length ? '<b>' + (M.tipo === 'entrada' ? 'Vai entrar' : 'Vai sair') + ': ' + num(tq) + ' chapas</b> ' + ks.map(function (f) { return '<span class="dmv-chip" style="--fc:' + corForn(f) + '"><span class="dmv-dot"></span>' + esc(f) + ': ' + num(por[f]) + '</span>'; }).join('') : '';
+    el.innerHTML = ks.length ? '<b>' + (M.tipo === 'entrada' ? 'Vai entrar' : 'Vai sair') + ': ' + num(tq) + ' chapas · ' + rs(tv) + ' · ' + ton(tt) + '</b> ' + ks.map(function (f) { return '<span class="dmv-chip" style="--fc:' + corForn(f) + '"><span class="dmv-dot"></span>' + esc(f) + ': ' + num(por[f]) + '</span>'; }).join('') : '';
   }
   document.addEventListener('input', function (e) {
     var t = e.target; if (!t.closest || !t.closest('#dmvm-itens')) return;
     var i = Number(t.getAttribute('data-i')), k = t.getAttribute('data-k'); if (!M.itens[i] || !k) return;
     M.itens[i][k] = t.value;
-    if (k === 'q') { var c = M.itens[i].c, s = saldoChapa(c), q = Math.trunc(n(t.value)), d = M.tipo === 'entrada' ? s + q : s - q; var sm = t.closest('.dmvm-it').querySelector('.dmvm-nome small'); if (sm) sm.innerHTML = 'Saldo agora: <b>' + num(s) + '</b>' + (q ? ' → depois: <b class="' + (d < 0 ? 'dmv-bad' : '') + '">' + num(d) + '</b>' : ''); resumoModal(); }
+    if (k !== 'q') resumoModal();
+    if (k === 'q') { var c = M.itens[i].c, s = saldoChapa(c), q = Math.trunc(n(t.value)), d = M.tipo === 'entrada' ? s + q : s - q; var sm = t.closest('.dmvm-it').querySelector('.dmvm-nome small.dmvm-sd'); if (sm) sm.innerHTML = 'Saldo agora: <b>' + num(s) + '</b>' + (q ? ' → depois: <b class="' + (d < 0 ? 'dmv-bad' : '') + '">' + num(d) + '</b>' : ''); resumoModal(); }
   });
   document.addEventListener('keydown', function (e) { var t = e.target; if (e.key === 'Enter' && t.closest && t.closest('#dmvm-itens')) { e.preventDefault(); var b = document.getElementById('dmvm-busca'); if (b) b.focus(); } });
   document.addEventListener('click', function (e) {
@@ -82390,15 +82400,25 @@ window.__perTxt = function (p) {
       var b = document.createElement('button'); b.type = 'button'; b.id = 'dmv-est-sai'; b.className = nova.className + ' dmv-est-b dmv-sai'; b.textContent = '📤 Dar saída'; b.onclick = function () { abrirLancamento('saida'); };
       nova.parentNode.insertBefore(a, nova); nova.parentNode.insertBefore(b, nova);
     }
-    var pe = document.getElementById('page-estoque'); if (!pe || pe.offsetParent === null) return;
-    pe.querySelectorAll('[data-est-edit]:not([data-dmv-ok])').forEach(function (ed) {
+    var alvos = []; var pe = document.getElementById('page-estoque'); if (pe && pe.offsetParent !== null) alvos.push(pe);
+    document.querySelectorAll('.dsef-ov').forEach(function (o) { alvos.push(o); });
+    alvos.forEach(function (raiz) { raiz.querySelectorAll('[data-est-edit]:not([data-dmv-ok])').forEach(function (ed) {
       ed.setAttribute('data-dmv-ok', '1'); var id = ed.getAttribute('data-est-edit'); if (!id) return;
       // 18/11: ➕ entrada e ➖ saída direto na linha (chapas e retalhos): é só digitar o número
       var mais = document.createElement('button'); mais.type = 'button'; mais.className = 'dmv-pm dmv-pm-mais'; mais.title = 'Dar ENTRADA (somar chapas)'; mais.textContent = '+'; mais.setAttribute('data-dmv-pm', 'entrada'); mais.setAttribute('data-id', id);
       var menos = document.createElement('button'); menos.type = 'button'; menos.className = 'dmv-pm dmv-pm-menos'; menos.title = 'Dar SAÍDA (tirar chapas)'; menos.textContent = '−'; menos.setAttribute('data-dmv-pm', 'saida'); menos.setAttribute('data-id', id);
       ed.parentNode.insertBefore(mais, ed.parentNode.firstChild); mais.insertAdjacentElement('afterend', menos);
-    });
+    }); });
   }, 800);
+  // 18/11: com o estoque em TELA CHEIA aberto, qualquer janela nova aparece por cima dele (antes ficava atrás)
+  new MutationObserver(function (muts) {
+    var fs = document.querySelector('.dsef-ov'); if (!fs) return;
+    var zFs = Number(getComputedStyle(fs).zIndex) || 100050;
+    muts.forEach(function (m) { Array.prototype.forEach.call(m.addedNodes, function (el) {
+      if (!el || el.nodeType !== 1 || el === fs || el.classList.contains('dsef-ov')) return;
+      try { var cs = getComputedStyle(el); if (cs.position === 'fixed' || cs.position === 'absolute') { var z = Number(cs.zIndex) || 0; if (z <= zFs) el.style.setProperty('z-index', String(zFs + 100), 'important'); } } catch (_) {}
+    }); });
+  }).observe(document.body, { childList: true });
   function linhaInfo(btn) {
     var tr = btn.closest('tr,.card,[class*="card"]'); var txt = tr ? tr.innerText.replace(/\s+/g, ' ').trim() : '';
     return txt.slice(0, 140);
@@ -82422,10 +82442,10 @@ window.__perTxt = function (p) {
       if (!chapa) return;
       saldo = saldoChapa(chapa);
       var nm = document.getElementById('dmv-rap-nome'); if (nm) nm.innerHTML = '<span class="dmv-dot" style="--fc:' + corForn(chapa.fornecedor) + '"></span><b>' + esc(chapa.fornecedor || '') + '</b> ' + esc(rotuloChapa(chapa)) + (ehRetalho(chapa) ? ' <span class="dmv-tag aj">Retalho</span>' : '');
-      var sl = document.getElementById('dmv-rap-saldo'); if (sl) sl.innerHTML = 'Saldo agora: <b>' + num(saldo) + '</b>';
+      var sl = document.getElementById('dmv-rap-saldo'); if (sl) sl.innerHTML = 'Saldo agora: <b>' + num(saldo) + '</b> · ' + rs(vuChapa(chapa)) + '/un' + (kgUn(chapa) ? ' · ' + Number(kgUn(chapa)).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) + ' kg/un' : '');
       prev();
     });
-    function prev() { var p = document.getElementById('dmv-rap-prev'); if (!p) return; var v = Math.trunc(Number(q.value) || 0); if (!v || saldo == null) { p.textContent = ''; return; } var d = ent ? saldo + v : saldo - v; p.innerHTML = 'Vai ficar: <b class="' + (d < 0 ? 'dmv-bad' : '') + '">' + num(d) + '</b>' + (d < 0 ? ' — não tem saldo para isso' : ''); }
+    function prev() { var p = document.getElementById('dmv-rap-prev'); if (!p) return; var v = Math.trunc(Number(q.value) || 0); if (!v || saldo == null) { p.textContent = ''; return; } var d = ent ? saldo + v : saldo - v; p.innerHTML = (ent ? 'Entram' : 'Saem') + ' <b>' + rs(v * vuChapa(chapa)) + '</b> · <b>' + ton(v * kgUn(chapa) / 1000) + '</b><br>Vai ficar: <b class="' + (d < 0 ? 'dmv-bad' : '') + '">' + num(d) + '</b>' + (d < 0 ? ' — não tem saldo para isso' : ''); }
     function salvar() {
       var v = Math.trunc(Number(q.value) || 0); if (!(v > 0)) { toast('Digite quantas chapas', 'var(--red)'); q.focus(); return; }
       if (!ent && saldo != null && v > saldo) { toast('Saldo insuficiente: tem ' + num(saldo), 'var(--red)'); return; }
@@ -82480,7 +82500,7 @@ window.__perTxt = function (p) {
     + '.dmv-m{display:grid;gap:14px}.dmv-mg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.dmv-mg label,.dmv-busca-w label,.dmvm-it label{display:grid;gap:4px}.dmv-mg span,.dmv-busca-w span,.dmvm-it label span{font-size:12px;font-weight:700;color:var(--text2)}.dmv-mfull{grid-column:1/-1}'
     + '#dmv-modal.dmvm-ent .dmvm-so-sai,#dmv-modal.dmvm-sai .dmvm-so-ent{display:none!important}'
     + '.dmv-busca-w .dmv-in{min-height:46px;font-size:15px;border-width:2px;border-color:var(--accent,#2563eb)}'
-    + '.dmv-sug{position:fixed;z-index:100000;overflow:auto;background:var(--card,#0f172a);border:1px solid var(--border,#334155);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.35);padding:4px}'
+    + '.dmv-sug{position:fixed;z-index:100300;overflow:auto;background:var(--card,#0f172a);border:1px solid var(--border,#334155);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.35);padding:4px}'
     + '.dmv-sug-i{padding:9px 10px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13.5px;color:var(--text);border-left:4px solid var(--fc)}.dmv-sug-i.on,.dmv-sug-i:hover{background:color-mix(in srgb,var(--fc) 16%,transparent)}.dmv-sug-i em{margin-left:auto;font-style:normal;font-size:12px;color:var(--text2)}.dmv-sug-i small{color:var(--text2)}.dmv-sug-mais{padding:8px 10px;font-size:12px;color:var(--text2)}'
     + '.dmvm-itens{display:grid;gap:8px}.dmvm-it{display:grid;grid-template-columns:minmax(0,1fr) 120px 140px 130px auto;gap:10px;align-items:end;padding:10px 12px;border-radius:12px;border:1px solid var(--border,#334155);border-left:5px solid var(--fc);background:var(--s2,#1e293b)}'
     + '#dmv-modal.dmvm-sai .dmvm-it{grid-template-columns:minmax(0,1fr) 140px auto}'
@@ -82488,7 +82508,7 @@ window.__perTxt = function (p) {
     + '.dmvm-res{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px}.dmv-chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:color-mix(in srgb,var(--fc) 15%,transparent);border:1px solid var(--fc);font-weight:700;font-size:12.5px}'
     + 'button.dmv-pm{width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;margin:0 3px 0 0!important;border-radius:9px!important;border:0!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:22px!important;font-weight:900!important;line-height:1!important;display:inline-flex!important;align-items:center;justify-content:center;cursor:pointer;vertical-align:middle;opacity:1!important}'
     + 'button.dmv-pm-mais{background:#16a34a!important}button.dmv-pm-menos{background:#dc2626!important}button.dmv-pm:hover{filter:brightness(1.12)}'
-    + '.dmv-rap-ov{position:fixed;inset:0;z-index:100001;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.dmv-rap-ov{position:fixed;inset:0;z-index:100200;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px}'
     + '.dmv-rap{width:min(380px,100%);background:var(--card,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-top:6px solid #16a34a;border-radius:16px;padding:18px;display:grid;gap:10px;box-shadow:0 24px 60px rgba(0,0,0,.4)}.dmv-rap.s{border-top-color:#dc2626}'
     + '.dmv-rap-h{font-size:20px;font-weight:900}.dmv-rap.e .dmv-rap-h{color:#16a34a}.dmv-rap.s .dmv-rap-h{color:#dc2626}.dmv-rap-n{font-size:14px;line-height:1.4}.dmv-rap-s,.dmv-rap-p{font-size:14px;color:var(--text2,#94a3b8)}.dmv-rap-s b,.dmv-rap-p b{color:var(--text,#e2e8f0);font-size:16px}'
     + '#dmv-rap-q{min-height:58px;font-size:28px;font-weight:900;text-align:center;border-radius:12px;border:2px solid var(--border,#334155);background:var(--bg2,var(--s1,#020617));color:var(--text,#e2e8f0);width:100%;box-sizing:border-box}.dmv-rap.e #dmv-rap-q:focus{border-color:#16a34a;outline:none}.dmv-rap.s #dmv-rap-q:focus{border-color:#dc2626;outline:none}'
