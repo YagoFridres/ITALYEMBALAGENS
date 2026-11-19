@@ -80063,12 +80063,12 @@ window.__perTxt = function (p) {
     }).join('');
     return '<table class="dsrs-t"><thead><tr><th class="c-dia">Dia</th><th class="c-cli">Cliente</th><th class="c-mod">Modelos</th><th class="c-ped">Nº Pedido</th><th class="c-ent">Data prevista</th><th class="c-entr">Data de entrega</th><th class="c-cid">Cidade</th></tr></thead><tbody>' + corpo + '</tbody></table>';
   }
-  var PED = {}, PED_TS = 0;
+  var PED = {}, PED_TS = 0, PED_OK = false, PED_P = null;
   function carregarPedidos() {
     if (Date.now() - PED_TS < 20000 || typeof window.apiFetch !== 'function') return Promise.resolve();
     PED_TS = Date.now();
-    return window.apiFetch('/api/ofs-pedidos?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
-      var m = {}; ((j && j.data) || []).forEach(function (x) { m[String(x.id)] = String(x.num_pedido || '').trim(); }); PED = m; if (ov) render();
+    return PED_P = window.apiFetch('/api/ofs-pedidos?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
+      var m = {}; ((j && j.data) || []).forEach(function (x) { m[String(x.id)] = String(x.num_pedido || '').trim(); }); PED = m; PED_OK = true; if (ov) render();
     }).catch(function () {});
   }
   function pedidosDe(g) { var v = [], ks = {}; (g.ids || []).forEach(function (id) { var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); if (!p) return; var k = p.toUpperCase().replace(/[\s.]/g, ''); if (ks[k]) return; ks[k] = 1; v.push(p); }); return v; }
@@ -80084,6 +80084,7 @@ window.__perTxt = function (p) {
     ov.__dados = dados;
   }
   function imprimir() {
+    if (!PED_OK && PED_P) { PED_P.then(function () { PED_OK = true; imprimir(); }); return; } // 19/11: espera os nº de pedido chegarem
     var dados = ov && ov.__dados || montar(), r = resumo(dados);
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>Pedidos da semana ' + esc(rotSemana()) + '</title><style>'
       + '@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font:11.5px Arial,Helvetica,sans-serif;color:#111;margin:0}'
@@ -80107,6 +80108,7 @@ window.__perTxt = function (p) {
     var img = d.querySelector('img'); if (img && !img.complete) { img.onload = img.onerror = function () { setTimeout(vai, 60); }; setTimeout(vai, 2000); } else setTimeout(vai, 150);
   }
   function excel() {
+    if (!PED_OK && PED_P) { PED_P.then(function () { PED_OK = true; excel(); }); return; }
     var dados = ov && ov.__dados || montar(), n = 0;
     var linhas = '<tr><th>DIA DA SEMANA</th><th style="width:420px">CLIENTE</th><th>MODELOS</th><th>Nº PEDIDO</th><th>DATA PREVISTA</th><th style="width:120px">DATA DE ENTREGA</th><th>CIDADE</th></tr>';
     dados.forEach(function (D) {
