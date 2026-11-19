@@ -79942,11 +79942,7 @@ window.__perTxt = function (p) {
     trazer(w);
     ov.querySelector('input').addEventListener('input', filtrar);
     ov.querySelector('.x').addEventListener('click', fechar);
-    // 19/11: a tabela foi movida para a tela cheia — os botões (Alterar, Excluir, 📌, linha) continuam funcionando aqui
-    ov.addEventListener('click', function (ev) {
-      if (!ev.target.closest || !ev.target.closest('[data-est-pin],[data-est-edit],[data-est-del],tr[data-chapa-id]')) return;
-      var wr = document.querySelector('#page-estoque .pep-wrap'); if (wr && typeof wr.onclick === 'function') wr.onclick(ev);
-    });
+
     document.addEventListener('keydown', esc);
     setTimeout(function () { try { ov.querySelector('input').focus(); } catch (_) {} }, 50);
   }
@@ -79958,6 +79954,13 @@ window.__perTxt = function (p) {
     ov.remove(); ov = null; wrapAtual = null; lugar = null;
   }
   window.dsEstoqueTelaCheia = abrir;
+  // 19/11: tabelas movidas para TELA CHEIA (chapas e retalhos) — Alterar, Excluir, 📌 e clique na linha continuam funcionando
+  document.addEventListener('click', function (ev) {
+    var t = ev.target; if (!t || !t.closest || !t.closest('.dsef-ov')) return;
+    if (!t.closest('[data-est-pin],[data-est-edit],[data-est-del],tr[data-chapa-id]')) return;
+    var wr = document.querySelector('#page-estoque .pep-wrap'); if (!wr || wr.contains(t) || typeof wr.onclick !== 'function') return;
+    wr.onclick(ev);
+  });
   // a página do estoque se redesenha depois de editar uma chapa: a tabela nova vem para a janela aberta
   (function () { var _dsF = function () {
     var pg = document.getElementById('page-estoque'); if (!pg) return;
