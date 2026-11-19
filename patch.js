@@ -69990,8 +69990,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try {
       if (!el) return false;
       if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
-      var st = getComputedStyle(el);
-      return st.display !== 'none' && st.visibility !== 'hidden';
+      // 19/11: no celular o menu lateral fica fechado/escondido, então o "display" calculado não serve;
+      // vale só o que foi escondido de propósito (itens antigos, duplicados, sem permissão)
+      if (el.classList.contains('ds-oculto') || el.hasAttribute('data-ds-dup')) return false;
+      if (el.style.display === 'none' || el.style.visibility === 'hidden') return false;
+      return true;
     } catch (_) { return true; }
   }
   function itemInfo(it) {
@@ -71306,7 +71309,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var atual = Array.prototype.filter.call(box.children, function (c) { return desejada.indexOf(c) >= 0; });
       var difere = desejada.some(function (it, i) { return atual[i] !== it; });
       if (difere) desejada.forEach(function (it) { box.appendChild(it); });
-      var temVisivel = Array.prototype.some.call(box.children, function (c) { return c.style.display !== 'none' && getComputedStyle(c).display !== 'none'; });
+      // 19/11: decide pelo que está escondido DE PROPÓSITO (classe/estilo) — no celular o menu fica fechado e o "display" calculado enganava, sumindo grupos inteiros
+      var temVisivel = Array.prototype.some.call(box.children, function (c) { return c.classList && c.classList.contains('nav-item') && c.style.display !== 'none' && !c.hidden && !c.classList.contains('ds-oculto') && !c.hasAttribute('data-ds-dup'); });
       grp.style.display = temVisivel ? '' : 'none';
     });
     ESCONDER.forEach(function (k) { var it = porChave[k]; if (it) { decorar(it, k); it.classList.add('ds-oculto'); } });
@@ -83399,10 +83403,10 @@ window.__perTxt = function (p) {
       if (!ico) { var m = txt.match(/^([^\wÀ-ÿ\s]+)\s*/); if (m) { ico = m[1]; txt = txt.slice(m[0].length).trim(); } }
       var k = norm(txt); if (!k || vistos[k]) return;
       // só o que o computador mostra (itens antigos escondidos ficam de fora)
-      if (it.style.display === 'none' || it.hidden) return;
+      if (it.style.display === 'none' || it.hidden || it.classList.contains('ds-oculto') || it.hasAttribute('data-ds-dup')) return;
       var g = it.closest('.nav-group'), hdr = g && g.querySelector('.nav-group-header');
       var grupo = hdr ? String(hdr.textContent || '').replace(/[▶▼►]/g, '').replace(/^[^\wÀ-ÿ]+/, '').replace(/\s+/g, ' ').trim() : '';
-      if (g && g.style.display === 'none') return;
+      if (g && g.classList.contains('ds-oculto')) return;
       vistos[k] = 1; out.push({ k: k, l: txt, i: ico || '📌', g: grupo, el: it });
     });
     return out;
