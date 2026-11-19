@@ -77899,7 +77899,7 @@ window.__perTxt = function (p) {
       var ed = lerOrig('chapa-edit-id').trim();
       if (ed && !lerOrig('chapa-fornecedor').trim() && !lerOrig('chapa-tamanho').trim() && !lerOrig('chapa-nomenclatura').trim()) {
         if (!esperaDesde) esperaDesde = Date.now();
-        if (Date.now() - esperaDesde < 4000) return;
+        if (Date.now() - esperaDesde < 10000) return;
       }
       esperaDesde = 0;
       abrirChapa();
