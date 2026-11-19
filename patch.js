@@ -82138,7 +82138,7 @@ window.__perTxt = function (p) {
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function norm(v) { return String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-  function n(v) { var x = Number(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')); return isFinite(x) ? x : 0; }
+  function n(v) { if (typeof v === 'number') return isFinite(v) ? v : 0; var s0 = String(v == null ? '' : v).trim().replace(/R\$/gi, '').replace(/\s+/g, ''); var x = Number(s0.indexOf(',') >= 0 ? s0.replace(/\./g, '').replace(',', '.') : s0); return isFinite(x) ? x : 0; }
   function num(v) { return Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }); }
   function rs(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function corForn(f) { f = String(f || '').toUpperCase().trim(); if (CORES_F[f]) return CORES_F[f]; var h = 0; for (var i = 0; i < f.length; i++) h = (h * 31 + f.charCodeAt(i)) >>> 0; return PALETA[h % PALETA.length]; }
@@ -82278,7 +82278,8 @@ window.__perTxt = function (p) {
     var tot = '<tr class="dmv-tot"><td>Total do mês</td><td class="n ent">' + num(r.ent.q) + '</td><td class="n">' + ton(r.ent.t) + '</td><td class="n">' + rs(r.ent.v) + '</td><td class="n sai">' + num(r.sai.q) + '</td><td class="n">' + ton(r.sai.t) + '</td><td class="n">' + rs(r.sai.v) + '</td><td class="n">' + (r.ent.q - r.sai.q >= 0 ? '+' : '') + num(r.ent.q - r.sai.q) + '</td><td></td></tr>';
     var linhas = lista.map(function (m) {
       var k = classe(m), f = String(m.fornecedor || '').toUpperCase(), ent = Number(m.delta) > 0;
-      var tag = k === 'desfeito' ? '<span class="dmv-tag x">Desfeito</span>' : (k === 'ajuste' ? '<span class="dmv-tag aj">Ajuste</span>' : (k === 'cadastro' ? '<span class="dmv-tag aj">Cadastro</span>' : (ent ? '<span class="dmv-tag e">Entrada</span>' : '<span class="dmv-tag s">Saída</span>')));
+      var corrig = k === 'desfeito' && /corrigido/i.test(String(m.reverted_by || '')), ehCorr = /^Correção do lançamento/.test(String(m.obs || ''));
+      var tag = k === 'desfeito' ? (corrig ? '<span class="dmv-tag x">Corrigido</span>' : '<span class="dmv-tag x">Desfeito</span>') : (k === 'ajuste' ? '<span class="dmv-tag aj">Ajuste</span>' : (k === 'cadastro' ? '<span class="dmv-tag aj">Cadastro</span>' : (ent ? '<span class="dmv-tag e">Entrada</span>' : '<span class="dmv-tag s">Saída</span>'))) + (ehCorr ? ' <span class="dmv-tag aj" title="' + esc(m.obs) + '">✏️ corrigido</span>' : '');
       var podeDesfazer = !m.reverted && (k === 'entrada' || k === 'saida' || k === 'ajuste');
       return '<tr class="' + (k === 'desfeito' ? 'dmv-riscado' : '') + '" style="--fc:' + corForn(f) + '">'
         + '<td data-l="Data">' + esc(dataHora(m.created_at)) + '</td><td data-l="Tipo">' + tag + '</td>'
@@ -82287,7 +82288,7 @@ window.__perTxt = function (p) {
         + '<td data-l="Saldo" class="n dmv-sub">' + (m.qtd_anterior != null ? num(m.qtd_anterior) + ' → ' + num(m.qtd_nova) : '—') + '</td>'
         + '<td data-l="Peso" class="n">' + ton(tonMov(m)) + '</td><td data-l="Valor" class="n">' + rs(valorMov(m)) + '</td><td data-l="NF">' + esc(nfMov(m) || '—') + '</td>'
         + '<td data-l="Responsável">' + esc(m.usuario || '—') + '</td>'
-        + '<td data-l="" class="c">' + (podeDesfazer ? '<button type="button" class="dmv-b dmv-mini dmv-del" data-dmv-desf="' + esc(m.id) + '" title="Desfazer este lançamento (o saldo volta)">↶ Desfazer</button>' : '') + '</td></tr>';
+        + '<td data-l="" class="c dmv-acs">' + (!m.reverted && (k === 'entrada' || k === 'saida') ? '<button type="button" class="dmv-b dmv-mini" data-dmv-edit="' + esc(m.id) + '" title="Corrigir chapa, quantidade, valor ou NF">✏️ Editar</button>' : '') + (podeDesfazer ? '<button type="button" class="dmv-b dmv-mini dmv-del" data-dmv-desf="' + esc(m.id) + '" title="Desfazer este lançamento (o saldo volta)">↶ Desfazer</button>' : '') + '</td></tr>';
     }).join('') || '<tr><td colspan="11" class="dmv-vazio">Nada encontrado' + (S.q || S.forn ? ' com esse filtro' : ' neste mês') + '.</td></tr>';
     var cf = S.conf;
     var confHtml = !cf ? '<button type="button" class="dmv-b" data-dmv-conf>🔎 Conferir saldos agora</button><span class="dmv-sub">Confere se o saldo de cada chapa bate com tudo que foi lançado.</span>'
@@ -82317,8 +82318,9 @@ window.__perTxt = function (p) {
   window.dsMovMesRecarregar = function () { S.chapas = null; if (document.getElementById('dmv-wrap')) recarregar(); else S.movs = null; };
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest && ev.target.closest('[data-dmv-novo],[data-dmv-mes],[data-dmv-hoje],[data-dmv-rel],[data-dmv-aba],[data-dmv-fil],[data-dmv-desf],[data-dmv-conf],[data-dmv-print]');
+    var t = ev.target.closest && ev.target.closest('[data-dmv-novo],[data-dmv-mes],[data-dmv-hoje],[data-dmv-rel],[data-dmv-aba],[data-dmv-fil],[data-dmv-desf],[data-dmv-conf],[data-dmv-print],[data-dmv-edit]');
     if (!t || !t.closest('#dmv-wrap')) return;
+    if (t.hasAttribute('data-dmv-edit')) return abrirEdicao(t.getAttribute('data-dmv-edit'));
     if (t.hasAttribute('data-dmv-novo')) return abrirLancamento(t.getAttribute('data-dmv-novo'));
     if (t.hasAttribute('data-dmv-mes')) return trocarMes(addMes(S.mes, Number(t.getAttribute('data-dmv-mes'))));
     if (t.hasAttribute('data-dmv-hoje')) return trocarMes(mesAtual());
@@ -82478,6 +82480,80 @@ window.__perTxt = function (p) {
     }).catch(function (e) { bt.disabled = false; bt.textContent = txt; toast('Erro ao salvar: ' + e.message, 'var(--red)'); });
   }
 
+  // ---------- 19/11: corrigir um lançamento (chapa, quantidade, valor, NF) ----------
+  var ED = null;
+  function abrirEdicao(id) {
+    var m = (S.movs || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!m) return;
+    var ent = Number(m.delta) > 0;
+    carregarChapas(false).then(function () {
+      var c = (S.chapas || []).filter(function (x) { return String(x.id) === String(m.chapa_id); })[0] || null;
+      ED = { m: m, ent: ent, c: c, cOrig: c };
+      var vu = Number(m.valor_unitario || 0) || vuChapa(c);
+      var corpo = '<div class="dmv-m dmv-ed">'
+        + '<div class="dmv-ed-orig" style="--fc:' + corForn(m.fornecedor) + '"><span class="dmv-dot"></span><div><b>' + (ent ? '📥 Entrada' : '📤 Saída') + ' de ' + esc(dataHora(m.created_at)) + '</b><small>' + esc((m.fornecedor || '') + ' · ' + (m.chapa_label || '')) + ' · ' + num(qtdMov(m)) + ' un · ' + rs(valorMov(m)) + (m.usuario ? ' · ' + esc(m.usuario) : '') + '</small></div></div>'
+        + '<label class="dmv-mfull"><span>Chapa</span><input id="dmve-chapa" class="dmv-in" type="search" autocomplete="off" value="' + esc(c ? (c.fornecedor || '') + ' ' + rotuloChapa(c) : (m.chapa_label || '')) + '" placeholder="Busque outra chapa se lançou na errada"></label>'
+        + '<div class="dmv-mg"><label><span>Quantidade</span><input id="dmve-q" class="dmv-in" type="number" min="1" inputmode="numeric" value="' + qtdMov(m) + '"></label>'
+        + '<label><span>Valor unitário (R$)</span><input id="dmve-vu" class="dmv-in" type="text" inputmode="decimal" value="' + esc(vu ? String(Math.round(vu * 10000) / 10000).replace('.', ',') : '') + '"></label>'
+        + '<label><span>NF</span><input id="dmve-nf" class="dmv-in" type="text" value="' + esc(nfMov(m)) + '"></label></div>'
+        + '<div id="dmve-res" class="dmvm-res"></div>'
+        + '<div class="dmv-sub">Se mudar a chapa ou a quantidade, o lançamento antigo fica riscado como <b>Corrigido</b> e entra o certo no lugar — o saldo das chapas é acertado sozinho.' + (ent ? ' O valor unitário de uma entrada passa a ser o valor da chapa.' : '') + '</div></div>';
+      _abrirModalPadrao({ id: 'dmv-ed', titulo: '✏️ Corrigir lançamento', subtitulo: 'Chapa, quantidade, valor e NF', largura: '760px', hero: '✏️', accent: 'blue', corpoHTML: corpo,
+        footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" id="dmve-salvar" class="estoque-modal-btn">✓ Salvar correção</button>' });
+      var ch = document.getElementById('dmve-chapa');
+      if (ch) { ch.addEventListener('focus', function () { ch.select(); }); ch.addEventListener('input', function () { sugEd(ch); }); ch.addEventListener('keydown', function (e) { if (e.key === 'Escape') fecharSug(); else if (e.key === 'Enter') { e.preventDefault(); if (SUG.lista[SUG.idx]) escolherEd(SUG.idx); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') teclaSug(e); }); }
+      ['dmve-q', 'dmve-vu'].forEach(function (k) { var el = document.getElementById(k); if (el) el.addEventListener('input', resumoEd); });
+      var sv = document.getElementById('dmve-salvar'); if (sv) sv.onclick = salvarEd;
+      resumoEd();
+    }).catch(function (e) { toast('Erro: ' + e.message, 'var(--red)'); });
+  }
+  function sugEd(inp) {
+    var toks = norm(inp.value).split(/\s+/).filter(Boolean); fecharSug(); if (!toks.length) return;
+    var l = (S.chapas || []).filter(function (c) { return casa(c, toks); }).sort(function (a, b) { return String(a.fornecedor + a.nomenclatura + a.tamanho).localeCompare(String(b.fornecedor + b.nomenclatura + b.tamanho), 'pt-BR'); });
+    SUG.lista = l.slice(0, 40); SUG.idx = 0;
+    var r = inp.getBoundingClientRect(), d = document.createElement('div'); d.className = 'dmv-sug';
+    d.style.left = r.left + 'px'; d.style.top = (r.bottom + 4) + 'px'; d.style.width = Math.max(r.width, 300) + 'px'; d.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 16) + 'px';
+    d.innerHTML = SUG.lista.length ? SUG.lista.map(function (c, i) { return '<div class="dmv-sug-i' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" style="--fc:' + corForn(c.fornecedor) + '"><span class="dmv-dot"></span><b>' + esc(c.fornecedor || '—') + '</b> ' + esc(rotuloChapa(c)) + '<em>saldo ' + num(saldoChapa(c)) + ' · ' + rs(vuChapa(c)) + '/un</em></div>'; }).join('') : '<div class="dmv-sug-mais">Nenhuma chapa encontrada</div>';
+    d.addEventListener('mousedown', function (e) { var it = e.target.closest('.dmv-sug-i'); if (!it) return; e.preventDefault(); escolherEd(Number(it.getAttribute('data-i'))); });
+    document.body.appendChild(d); SUG.el = d;
+  }
+  function escolherEd(i) {
+    var c = SUG.lista[i]; if (!c || !ED) return; fecharSug(); ED.c = c;
+    var ch = document.getElementById('dmve-chapa'); if (ch) ch.value = (c.fornecedor || '') + ' ' + rotuloChapa(c);
+    if (ED.ent) { var vu = document.getElementById('dmve-vu'); if (vu && vuChapa(c)) vu.value = String(Math.round(vuChapa(c) * 10000) / 10000).replace('.', ','); }
+    resumoEd();
+  }
+  function resumoEd() {
+    var el = document.getElementById('dmve-res'); if (!el || !ED) return;
+    var q = Math.trunc(n((document.getElementById('dmve-q') || {}).value)), vu = n((document.getElementById('dmve-vu') || {}).value);
+    var aviso = '';
+    var ref = vuChapa(ED.c);
+    if (vu > 0 && ref > 0 && (vu > ref * 10 || vu < ref / 10)) aviso = ' <b class="dmv-bad">⚠ Valor muito diferente do da chapa (' + rs(ref) + '/un) — confira a vírgula.</b>';
+    var trocou = ED.c && ED.cOrig && ED.c.id !== ED.cOrig.id;
+    el.innerHTML = '<b>Fica: ' + (ED.ent ? '+' : '−') + num(q) + ' un · ' + rs(vu * q) + (ED.c ? ' · ' + ton(q * kgUn(ED.c) / 1000) : '') + '</b>' + (trocou ? ' <span class="dmv-chip">Chapa trocada</span>' : '') + aviso;
+  }
+  function salvarEd() {
+    var bt = document.getElementById('dmve-salvar'); if (!bt || bt.disabled || !ED) return;
+    if (!ED.c) { toast('Escolha a chapa na lista', 'var(--red)'); return; }
+    var chTxt = String((document.getElementById('dmve-chapa') || {}).value || '').trim();
+    if (!chTxt) { toast('Escolha a chapa na lista', 'var(--red)'); return; }
+    var q = Math.trunc(n((document.getElementById('dmve-q') || {}).value));
+    if (!(q > 0)) { toast('Quantidade inválida', 'var(--red)'); return; }
+    var vuTxt = String((document.getElementById('dmve-vu') || {}).value || '').trim(), vu = vuTxt === '' ? null : n(vuTxt);
+    var ref = vuChapa(ED.c);
+    if (vu != null && vu > 0 && ref > 0 && (vu > ref * 10 || vu < ref / 10) && !window.confirm('O valor ' + rs(vu) + '/un é muito diferente do valor da chapa (' + rs(ref) + '/un).\n\nEstá certo mesmo?')) return;
+    if (!ED.ent && ED.c.id !== (ED.cOrig || {}).id && q > saldoChapa(ED.c)) { toast('Saldo insuficiente na chapa escolhida (' + num(saldoChapa(ED.c)) + ')', 'var(--red)'); return; }
+    var body = { chapa_id: ED.c.id, quantidade: q, valor_unitario: vu, nf: String((document.getElementById('dmve-nf') || {}).value || '').trim() };
+    bt.disabled = true; var txt = bt.textContent; bt.textContent = 'Salvando…';
+    api('/api/chapas_estoque_movimentos/' + encodeURIComponent(ED.m.id) + '/editar', { method: 'POST', body: body }).then(function () {
+      toast('Lançamento corrigido', 'var(--green)');
+      try { _fecharModalPadrao('dmv-ed'); } catch (_) {}
+      S.chapas = null; S.conf = null;
+      try { if (typeof window.chapasForcarReload === 'function') window.chapasForcarReload(); } catch (_) {}
+      carregarChapas(true).catch(function () {}).then(recarregar);
+    }).catch(function (e) { bt.disabled = false; bt.textContent = txt; toast('Não deu para corrigir: ' + e.message, 'var(--red)'); });
+  }
+  window.dsMovEditar = abrirEdicao;
+
   // ---------- botões no Estoque de Chapas ----------
   (function () { var _dsF = function () {
     var nova = document.getElementById('estoque-wire-nova');
@@ -82581,6 +82657,7 @@ window.__perTxt = function (p) {
     + '.dmv-t .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.dmv-t .c{text-align:center}.dmv-t .ent{color:#16a34a}.dmv-t .sai{color:#dc2626}.dmv-tot td{font-weight:800;background:var(--s2,#1e293b)}'
     + '.dmv-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--fc);margin-right:7px;vertical-align:middle;flex:0 0 auto}'
     + '.dmv-vazio{padding:18px;text-align:center;color:var(--text2)}.dmv-riscado td{opacity:.5;text-decoration:line-through}'
+    + '.dmv-acs{white-space:nowrap}.dmv-acs .dmv-b+.dmv-b{margin-left:4px}.dmv-ed-orig{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-left:4px solid var(--fc);border-radius:10px;background:var(--s2);margin-bottom:10px}.dmv-ed-orig small{display:block;color:var(--text2);margin-top:2px;font-size:12.5px}.dmv-ed label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--text2)}.dmv-ed .dmv-mfull{margin-bottom:10px}.dmv-ed .dmv-sub{margin-top:10px;font-size:12.5px}@media(max-width:700px){.dmv-acs{white-space:normal}.dmv-acs .dmv-b{margin:2px}}'
     + '.dmv-tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:800;text-decoration:none}.dmv-tag.e{background:#16a34a;color:#fff}.dmv-tag.s{background:#dc2626;color:#fff}.dmv-tag.aj{background:#ca8a04;color:#fff}.dmv-tag.x{background:#64748b;color:#fff}'
     + '.dmv-lh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.dmv-lh .dmv-in{flex:1 1 260px;width:auto}'
     + '.dmv-abas,.dmv-tipo{display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:var(--s2,#1e293b);border:1px solid var(--border,#334155)}'

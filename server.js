@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261119110958';
-const SW_RUNTIME_VERSION = '20261119110958';
+const PATCH_RUNTIME_VERSION = '20261119111313';
+const SW_RUNTIME_VERSION = '20261119111313';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -31817,6 +31817,75 @@ app.patch('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res)
     await _chapasLogAcao(req, 'estoque_movimento_alterado', `Movimento alterado (${mov.tipo}) qtd ${qtdAtual} -> ${qtdNova} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`);
 
     return ok(res, { movimento: updMov, chapa: canonUpd });
+  } catch (e) { err(res, e); }
+});
+
+// 19/11: corrigir um lançamento de entrada/saída (chapa, quantidade, valor unitário, NF).
+// Se mudar chapa ou quantidade: desfaz o original (fica riscado como "Corrigido") e lança o certo — o saldo segue batendo.
+app.post('/api/chapas_estoque_movimentos/:id/editar', authMiddleware, async (req, res) => {
+  try {
+    const movId = String(req.params.id || '').trim();
+    const b = req.body || {};
+    const usuario = req?.usuario?.nome || 'sistema';
+    const { data: mov, error: movErr } = await supabase.from('chapas_estoque_movimentos_v2').select('*').eq('id', movId).single();
+    if (movErr || !mov) return res.status(404).json({ ok: false, error: 'Lançamento não encontrado' });
+    if (mov.reverted) return res.status(400).json({ ok: false, error: 'Este lançamento já foi desfeito/corrigido' });
+    const deltaOld = Math.trunc(Number(mov.delta || 0) || 0);
+    if (!deltaOld) return res.status(400).json({ ok: false, error: 'Lançamento sem quantidade' });
+    const tipo = deltaOld < 0 ? 'saida' : 'entrada';
+    const qtdOld = Math.abs(deltaOld);
+    const chapaOld = String(mov.chapa_id || '');
+    const chapaNew = String(b.chapa_id || chapaOld).trim();
+    const qtdNew = b.quantidade == null || b.quantidade === '' ? qtdOld : Math.trunc(_chapasToNum(b.quantidade, NaN));
+    if (!Number.isFinite(qtdNew) || qtdNew <= 0) return res.status(400).json({ ok: false, error: 'Quantidade inválida' });
+    const vuNew = b.valor_unitario == null || b.valor_unitario === '' ? null : _chapasToNum(b.valor_unitario, NaN);
+    if (vuNew != null && (!Number.isFinite(vuNew) || vuNew < 0)) return res.status(400).json({ ok: false, error: 'Valor unitário inválido' });
+    const nfNew = b.nf == null ? null : String(b.nf).trim();
+    const { data: chNew } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaNew).maybeSingle();
+    if (!chNew) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    const empId = chNew.emp_id || mov.emp_id || null;
+    let alvoId = movId;
+    const antes = { chapa_id: chapaOld, quantidade: qtdOld, nf: mov.nf, valor_unitario: mov.valor_unitario ?? null };
+
+    if (chapaNew !== chapaOld || qtdNew !== qtdOld) {
+      const quando = new Date(mov.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      // 1) desfaz o original
+      const r1 = await _chapasMovimentarV2Rpc({ chapa_id: chapaOld, tipo: tipo === 'entrada' ? 'saida' : 'entrada', quantidade: qtdOld, nf: null,
+        obs: `Correção do lançamento ${movId} (${tipo} de ${quando})`, origem: 'reversao_movimento', origem_id: movId, usuario, emp_id: mov.emp_id || empId });
+      if (r1?.error) {
+        if (_chapasMovRpcIsSaldoInsuficiente(r1.error)) return res.status(409).json({ ok: false, error: 'Não dá para corrigir: a chapa original ficaria com saldo negativo' });
+        return res.status(500).json({ ok: false, error: r1.error.message || String(r1.error) });
+      }
+      // 2) lança o certo
+      const r2 = await _chapasMovimentarV2Rpc({ chapa_id: chapaNew, tipo, quantidade: qtdNew, nf: nfNew != null ? (nfNew || null) : (mov.nf || null),
+        obs: `Correção do lançamento de ${quando} (corrigido por ${usuario})${mov.obs ? ' · ' + String(mov.obs).slice(0, 200) : ''}`, origem: mov.origem || (tipo === 'entrada' ? 'entrada_lote' : 'saida_lote'), origem_id: movId, usuario: mov.usuario || usuario, emp_id: empId });
+      if (r2?.error) {
+        // volta o original como estava
+        await _chapasMovimentarV2Rpc({ chapa_id: chapaOld, tipo, quantidade: qtdOld, nf: mov.nf || null, obs: `Volta da correção do lançamento ${movId}`, origem: 'reversao_movimento', origem_id: movId, usuario, emp_id: mov.emp_id || empId });
+        if (_chapasMovRpcIsSaldoInsuficiente(r2.error)) return res.status(409).json({ ok: false, error: 'Não dá para corrigir: a chapa escolhida não tem saldo para essa saída' });
+        return res.status(500).json({ ok: false, error: r2.error.message || String(r2.error) });
+      }
+      await supabase.from('chapas_estoque_movimentos_v2').update({ reverted: true, reverted_by: usuario + ' (corrigido)', reverted_at: new Date().toISOString() }).eq('id', movId);
+      const { data: novos } = await supabase.from('chapas_estoque_movimentos_v2').select('id').eq('chapa_id', chapaNew).eq('origem_id', movId).neq('origem', 'reversao_movimento').order('created_at', { ascending: false }).limit(1);
+      if (novos && novos[0]) alvoId = novos[0].id;
+    }
+
+    // NF e valor no lançamento (as colunas de valor podem não existir em bancos antigos)
+    const upd = {};
+    if (nfNew != null) upd.nf = nfNew || null;
+    if (vuNew != null) { upd.valor_unitario = vuNew; upd.valor_total = Math.round(vuNew * qtdNew * 100) / 100; }
+    if (Object.keys(upd).length) {
+      let u = await supabase.from('chapas_estoque_movimentos_v2').update(upd).eq('id', alvoId);
+      if (u?.error && /valor_/.test(String(u.error.message || ''))) { delete upd.valor_unitario; delete upd.valor_total; if (Object.keys(upd).length) u = await supabase.from('chapas_estoque_movimentos_v2').update(upd).eq('id', alvoId); }
+    }
+    // entrada com valor novo: vira o valor unitário da chapa (igual à entrada em lote)
+    if (tipo === 'entrada' && vuNew != null && vuNew > 0) await supabase.from('chapas_estoque_v2').update({ valor_unitario: vuNew }).eq('id', chapaNew);
+
+    cacheClearPrefix('chapas_estoque:');
+    const depois = { chapa_id: chapaNew, quantidade: qtdNew, nf: nfNew != null ? nfNew : mov.nf, valor_unitario: vuNew, novo_lancamento: alvoId !== movId ? alvoId : null };
+    try { await logAuditoria('chapas_estoque_movimentos_v2', 'CORRIGIR', movId, antes, depois, req); } catch (_) {}
+    try { await _chapasLogAcao(req, 'estoque_movimento_corrigido', `Lançamento corrigido (${tipo}) ${qtdOld} → ${qtdNew}${chapaNew !== chapaOld ? ' · chapa trocada' : ''}${vuNew != null ? ' · valor un. ' + vuNew : ''} · ${chNew.fornecedor || ''} ${chNew.nomenclatura || ''} ${chNew.tamanho || ''}`); } catch (_) {}
+    return ok(res, { id: alvoId, corrigido: alvoId !== movId });
   } catch (e) { err(res, e); }
 });
 
