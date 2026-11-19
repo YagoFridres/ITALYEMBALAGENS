@@ -80071,7 +80071,7 @@ window.__perTxt = function (p) {
       var m = {}; ((j && j.data) || []).forEach(function (x) { m[String(x.id)] = String(x.num_pedido || '').trim(); }); PED = m; if (ov) render();
     }).catch(function () {});
   }
-  function pedidosDe(g) { var v = []; (g.ids || []).forEach(function (id) { var p = PED[id]; if (p && v.indexOf(p) < 0) v.push(p); }); return v; }
+  function pedidosDe(g) { var v = [], ks = {}; (g.ids || []).forEach(function (id) { var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); if (!p) return; var k = p.toUpperCase().replace(/[\s.]/g, ''); if (ks[k]) return; ks[k] = 1; v.push(p); }); return v; }
   function resumo(dados) { var c = 0, m = 0; dados.forEach(function (D) { c += D.grupos.length; D.grupos.forEach(function (g) { m += g.ofs.length; }); }); return { c: c, m: m }; }
   var ov = null;
   function render() {
