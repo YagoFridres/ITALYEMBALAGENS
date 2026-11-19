@@ -15252,7 +15252,9 @@ function _nfeStr(v) {
 }
 
 function _nfeNum(v) {
-  const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.');
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const s0 = String(v ?? '').trim();
+  const s = s0.includes(',') ? s0.replace(/\./g, '').replace(',', '.') : s0; // XML da NF usa ponto como decimal (12.36)
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
@@ -21438,8 +21440,8 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
 
     const normText = (v) => String(v || '').trim().toUpperCase();
     const normTam = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, '').replace(/MM/g, '').replace(/Ã—/g, 'X');
-    const toInt = (v) => Math.trunc(Number(String(v ?? '').toString().replace(/\./g, '').replace(',', '.')) || 0);
-    const toNum = (v) => Number(String(v ?? '').toString().replace(/R\$/gi, '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    const toNum = (v) => _chapasToNum(v, 0) || 0; // 19/11: "12.36" não pode virar 1236
+    const toInt = (v) => (typeof v === 'number' ? Math.trunc(v) : Math.trunc(Number(String(v ?? '').toString().replace(/\./g, '').replace(',', '.')) || 0));
     const sameText = (a, b) => normText(a) === normText(b);
     const sameNum = (a, b) => Math.abs((Number(a || 0) || 0) - (Number(b || 0) || 0)) < 0.000001;
     const sameInt = (a, b) => (Math.trunc(Number(a || 0) || 0) === Math.trunc(Number(b || 0) || 0));
