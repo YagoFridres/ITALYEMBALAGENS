@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261119110823';
-const SW_RUNTIME_VERSION = '20261119110823';
+const PATCH_RUNTIME_VERSION = '20261119110958';
+const SW_RUNTIME_VERSION = '20261119110958';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1441,6 +1441,32 @@ app.get('/api/health', (req, res) => {
       missing: _supabaseMissing,
     },
   });
+});
+
+// 19/11: cada aparelho avisa qual versão do sistema carregou (sem IP) — para achar celular preso em versão antiga
+const CLIENTE_VERSAO_LOG = path.join(DEBUG_RUNTIME_DIR, 'clientes-versao.ndjson');
+app.post('/api/_cliente/versao', express.json({ limit: '4kb' }), (req, res) => {
+  try {
+    const b = req.body || {};
+    const ua = String(req.headers['user-agent'] || '');
+    const disp = /iPhone|iPad/i.test(ua) ? 'iPhone/iPad' : (/Android/i.test(ua) ? 'Android' : 'PC');
+    const nav = / wv\)/.test(ua) ? 'webview' : (/CriOS|Chrome/i.test(ua) ? 'Chrome' : (/Safari/i.test(ua) ? 'Safari' : (/Firefox/i.test(ua) ? 'Firefox' : 'outro')));
+    const linha = { t: new Date().toISOString(), v: String(b.v || '').slice(0, 20), atual: SW_RUNTIME_VERSION, disp, nav,
+      app: !!b.app, sw: String(b.sw || '').slice(0, 30), w: Number(b.w) || 0, ev: String(b.ev || '').slice(0, 20), u: String(b.u || '').slice(0, 30) };
+    try { fs.mkdirSync(DEBUG_RUNTIME_DIR, { recursive: true }); } catch (_) {}
+    try { if (fs.existsSync(CLIENTE_VERSAO_LOG) && fs.statSync(CLIENTE_VERSAO_LOG).size > 2e6) fs.renameSync(CLIENTE_VERSAO_LOG, CLIENTE_VERSAO_LOG + '.1'); } catch (_) {}
+    fs.appendFileSync(CLIENTE_VERSAO_LOG, JSON.stringify(linha) + '\n');
+    setNoCache(res);
+    return res.json({ ok: true, atual: SW_RUNTIME_VERSION });
+  } catch (e) { return res.json({ ok: false }); }
+});
+app.get('/api/_cliente/versao', (req, res) => {
+  setNoCache(res);
+  try {
+    const txt = fs.existsSync(CLIENTE_VERSAO_LOG) ? fs.readFileSync(CLIENTE_VERSAO_LOG, 'utf8') : '';
+    const l = txt.trim().split('\n').filter(Boolean).slice(-300).map((x) => { try { return JSON.parse(x); } catch (_) { return null; } }).filter(Boolean);
+    return res.json({ ok: true, atual: SW_RUNTIME_VERSION, linhas: l });
+  } catch (e) { return res.json({ ok: false, error: String(e.message || e) }); }
 });
 
 app.get('/api/version', (req, res) => {
