@@ -82205,7 +82205,15 @@ window.__perTxt = function (p) {
   function qtdMov(m) { return Math.abs(Math.trunc(Number(m.delta || 0))) || Math.trunc(Number(m.quantidade || 0)) || 0; }
   // 18/11: valor e peso puxados da chapa quando o lançamento não tem
   function chapaDe(m) { var l = S.chapas || []; if (!S._mapa || S._mapaSrc !== l) { S._mapa = {}; l.forEach(function (c) { S._mapa[c.id] = c; }); S._mapaSrc = l; } return S._mapa[m.chapa_id] || null; }
-  function vuChapa(c) { return Number(c && (c.valor_unitario != null ? c.valor_unitario : c.val) || 0) || 0; }
+  function areaM2(c) { var mt = String(c && (c.tamanho || c.tam) || '').match(/(\d+(?:[.,]\d+)?)\D+(\d+(?:[.,]\d+)?)/); return mt ? parseFloat(mt[1].replace(',', '.')) * parseFloat(mt[2].replace(',', '.')) / 1e6 : 0; }
+  // 19/11: retalho sem valor cadastrado vale o R$/m² da chapa inteira do mesmo fornecedor e nomenclatura
+  function vuChapa(c) {
+    var v = Number(c && (c.valor_unitario != null ? c.valor_unitario : c.val) || 0) || 0; if (v > 0 || !c) return v;
+    var a = areaM2(c); if (!a) return 0;
+    var k = String(c.fornecedor || '').toUpperCase() + '|' + String(c.nomenclatura || '').toUpperCase().replace(/^CH/, '');
+    if (!S._m2 || S._m2Src !== S.chapas) { S._m2 = {}; S._m2Src = S.chapas; (S.chapas || []).forEach(function (x) { var vx = Number(x.valor_unitario || 0), ax = areaM2(x); if (!(vx > 0) || !ax) return; var kx = String(x.fornecedor || '').toUpperCase() + '|' + String(x.nomenclatura || '').toUpperCase().replace(/^CH/, ''); var o = S._m2[kx] = S._m2[kx] || { s: 0, n: 0 }; o.s += vx / ax; o.n++; }); }
+    var o = S._m2[k]; return o && o.n ? Math.round(a * (o.s / o.n) * 10000) / 10000 : 0;
+  }
   function kgUn(c) {
     if (!c) return 0; var k = Number(c.peso_kg_unidade || 0) || 0; if (k > 0) return k;
     var g = Number(String(c.gramatura || '').replace(',', '.')) || 0, mt = String(c.tamanho || c.tam || '').match(/(\d+(?:[.,]\d+)?)\D+(\d+(?:[.,]\d+)?)/);
