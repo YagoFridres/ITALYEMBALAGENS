@@ -7859,6 +7859,7 @@ window._compraPapelaoGetGramaturasNomes = async function() {
     var seen = {};
     (Array.isArray(lista) ? lista : []).forEach(function(src) {
       var item = src || {};
+      if (Number(item.medida_comprimento) > 0 || Number(item.medida_largura) > 0) return; // só para conclusão de OF
       var nome = String(item.nome || item.descricao || item.codigo || '').trim();
       if (!nome) return;
       var key = nome.toLowerCase();
@@ -78448,6 +78449,7 @@ window.__perTxt = function (p) {
       if (n && (n === k || n.indexOf(k) === 0 || k.indexOf(n) === 0)) ids[String(f.id)] = 1;
     });
     return lista.filter(function(g) {
+      if (Number(g.medida_comprimento) > 0 || Number(g.medida_largura) > 0) return false; // gramatura de produto (Pizza, Salgado…) — só para conclusão de OF
       var n = norm(g.fornecedor_nome);
       return ids[String(g.fornecedor_id || '')] || (n && (n === k || n.indexOf(k) === 0 || k.indexOf(n) === 0));
     }).sort(function(a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { numeric: true }); });
@@ -79094,8 +79096,8 @@ window.__perTxt = function (p) {
     carregarGrams(); if (!GRAMS) return;
     var dl = document.getElementById('ds-ent-nom-dl'); if (!dl) { dl = document.createElement('datalist'); dl.id = 'ds-ent-nom-dl'; document.body.appendChild(dl); }
     var forn = String((document.getElementById('estoque-entrada-real-fornecedor') || {}).value || '').trim().toUpperCase();
-    var l = GRAMS.filter(function (g) { return !forn || String(g.fornecedor_nome || '').toUpperCase().indexOf(forn) === 0 || forn.indexOf(String(g.fornecedor_nome || '').toUpperCase()) === 0; });
-    if (!l.length) l = GRAMS;
+    var l = GRAMS.filter(function (g) { if (Number(g.medida_comprimento) > 0 || Number(g.medida_largura) > 0) return false; return !forn || String(g.fornecedor_nome || '').toUpperCase().indexOf(forn) === 0 || forn.indexOf(String(g.fornecedor_nome || '').toUpperCase()) === 0; });
+    if (!l.length) l = GRAMS.filter(function (g) { return !(Number(g.medida_comprimento) > 0 || Number(g.medida_largura) > 0); });
     dl.innerHTML = l.map(function (g) { return '<option value="' + esc(codigoDe(g)) + '">' + esc((Number(g.gramatura) || '') + ' g/m² · ' + (g.fornecedor_nome || '')) + '</option>'; }).join('');
   }
   function rotulo(c) { return [ret(c) ? '✂️ RETALHO' : '', c.nomenclatura, c.tamanho || c.tam, c.nome_uso || c.nome, c.fornecedor || c.forn].filter(Boolean).join(' · '); }
