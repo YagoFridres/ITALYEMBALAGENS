@@ -70031,7 +70031,25 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     try { if (typeof window.closeMobMenu === 'function') window.closeMobMenu(); } catch (_) {}
     try { window.scrollTo(0, 0); } catch (_) {}
   }
+  // 19/11: diagnóstico do menu e das barras no celular (manda só a estrutura da tela)
+  function diagTela(ev) {
+    try {
+      var u = {}; try { u = JSON.parse(localStorage.getItem('auth_user') || '{}'); } catch (_) {}
+      var perm = u.permissoes; var permInfo = Array.isArray(perm) ? 'arr:' + perm.length : (perm && typeof perm === 'object' ? 'obj:' + Object.keys(perm).length + ':' + Object.keys(perm).slice(0, 40).join(',') : String(perm));
+      var itens = Array.prototype.map.call(document.querySelectorAll('.sidebar .nav-item'), function (it) {
+        var cs = getComputedStyle(it), g = it.closest('.nav-group'), gcs = g ? getComputedStyle(g) : null;
+        return [String(it.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 28), cs.display, it.style.display || '', it.hidden ? 'H' : '', g ? (g.id || '') + ':' + gcs.display + (g.style.display ? '/i' + g.style.display : '') : '-', it.id || '', (it.getAttribute('onclick') || '').slice(0, 40)].join('|');
+      });
+      var baixo = []; var vh = window.innerHeight;
+      [vh - 2, vh - 40, vh - 80, vh - 110, vh - 140].forEach(function (y) { (document.elementsFromPoint(window.innerWidth / 2, y) || []).slice(0, 6).forEach(function (el) { var cs = getComputedStyle(el), r = el.getBoundingClientRect(); baixo.push(y + ':' + el.tagName + '#' + (el.id || '') + '.' + String(el.className || '').toString().slice(0, 50) + ' pos=' + cs.position + ' z=' + cs.zIndex + ' bg=' + cs.backgroundColor + ' r=' + Math.round(r.top) + '-' + Math.round(r.bottom) + 'x' + Math.round(r.width)); }); });
+      var d = { ev: ev, v: window.__DS_VERSAO, w: window.innerWidth, h: vh, body: document.body.className, html: document.documentElement.className, perfil: u.perfil || '', perm: permInfo, nItens: itens.length, itens: itens, baixo: baixo, hotbar: localStorage.getItem('hotbar_abas') || localStorage.getItem('hotbar_config') || '' };
+      fetch('/api/_cliente/diag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d), keepalive: true }).catch(function () {});
+    } catch (_) {}
+  }
+  window.__dsDiagTela = diagTela;
+  setTimeout(function () { try { if (window.innerWidth < 900 && !sessionStorage.getItem('ds_diag_ok')) { sessionStorage.setItem('ds_diag_ok', '1'); diagTela('abriu'); } } catch (_) {} }, 9000);
   function abrirMenuMaisCompleto() {
+    try { diagTela('mais'); } catch (_) {}
     var old = document.getElementById('mob-menu-mais');
     if (old) { old.remove(); return; }
     var grupos = coletarGrupos();

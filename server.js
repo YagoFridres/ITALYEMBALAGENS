@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261119173042';
-const SW_RUNTIME_VERSION = '20261119173042';
+const PATCH_RUNTIME_VERSION = '20261119173242';
+const SW_RUNTIME_VERSION = '20261119173242';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1458,6 +1458,26 @@ app.post('/api/_cliente/versao', express.json({ limit: '4kb' }), (req, res) => {
     fs.appendFileSync(CLIENTE_VERSAO_LOG, JSON.stringify(linha) + '\n');
     setNoCache(res);
     return res.json({ ok: true, atual: SW_RUNTIME_VERSION });
+  } catch (e) { return res.json({ ok: false }); }
+});
+// 19/11: diagnóstico de tela do celular (menu e barras) — só estrutura da tela, sem dados pessoais
+const CLIENTE_DIAG_LOG = path.join(DEBUG_RUNTIME_DIR, 'clientes-diag.ndjson');
+app.post('/api/_cliente/diag', express.json({ limit: '64kb' }), (req, res) => {
+  try {
+    const ua = String(req.headers['user-agent'] || '');
+    const linha = { t: new Date().toISOString(), disp: /iPhone|iPad/i.test(ua) ? 'iPhone/iPad' : (/Android/i.test(ua) ? 'Android' : 'PC'), d: req.body || {} };
+    try { fs.mkdirSync(DEBUG_RUNTIME_DIR, { recursive: true }); } catch (_) {}
+    try { if (fs.existsSync(CLIENTE_DIAG_LOG) && fs.statSync(CLIENTE_DIAG_LOG).size > 3e6) fs.renameSync(CLIENTE_DIAG_LOG, CLIENTE_DIAG_LOG + '.1'); } catch (_) {}
+    fs.appendFileSync(CLIENTE_DIAG_LOG, JSON.stringify(linha).slice(0, 70000) + '\n');
+    setNoCache(res); return res.json({ ok: true });
+  } catch (e) { return res.json({ ok: false }); }
+});
+app.get('/api/_cliente/diag', (req, res) => {
+  setNoCache(res);
+  try {
+    const txt = fs.existsSync(CLIENTE_DIAG_LOG) ? fs.readFileSync(CLIENTE_DIAG_LOG, 'utf8') : '';
+    const l = txt.trim().split('\n').filter(Boolean).slice(-20).map((x) => { try { return JSON.parse(x); } catch (_) { return null; } }).filter(Boolean);
+    return res.json({ ok: true, linhas: l });
   } catch (e) { return res.json({ ok: false }); }
 });
 app.get('/api/_cliente/versao', (req, res) => {
