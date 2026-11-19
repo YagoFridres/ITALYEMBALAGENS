@@ -78440,6 +78440,20 @@ window.__perTxt = function (p) {
     return CACHE;
   }
   window.__dsCmpGramFornLimpar = function() { CACHE = null; };
+  // Ao clicar no PO mostra TODAS as gramaturas do fornecedor, mesmo que o campo já tenha valor
+  // (a lista do navegador filtra pelo texto digitado; guardamos o valor e devolvemos se nada for escolhido)
+  function poDoCompra(t) { return t && t.matches && t.matches('#ccpx-compra-fullscreen [data-field="po"]') ? t : null; }
+  document.addEventListener('mousedown', function(e) {
+    var t = poDoCompra(e.target); if (!t || !t.value || document.activeElement === t) return;
+    t.__dsPoAntes = t.value; t.__dsPh = t.placeholder; t.placeholder = t.value; t.value = '';
+  }, true);
+  document.addEventListener('input', function(e) { var t = poDoCompra(e.target); if (t) t.__dsPoAntes = null; }, true);
+  document.addEventListener('focusout', function(e) {
+    var t = poDoCompra(e.target); if (!t) return;
+    if (t.__dsPh != null) { t.placeholder = t.__dsPh; t.__dsPh = null; }
+    if (t.__dsPoAntes && !t.value) t.value = t.__dsPoAntes;
+    t.__dsPoAntes = null;
+  }, true);
   function fornecedorAtual(ov) { return String((ov.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim(); }
   function doFornecedor(lista, fornNome) {
     var k = norm(fornNome); if (!k) return [];
