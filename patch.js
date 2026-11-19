@@ -77878,13 +77878,23 @@ window.__perTxt = function (p) {
     setTimeout(function () { var f = $('dsch-nome'); if (f && window.innerWidth > 760) f.focus(); }, 60);
   }
   // acompanha o modal original: abriu -> mostra o novo; fechou (salvou) -> fecha o novo
+  var esperaDesde = 0;
   function vigiar() {
     var mo = $('modal-nova-chapa'); if (!mo) return;
     var aberto = mo.style.display === 'flex' || mo.style.display === 'block';
-    if (aberto && !atual) abrirChapa();
+    if (aberto && !atual) {
+      // 19/11: ao ALTERAR, espera os dados da chapa chegarem no formulário antes de abrir (senão abria tudo em branco)
+      var ed = lerOrig('chapa-edit-id').trim();
+      if (ed && !lerOrig('chapa-fornecedor').trim() && !lerOrig('chapa-tamanho').trim() && !lerOrig('chapa-nomenclatura').trim()) {
+        if (!esperaDesde) esperaDesde = Date.now();
+        if (Date.now() - esperaDesde < 4000) return;
+      }
+      esperaDesde = 0;
+      abrirChapa();
+    }
     else if (!aberto && atual) { mo.__dschFechando = true; var a = atual; a.fechar(); mo.__dschFechando = false; }
   }
-  setInterval(vigiar, 300);
+  setInterval(vigiar, 120);
 
   // ---------------- Toneladas por chapa ----------------
   function qtdDe(c) { return Math.max(0, Math.trunc(Number(c && (c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd)) || 0) || 0)); }
