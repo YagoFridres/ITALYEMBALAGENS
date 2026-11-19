@@ -79942,6 +79942,11 @@ window.__perTxt = function (p) {
     trazer(w);
     ov.querySelector('input').addEventListener('input', filtrar);
     ov.querySelector('.x').addEventListener('click', fechar);
+    // 19/11: a tabela foi movida para a tela cheia — os botões (Alterar, Excluir, 📌, linha) continuam funcionando aqui
+    ov.addEventListener('click', function (ev) {
+      if (!ev.target.closest || !ev.target.closest('[data-est-pin],[data-est-edit],[data-est-del],tr[data-chapa-id]')) return;
+      var wr = document.querySelector('#page-estoque .pep-wrap'); if (wr && typeof wr.onclick === 'function') wr.onclick(ev);
+    });
     document.addEventListener('keydown', esc);
     setTimeout(function () { try { ov.querySelector('input').focus(); } catch (_) {} }, 50);
   }
