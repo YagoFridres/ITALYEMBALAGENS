@@ -81497,7 +81497,7 @@ window.__perTxt = function (p) {
     if (window.innerWidth > 1024 || !document.body) return;
     var iw = window.innerWidth, ih = window.innerHeight;
     Array.prototype.forEach.call(document.body.children, function (o) {
-      if (o.id === 'ds-boot' || o.id === 'tst-aud') return;
+      if (o.id === 'ds-boot' || o.id === 'tst-aud' || o.hasAttribute('data-ds-sem-resp')) return; // 19/11: janelas que já são feitas para celular ficam como estão
       var cs = getComputedStyle(o); if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') return;
       var r = o.getBoundingClientRect(); if (r.width < iw * 0.9 || r.height < ih * 0.6) return;
       if (!o.classList.contains('ds-ov-resp')) o.classList.add('ds-ov-resp');
@@ -83478,12 +83478,12 @@ window.__perTxt = function (p) {
     var old = document.getElementById('dsb-ov'); if (old) old.remove();
     var menu = document.getElementById('mob-menu-mais'); if (menu) menu.remove();
     var todas = areas(); var sel = config().map(function (x) { return x.k; }).filter(function (k) { return todas.some(function (a) { return a.k === k; }); });
-    var ov = document.createElement('div'); ov.id = 'dsb-ov';
+    var ov = document.createElement('div'); ov.id = 'dsb-ov'; ov.setAttribute('data-ds-sem-resp', '1');
     function pintar() {
       var grupos = {}, ordem = [];
       todas.forEach(function (a) { var g = a.g || 'Principal'; if (!grupos[g]) { grupos[g] = []; ordem.push(g); } grupos[g].push(a); });
       var escolhidas = sel.map(function (k) { return todas.filter(function (a) { return a.k === k; })[0]; }).filter(Boolean);
-      ov.innerHTML = '<div class="dsb-m"><div class="dsb-hd"><b>⚙ Minha barra de navegação</b><button type="button" class="dsb-x" data-dsb-fechar>✕</button></div>'
+      ov.innerHTML = '<div class="dsb-m"><div class="dsb-hd"><b>⚙ Minha barra</b><span class="dsb-hda"><button type="button" class="dsb-b ok" data-dsb-salvar>✓ Salvar</button><button type="button" class="dsb-x" data-dsb-fechar>✕</button></span></div>'
         + '<div class="dsb-sub">Escolha até <b>4 áreas</b> para a barra de baixo (o botão ☰ Mais fica sempre). Fica salvo para o seu usuário em qualquer celular.</div>'
         + '<div class="dsb-prev">' + (escolhidas.length ? escolhidas.map(function (a, i) { return '<div class="dsb-p"><span>' + esc(a.i) + '</span><small>' + esc(a.l) + '</small><div class="dsb-pa">' + (i > 0 ? '<button type="button" data-dsb-esq="' + i + '" title="Mover para a esquerda">◀</button>' : '') + '<button type="button" data-dsb-tirar="' + esc(a.k) + '" title="Tirar">✕</button>' + (i < escolhidas.length - 1 ? '<button type="button" data-dsb-dir="' + i + '" title="Mover para a direita">▶</button>' : '') + '</div></div>'; }).join('') : '<em>Nenhuma área escolhida</em>') + '<div class="dsb-p fixo"><span>☰</span><small>Mais</small></div></div>'
         + '<input type="search" class="dsb-busca" placeholder="Buscar área…" autocomplete="off">'
@@ -83519,6 +83519,7 @@ window.__perTxt = function (p) {
     + '#mobile-bottom-nav .dsb-l{font-size:10px;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}'
     + '#mobile-bottom-nav .dsb-i.active{color:#60a5fa}#mobile-bottom-nav .dsb-i.active .dsb-ic{background:rgba(37,99,235,.25)}'
     + '#dsb-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(2,6,23,.65);display:flex;align-items:flex-end;justify-content:center}'
+    + '#dsb-ov .dsb-m{max-height:calc(100dvh - 10px)!important;overflow:hidden!important}#dsb-ov .dsb-lista{overflow-y:auto!important;max-height:none!important;min-height:0!important}#dsb-ov .dsb-ft,#dsb-ov .dsb-hd,#dsb-ov .dsb-prev,#dsb-ov .dsb-busca,#dsb-ov .dsb-sub{flex:0 0 auto}.dsb-hda{display:flex;align-items:center;gap:6px}.dsb-hda .dsb-b{min-height:40px}'
     + '.dsb-m{background:var(--surface,#111827);color:var(--text,#e5e7eb);width:min(640px,100%);max-height:92vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.4)}'
     + '@media(min-width:700px){#dsb-ov{align-items:center}.dsb-m{border-radius:18px}}'
     + '.dsb-hd{display:flex;justify-content:space-between;align-items:center;font-size:17px}.dsb-x{background:none;border:0;color:inherit;font-size:22px;min-width:44px;min-height:44px;cursor:pointer}'
