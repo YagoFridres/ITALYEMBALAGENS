@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261119173242';
-const SW_RUNTIME_VERSION = '20261119173242';
+const PATCH_RUNTIME_VERSION = '20261119173428';
+const SW_RUNTIME_VERSION = '20261119173428';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12075,6 +12075,28 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
 
 // ===== 18/11: conclusão de OF mais prática =====
 // Operadores que trabalham em cada máquina (para já vir preenchido na conclusão). Qualquer usuário logado pode salvar.
+// 19/11: barra de navegação do celular — cada usuário tem a sua (salva no servidor)
+function _barraChave(req) { const u = req.usuario || req.user || {}; const id = String(u.id || u.nome || '').trim(); return id ? 'barra_navegacao_' + id : ''; }
+app.get('/api/minha-barra', authMiddleware, async (req, res) => {
+  try {
+    const k = _barraChave(req); if (!k) return ok(res, null);
+    const { data, error } = await supabase.from('configuracoes').select('valor').eq('chave', k).maybeSingle();
+    if (error) return ok(res, null);
+    let v = data ? data.valor : null; if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = null; } }
+    return ok(res, Array.isArray(v) ? v : null);
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/minha-barra', authMiddleware, async (req, res) => {
+  try {
+    const k = _barraChave(req); if (!k) return res.status(400).json({ ok: false, error: 'Usuário não identificado' });
+    const lista = Array.isArray(req.body && req.body.itens) ? req.body.itens : [];
+    const itens = lista.slice(0, 5).map((x) => ({ k: String(x && x.k || '').slice(0, 80), l: String(x && x.l || '').slice(0, 40), i: String(x && x.i || '').slice(0, 8) })).filter((x) => x.k);
+    const { error } = await supabase.from('configuracoes').upsert({ chave: k, valor: itens }, { onConflict: 'chave' });
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    return ok(res, itens);
+  } catch (e) { return err(res, e); }
+});
+
 app.get('/api/conclusao/operadores-maquina', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('configuracoes').select('valor').eq('chave', 'operadores_por_maquina').maybeSingle();
