@@ -8696,6 +8696,7 @@ window._compraPapelaoRenderBlocksHtml = function() {
           + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
           + '    <button type="button" data-ccpx-clone="' + window._compraPapelaoAttr(id) + '">Clonar</button>'
           + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
+          + '    <button type="button" data-ccpx-versoes="' + window._compraPapelaoAttr(id) + '">🕘 Versões</button>'
           + '    <button type="button" data-ccpx-excel="' + window._compraPapelaoAttr(id) + '">Excel</button>'
           + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
           + '  </div></td>'
@@ -9200,7 +9201,7 @@ window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
     + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
     + '  <div class="ccpx-fs-footer">'
     + '    <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade total</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área total</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor total</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div><div class="ccpx-chip"><div class="lbl">Total geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div></div>'
-    + '    <div class="ccpx-fs-footer-actions"><button type="button" class="ghost" id="ccpx-cancel-compra">Cancelar</button><button type="button" class="print" id="ccpx-print-compra">Imprimir</button><button type="button" class="ghost" id="ccpx-email-compra">📧 Salvar e enviar e-mail</button><button type="button" class="primary" id="ccpx-save-compra">' + (compraId ? 'Salvar Compra' : 'Salvar Compra') + '</button></div>'
+    + '    <div class="ccpx-fs-footer-actions"><button type="button" class="ghost" id="ccpx-cancel-compra">Cancelar</button><button type="button" class="print" id="ccpx-print-compra">Imprimir</button>' + (compraId ? '<button type="button" class="ghost" data-ccpx-versoes="' + window._compraPapelaoAttr(compraId) + '">🕘 Versões</button>' : '') + '<button type="button" class="ghost" id="ccpx-email-compra">📧 Salvar e enviar e-mail</button><button type="button" class="primary" id="ccpx-save-compra">' + (compraId ? 'Salvar Compra' : 'Salvar Compra') + '</button></div>'
     + '  </div>'
     + '</div>';
 };
@@ -84092,6 +84093,129 @@ window.__perTxt = function (p) {
     window.salvarOfRapida = g;
   }
   instalar(); setInterval(instalar, 1000);
+})();
+
+/* ===== 23/11: Compras de Papelão — versões (ver, imprimir e voltar a usar com confirmação dupla) ===== */
+(function () {
+  if (window.__dsCmpVersoes) return; window.__dsCmpVersoes = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function num(v, d) { try { return window._compraPapelaoFmtNum(v, d); } catch (_) { return String(v == null ? '' : v); } }
+  function money(v) { try { return window._compraPapelaoFmtMoney(v); } catch (_) { return String(v == null ? '' : v); } }
+  function quando(iso) { try { var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return String(iso || ''); } }
+  function tot(c) { try { return window._compraPapelaoCompraTotals(c); } catch (_) { return { qtd: 0, area: 0, valor: 0 }; } }
+  function api(path, opts) { return window._compraPapelaoApi(path, opts || { method: 'GET' }); }
+  function css() {
+    if (document.getElementById('dscv-css')) return;
+    var st = document.createElement('style'); st.id = 'dscv-css';
+    st.textContent = '.dscv-ov{position:fixed;inset:0;z-index:100200;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:16px}'
+      + '.dscv-box{background:var(--s1,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:16px;width:100%;max-width:880px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:inherit}'
+      + '.dscv-hd{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border,#e2e8f0)}.dscv-hd b{font-size:17px;flex:1}'
+      + '.dscv-x{border:none;background:transparent;color:inherit;font-size:24px;cursor:pointer;line-height:1;padding:4px 8px}'
+      + '.dscv-bd{overflow:auto;padding:14px 18px;display:grid;gap:10px}'
+      + '.dscv-v{border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:12px 14px;display:grid;gap:8px;background:var(--s2,rgba(148,163,184,.06))}'
+      + '.dscv-v.atual{border-color:#0ea5e9}.dscv-top{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}.dscv-tag{font-weight:900;font-size:13px;padding:3px 10px;border-radius:999px;background:rgba(14,165,233,.15);color:#0284c7}'
+      + '.dscv-v.atual .dscv-tag{background:#0ea5e9;color:#fff}.dscv-meta{font-size:13px;opacity:.8}.dscv-res{font-size:13px;display:flex;flex-wrap:wrap;gap:4px 14px}'
+      + '.dscv-acts{display:flex;flex-wrap:wrap;gap:6px}.dscv-acts button{padding:8px 12px;border-radius:9px;border:1px solid var(--border,#cbd5e1);background:transparent;color:inherit;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}'
+      + '.dscv-acts button.usar{border-color:#f59e0b;color:#d97706}.dscv-det{overflow:auto}.dscv-det table{width:100%;border-collapse:collapse;font-size:12px}.dscv-det th,.dscv-det td{border-bottom:1px solid var(--border,#e2e8f0);padding:5px 6px;text-align:left;white-space:nowrap}.dscv-det td.n,.dscv-det th.n{text-align:right}'
+      + '.dscv-dif{color:#d97706;font-weight:800}.dscv-vazio{padding:24px;text-align:center;opacity:.75;font-size:14px;line-height:1.5}'
+      + '.dscv-cf{max-width:440px}.dscv-cf .dscv-bd{font-size:14px;line-height:1.5}.dscv-cf .dscv-acts button{flex:1;min-width:140px;padding:12px}.dscv-cf .dscv-acts button.ok{background:#f59e0b;border-color:#f59e0b;color:#111827}.dscv-cf .dscv-acts button.ok.forte{background:#dc2626;border-color:#dc2626;color:#fff}'
+      + '@media (max-width:600px){.dscv-ov{padding:0}.dscv-box{max-height:100vh;height:100%;border-radius:0}.dscv-cf{height:auto;border-radius:16px;margin:16px}.dscv-acts button{flex:1 1 45%}}';
+    document.head.appendChild(st);
+  }
+  function z(ov) { try { var top = 0; document.querySelectorAll('.ccpx-fs-overlay,.ccpx-modal-overlay,[class*="ccpx"][class*="overlay"],.dsef-ov').forEach(function (e) { var zz = Number(getComputedStyle(e).zIndex) || 0; if (zz > top) top = zz; }); if (top >= 100200) ov.style.zIndex = String(top + 100); } catch (_) {} }
+  function tabela(c, comparar) {
+    var it = Array.isArray(c && c.itens) ? c.itens : [];
+    if (!it.length) return '<div class="dscv-meta">Sem itens.</div>';
+    var ref = comparar && Array.isArray(comparar.itens) ? comparar.itens : null;
+    function cel(v, k, i, cls) { var dif = ref && (!ref[i] || String(ref[i][k] == null ? '' : ref[i][k]) !== String(it[i][k] == null ? '' : it[i][k])); return '<td class="' + (cls || '') + (dif ? ' dscv-dif' : '') + '">' + v + '</td>'; }
+    return '<div class="dscv-det"><table><thead><tr><th>#</th><th>Pedido cliente</th><th>PO</th><th class="n">Larg.</th><th class="n">Compr.</th><th>Vincos</th><th class="n">Qtd</th><th class="n">R$/m²</th><th class="n">Total</th><th>Obs.</th></tr></thead><tbody>'
+      + it.map(function (x, i) { return '<tr><td>' + (i + 1) + '</td>' + cel(esc(x.ped_cliente || ''), 'ped_cliente', i) + cel(esc(x.nomenclatura || ''), 'nomenclatura', i) + cel(num(x.largura, 0), 'largura', i, 'n') + cel(num(x.comprimento, 0), 'comprimento', i, 'n') + cel(esc(x.vincos || ''), 'vincos', i) + cel(num(x.quantidade, 0), 'quantidade', i, 'n') + cel(money(x.valor_m2), 'valor_m2', i, 'n') + cel(money(x.valor_total), 'valor_total', i, 'n') + cel(esc(x.observacao || ''), 'observacao', i) + '</tr>'; }).join('')
+      + (ref && ref.length > it.length ? '<tr><td colspan="10" class="dscv-dif">A compra atual tem ' + (ref.length - it.length) + ' item(ns) a mais.</td></tr>' : '')
+      + '</tbody></table></div>';
+  }
+  function cartao(c, info) {
+    var t = tot(c), it = Array.isArray(c.itens) ? c.itens.length : 0;
+    return '<div class="dscv-v' + (info.atual ? ' atual' : '') + '"><div class="dscv-top"><span class="dscv-tag">' + (info.atual ? 'ATUAL' : 'Versão ' + esc(info.versao)) + '</span>'
+      + '<span class="dscv-meta">' + (info.atual ? 'Última alteração: ' + esc(quando(c.atualizado_em || c.updated_at || c.criado_em)) + (c.atualizado_por ? ' · ' + esc(c.atualizado_por) : '') : 'Como estava até ' + esc(quando(info.criado_em)) + (info.usuario ? ' · alterada por ' + esc(info.usuario) : '') + (info.motivo && info.motivo !== 'Alteração' ? ' · ' + esc(info.motivo) : '')) + '</span></div>'
+      + '<div class="dscv-res"><span>Fornecedor: <b>' + esc(c.fornecedor || '—') + '</b></span><span>Pedido forn.: <b>' + esc(c.ped_fornecedor || '—') + '</b></span><span>Itens: <b>' + it + '</b></span><span>Qtd: <b>' + num(t.qtd, 0) + '</b></span><span>Área: <b>' + num(t.area, 2) + ' m²</b></span><span>Valor: <b>' + money(t.valor) + '</b></span></div>'
+      + (c.observacao ? '<div class="dscv-meta">Obs.: ' + esc(c.observacao) + '</div>' : '')
+      + '<div class="dscv-acts"><button type="button" data-a="ver">👁 Ver itens</button><button type="button" data-a="imp">🖨 Imprimir</button>' + (info.atual ? '' : '<button type="button" data-a="usar" class="usar">♻️ Usar esta versão</button>') + '</div>'
+      + '<div data-det hidden></div></div>';
+  }
+  function imprimir(c, rotulo) {
+    try {
+      var html = window._compraPapelaoBuildCompraPrintHtml(Object.assign({}, c));
+      if (!html) throw new Error('impressão indisponível');
+      if (rotulo) { var faixa = '<div style="margin:0 0 10px;padding:8px 12px;border:2px solid #f59e0b;border-radius:8px;font:700 13px Arial,sans-serif;color:#92400e;background:#fffbeb">' + esc(rotulo) + '</div>'; html = /<body[^>]*>/i.test(html) ? html.replace(/<body[^>]*>/i, function (m) { return m + faixa; }) : faixa + html; }
+      window._openStyledPrintWindow(html);
+    } catch (e) { try { window.toast('Erro ao imprimir: ' + (e.message || e), '#ef4444'); } catch (_) {} }
+  }
+  function confirmar(titulo, texto, botao, forte) {
+    return new Promise(function (res) {
+      var ov = document.createElement('div'); ov.className = 'dscv-ov'; ov.setAttribute('data-ds-sem-resp', '1');
+      ov.innerHTML = '<div class="dscv-box dscv-cf" role="dialog" aria-modal="true"><div class="dscv-hd"><b>' + titulo + '</b></div><div class="dscv-bd"><div>' + texto + '</div><div class="dscv-acts"><button type="button" data-r="0">Cancelar</button><button type="button" data-r="1" class="ok' + (forte ? ' forte' : '') + '">' + botao + '</button></div></div></div>';
+      css(); z(ov); ov.style.zIndex = String((Number(ov.style.zIndex) || 100200) + 50);
+      function fim(v) { ov.remove(); document.removeEventListener('keydown', k, true); res(v); }
+      function k(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fim(false); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-r]'); if (b) fim(b.getAttribute('data-r') === '1'); else if (e.target === ov) fim(false); });
+      document.addEventListener('keydown', k, true); document.body.appendChild(ov);
+      try { ov.querySelector('[data-r="0"]').focus(); } catch (_) {}
+    });
+  }
+  async function abrir(id) {
+    if (!id) return;
+    css();
+    var ov = document.createElement('div'); ov.className = 'dscv-ov'; ov.setAttribute('data-ds-sem-resp', '1');
+    ov.innerHTML = '<div class="dscv-box" role="dialog" aria-modal="true"><div class="dscv-hd"><b>🕘 Versões da compra</b><button type="button" class="dscv-x" aria-label="Fechar">×</button></div><div class="dscv-bd"><div class="dscv-vazio">Carregando…</div></div></div>';
+    z(ov); document.body.appendChild(ov);
+    function fechar() { ov.remove(); document.removeEventListener('keydown', esc1, true); }
+    function esc1(e) { if (e.key === 'Escape' && !document.querySelector('.dscv-cf')) { e.preventDefault(); e.stopPropagation(); fechar(); } }
+    document.addEventListener('keydown', esc1, true);
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('.dscv-x')) fechar(); });
+    var bd = ov.querySelector('.dscv-bd'), atual, versoes;
+    try {
+      var r = await Promise.all([api('/api/compras-chapas/' + encodeURIComponent(id)), apiFetch('/api/compras-chapas/' + encodeURIComponent(id) + '/versoes').then(function (x) { return x.json(); })]);
+      atual = r[0]; versoes = (r[1] && r[1].data) || [];
+      if (r[1] && r[1].ok === false) throw new Error(r[1].error || 'erro ao carregar versões');
+    } catch (e) { bd.innerHTML = '<div class="dscv-vazio">Não foi possível carregar as versões: ' + esc(e.message || e) + '</div>'; return; }
+    var nCompra = ''; try { nCompra = window._compraPapelaoNumeroLabel(atual.numero_compra); } catch (_) { nCompra = String(atual.numero_compra || ''); }
+    ov.querySelector('.dscv-hd b').textContent = '🕘 Versões da compra ' + nCompra;
+    var lista = [{ c: atual, info: { atual: true } }].concat(versoes.map(function (v) { return { c: Object.assign({}, v.dados || {}), info: v }; }));
+    bd.innerHTML = lista.map(function (x) { return cartao(x.c, x.info); }).join('')
+      + (versoes.length ? '' : '<div class="dscv-vazio">Ainda não há versões antigas desta compra.<br>A partir de agora, toda vez que ela for alterada e salva, a versão anterior fica guardada aqui.</div>');
+    Array.prototype.forEach.call(bd.querySelectorAll('.dscv-v'), function (el, i) {
+      var x = lista[i];
+      el.addEventListener('click', async function (e) {
+        var b = e.target.closest('[data-a]'); if (!b) return;
+        var a = b.getAttribute('data-a');
+        if (a === 'ver') { var d = el.querySelector('[data-det]'); if (d.hidden) { d.innerHTML = tabela(x.c, x.info.atual ? null : atual) + (x.info.atual ? '' : '<div class="dscv-meta" style="margin-top:6px">Em <span class="dscv-dif">laranja</span>: o que está diferente da compra atual.</div>'); d.hidden = false; b.textContent = '🙈 Esconder itens'; } else { d.hidden = true; b.textContent = '👁 Ver itens'; } return; }
+        if (a === 'imp') { var c2 = Object.assign({}, x.c); if (!x.info.atual) { c2.numero_compra = atual.numero_compra; c2._emp_id_consulta = atual._emp_id_consulta; } imprimir(c2, x.info.atual ? '' : 'VERSÃO ' + x.info.versao + ' da compra ' + nCompra + ' — como estava até ' + quando(x.info.criado_em) + ' (não é a versão atual)'); return; }
+        if (a === 'usar') {
+          var t = tot(x.c);
+          var ok1 = await confirmar('Usar a versão ' + esc(x.info.versao) + '?', 'A compra <b>' + esc(nCompra) + '</b> vai voltar a ficar como estava até <b>' + esc(quando(x.info.criado_em)) + '</b> (' + (x.c.itens || []).length + ' itens, ' + money(t.valor) + ').<br><br>A versão atual <b>não se perde</b>: ela fica guardada como uma nova versão.', 'Sim, continuar');
+          if (!ok1) return;
+          var ok2 = await confirmar('Confirmação final', 'Tem certeza? Os itens atuais da compra <b>' + esc(nCompra) + '</b> serão <b>substituídos</b> pelos da versão ' + esc(x.info.versao) + '.', 'Sim, usar a versão ' + esc(x.info.versao), true);
+          if (!ok2) return;
+          b.disabled = true; b.textContent = 'Aplicando…';
+          try {
+            var resp = await apiFetch('/api/compras-chapas/' + encodeURIComponent(id) + '/versoes/' + encodeURIComponent(x.info.id) + '/restaurar', { method: 'POST', body: { confirmacoes: 2 } }).then(function (rr) { return rr.json(); });
+            if (!resp || resp.ok === false) throw new Error((resp && resp.error) || 'falhou');
+            try { window.toast('✅ Compra ' + nCompra + ' voltou para a versão ' + x.info.versao + '. A anterior ficou guardada.', '#10b981', 5000); } catch (_) {}
+            fechar();
+            try { if (document.querySelector('#ccpx-save-compra')) window._compraPapelaoCloseCompraModal(); } catch (_) {}
+            try { await window._compraPapelaoRenderPage(); } catch (_) {}
+            abrir(id);
+          } catch (e2) { b.disabled = false; b.textContent = '♻️ Usar esta versão'; try { window.toast('Não foi possível usar a versão: ' + (e2.message || e2), '#ef4444', 7000); } catch (_) {} }
+        }
+      });
+    });
+  }
+  window.dsCompraVersoes = abrir;
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('[data-ccpx-versoes]');
+    if (!b) return; e.preventDefault(); e.stopPropagation();
+    abrir(String(b.getAttribute('data-ccpx-versoes') || '').trim());
+  }, true);
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */

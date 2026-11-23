@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261123154855';
-const SW_RUNTIME_VERSION = '20261123154855';
+const PATCH_RUNTIME_VERSION = '20261123161423';
+const SW_RUNTIME_VERSION = '20261123161423';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -31407,6 +31407,78 @@ app.get('/api/fornecedores-emails/:id/mensagem/:uid/anexo/:i', authMiddleware, a
   } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
 });
 
+// 23/11: versões das compras de papelão — antes de cada alteração, a compra como estava é guardada
+function _comprasChapasDigest(c) {
+  try {
+    const h = c || {};
+    const it = (Array.isArray(h.itens) ? h.itens : []).map((i) => [i.ped_cliente, i.pedido_fornecedor, i.data_entrega, i.nomenclatura, i.largura, i.comprimento, i.vincos, i.quantidade, i.lote_minimo, i.valor_m2, i.valor_total, i.observacao].map((x) => String(x == null ? '' : x)).join('~'));
+    return JSON.stringify([h.fornecedor, h.ped_fornecedor, h.observacao, h.pasta_id, h.data_compra, h.previsao_chegada, h.emp_id, h.empresa_id, it]);
+  } catch (_) { return ''; }
+}
+async function _comprasChapasSalvarVersao(atual, req, motivo) {
+  try {
+    if (!atual || !atual.id) return null;
+    const ult = await supabase.from('compras_chapas_versoes').select('versao,dados').eq('compra_id', String(atual.id)).order('versao', { ascending: false }).limit(1);
+    if (ult.error) { console.warn('[CMP-VERSAO] tabela indisponível:', ult.error.message); return null; }
+    const last = (ult.data || [])[0];
+    if (last && _comprasChapasDigest(last.dados) === _comprasChapasDigest(atual)) return last.versao; // igual à última guardada
+    const versao = (last ? Number(last.versao) || 0 : 0) + 1;
+    const ins = await supabase.from('compras_chapas_versoes').insert([{ compra_id: String(atual.id), numero_compra: atual.numero_compra != null ? Math.trunc(Number(atual.numero_compra) || 0) : null, versao, dados: atual, usuario: _comprasChapasUser(req) || null, motivo: motivo || null }]);
+    if (ins.error) { console.warn('[CMP-VERSAO] falhou:', ins.error.message); return null; }
+    return versao;
+  } catch (e) { console.warn('[CMP-VERSAO] erro:', e && e.message || e); return null; }
+}
+app.get('/api/compras-chapas/:id/versoes', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const id = _comprasChapasStr(req.params.id);
+    const out = await supabase.from('compras_chapas_versoes').select('*').eq('compra_id', id).order('versao', { ascending: false }).limit(200);
+    if (out.error) return res.status(500).json({ ok: false, error: out.error.message });
+    return res.json({ ok: true, data: out.data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+app.post('/api/compras-chapas/:id/versoes/:vid/restaurar', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
+    const id = _comprasChapasStr(req.params.id), vid = _comprasChapasStr(req.params.vid);
+    if (Number((req.body || {}).confirmacoes) !== 2) return res.status(400).json({ ok: false, error: 'É preciso confirmar duas vezes para usar uma versão antiga.' });
+    const vOut = await supabase.from('compras_chapas_versoes').select('*').eq('id', vid).eq('compra_id', id).maybeSingle();
+    if (vOut.error) return res.status(500).json({ ok: false, error: vOut.error.message });
+    if (!vOut.data) return res.status(404).json({ ok: false, error: 'Versão não encontrada' });
+    const snap = vOut.data.dados || {};
+    const atual = await _comprasChapasLoadById(id);
+    if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
+    const itensSnap = Array.isArray(snap.itens) ? snap.itens : [];
+    for (let i = 0; i < itensSnap.length; i++) { const er = _comprasChapasValidarItem(itensSnap[i], i + 1); if (er) return res.status(400).json({ ok: false, error: 'Versão com item ' + (i + 1) + ' inválido: ' + er }); }
+    await _comprasChapasSalvarVersao(atual, req, 'Antes de voltar para a versão ' + vOut.data.versao);
+    const campos = ['fornecedor', 'ped_fornecedor', 'observacao', 'pasta_id', 'data_compra', 'previsao_chegada', 'emp_id', 'empresa_id'];
+    const pick = {}; campos.forEach((k) => { if (Object.prototype.hasOwnProperty.call(snap, k)) pick[k] = snap[k]; });
+    const empId = _comprasChapasStr(pick.emp_id || atual.emp_id);
+    const headerPayload = _comprasChapasBuildHeaderPayload({ ...atual, ...pick, emp_id: empId, numero_compra: atual.numero_compra }, req, { isInsert: false, empId, empresaId: pick.empresa_id || atual.empresa_id || empId });
+    delete headerPayload.numero_compra;
+    const upd = await _comprasChapasUpdateCompat('compras_chapas', id, headerPayload, '*');
+    if (upd.error) return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
+    const itensPayload = itensSnap.map((item, idx) => _comprasChapasBuildItemPayload(item, id, idx + 1));
+    const del = await supabase.from('compras_chapas_itens').delete().eq('compra_id', id);
+    if (del.error) return res.status(500).json({ ok: false, error: del.error.message });
+    if (itensPayload.length) {
+      const ins = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
+      if (ins.error) {
+        // devolve os itens que estavam antes
+        try { await _comprasChapasInsertCompat('compras_chapas_itens', (atual.itens || []).map((it, ix) => _comprasChapasBuildItemPayload(it, id, ix + 1)), '*'); } catch (_) {}
+        return res.status(500).json({ ok: false, error: String(ins.error.message || ins.error) });
+      }
+    }
+    try { logAuditoria('compras_chapas', 'RESTAURAR_VERSAO', id, { versao_atual_guardada: true }, { versao_restaurada: vOut.data.versao }, req); } catch (_) {}
+    const full = await _comprasChapasLoadById(id);
+    return ok(res, full);
+  } catch (e) {
+    _comprasChapasLog('POST /api/compras-chapas/:id/versoes/:vid/restaurar', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
   try {
     const id = _comprasChapasStr(req.params.id);
@@ -31457,6 +31529,11 @@ app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
       empId,
     });
     delete headerPayload.numero_compra;
+    etapa = 'guardar_versao';
+    try {
+      const novaDig = _comprasChapasDigest({ ...atual, ...body, itens: Array.isArray(body.itens) ? body.itens.map((it, ix) => _comprasChapasBuildItemPayload(it, id, ix + 1)) : atual.itens });
+      if (novaDig !== _comprasChapasDigest(atual)) await _comprasChapasSalvarVersao(atual, req, 'Alteração');
+    } catch (_) {}
     try { console.log('[CMP-SAVE] id=' + id + ' etapa=' + etapa + ' header_keys=' + Object.keys(headerPayload).join(',') + ' atualizado_em=' + String(headerPayload.atualizado_em || '').slice(0, 19)); } catch (_) {}
     etapa = 'update_header';
     const upd = await _comprasChapasUpdateCompat('compras_chapas', id, headerPayload, '*');
