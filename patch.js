@@ -83956,5 +83956,23 @@ window.__perTxt = function (p) {
   instalar(); setInterval(instalar, 2000);
 })();
 
+// 23/11: o menu ANTIGO do celular (gaveta "mob-more") nunca mais abre — o ☰ abre sempre o menu novo
+(function __dsMenuCelularNovo() {
+  if (window.__dsMenuCelularNovo) return; window.__dsMenuCelularNovo = true;
+  function novo() {
+    try { var dr = document.getElementById('mob-more-drawer'), ov = document.getElementById('mob-more-overlay'); if (dr) dr.classList.remove('open'); if (ov) ov.classList.remove('show'); } catch (_) {}
+    var ev = window.event;
+    var doBotao = ev && ev.type === 'click' && ev.target && ev.target.closest && ev.target.closest('#hamburger-btn, .hamburger, [data-ds-abre-menu]');
+    if (!doBotao) return; // chamado depois de abrir uma área: só fecha, não abre nada
+    var mm = document.getElementById('mob-menu-mais');
+    if (mm) mm.remove(); else if (typeof window.abrirMenuMais === 'function') window.abrirMenuMais();
+  }
+  novo._patched = true; novo.__dsNovo = true;
+  function instalar() { if (window.toggleMobMenu && window.toggleMobMenu.__dsNovo) return; try { window.toggleMobMenu = novo; window.toggleSidebar = novo; } catch (_) {} }
+  instalar(); setInterval(instalar, 1500);
+  var st = document.createElement('style'); st.textContent = '#mob-more-drawer,#mob-more-overlay{display:none!important}';
+  (document.head || document.documentElement).appendChild(st);
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
