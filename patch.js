@@ -17498,6 +17498,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   }
 
   function _histRenderDetalhamentoPassagens() {
+    if (document.getElementById('dps-root')) return; // 23/11: tela nova de Passagens no lugar
     var container = document.getElementById('hist-passagens-resultado');
     if (!container) return;
     _histEnsureUi();
