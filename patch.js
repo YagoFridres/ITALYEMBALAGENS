@@ -32940,7 +32940,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             String(dupMsg || 'Já existe OF criada com mesmo cliente / produto / quantidade.') +
             (dupLista.length ? ('\n\nExemplo(s):\n' + dupLista.slice(0,3).map(function(d){ return '  • OF #' + String(d.numero||'?') + ' de ' + String(d.created_at||'?').replace('T',' ').slice(0,16) + (d.qtd?' (qtd '+d.qtd+')':''); }).join('\n')) : '') +
             '\n\nCriar MESMO ASSIM (pode gerar duplicata real)?\n\nOK = Criar de qualquer forma.\nCancelar = Voltar para conferir.';
-          continuar = !!window.confirm(txtFull);
+          // 23/11: aviso próprio (Enter NÃO confirma; o padrão é voltar e conferir)
+          continuar = (typeof window.dsOfrConfirmarDup === 'function') ? !!(await window.dsOfrConfirmarDup(dupMsg, dupLista)) : !!window.confirm(txtFull);
         } catch (_c) { continuar = false; }
         try {
           if (typeof window.toast === 'function') {
@@ -32953,9 +32954,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = ''; btnEl.style.cursor = ''; if (btnEl._oldTxtSalvar) btnEl.textContent = btnEl._oldTxtSalvar; else btnEl.textContent = '⚡ Salvar OF'; }
         } catch (_) {}
         if (continuar) {
+          // 23/11: UMA única nova tentativa, depois que o salvamento atual terminar de verdade
           try { window.__OF_RAPIDA_FORCAR_DUPLICATA = true; } catch (_) {}
-          try { if (typeof window.__OF_RAPIDA_SALVAR_DE_NOVO__ === 'function') window.__OF_RAPIDA_SALVAR_DE_NOVO__(); } catch (_) {}
-          try { window.salvarOfRapida && window.salvarOfRapida(); } catch (_) {}
+          (function () { var t0 = Date.now(); (function tentar() { if (window.__P1_OF_SALVANDO__ && Date.now() - t0 < 15000) return setTimeout(tentar, 120); try { window.__dsOfrPermitir = Date.now(); window.salvarOfRapida && window.salvarOfRapida(); } catch (_) {} })(); })();
         } else {
           try { window.__OF_RAPIDA_FORCAR_DUPLICATA = false; } catch (_) {}
           try { if (typeof window.__ofCriacaoNaoLimparProximo === 'object') window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; else window.__ofCriacaoNaoLimparProximo = { valor: true, ts: Date.now() }; } catch (_) {}
@@ -83972,6 +83973,115 @@ window.__perTxt = function (p) {
   instalar(); setInterval(instalar, 1500);
   var st = document.createElement('style'); st.textContent = '#mob-more-drawer,#mob-more-overlay{display:none!important}';
   (document.head || document.documentElement).appendChild(st);
+})();
+
+/* ===== 23/11: OF Rápida — nunca salva sozinha e nunca duplica =====
+ * 1) Só salva com CLIQUE/TOQUE de verdade no botão Salvar (Enter/teclado e disparos automáticos não salvam;
+ *    qualquer disparo sem clique pede confirmação e fica registrado no diagnóstico).
+ * 2) Cada preenchimento da tela tem uma chave única (X-OF-Idem): o mesmo envio repetido devolve a OF já criada.
+ * 3) Aviso de "OF semelhante" próprio: Enter não confirma, o padrão é voltar e conferir. */
+(function () {
+  if (window.__dsOfrAntiDup) return; window.__dsOfrAntiDup = true;
+  var S = { key: '', salvou: false, aberto: false };
+  function novaChave() { S.key = 'ofr-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); S.salvou = false; }
+  function modal() { return document.getElementById('modal-of-rapida'); }
+  function emEdicao() { try { var b = document.getElementById('btn-salvar-of-rapida'); var m = modal(); return !!((b && /Salvar Altera/i.test(b.textContent || '')) || (m && /Editar OF/i.test(String(m.textContent || '').slice(0, 400)))); } catch (_) { return false; } }
+  function log(d) { try { d.tipo = 'ofr-salvar'; d.u = (window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.id)) || ''; d.v = window.SW_RUNTIME_VERSION || ''; fetch('/api/_cliente/diag', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).catch(function () {}); } catch (_) {} }
+  // abrir a tela = novo preenchimento
+  setInterval(function () { var m = modal(); var vis = !!(m && m.offsetParent !== null); if (vis && !S.aberto) { novaChave(); try { if (!window.__ofrForcarAgora) window.__OF_RAPIDA_FORCAR_DUPLICATA = false; } catch (_) {} } S.aberto = vis; }, 300);
+  // depois de salvar, qualquer mudança feita pela pessoa = novo preenchimento (OF nova de verdade)
+  ['input', 'change'].forEach(function (t) { document.addEventListener(t, function (e) { if (!e.isTrusted || !S.salvou) return; var m = modal(); if (m && m.contains(e.target)) novaChave(); }, true); });
+  // o botão Salvar não fica com o foco (Enter/Espaço depois não "clicam" nele de novo)
+  document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#btn-salvar-of-rapida'); if (b) setTimeout(function () { try { b.blur(); } catch (_) {} }, 0); }, true);
+
+  // chave no envio da criação
+  var f0 = window.fetch;
+  window.fetch = function (input, init) {
+    var url = ''; try { url = String(input && input.url || input || ''); } catch (_) {}
+    var met = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    var path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+    if (met !== 'POST' || path !== '/api/ofs' || !modal()) return f0.apply(this, arguments);
+    if (!S.key) novaChave();
+    var k = S.key + (window.__OF_RAPIDA_FORCAR_DUPLICATA === true ? '-dup' + Date.now().toString(36) : '');
+    init = Object.assign({}, init || {});
+    try { var h = new Headers(init.headers || {}); h.set('X-OF-Idem', k); init.headers = h; } catch (_) {}
+    var p = f0.call(this, input, init);
+    p.then(function (r) {
+      if (!r || !r.ok) return;
+      S.salvou = true;
+      if (r.headers && r.headers.get('X-OF-Idem-Replay')) {
+        r.clone().json().then(function (j) { var d = (j && j.data) || {}; var n = d.numero || d.of || ''; try { window.toast('ℹ️ Esta OF já estava salva' + (n ? ' (#' + n + ')' : '') + ' — não foi criada de novo.', '#0ea5e9', 6000); } catch (_) {} }).catch(function () {});
+        log({ ev: 'replay', k: k });
+      }
+    }, function () {});
+    return p;
+  };
+
+  // aviso próprio de OF semelhante
+  window.dsOfrConfirmarDup = function (msg, lista) {
+    return new Promise(function (res) {
+      var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+      var ov = document.createElement('div'); ov.className = 'dsofd-ov'; ov.setAttribute('data-ds-sem-resp', '1');
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100300;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+      var itens = (lista || []).slice(0, 4).map(function (d) { return '<li>OF <b>#' + esc(d.numero || '?') + '</b> — ' + esc(String(d.created_at || '').replace('T', ' ').slice(11, 16)) + (d.qtd ? ' · qtd ' + esc(d.qtd) : '') + '</li>'; }).join('');
+      ov.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--s1,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.35);font-family:inherit">' +
+        '<div style="font-size:17px;font-weight:800;margin-bottom:8px">⚠️ Essa OF já foi salva?</div>' +
+        '<div style="font-size:14px;line-height:1.45;opacity:.9">Acabou de ser criada uma OF com o <b>mesmo cliente, produto e quantidade</b>:</div>' +
+        (itens ? '<ul style="margin:8px 0 4px;padding-left:20px;font-size:14px">' + itens + '</ul>' : '') +
+        '<div style="font-size:13px;opacity:.75;margin-top:6px">Se foi sem querer, clique em <b>Não criar</b>. Só crie de novo se precisar mesmo de outra OF igual.</div>' +
+        '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" data-r="0" style="flex:2;min-width:150px;padding:12px;border-radius:10px;border:none;background:#0ea5e9;color:#fff;font-weight:800;font-size:14px;cursor:pointer">Não criar (voltar)</button>' +
+        '<button type="button" data-r="1" style="flex:1;min-width:120px;padding:12px;border-radius:10px;border:1px solid #f59e0b;background:transparent;color:#d97706;font-weight:700;font-size:13px;cursor:pointer">Criar outra igual</button></div></div>';
+      function fim(v) { try { ov.remove(); document.removeEventListener('keydown', tecla, true); } catch (_) {} res(v); }
+      function tecla(e) { if (e.key === 'Escape') { e.preventDefault(); fim(false); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-r]'); if (b) { if (b.getAttribute('data-r') === '1' && !(e.isTrusted && e.detail > 0)) return; fim(b.getAttribute('data-r') === '1'); } else if (e.target === ov) fim(false); });
+      document.addEventListener('keydown', tecla, true);
+      document.body.appendChild(ov);
+      try { ov.querySelector('[data-r="0"]').focus(); } catch (_) {}
+      log({ ev: 'aviso-dup', lista: (lista || []).slice(0, 3) });
+    });
+  };
+
+  // portão do salvar: só com clique/toque real
+  function origem() {
+    if (Date.now() - (window.__dsOfrPermitir || 0) < 4000) return 'ok';
+    var ev = window.event;
+    if (!ev) return 'sem-evento';
+    var t = ev.type || '';
+    if (/^key/.test(t)) return 'teclado';
+    if (!ev.isTrusted) return 'sintetico:' + t;
+    if (t === 'click') return (ev.detail === 0 && !ev.pointerType) ? 'teclado' : 'ok';
+    if (/pointer|touch|mouse/.test(t)) return 'ok';
+    return 'outro:' + t;
+  }
+  function pergunta() {
+    return new Promise(function (res) {
+      var ov = document.createElement('div'); ov.setAttribute('data-ds-sem-resp', '1');
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100300;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+      ov.innerHTML = '<div role="dialog" style="background:var(--s1,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:14px;max-width:400px;width:100%;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.35)"><div style="font-size:16px;font-weight:800;margin-bottom:8px">Salvar a OF agora?</div><div style="font-size:14px;opacity:.85">O sistema tentou salvar sem você clicar em Salvar. Se ainda está arrumando a OF, continue editando.</div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" data-r="0" style="flex:2;min-width:150px;padding:12px;border-radius:10px;border:none;background:#0ea5e9;color:#fff;font-weight:800;cursor:pointer">Continuar editando</button><button type="button" data-r="1" style="flex:1;min-width:110px;padding:12px;border-radius:10px;border:1px solid var(--border,#cbd5e1);background:transparent;color:inherit;font-weight:700;cursor:pointer">Salvar</button></div></div>';
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-r]'); if (!b) return; if (b.getAttribute('data-r') === '1' && !(e.isTrusted && e.detail > 0)) return; ov.remove(); res(b.getAttribute('data-r') === '1'); });
+      document.body.appendChild(ov); try { ov.querySelector('[data-r="0"]').focus(); } catch (_) {}
+    });
+  }
+  function instalar() {
+    var fn = window.salvarOfRapida;
+    if (typeof fn !== 'function' || fn.__dsGate) return;
+    var g = function () {
+      var o = origem(), self = this, args = arguments;
+      if (o !== 'ok') {
+        var st = ''; try { st = String(new Error().stack || '').split('\n').slice(2, 9).join(' | '); } catch (_) {}
+        log({ ev: 'bloqueado', origem: o, st: st });
+        if (o === 'teclado') { try { window.toast('Para salvar a OF clique no botão ⚡ Salvar OF.', '#0ea5e9', 3500); } catch (_) {} return { ok: false, __bloqueado: true }; }
+        return pergunta().then(function (sim) { if (!sim) return { ok: false, __bloqueado: true }; window.__dsOfrPermitir = Date.now(); return g.apply(self, args); });
+      }
+      window.__dsOfrPermitir = 0;
+      if (window.__dsOfrTesteSemSalvar) { log({ ev: 'teste-ok' }); return { ok: true, __teste: true }; }
+      return fn.apply(this, arguments);
+    };
+    try { Object.keys(fn).forEach(function (k) { g[k] = fn[k]; }); } catch (_) {}
+    g._original = fn; g.__dsGate = true; g.__p1OfTravaUnica = true; g.__patchClienteFallback = fn.__patchClienteFallback || true;
+    window.salvarOfRapida = g;
+  }
+  instalar(); setInterval(instalar, 1000);
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */

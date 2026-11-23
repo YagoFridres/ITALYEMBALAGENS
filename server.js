@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261123115706';
-const SW_RUNTIME_VERSION = '20261123115706';
+const PATCH_RUNTIME_VERSION = '20261123154437';
+const SW_RUNTIME_VERSION = '20261123154437';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -6943,6 +6943,26 @@ app.get('/api/ofs-pedidos', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+// 23/11: idempotência da criação de OF — o MESMO envio (mesma chave X-OF-Idem) nunca cria 2 OFs.
+// Repetições (reenvio, duplo disparo, rede lenta) recebem de volta a OF já criada.
+const _ofIdem = new Map();
+app.post('/api/ofs', (req, res, next) => {
+  const k = String(req.get('x-of-idem') || '').trim().slice(0, 100);
+  if (!k) return next();
+  const agora = Date.now();
+  try { for (const [kk, v] of _ofIdem) if (agora - v.ts > 20 * 60 * 1000) _ofIdem.delete(kk); } catch (_) {}
+  const ex = _ofIdem.get(k);
+  if (ex && ex.body) { setNoCache(res); res.set('X-OF-Idem-Replay', '1'); return res.status(ex.status || 200).json(Object.assign({}, ex.body, { idempotente: true })); }
+  if (ex && agora - ex.ts < 90 * 1000) { setNoCache(res); return res.status(409).json({ ok: false, em_andamento: true, error: 'Esta OF já está sendo salva. Aguarde.' }); }
+  const reg = { ts: agora, body: null, status: 200 };
+  _ofIdem.set(k, reg);
+  const json0 = res.json.bind(res);
+  res.json = function (b) {
+    try { if (res.statusCode >= 200 && res.statusCode < 300 && b && b.ok !== false) { reg.body = b; reg.status = res.statusCode; } else if (_ofIdem.get(k) === reg) _ofIdem.delete(k); } catch (_) {}
+    return json0(b);
+  };
+  next();
+});
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   // #region debug-point B:ofs-post-state
   let _dbgOfStage = 'start';
