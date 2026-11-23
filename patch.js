@@ -77284,7 +77284,32 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     dup.addEventListener('mouseenter', function () { ov.__dscdMostrar = true; rotulo(ov); });
     rotulo(ov);
   }
-  new MutationObserver(function () { if (document.getElementById('ccpx-add-item')) { montar(); var ov = document.querySelector('.ccpx-fs-overlay'); if (ov) rotulo(ov); } }).observe(document.body, { childList: true, subtree: true });
+  // 23/11: cada item tem os seus botões, todos na mesma linha: Duplicar · Novo item · Excluir
+  function barras() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ccpx-item-row]'), function (r) {
+      if (r.querySelector(':scope > .dscd-bar')) return;
+      var i = r.getAttribute('data-ccpx-item-row');
+      var bar = document.createElement('div'); bar.className = 'dscd-bar';
+      bar.innerHTML = '<button type="button" class="dscd-b dup" data-dscd="dup" title="Cria uma cópia deste item logo abaixo">⧉ Duplicar</button><button type="button" class="dscd-b add" data-dscd="add" title="Adiciona um item novo em branco">＋ Novo item</button><button type="button" class="dscd-b del" data-dscd="del" title="Remove este item">🗑 Excluir</button>';
+      r.insertBefore(bar, r.firstChild);
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.dscd-bar [data-dscd]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    var r = b.closest('[data-ccpx-item-row]'), i = r && r.getAttribute('data-ccpx-item-row'), ov = (r && r.closest('.ccpx-fs-overlay')) || document, a = b.getAttribute('data-dscd');
+    if (a === 'dup') { var d = r.querySelector('[data-ccpx-dup-item]'); if (d) d.click(); setTimeout(function () { var nr = ov.querySelector('[data-ccpx-item-row="' + (Number(i) + 1) + '"]'); if (nr) nr.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80); }
+    else if (a === 'del') { var x = r.querySelector('[data-ccpx-del-item]'); if (x) x.click(); }
+    else if (a === 'add') { var ad = ov.querySelector('#ccpx-add-item') || document.getElementById('ccpx-add-item'); if (ad) ad.click(); setTimeout(function () { var rs = ov.querySelectorAll('[data-ccpx-item-row]'); var ult = rs[rs.length - 1]; if (ult) { ult.scrollIntoView({ block: 'center', behavior: 'smooth' }); var f = ult.querySelector('input,select'); if (f) try { f.focus({ preventScroll: true }); } catch (_) {} } }, 80); }
+  }, true);
+  var css2 = document.createElement('style');
+  css2.textContent = '.dscd-bar{grid-column:1/-1;display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:-4px 0 4px;flex-wrap:nowrap}'
+    + '.dscd-b{height:34px;padding:0 12px;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border:1px solid transparent;color:#fff}'
+    + '.dscd-b.dup{background:#059669;border-color:#059669}.dscd-b.dup:hover{background:#047857}.dscd-b.add{background:#2563eb;border-color:#2563eb}.dscd-b.add:hover{background:#1d4ed8}.dscd-b.del{background:#dc2626;border-color:#dc2626}.dscd-b.del:hover{background:#b91c1c}'
+    + '.ccpx-item-sheet-row .ccpx-item-action-strip{display:none!important}'
+    + '@media(max-width:640px){.dscd-bar{justify-content:stretch}.dscd-b{flex:1;justify-content:center;padding:0 6px;font-size:12px}}';
+  document.head.appendChild(css2);
+  new MutationObserver(function () { if (document.getElementById('ccpx-add-item')) { montar(); barras(); var ov = document.querySelector('.ccpx-fs-overlay'); if (ov) rotulo(ov); } }).observe(document.body, { childList: true, subtree: true });
 })();
 
 // ===== Simulador de Desperdício: visual novo (mesmas funções, mesmos campos) =====
@@ -83658,7 +83683,7 @@ window.__perTxt = function (p) {
       var la = (r[0] && r[0].passagens) || [], lb = (r[1] && r[1].passagens) || [];
       if (!la.length) return legado();
       if (S.chave !== chave) return;
-      S.lista = prepararLista(la); S.res = calcularResumo(la, lb); S.carregando = false; pintar();
+      S.lista = prepararLista(la); S.listaAnt = prepararLista(lb); S.res = calcularResumo(la, lb); S.carregando = false; pintar();
     }).catch(function () { legado(); });
     return;
     function legado() {
@@ -83701,10 +83726,9 @@ window.__perTxt = function (p) {
   }
   function htmlTopo() {
     var atual = S.mes === mesAtual();
-    return '<div class="dps-topo"><div class="dps-tit"><h2>🕒 Passagens por máquina</h2><p>O que passou em cada máquina no mês — com busca por OF, cliente ou produto.</p></div>'
-      + '<div class="dps-acoes"><button type="button" class="dps-b" data-dps="imprimir">🖨 Imprimir</button><button type="button" class="dps-b" data-dps="excel">📥 Exportar Excel</button><button type="button" class="dps-b dps-ic" data-dps="atualizar" title="Atualizar">↻</button></div></div>'
-      + '<div class="dps-mesbar"><button type="button" class="dps-nav" data-dps="ant" aria-label="Mês anterior">◀</button><b class="dps-mes">' + esc(nomeMes(S.mes)) + '</b><button type="button" class="dps-nav" data-dps="prox" aria-label="Próximo mês"' + (atual ? ' disabled' : '') + '>▶</button>'
-      + (atual ? '<span class="dps-chip on">Mês em andamento</span>' : '<button type="button" class="dps-chip" data-dps="hoje">Voltar ao mês atual</button>') + '</div>';
+    return '<div class="dps-mesbar"><button type="button" class="dps-nav" data-dps="ant" aria-label="Mês anterior">◀</button><b class="dps-mes">' + esc(nomeMes(S.mes)) + '</b><button type="button" class="dps-nav" data-dps="prox" aria-label="Próximo mês"' + (atual ? ' disabled' : '') + '>▶</button>'
+      + (atual ? '<span class="dps-chip on">Mês em andamento</span>' : '<button type="button" class="dps-chip" data-dps="hoje">Voltar ao mês atual</button>')
+      + '<div class="dps-acoes"><button type="button" class="dps-b" data-dps="imprimir">🖨 Imprimir</button><button type="button" class="dps-b" data-dps="excel">📥 Exportar Excel</button><button type="button" class="dps-b dps-ic" data-dps="atualizar" title="Atualizar">↻</button></div></div>';
   }
   function cmpTxt() { return S.parcial ? 'vs 1 a ' + S.diaAte + ' do mês anterior' : 'vs mês anterior'; }
   function htmlResumo() {
@@ -83713,10 +83737,10 @@ window.__perTxt = function (p) {
     var cores = (r.top_cores || []).slice(0, 5), tams = (r.top_tamanhos || []).slice(0, 5);
     var top = function (l, k) { return l.length ? '<ol>' + l.map(function (x) { return '<li><span>' + esc(x[k]) + '</span><b>' + int(x.total_ofs) + '</b></li>'; }).join('') + '</ol>' : '<em>—</em>'; };
     return '<div class="dps-cards">'
-      + '<div class="dps-card"><span>Passagens no mês</span><b>' + int(a.total_ofs) + '</b><small>' + varChip(pct(a.total_ofs, b.total_ofs)) + ' ' + cmpTxt() + ' (' + int(b.total_ofs) + ')</small></div>'
-      + '<div class="dps-card"><span>Caixas produzidas</span><b>' + int(cx) + '</b><small>' + varChip(pct(cx, b.caixas_produzidas)) + ' ' + cmpTxt() + '</small></div>'
-      + '<div class="dps-card"><span>Valor de produção</span><b class="ds-fin-oculto">' + rs(val) + '</b><small>' + varChip(pct(val, b.valor_total_producao)) + ' ' + cmpTxt() + '</small></div>'
-      + '<div class="dps-card dps-tops"><div><span>Cores mais usadas</span>' + top(cores, 'cor') + '</div><div><span>Tamanhos mais usados</span>' + top(tams, 'tamanho') + '</div></div>'
+      + '<div class="dps-card" data-dps-card="pass" title="Clique para ver em detalhe"><span>Passagens no mês</span><b>' + int(a.total_ofs) + '</b><small>' + varChip(pct(a.total_ofs, b.total_ofs)) + ' ' + cmpTxt() + ' (' + int(b.total_ofs) + ')</small></div>'
+      + '<div class="dps-card" data-dps-card="cx" title="Clique para ver em detalhe"><span>Caixas produzidas</span><b>' + int(cx) + '</b><small>' + varChip(pct(cx, b.caixas_produzidas)) + ' ' + cmpTxt() + '</small></div>'
+      + '<div class="dps-card" data-dps-card="val" title="Clique para ver em detalhe"><span>Valor de produção</span><b class="ds-fin-oculto">' + rs(val) + '</b><small>' + varChip(pct(val, b.valor_total_producao)) + ' ' + cmpTxt() + '</small></div>'
+      + '<div class="dps-card dps-tops" data-dps-card="tops" title="Clique para ver a lista completa"><div><span>Cores mais usadas</span>' + top(cores, 'cor') + '</div><div><span>Tamanhos mais usados</span>' + top(tams, 'tamanho') + '</div></div>'
       + '</div>';
   }
   function htmlMaquinas() {
@@ -83773,6 +83797,7 @@ window.__perTxt = function (p) {
     raiz.addEventListener('change', function (e) { if (e.target.classList.contains('dps-selmaq')) { S.maq = e.target.value; S.limite = 150; pintar(); } });
     raiz.addEventListener('click', function (e) {
       var m = e.target.closest('[data-dps-maq]'); if (m && !e.target.closest('.ds-fin-oculto')) { var k = m.getAttribute('data-dps-maq'); S.maq = S.maq === k ? '' : k; S.limite = 150; pintar(); var lst = raiz.querySelector('.dps-filtros'); if (lst && S.maq) lst.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      var cd = e.target.closest('[data-dps-card]'); if (cd && !e.target.closest('.ds-fin-oculto')) { abrirCard(cd.getAttribute('data-dps-card')); return; }
       var b = e.target.closest('[data-dps]'); if (!b || b.disabled) return;
       var a = b.getAttribute('data-dps');
       if (a === 'ant') { S.mes = mesAnt(S.mes); S.maq = ''; carregar(true); }
@@ -83784,6 +83809,48 @@ window.__perTxt = function (p) {
       else if (a === 'excel') excel();
       else if (a === 'imprimir') imprimir();
     });
+  }
+
+  // ---------- card aberto grande, no meio da tela ----------
+  function abrirCard(tipo) {
+    if (!S.res) return;
+    if (tipo === 'val' && !(function () { try { return sessionStorage.getItem('ds_fin_ok') === '1'; } catch (_) { return false; } })()) {
+      if (typeof window.dsPedirSenhaFinanceiro === 'function') window.dsPedirSenhaFinanceiro('Os valores de produção são protegidos por senha.').then(function (ok) { if (ok) abrirCard('val'); });
+      return;
+    }
+    var r = S.res, A = r.resumo_mes_atual || {}, B = r.resumo_mes_anterior || {};
+    var campo = tipo === 'cx' ? 'caixas_produzidas' : (tipo === 'val' ? 'valor_total_producao' : 'total_ofs');
+    var fmt = tipo === 'val' ? rs : int;
+    var tit = tipo === 'cx' ? '📦 Caixas produzidas' : (tipo === 'val' ? '💰 Valor de produção' : (tipo === 'tops' ? '🎨 Cores e tamanhos mais usados' : '🕒 Passagens no mês'));
+    var corpo = '';
+    if (tipo === 'tops') {
+      var todos = function (fn) { var m = {}; (S.lista || []).forEach(function (p) { fn(p).forEach(function (v) { m[v] = (m[v] || 0) + 1; }); }); return Object.keys(m).map(function (k) { return [k, m[k]]; }).sort(function (a, b) { return b[1] - a[1]; }); };
+      var cores = S.lista ? todos(coresDe) : (r.top_cores || []).map(function (x) { return [x.cor, x.total_ofs]; });
+      var tams = S.lista ? todos(function (p) { var t = tamDe(p); return t ? [t] : []; }) : (r.top_tamanhos || []).map(function (x) { return [x.tamanho, x.total_ofs]; });
+      var lst = function (l) { var mx = l.length ? l[0][1] : 1; return l.length ? l.slice(0, 30).map(function (x, i) { return '<div class="dpm-r"><span class="dpm-n">' + (i + 1) + 'º</span><span class="dpm-l">' + esc(x[0]) + '<i style="width:' + Math.max(3, Math.round(x[1] / mx * 100)) + '%"></i></span><b>' + int(x[1]) + '</b></div>'; }).join('') : '<em>—</em>'; };
+      corpo = '<div class="dpm-2"><div><h4>Cores (passagens)</h4>' + lst(cores) + '</div><div><h4>Tamanhos (passagens)</h4>' + lst(tams) + '</div></div>';
+    } else {
+      var maqs = (r.rows || []).slice().sort(function (x, y) { return n(y[campo]) - n(x[campo]); });
+      var ant = { total_ofs: 'ofs_mes_anterior', caixas_produzidas: 'caixas_mes_anterior', valor_total_producao: 'valor_mes_anterior' }[campo];
+      var mx = Math.max.apply(null, maqs.map(function (x) { return n(x[campo]); }).concat([1]));
+      corpo = '<div class="dpm-big"><b>' + fmt(A[campo]) + '</b><span>' + varChip(pct(A[campo], B[campo])) + ' ' + cmpTxt() + ': ' + fmt(B[campo]) + '</span></div>'
+        + '<h4>Por máquina</h4><div class="dpm-t"><div class="dpm-th"><span>Máquina</span><span>' + esc(nomeMes(S.mes)) + '</span><span>Anterior</span><span>Variação</span></div>'
+        + maqs.map(function (x) { return '<div class="dpm-tr"><span class="dpm-l"><b>' + esc(x.maquina) + '</b><i style="width:' + Math.max(3, Math.round(n(x[campo]) / mx * 100)) + '%"></i></span><span><b>' + fmt(x[campo]) + '</b></span><span>' + fmt(x[ant]) + '</span><span>' + varChip(pct(x[campo], x[ant])) + '</span></div>'; }).join('') + '</div>';
+      if (S.lista && S.lista.length) {
+        var dias = {}, ordem = [];
+        S.lista.forEach(function (p) { var d = p.__q.dia; if (!d) return; if (!dias[d]) { dias[d] = 0; ordem.push(d); } dias[d] += tipo === 'cx' ? pQtd(p) : (tipo === 'val' ? pVal(p) : 1); });
+        ordem.sort();
+        var mxd = Math.max.apply(null, ordem.map(function (d) { return dias[d]; }).concat([1]));
+        corpo += '<h4>Dia a dia</h4><div class="dpm-dias">' + ordem.map(function (d) { var dt = new Date(d + 'T12:00:00'); return '<div class="dpm-d" title="' + DSEM[dt.getDay()] + ', ' + d.split('-').reverse().join('/') + ': ' + fmt(dias[d]) + '"><i style="height:' + Math.max(3, Math.round(dias[d] / mxd * 100)) + '%"></i><span>' + d.slice(8, 10) + '</span><em>' + (tipo === 'val' ? '' : int(dias[d])) + '</em></div>'; }).join('') + '</div>';
+      }
+    }
+    var ov = document.createElement('div'); ov.className = 'dpm-ov';
+    ov.innerHTML = '<div class="dpm" role="dialog" aria-modal="true"><div class="dpm-h"><div><h3>' + tit + '</h3><small>' + esc(nomeMes(S.mes)) + (S.parcial ? ' (até o dia ' + S.diaAte + ')' : '') + '</small></div><button type="button" class="dpm-x" aria-label="Fechar">✕</button></div><div class="dpm-c">' + corpo + '</div></div>';
+    function fechar() { ov.remove(); document.removeEventListener('keydown', tec, true); }
+    function tec(e) { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } }
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('.dpm-x')) fechar(); });
+    document.addEventListener('keydown', tec, true);
+    document.body.appendChild(ov);
   }
 
   // ---------- Excel e impressão (o sistema pede a senha antes, pois mostram valores) ----------
@@ -83825,11 +83892,22 @@ window.__perTxt = function (p) {
   if (typeof window.__dsAoMudar === 'function') { try { var v = function () { vigiar(); }; v.__dsImediato = true; window.__dsAoMudar(v); } catch (_) {} }
   setInterval(vigiar, 800);
   var st = document.createElement('style'); st.id = 'dps-css';
-  st.textContent = '#page-historico-passagens>:not(#dps-root){display:none!important}'
+  st.textContent = '#page-historico-passagens>:not(#dps-root){display:none!important}body:has(#dps-root) #hist-passagens-resultado,body:has(#dps-root) #hist-relatorio-mensal-shell,body:has(#dps-root) #hist-filtros{display:none!important}'
+    + '.dps-card[data-dps-card]{cursor:pointer;transition:border-color .15s,transform .15s}.dps-card[data-dps-card]:hover{border-color:var(--accent,#3b82f6);transform:translateY(-1px)}'
+    + '.dpm-ov{position:fixed;inset:0;z-index:100500;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.dpm{width:min(860px,100%);max-height:90vh;display:flex;flex-direction:column;background:var(--surface,#16181d);color:var(--text,#e5e7eb);border:1px solid var(--border,#334155);border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5)}'
+    + '.dpm-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:18px 20px 12px;border-bottom:1px solid var(--border)}.dpm-h h3{margin:0;font-size:20px}.dpm-h small{color:var(--text2)}.dpm-x{min-width:40px;min-height:40px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:18px;cursor:pointer}'
+    + '.dpm-c{overflow:auto;padding:16px 20px 20px}.dpm-c h4{margin:18px 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}'
+    + '.dpm-big{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}.dpm-big b{font-size:38px;line-height:1.1}.dpm-big span{color:var(--text2);font-size:13px}'
+    + '.dpm-th,.dpm-tr{display:grid;grid-template-columns:minmax(0,2fr) 1fr 1fr 1fr;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--border)}.dpm-th{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text2)}.dpm-th span:not(:first-child),.dpm-tr span:not(:first-child){text-align:right}'
+    + '.dpm-l{display:flex;flex-direction:column;gap:4px;min-width:0}.dpm-l i{display:block;height:6px;border-radius:99px;background:linear-gradient(90deg,#3b82f6,#60a5fa)}'
+    + '.dpm-dias{display:flex;align-items:flex-end;gap:4px;height:170px;padding-top:18px;overflow-x:auto}.dpm-d{flex:1 0 20px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}.dpm-d i{display:block;width:70%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#60a5fa,#2563eb)}.dpm-d span{font-size:10.5px;color:var(--text2);margin-top:3px}.dpm-d em{position:absolute;top:0;font-size:9.5px;font-style:normal;color:var(--text2);white-space:nowrap}'
+    + '.dpm-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}.dpm-r{display:grid;grid-template-columns:32px minmax(0,1fr) 60px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13.5px}.dpm-r b{text-align:right}.dpm-n{color:var(--text2);font-size:12px}'
+    + '@media(max-width:640px){.dpm-2{grid-template-columns:1fr}.dpm-big b{font-size:30px}.dpm-th,.dpm-tr{grid-template-columns:minmax(0,1.6fr) 1fr 1fr 1fr;font-size:12.5px}}'
     + '#dps-root{display:flex;flex-direction:column;gap:14px;padding:4px 4px 24px;color:var(--text)}'
     + '.dps-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.dps-tit h2{margin:0;font-size:22px}.dps-tit p{margin:4px 0 0;color:var(--text2);font-size:13px}'
     + '.dps-acoes{display:flex;gap:8px;flex-wrap:wrap}.dps-b{min-height:38px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2,var(--surface));color:var(--text);font-weight:700;font-size:13px;cursor:pointer}.dps-b:hover{border-color:var(--accent,#3b82f6)}.dps-ic{min-width:38px;padding:0;font-size:16px}'
-    + '.dps-mesbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.dps-nav{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--s2,var(--surface));color:var(--text);cursor:pointer;font-size:13px}.dps-nav:disabled{opacity:.35;cursor:default}.dps-mes{font-size:17px;min-width:170px;text-align:center}.dps-chip{border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer}.dps-chip.on{border-color:rgba(22,163,74,.5);color:#16a34a;background:rgba(22,163,74,.1);cursor:default}'
+    + '.dps-mesbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.dps-mesbar .dps-acoes{margin-left:auto}.dps-nav{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--s2,var(--surface));color:var(--text);cursor:pointer;font-size:13px}.dps-nav:disabled{opacity:.35;cursor:default}.dps-mes{font-size:17px;min-width:170px;text-align:center}.dps-chip{border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer}.dps-chip.on{border-color:rgba(22,163,74,.5);color:#16a34a;background:rgba(22,163,74,.1);cursor:default}'
     + '.dps-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.5fr);gap:12px}.dps-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}.dps-card>span,.dps-tops span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}.dps-card>b{font-size:26px;line-height:1.15}.dps-card small{font-size:12px;color:var(--text2)}'
     + '.dps-tops{flex-direction:row!important;gap:16px!important}.dps-tops>div{flex:1;min-width:0}.dps-tops ol{margin:6px 0 0;padding:0;list-style:none;font-size:12.5px}.dps-tops li{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px dashed var(--border)}.dps-tops li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;text-transform:none;letter-spacing:0;color:var(--text);font-size:12.5px}'
     + '.dps-var{display:inline-block;font-weight:800;font-size:11.5px;padding:1px 7px;border-radius:99px}.dps-var.up{background:rgba(22,163,74,.15);color:#16a34a}.dps-var.down{background:rgba(220,38,38,.13);color:#dc2626}.dps-var.neu{background:rgba(148,163,184,.15);color:var(--text2)}'
