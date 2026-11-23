@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261123114148';
-const SW_RUNTIME_VERSION = '20261123114148';
+const PATCH_RUNTIME_VERSION = '20261123114353';
+const SW_RUNTIME_VERSION = '20261123114353';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -15028,7 +15028,7 @@ app.get('/api/passagens/periodo', authMiddleware, async (req, res) => {
         quantidade: qtd, valor_total: val,
         maquina: String(r.maquina || r.maquina_nome || ''), operador: String(r.operador || r.operador_nome || r.usuario || ''),
         hora_passagem: r.hora_passagem, data_passagem: String(r.data_passagem || r.hora_passagem || '').slice(0, 10),
-        status_of: o ? o.status : '', cores_impressao: o ? o.cores_impressao : null
+        status_of: o ? o.status : '', cores_impressao: o ? o.cores_impressao : null, dim_comprimento: o ? o.dim_comprimento : null, dim_largura: o ? o.dim_largura : null
       });
     });
     return res.json({ ok: true, total: out.length, passagens: out });

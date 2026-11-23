@@ -4,7 +4,7 @@
 <head>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261123114148'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261123114353'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
 function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
 function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
@@ -33994,7 +33994,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261123114148';
+      const swVersion = '20261123114353';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61481,7 +61481,7 @@ try{
 <div id="ds-boot" role="status"><div class="rd"></div><b>Carregando o sistema…</b><small id="ds-boot-msg">Só um instante.</small><button type="button" id="ds-boot-btn" hidden onclick="location.reload()">🔄 Tentar de novo</button></div>
 <script>
 (function(){
-  var SRC='/patch.js?v=20261123114148', tent=1, fim=false, erroJs='';
+  var SRC='/patch.js?v=20261123114353', tent=1, fim=false, erroJs='';
   var html=document.documentElement;
   function msg(t,botao){var m=document.getElementById('ds-boot-msg');if(m)m.textContent=t;var b=document.getElementById('ds-boot-btn');if(b)b.hidden=!botao;}
   function ok(){return !!(window.__DS_PATCH_FIM||html.getAttribute('data-ds')==='3');}
@@ -61505,7 +61505,7 @@ try{
   setTimeout(function(){if(!fim)msg('A internet está lenta, ainda carregando…',true);},40000);
 })();
 </script>
-<script src="/patch.js?v=20261123114148" onerror="window.__dsBootErroRede=true;window.__dsBootFalhou&&window.__dsBootFalhou()"></script>
+<script src="/patch.js?v=20261123114353" onerror="window.__dsBootErroRede=true;window.__dsBootFalhou&&window.__dsBootFalhou()"></script>
 <script>window.__dsBootConferir&&window.__dsBootConferir();</script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

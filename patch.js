@@ -83652,6 +83652,16 @@ window.__perTxt = function (p) {
     if (S.mes === mesAtual()) { var dh = new Date().getDate(); var ultAnt = +fa.fim.slice(8, 10); fa.fim = fa.ini.slice(0, 8) + String(Math.min(dh, ultAnt)).padStart(2, '0'); f.fim = S.mes + '-' + String(dh).padStart(2, '0'); S.parcial = true; S.diaAte = dh; }
     var chave = S.mes; if (!forcar && S.chave === chave && (S.res || S.carregando)) return;
     S.chave = chave; S.carregando = true; S.erro = ''; S.res = null; S.lista = null; S.limite = 150; pintar();
+    // 23/11: o resumo é calculado da MESMA lista mostrada embaixo — os totais sempre batem
+    var qa = get('/api/passagens/periodo?ini=' + f.ini + '&fim=' + f.fim), qb = get('/api/passagens/periodo?ini=' + fa.ini + '&fim=' + fa.fim);
+    Promise.all([qa, qb]).then(function (r) {
+      var la = (r[0] && r[0].passagens) || [], lb = (r[1] && r[1].passagens) || [];
+      if (!la.length) return legado();
+      if (S.chave !== chave) return;
+      S.lista = prepararLista(la); S.res = calcularResumo(la, lb); S.carregando = false; pintar();
+    }).catch(function () { legado(); });
+    return;
+    function legado() {
     var q1 = get('/api/maquinas/relatorio-mensal?mes=' + (+S.mes.slice(5, 7)) + '&ano=' + S.mes.slice(0, 4) + '&data_inicio=' + f.ini + '&data_fim=' + f.fim + '&anterior_data_inicio=' + fa.ini + '&anterior_data_fim=' + fa.fim);
     // lista rápida; se o mês é antigo (antes da tabela de passagens existir) usa o histórico completo
     var q2 = get('/api/passagens/periodo?ini=' + f.ini + '&fim=' + f.fim).then(function (j) {
@@ -83666,6 +83676,20 @@ window.__perTxt = function (p) {
       S.lista.sort(function (a, b) { return b.__q.ts - a.__q.ts; });
     }).catch(function (e) { if (S.chave === chave) S.erro = e.message || String(e); })
       .then(function () { if (S.chave === chave) { S.carregando = false; pintar(); } });
+    }
+  }
+  function prepararLista(l) {
+    l.forEach(function (p) { p.__q = pQuando(p); p.__busca = norm([pOF(p), pCli(p), pProd(p), pMaq(p), p.operador || p.operador_nome || ''].join(' ')); });
+    return l.sort(function (a, b) { return b.__q.ts - a.__q.ts; });
+  }
+  function coresDe(p) { var v = p.cores_impressao; if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = v.split(/[,;|/]+/); } } if (!Array.isArray(v)) return []; return v.map(function (c) { return String(c && typeof c === 'object' ? (c.nome || c.name || c.cor || '') : (c || '')).trim(); }).filter(Boolean); }
+  function tamDe(p) { var c = n(p.dim_comprimento), l = n(p.dim_largura); return c > 0 && l > 0 ? Math.trunc(c) + '×' + Math.trunc(l) : ''; }
+  function calcularResumo(la, lb) {
+    function agg(l) { var m = {}, t = { total_ofs: 0, caixas_produzidas: 0, valor_total_producao: 0 }; l.forEach(function (p) { var k = pMaq(p); var x = m[k] = m[k] || { maquina: k, total_ofs: 0, caixas_produzidas: 0, valor_total_producao: 0 }; var q = pQtd(p), v = pVal(p); x.total_ofs++; x.caixas_produzidas += q; x.valor_total_producao += v; t.total_ofs++; t.caixas_produzidas += q; t.valor_total_producao += v; }); return { m: m, t: t }; }
+    var A = agg(la), B = agg(lb);
+    var rows = Object.keys(A.m).map(function (k) { var x = A.m[k], y = B.m[k] || {}; x.ofs_mes_anterior = n(y.total_ofs); x.valor_mes_anterior = n(y.valor_total_producao); x.caixas_mes_anterior = n(y.caixas_produzidas); x.variacao_ofs_pct = pct(x.total_ofs, y.total_ofs); return x; });
+    function top(l, fn, key) { var m = {}; l.forEach(function (p) { fn(p).forEach(function (v) { m[v] = (m[v] || 0) + 1; }); }); return Object.keys(m).map(function (k) { var o = { total_ofs: m[k] }; o[key] = k; return o; }).sort(function (a, b) { return b.total_ofs - a.total_ofs; }).slice(0, 5); }
+    return { rows: rows, resumo_mes_atual: A.t, resumo_mes_anterior: B.t, top_cores: top(la, coresDe, 'cor'), top_tamanhos: top(la, function (p) { var t = tamDe(p); return t ? [t] : []; }, 'tamanho') };
   }
 
   // ---------- desenhar ----------
@@ -83685,7 +83709,7 @@ window.__perTxt = function (p) {
   function cmpTxt() { return S.parcial ? 'vs 1 a ' + S.diaAte + ' do mês anterior' : 'vs mês anterior'; }
   function htmlResumo() {
     var r = S.res || {}, a = r.resumo_mes_atual || {}, b = r.resumo_mes_anterior || {};
-    var ofs = n(r.total_geral_ofs_distintas || a.total_ofs), cx = n(a.caixas_produzidas), val = n(a.valor_total_producao);
+    var cx = n(a.caixas_produzidas), val = n(a.valor_total_producao);
     var cores = (r.top_cores || []).slice(0, 5), tams = (r.top_tamanhos || []).slice(0, 5);
     var top = function (l, k) { return l.length ? '<ol>' + l.map(function (x) { return '<li><span>' + esc(x[k]) + '</span><b>' + int(x.total_ofs) + '</b></li>'; }).join('') + '</ol>' : '<em>—</em>'; };
     return '<div class="dps-cards">'
