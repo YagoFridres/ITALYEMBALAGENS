@@ -71726,7 +71726,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (st === 'cancelada' && E.vista !== 'todas' && !vCanc) { cont.todas++; return; }
       // filtros comuns
       // 10/11: busca também pelo Nº do pedido; várias palavras = todas precisam aparecer (ex.: "ripke 4521")
-      if (q) { var _ped = (window.__dsPedMap && window.__dsPedMap[String(o.id)]) || o.num_pedido || ''; var alvo = norm([o.of, o.produto || o.prodDesc, o.cliNome || o.cliente, o.vendNome || o.vendedor, o.ref || o.referencia, _ped, _ped ? 'pedido ' + _ped : '', o.cidade_entrega].join(' ')); if (!q.split(/\s+/).filter(Boolean).every(function (t) { return alvo.indexOf(t) >= 0; })) return; }
+      if (q) { var _ped = (window.__dsPedMap && window.__dsPedMap[String(o.id)]) || o.num_pedido || ''; var alvo = norm([o.of, o.numero, o.of_num, o.produto || o.prodDesc, o.descricao, o.cliNome || o.cliente, o.clinome, o.cliente_nome, o.vendNome || o.vendedor, o.ref || o.referencia, _ped, _ped ? 'pedido ' + _ped : '', o.cidade_entrega].join(' ')); if (!q.split(/\s+/).filter(Boolean).every(function (t) { return alvo.indexOf(t) >= 0; })) return; }
       var ent = String(o.ent || o.data_entrega || '').slice(0, 10);
       if (ini && (!ent || ent < ini || ent > fim)) return;
       if (E.maquina && maqs(o).indexOf(E.maquina) < 0) return;
@@ -71977,13 +71977,88 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('click', function (ev) { if (menuAberto && !ev.target.closest('.dsc-menu') && !ev.target.closest('[data-a="menu"],[data-a="maisHead"],[data-a="colunas"]')) fecharMenu(); }, true);
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') fecharMenu(); });
 
+  // 23/11: cancelar uma ou várias OFs — inclusive CONCLUÍDAS — com confirmação mostrando o que vai ser cancelado
+  function cancelarOFsLista(lst, depois) {
+    lst = (lst || []).filter(Boolean); if (!lst.length) return;
+    var nConc = lst.filter(function (o) { return stNorm(o) === 'concluida'; }).length;
+    var ov = document.createElement('div'); ov.className = 'dsc-cf-ov';
+    ov.innerHTML = '<div class="dsc-cf" role="dialog" aria-modal="true"><h3>Cancelar ' + (lst.length === 1 ? 'a OF #' + esc(lst[0].of || lst[0].numero) : lst.length + ' OFs') + '?</h3>'
+      + '<div class="dsc-cf-l">' + lst.map(function (o) { var st = stNorm(o); return '<div><b>#' + esc(o.of || o.numero) + '</b> · ' + esc(o.cliNome || o.cliente_nome || o.clinome || '') + ' · <small>' + esc(o.produto || o.descricao || '') + '</small> <span class="dsc-cf-st ' + st + '">' + (st === 'concluida' ? 'Concluída' : st === 'producao' ? 'Em produção' : 'Em aberto') + '</span></div>'; }).join('') + '</div>'
+      + (nConc ? '<p class="dsc-cf-av">⚠ ' + (nConc === 1 ? '1 OF está concluída' : nConc + ' OFs estão concluídas') + ' — ao cancelar, sai(em) das vendas, comissões e relatórios.</p>' : '')
+      + '<label class="dsc-cf-mot">Motivo (opcional)<input type="text" maxlength="200" placeholder="Ex.: pedido cancelado pelo cliente"></label>'
+      + '<div class="dsc-cf-f"><button type="button" class="dsc-btn dsc-btn-sec" data-cf="0">Voltar</button><button type="button" class="dsc-btn dsc-btn-perigo" data-cf="1">Sim, cancelar ' + (lst.length === 1 ? 'a OF' : 'as ' + lst.length + ' OFs') + '</button></div></div>';
+    function fechar() { ov.remove(); document.removeEventListener('keydown', tec, true); }
+    function tec(e) { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } }
+    document.addEventListener('keydown', tec, true);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) return fechar();
+      var b = e.target.closest('[data-cf]'); if (!b) return;
+      if (b.getAttribute('data-cf') === '0') return fechar();
+      if (b.disabled) return; b.disabled = true; b.textContent = 'Cancelando…';
+      var mot = String((ov.querySelector('.dsc-cf-mot input') || {}).value || '').trim();
+      var usu = ''; try { usu = (window.CURRENT_USER && window.CURRENT_USER.nome) || ''; } catch (_) {}
+      var ok = 0, erros = [];
+      var seq = Promise.resolve();
+      lst.forEach(function (o) {
+        seq = seq.then(function () {
+          var t = new Date().toISOString(); var n = o.of || o.numero;
+          return window.api('PATCH', '/ofs/' + encodeURIComponent(o.id), { status: 'Cancelada', deleted_at: t }).then(function (r) {
+            if (r && r.error) throw new Error(r.error);
+            o.status = 'Cancelada'; o.deleted_at = t; ok++;
+            return window.api('POST', '/historico_acoes', { tipo_acao: 'cancelar_of', descricao: 'OF #' + n + ' cancelada' + (/conclu/i.test(String(o.__stAntes || '')) ? ' (estava concluída)' : '') + (mot ? ' — ' + mot : ''), usuario: usu || 'sistema' }).catch(function () {});
+          }).catch(function (er) { erros.push('#' + n + ': ' + (er && er.message || er)); });
+        });
+      });
+      lst.forEach(function (o) { o.__stAntes = o.status; });
+      seq.then(function () {
+        fechar();
+        if (ok) toastMsg(ok === 1 ? 'OF cancelada ✓' : ok + ' OFs canceladas ✓', 'var(--green)');
+        if (erros.length) toastMsg('Não deu para cancelar: ' + erros.join(' · '), 'var(--red)');
+        try { carregarCanc(true); } catch (_) {}
+        try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {}
+        render(); if (typeof depois === 'function') depois();
+      });
+    });
+    document.body.appendChild(ov);
+    setTimeout(function () { var c = ov.querySelector('[data-cf="0"]'); if (c) c.focus(); }, 30);
+  }
+  window.dsCancelarOFs = cancelarOFsLista;
+  if (!document.getElementById('dsc-cf-css')) { var cfc = document.createElement('style'); cfc.id = 'dsc-cf-css'; cfc.textContent = '.dsc-cf-ov{position:fixed;inset:0;z-index:2147483100;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:16px}.dsc-cf{width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--surface,#16181d);color:var(--text,#e5e7eb);border:1px solid var(--border,#334155);border-radius:16px;padding:20px;box-shadow:0 24px 64px rgba(0,0,0,.5)}.dsc-cf h3{margin:0 0 12px;font-size:18px}.dsc-cf-l{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto;font-size:14px}.dsc-cf-l>div{padding:8px 10px;border:1px solid var(--border,#334155);border-radius:10px}.dsc-cf-l small{color:var(--text2,#94a3b8)}.dsc-cf-st{float:right;font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(148,163,184,.18)}.dsc-cf-st.concluida{background:rgba(22,163,74,.2);color:#16a34a}.dsc-cf-av{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(220,38,38,.12);color:#ef4444;font-size:13.5px;font-weight:700}.dsc-cf-mot{display:flex;flex-direction:column;gap:4px;margin-top:12px;font-size:13px;color:var(--text2,#94a3b8)}.dsc-cf-mot input{min-height:40px;border-radius:10px;border:1px solid var(--border,#334155);background:var(--s2,#0f172a);color:var(--text,#e5e7eb);padding:0 12px;font-size:14px}.dsc-cf-f{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}'; document.head.appendChild(cfc); }
+
+  // 23/11: a busca também pergunta ao servidor — OFs novas (lançadas em outro computador) ou que não estavam
+  // carregadas aparecem sem precisar recarregar o sistema
+  var BS = { t: null, ult: '', seq: 0 };
+  function buscarNoServidor(txt) {
+    clearTimeout(BS.t);
+    var q = String(txt || '').trim(); if (q.length < 2) return;
+    BS.t = setTimeout(function () {
+      var toks = q.split(/\s+/).filter(Boolean).sort(function (a, b) { return b.length - a.length; });
+      var termo = toks[0] || q; var meu = ++BS.seq;
+      var h = {}; try { h.Authorization = 'Bearer ' + localStorage.getItem('token'); } catch (_) {}
+      fetch((window.API_BASE || '') + '/api/ofs?busca=' + encodeURIComponent(termo) + '&limit=400&refresh=' + Date.now(), { headers: h, cache: 'no-store' })
+        .then(function (r) { return r.json(); }).then(function (j) {
+          if (meu !== BS.seq) return;
+          var a = Array.isArray(j) ? j : (j && j.data) || []; if (!a.length) return;
+          var base = lista(); var porId = {}; base.forEach(function (o) { if (o && o.id) porId[String(o.id)] = o; });
+          var mudou = false;
+          a.forEach(function (o) {
+            if (!o || !o.id) return;
+            var n; try { n = typeof window.normalizeOF === 'function' ? Object.assign({}, o, window.normalizeOF(o) || {}) : o; } catch (_) { n = o; }
+            var ex = porId[String(o.id)];
+            if (ex) { if (String(ex.status) !== String(n.status) || String(ex.updated_at || '') !== String(n.updated_at || '')) { Object.assign(ex, n); mudou = true; } }
+            else { try { base.push(n); mudou = true; } catch (_) {} }
+          });
+          if (mudou) render();
+        }).catch(function () {});
+    }, 450);
+  }
   function cliqueAntigo(sel, txt) {
     var b = document.querySelector(sel) || Array.prototype.find.call(document.querySelectorAll('#page-pcp button'), function (x) { return txt.test(x.textContent || ''); });
     if (b) { b.click(); return true; } return false;
   }
   function ligar() {
     var busca = raiz.querySelector('.dsc-busca input'), t = null;
-    busca.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { E.busca = busca.value; E.pagina = 1; render(); }, 160); });
+    busca.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { E.busca = busca.value; E.pagina = 1; render(); buscarNoServidor(busca.value); }, 160); });
     try { busca.placeholder = 'Buscar por nº da OF, nº do pedido, cliente, produto ou vendedor'; } catch (_) {}
     busca.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { var tr = raiz.querySelector('tbody tr'); if (tr && raiz.querySelectorAll('tbody tr').length === 1) editar(tr.getAttribute('data-of')); } });
     raiz.addEventListener('change', function (ev) {
@@ -72005,11 +72080,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           var of = acharOF(n), urg = of && (sim(of.urg) || sim(of.urgente)), fech = of && /concluida|cancelada/.test(stNorm(of));
           // OF concluída ou cancelada: só o que faz sentido (alterar, clonar, imprimir)
           var conc = of && /concluida/.test(stNorm(of));
-          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]].concat(conc ? ['-', ['reabrir', 'Desfazer conclusão', IC.cancelar, 'dsc-m-perigo']] : [])
+          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]].concat(conc ? ['-', ['reabrir', 'Desfazer conclusão', IC.cancelar, 'dsc-m-perigo'], ['cancelarConc', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']] : [])
             : [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:concluir', 'Concluir', IC.avancar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir],
             ['#Produção / máquina'], ['d:passoumaq', 'Passou pela máquina', IC.avancar], ['urgente', urg ? 'Remover urgência' : 'Marcar como urgente', IC.fogo], ['d:papelcompra', 'Papel/chapa comprado', IC.vazio], ['d:movermaq', 'Mover de máquina', IC.avancar], ['d:alterardata', 'Alterar data', IC.editar], ['d:movermaqdata', 'Mover máquina + data', IC.avancar],
             ['#Ordem / prioridade'], ['d:priorizar', 'Mover para cima (priorizar)', IC.cima], ['d:adiar', 'Mover para baixo (adiar)', IC.baixo],
-            '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { if (k === 'reabrir') { if (typeof window.dsReabrirOF === 'function') window.dsReabrirOF(of, function () { try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} }); return; } acao(k, n); });
+            '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { if (k === 'cancelarConc') { cancelarOFsLista([of]); return; } if (k === 'reabrir') { if (typeof window.dsReabrirOF === 'function') window.dsReabrirOF(of, function () { try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} }); return; } acao(k, n); });
           return;
         }
         if (a === 'maisHead') {
@@ -72027,7 +72102,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (a === 'antiga') { alternarAntiga(true); return; }
         if (a === 'loteLimpar') { E.sel = {}; setSel([]); render(); return; }
         if (a === 'loteEditar') { var ks = Object.keys(E.sel); if (ks.length === 1) editar(ks[0]); return; }
-        if (a === 'loteCancelar') { setSel(Object.keys(E.sel)); try { window.cancelarOFSel(); } catch (e) { console.warn(e); } setTimeout(function () { E.sel = {}; render(); }, 1500); return; }
+        if (a === 'loteCancelar') { var lc = Object.keys(E.sel).map(function (k) { return acharOF(k); }).filter(function (o) { return o && stNorm(o) !== 'cancelada'; }); if (!lc.length) { toastMsg('Nenhuma OF para cancelar na seleção.', 'var(--yellow)'); return; } cancelarOFsLista(lc, function () { E.sel = {}; setSel([]); render(); }); return; }
         if (a === 'loteConcluir') { var idsC = Object.keys(E.sel).map(function (k) { return acharOF(k); }).filter(function (o) { return o && !/concluida|cancelada/.test(stNorm(o)); }).map(function (o) { return o.id; }); if (!idsC.length) { toastMsg('Nenhuma OF em aberto na seleção.', 'var(--yellow)'); return; } if (typeof window.dsConcluirOFs === 'function') window.dsConcluirOFs(idsC, function () { E.sel = {}; setSel([]); try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} render(); }); return; }
         if (a === 'loteFluxo') { setSel(Object.keys(E.sel)); cliqueAntigo('#pcp-batchbar button', /Aplicar fluxo/); return; }
         return;
