@@ -72041,7 +72041,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         .then(function (r) { return r.json(); }).then(function (j) {
           if (meu !== BS.seq) return;
           var a = Array.isArray(j) ? j : (j && j.data) || []; if (!a.length) return;
-          var base = lista(); var porId = {}; base.forEach(function (o) { if (o && o.id) porId[String(o.id)] = o; });
+          var base = (typeof OFs !== 'undefined' && Array.isArray(OFs)) ? OFs : (Array.isArray(window.OFs) ? window.OFs : lista()); var porId = {}; base.forEach(function (o) { if (o && o.id) porId[String(o.id)] = o; });
           var mudou = false;
           a.forEach(function (o) {
             if (!o || !o.id) return;
