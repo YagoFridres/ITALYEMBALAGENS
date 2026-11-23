@@ -9677,6 +9677,8 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         if (btnDup) {
           var idxDup = Math.max(0, Math.trunc(window._compraPapelaoNum(btnDup.getAttribute('data-ccpx-dup-item'))));
           rows.splice(idxDup + 1, 0, Object.assign({}, rows[idxDup] || window._compraPapelaoBlankItem()));
+          // 23/11: o item duplicado tem que aparecer (antes ficava escondido pelo limite de linhas visíveis)
+          overlay.dataset.ccpxVisibleRows = String(Math.max(rows.length, Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || 0)) + 1));
           renderRows(rows);
           return;
         }
