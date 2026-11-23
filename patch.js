@@ -17135,6 +17135,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   }
 
   async function _histFetchPassagensRange(range, filtros, limit) {
+    if (document.getElementById('dps-root')) return []; // 23/11: a tela nova de Passagens já carrega o que precisa
     var qs = new URLSearchParams();
     qs.set('limit', String(limit || 1000));
     qs.set('offset', '0');
@@ -17182,6 +17183,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     catch (e) { window.__histResumoFalhaTs = Date.now(); throw e; }
   }
   async function _histFetchResumoMensalBackend0(rangeAtual, rangeAnterior, filtros, ref) {
+    if (document.getElementById('dps-root')) return { ok: true, rows: [], resumo_mes_atual: {}, resumo_mes_anterior: {}, top_cores: [], top_tamanhos: [], referencia: {}, referencia_anterior: {} };
     var qs = new URLSearchParams();
     if (filtros && filtros.cliente) qs.set('cliente', filtros.cliente);
     if (filtros && filtros.maquina) qs.set('maquina', filtros.maquina);
