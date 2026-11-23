@@ -83645,10 +83645,14 @@ window.__perTxt = function (p) {
   // ---------- carregar ----------
   function carregar(forcar) {
     var f = faixa(S.mes), fa = faixa(mesAnt(S.mes));
+    // mês em andamento: compara com os mesmos dias do mês anterior (1 até hoje), senão a comparação fica injusta
+    S.parcial = false;
+    if (S.mes === mesAtual()) { var dh = new Date().getDate(); var ultAnt = +fa.fim.slice(8, 10); fa.fim = fa.ini.slice(0, 8) + String(Math.min(dh, ultAnt)).padStart(2, '0'); f.fim = S.mes + '-' + String(dh).padStart(2, '0'); S.parcial = true; S.diaAte = dh; }
     var chave = S.mes; if (!forcar && S.chave === chave && (S.res || S.carregando)) return;
     S.chave = chave; S.carregando = true; S.erro = ''; S.res = null; S.lista = null; S.limite = 150; pintar();
     var q1 = get('/api/maquinas/relatorio-mensal?mes=' + (+S.mes.slice(5, 7)) + '&ano=' + S.mes.slice(0, 4) + '&data_inicio=' + f.ini + '&data_fim=' + f.fim + '&anterior_data_inicio=' + fa.ini + '&anterior_data_fim=' + fa.fim);
     var q2 = get('/api/passagens/historico?limit=6000&offset=0&data_inicio=' + f.ini + '&data_fim=' + f.fim);
+    q1.then(function (r1) { if (S.chave !== chave || S.res) return; S.res = r1 || {}; S.carregando = false; pintar(); }).catch(function () {});
     Promise.all([q1, q2]).then(function (r) {
       if (S.chave !== chave) return;
       S.res = r[0] || {}; S.lista = Array.isArray(r[1] && r[1].passagens) ? r[1].passagens : [];
@@ -83672,6 +83676,7 @@ window.__perTxt = function (p) {
       + '<div class="dps-mesbar"><button type="button" class="dps-nav" data-dps="ant" aria-label="Mês anterior">◀</button><b class="dps-mes">' + esc(nomeMes(S.mes)) + '</b><button type="button" class="dps-nav" data-dps="prox" aria-label="Próximo mês"' + (atual ? ' disabled' : '') + '>▶</button>'
       + (atual ? '<span class="dps-chip on">Mês em andamento</span>' : '<button type="button" class="dps-chip" data-dps="hoje">Voltar ao mês atual</button>') + '</div>';
   }
+  function cmpTxt() { return S.parcial ? 'vs 1 a ' + S.diaAte + ' do mês anterior' : 'vs mês anterior'; }
   function htmlResumo() {
     var r = S.res || {}, a = r.resumo_mes_atual || {}, b = r.resumo_mes_anterior || {};
     var ofs = n(r.total_geral_ofs_distintas || a.total_ofs), cx = n(a.caixas_produzidas), val = n(a.valor_total_producao);
@@ -83697,6 +83702,7 @@ window.__perTxt = function (p) {
       }).join('') + '</div></section>';
   }
   function htmlLista() {
+    if (!S.lista) return '<section class="dps-box"><div class="dps-bh"><h3>O que passou</h3><span class="dps-sub">carregando a lista…</span></div><div class="dps-skel"></div></section>';
     var maqs = ((S.res || {}).rows || []).map(function (x) { return x.maquina; });
     (S.lista || []).forEach(function (p) { var m = pMaq(p); if (maqs.indexOf(m) < 0) maqs.push(m); });
     var l = filtrada(), mostra = l.slice(0, S.limite);
@@ -83790,7 +83796,7 @@ window.__perTxt = function (p) {
   setInterval(vigiar, 800);
   var st = document.createElement('style'); st.id = 'dps-css';
   st.textContent = '#page-historico-passagens>:not(#dps-root){display:none!important}'
-    + '#dps-root{display:flex;flex-direction:column;gap:14px;padding-bottom:24px;color:var(--text)}'
+    + '#dps-root{display:flex;flex-direction:column;gap:14px;padding:4px 4px 24px;color:var(--text)}'
     + '.dps-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.dps-tit h2{margin:0;font-size:22px}.dps-tit p{margin:4px 0 0;color:var(--text2);font-size:13px}'
     + '.dps-acoes{display:flex;gap:8px;flex-wrap:wrap}.dps-b{min-height:38px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2,var(--surface));color:var(--text);font-weight:700;font-size:13px;cursor:pointer}.dps-b:hover{border-color:var(--accent,#3b82f6)}.dps-ic{min-width:38px;padding:0;font-size:16px}'
     + '.dps-mesbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.dps-nav{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--s2,var(--surface));color:var(--text);cursor:pointer;font-size:13px}.dps-nav:disabled{opacity:.35;cursor:default}.dps-mes{font-size:17px;min-width:170px;text-align:center}.dps-chip{border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer}.dps-chip.on{border-color:rgba(22,163,74,.5);color:#16a34a;background:rgba(22,163,74,.1);cursor:default}'

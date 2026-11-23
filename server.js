@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261123113727';
-const SW_RUNTIME_VERSION = '20261123113727';
+const PATCH_RUNTIME_VERSION = '20261123113931';
+const SW_RUNTIME_VERSION = '20261123113931';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -15287,6 +15287,16 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     __dbg_hist.rows_len_antes_dedup = antesDedup;
     __dbg_hist.rows_len_depois_dedup = (Array.isArray(passagens) ? passagens.length : 0);
 
+    // 23/11: passagens de OF cancelada não contam (somem da lista igual somem do resumo)
+    try {
+      const idsOf = Array.from(new Set((Array.isArray(passagens) ? passagens : []).map((p) => String(p && p.of_id || '').trim()).filter((x) => /^[0-9a-f-]{36}$/i.test(x))));
+      const cancel = new Set();
+      for (let i = 0; i < idsOf.length; i += 300) {
+        const { data: st } = await supabase.from('ofs').select('id,status,deleted_at').in('id', idsOf.slice(i, i + 300));
+        (st || []).forEach((o) => { if (/cancel/i.test(String(o.status || ''))) cancel.add(String(o.id)); });
+      }
+      if (cancel.size) passagens = passagens.filter((p) => !cancel.has(String(p && p.of_id || '')));
+    } catch (_) {}
     try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
     const totalFull = Number((Array.isArray(passagens) ? passagens.length : 0) || 0) || 0;
     const paged = (Array.isArray(passagens) ? passagens.slice(offset, offset + limit) : []);
