@@ -71718,7 +71718,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     else if (E.periodo === '7d') { ini = hoje; fim = addDias(hoje, 7); }
     else if (E.periodo === 'mes') { ini = hoje.slice(0, 8) + '01'; fim = hoje.slice(0, 8) + '31'; }
     var cont = { abertas: 0, atrasadas: 0, urgentes: 0, producao: 0, concluidas: 0, todas: 0, canceladas: CANC.lista.length };
-    var out = [], vCanc = E.vista === 'canceladas';
+    var out = [], fora = [], vCanc = E.vista === 'canceladas';
     (vCanc ? CANC.lista : lista()).forEach(function (o) {
       if (!o || (!vCanc && o.deleted_at && o.deleted_at !== 'null')) return;
       var st = stNorm(o);
@@ -71745,8 +71745,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (st === 'concluida') cont.concluidas++;
       if (vCanc) { out.push(o); return; }
       var ok = E.vista === 'todas' || (E.vista === 'abertas' && aberta) || (E.vista === 'atrasadas' && atr) || (E.vista === 'urgentes' && urg && aberta) || (E.vista === 'producao' && st === 'producao') || (E.vista === 'concluidas' && st === 'concluida');
-      if (ok) out.push(o);
+      if (ok) out.push(o); else if (q) fora.push(o);
     });
+    // 23/11: buscando, se não tem nada nesta aba mas tem em outra (ex.: OF já concluída), mostra mesmo assim
+    if (q && !out.length && fora.length) out = fora;
     var k = E.ordem, d = E.dir;
     out.sort(function (a, b) {
       if (E.vista !== 'concluidas' && k === 'entrega') { var ua = (sim(a.urg) ? 0 : 1), ub = (sim(b.urg) ? 0 : 1); if (ua !== ub) return ua - ub; }
