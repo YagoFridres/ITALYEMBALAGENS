@@ -82549,7 +82549,7 @@ window.__perTxt = function (p) {
   // ---------- janela de lançamento (vários fornecedores, sem motivo, responsável automático) ----------
   var M = { tipo: 'entrada', itens: [] };
   function abrirLancamento(tipo, ids) {
-    M.tipo = tipo === 'saida' ? 'saida' : 'entrada'; M.itens = [];
+    M.tipo = tipo === 'saida' ? 'saida' : 'entrada'; M.itens = []; M.nf = ''; M.rkg = 0;
     var corpo = ''
       + '<div class="dmv-m">'
       + '<div class="dmv-tipo"><button type="button" class="dmv-aba" data-dmvm-tipo="entrada">📥 Entrada</button><button type="button" class="dmv-aba" data-dmvm-tipo="saida">📤 Saída</button></div>'
@@ -82557,6 +82557,8 @@ window.__perTxt = function (p) {
       + '<label><span>Responsável</span><input id="dmvm-resp" class="dmv-in" type="text" value="' + esc(S.usuario) + '" placeholder="Carregando…"></label>'
       + '<label class="dmvm-so-ent"><span>Placa do caminhão (opcional)</span><input id="dmvm-placa" class="dmv-in" type="text" placeholder="ABC1D23"></label>'
       + '<label class="dmvm-so-sai"><span>OF (opcional)</span><input id="dmvm-of" class="dmv-in" type="text" placeholder="Nº da OF"></label>'
+      + '<label class="dmvm-so-ent"><span>Nº da NF — vale para todos os itens</span><input id="dmvm-nf" class="dmv-in" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 125749"></label>'
+      + '<label class="dmvm-so-ent"><span>R$ por kg da nota (opcional) — calcula o valor de todas</span><input id="dmvm-rkg" class="dmv-in" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 7,10"></label>'
       + '<label class="dmv-mfull"><span>Observação (opcional)</span><input id="dmvm-obs" class="dmv-in" type="text"></label></div>'
       + '<div class="dmv-busca-w"><label><span>Adicionar chapa — busque por qualquer coisa (ex.: <b>fcm07 1660</b>, <b>adami 2170</b>, <b>retalho</b>)</span><input id="dmvm-busca" class="dmv-in" type="search" autocomplete="off" placeholder="Digite e escolha na lista (pode misturar fornecedores)"></label></div>'
       + '<div id="dmvm-itens" class="dmvm-itens"></div>'
@@ -82570,7 +82572,12 @@ window.__perTxt = function (p) {
     var b = document.getElementById('dmvm-busca');
     if (b) { b.addEventListener('input', function () { mostrarSug(b); }); b.addEventListener('focus', function () { if (b.value) mostrarSug(b); }); b.addEventListener('keydown', teclaSug); }
     var sv = document.getElementById('dmvm-salvar'); if (sv) sv.onclick = salvar;
+    // 23/11: dados da nota preenchidos uma vez só (como no checklist de recebimento)
+    var nfG = document.getElementById('dmvm-nf'); if (nfG) nfG.addEventListener('input', function () { M.nf = String(nfG.value || '').trim(); document.querySelectorAll('#dmvm-itens [data-k="nf"]').forEach(function (x) { x.placeholder = M.nf ? 'igual à nota: ' + M.nf : 'Nº da nota'; }); });
+    var rk = document.getElementById('dmvm-rkg'); if (rk) rk.addEventListener('input', function () { M.rkg = n(rk.value) > 0 ? n(rk.value) : 0; aplicarRkg(); pintarItens(); });
   }
+  function vuPorKg(c) { var k = kgUn(c); return M.rkg > 0 && k > 0 ? Math.round(k * M.rkg * 10000) / 10000 : null; }
+  function aplicarRkg() { M.itens.forEach(function (it) { if (it.vuEd) return; var v = vuPorKg(it.c); it.vu = v != null ? v : (Number(it.c.valor_unitario || 0) || ''); }); }
   window.dsMovLancar = abrirLancamento;
   function setTipo(t) {
     M.tipo = t; var md = document.getElementById('dmv-modal'); if (!md) return;
@@ -82590,15 +82597,22 @@ window.__perTxt = function (p) {
     SUG.lista = l.slice(0, 40); SUG.idx = 0;
     var r = inp.getBoundingClientRect(), d = document.createElement('div'); d.className = 'dmv-sug';
     d.style.left = r.left + 'px'; d.style.top = (r.bottom + 4) + 'px'; d.style.width = Math.max(r.width, 300) + 'px'; d.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 16) + 'px';
-    d.innerHTML = SUG.lista.length ? SUG.lista.map(function (c, i) { var ja = M.itens.some(function (x) { return x.c.id === c.id; }); return '<div class="dmv-sug-i' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" style="--fc:' + corForn(c.fornecedor) + '"><span class="dmv-dot"></span><b>' + esc(c.fornecedor || '—') + '</b> ' + esc(rotuloChapa(c)) + (ehRetalho(c) ? ' <span class="dmv-tag aj">Retalho</span>' : '') + (c.gramatura ? ' <small>' + esc(c.gramatura) + ' g</small>' : '') + '<em>saldo ' + num(saldoChapa(c)) + (ja ? ' · já na lista' : '') + '</em></div>'; }).join('') + (l.length > 40 ? '<div class="dmv-sug-mais">Mostrando 40 de ' + l.length + ' — digite mais para filtrar</div>' : '') : '<div class="dmv-sug-mais">Nenhuma chapa encontrada' + (M.tipo === 'saida' ? ' com saldo' : '') + '</div>';
-    d.addEventListener('mousedown', function (e) { var it = e.target.closest('.dmv-sug-i'); if (!it) return; e.preventDefault(); escolher(Number(it.getAttribute('data-i'))); });
+    var novas = SUG.lista.filter(function (c) { return !M.itens.some(function (x) { return x.c.id === c.id; }); });
+    d.innerHTML = (novas.length > 1 ? '<div class="dmv-sug-i dmv-sug-todas" data-todas="1" style="--fc:#22c55e"><b>＋ Adicionar todas as ' + novas.length + ' encontradas</b><em>de uma vez — depois é só pôr as quantidades</em></div>' : '') + (SUG.lista.length ? SUG.lista.map(function (c, i) { var ja = M.itens.some(function (x) { return x.c.id === c.id; }); return '<div class="dmv-sug-i' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" style="--fc:' + corForn(c.fornecedor) + '"><span class="dmv-dot"></span><b>' + esc(c.fornecedor || '—') + '</b> ' + esc(rotuloChapa(c)) + (ehRetalho(c) ? ' <span class="dmv-tag aj">Retalho</span>' : '') + (c.gramatura ? ' <small>' + esc(c.gramatura) + ' g</small>' : '') + '<em>saldo ' + num(saldoChapa(c)) + (ja ? ' · já na lista' : '') + '</em></div>'; }).join('') + (l.length > 40 ? '<div class="dmv-sug-mais">Mostrando 40 de ' + l.length + ' — digite mais para filtrar</div>' : '') : '<div class="dmv-sug-mais">Nenhuma chapa encontrada' + (M.tipo === 'saida' ? ' com saldo' : '') + '</div>');
+    d.addEventListener('mousedown', function (e) { var it = e.target.closest('.dmv-sug-i'); if (!it) return; e.preventDefault(); if (it.hasAttribute('data-todas')) return adicionarTodas(novas); escolher(Number(it.getAttribute('data-i'))); });
     document.body.appendChild(d); SUG.el = d;
   }
   function teclaSug(e) {
     if (!SUG.el) { if (e.key === 'Enter') e.preventDefault(); return; }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); SUG.idx = Math.max(0, Math.min(SUG.lista.length - 1, SUG.idx + (e.key === 'ArrowDown' ? 1 : -1))); SUG.el.querySelectorAll('.dmv-sug-i').forEach(function (x, i) { x.classList.toggle('on', i === SUG.idx); if (i === SUG.idx) x.scrollIntoView({ block: 'nearest' }); }); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); SUG.idx = Math.max(0, Math.min(SUG.lista.length - 1, SUG.idx + (e.key === 'ArrowDown' ? 1 : -1))); SUG.el.querySelectorAll('.dmv-sug-i[data-i]').forEach(function (x, i) { x.classList.toggle('on', i === SUG.idx); if (i === SUG.idx) x.scrollIntoView({ block: 'nearest' }); }); }
     else if (e.key === 'Enter') { e.preventDefault(); escolher(SUG.idx); }
     else if (e.key === 'Escape') { fecharSug(); }
+  }
+  function adicionarTodas(l) {
+    fecharSug(); var b = document.getElementById('dmvm-busca'); if (b) b.value = '';
+    l.forEach(function (c) { if (!M.itens.some(function (x) { return x.c.id === c.id; })) addItem(c); }); pintarItens();
+    toast(l.length + ' chapa(s) adicionada(s) — agora coloque as quantidades', 'var(--green)');
+    setTimeout(function () { var q = document.querySelector('#dmvm-itens [data-k="q"][data-id="' + l[0].id + '"]'); if (q) { q.focus(); } }, 30);
   }
   function escolher(i) {
     var c = SUG.lista[i]; if (!c) return; fecharSug();
@@ -82607,7 +82621,7 @@ window.__perTxt = function (p) {
     if (!ja) addItem(c); pintarItens();
     setTimeout(function () { var q = document.querySelector('#dmvm-itens [data-k="q"][data-id="' + c.id + '"]'); if (q) { q.focus(); q.select(); } }, 30);
   }
-  function addItem(c) { M.itens.push({ c: c, q: '', nf: '', vu: Number(c.valor_unitario || 0) || '' }); }
+  function addItem(c) { var v = vuPorKg(c); M.itens.push({ c: c, q: '', nf: '', vu: v != null ? v : (Number(c.valor_unitario || 0) || '') }); }
   document.addEventListener('scroll', function (e) { if (SUG.el && !(e.target && e.target.closest && e.target.closest('.dmv-sug'))) fecharSug(); }, true);
   document.addEventListener('mousedown', function (e) { if (SUG.el && !e.target.closest('.dmv-sug') && e.target.id !== 'dmvm-busca') fecharSug(); });
 
@@ -82619,7 +82633,7 @@ window.__perTxt = function (p) {
       var c = it.c, s = saldoChapa(c), q = Math.trunc(n(it.q)), depois = ent ? s + q : s - q;
       return '<div class="dmvm-it" style="--fc:' + corForn(c.fornecedor) + '"><div class="dmvm-nome"><span class="dmv-dot"></span><b>' + esc(c.fornecedor || '—') + '</b> ' + esc(rotuloChapa(c)) + (ehRetalho(c) ? ' <span class="dmv-tag aj">Retalho</span>' : '') + '<small class="dmvm-vp">' + rs(vuChapa(c)) + '/un · ' + (kgUn(c) ? Number(kgUn(c)).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) + ' kg/un' : 'sem peso') + '</small><small class="dmvm-sd">Saldo agora: <b>' + num(s) + '</b>' + (q ? ' → depois: <b class="' + (depois < 0 ? 'dmv-bad' : '') + '">' + num(depois) + '</b>' : '') + '</small></div>'
         + '<label><span>Quantidade</span><input class="dmv-in" data-k="q" data-id="' + esc(c.id) + '" data-i="' + i + '" type="number" min="1" inputmode="numeric" value="' + esc(it.q) + '"></label>'
-        + (ent ? '<label><span>NF</span><input class="dmv-in" data-k="nf" data-i="' + i + '" type="text" value="' + esc(it.nf) + '" placeholder="Nº da nota"></label><label><span>Valor un. (R$)</span><input class="dmv-in" data-k="vu" data-i="' + i + '" type="text" inputmode="decimal" value="' + esc(it.vu === '' ? '' : String(it.vu).replace('.', ',')) + '"></label>' : '')
+        + (ent ? '<label><span>NF' + (M.nf ? ' <i style="font-weight:500;opacity:.75">(se for outra)</i>' : '') + '</span><input class="dmv-in" data-k="nf" data-i="' + i + '" type="text" value="' + esc(it.nf) + '" placeholder="' + esc(M.nf ? 'igual à nota: ' + M.nf : 'Nº da nota') + '"></label><label><span>Valor un. (R$)</span><input class="dmv-in" data-k="vu" data-i="' + i + '" type="text" inputmode="decimal" value="' + esc(it.vu === '' ? '' : String(it.vu).replace('.', ',')) + '"></label>' : '')
         + '<button type="button" class="dmv-b dmv-mini dmv-del" data-dmvm-rm="' + i + '" title="Tirar da lista">✕</button></div>';
     }).join('');
     resumoModal();
@@ -82633,7 +82647,7 @@ window.__perTxt = function (p) {
   document.addEventListener('input', function (e) {
     var t = e.target; if (!t.closest || !t.closest('#dmvm-itens')) return;
     var i = Number(t.getAttribute('data-i')), k = t.getAttribute('data-k'); if (!M.itens[i] || !k) return;
-    M.itens[i][k] = t.value;
+    M.itens[i][k] = t.value; if (k === 'vu') M.itens[i].vuEd = true;
     if (k !== 'q') resumoModal();
     if (k === 'q') { var c = M.itens[i].c, s = saldoChapa(c), q = Math.trunc(n(t.value)), d = M.tipo === 'entrada' ? s + q : s - q; var sm = t.closest('.dmvm-it').querySelector('.dmvm-nome small.dmvm-sd'); if (sm) sm.innerHTML = 'Saldo agora: <b>' + num(s) + '</b>' + (q ? ' → depois: <b class="' + (d < 0 ? 'dmv-bad' : '') + '">' + num(d) + '</b>' : ''); resumoModal(); }
   });
@@ -82658,7 +82672,7 @@ window.__perTxt = function (p) {
       var fs = {}; itens.forEach(function (it) { fs[String(it.c.fornecedor || '').trim()] = 1; }); var fk = Object.keys(fs);
       url = '/api/chapas/entrada-lote';
       body = { data_entrada: data, fornecedor: fk.length === 1 ? fk[0] : '', responsavel: resp, observacoes: obs, placa_veiculo: String((document.getElementById('dmvm-placa') || {}).value || '').trim(), emp_id: String(itens[0].c.emp_id || 'E1'),
-        itens: itens.map(function (it) { return { chapa_id: it.c.id, quantidade: Math.trunc(n(it.q)), valor_unitario: it.vu === '' ? 0 : n(it.vu), nf: String(it.nf || '').trim(), emp_id: it.c.emp_id || undefined, observacoes: '' }; }) };
+        itens: itens.map(function (it) { return { chapa_id: it.c.id, quantidade: Math.trunc(n(it.q)), valor_unitario: it.vu === '' ? 0 : n(it.vu), nf: String(it.nf || '').trim() || String((document.getElementById('dmvm-nf') || {}).value || M.nf || '').trim(), emp_id: it.c.emp_id || undefined, observacoes: '' }; }) };
     } else {
       url = '/api/chapas/saida-lote';
       body = { data_saida: data, motivo: '', responsavel: resp, of_numero: String((document.getElementById('dmvm-of') || {}).value || '').trim(), observacoes: obs, emp_id: '', itens: itens.map(function (it) { return { chapa_id: it.c.id, quantidade: Math.trunc(n(it.q)) }; }) };
