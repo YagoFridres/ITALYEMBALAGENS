@@ -83996,6 +83996,13 @@ window.__perTxt = function (p) {
   // o botão Salvar não fica com o foco (Enter/Espaço depois não "clicam" nele de novo)
   document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#btn-salvar-of-rapida'); if (b) setTimeout(function () { try { b.blur(); } catch (_) {} }, 0); }, true);
 
+  function digest(body) {
+    var o = typeof body === 'string' ? JSON.parse(body) : (body || {});
+    var fora = /^(numero|of|of_num|numero_of|ofnum|confirmarduplicata|confirmar_duplicata|forcar|id|created_at|updated_at|criado_em|atualizado_em|ts|_ts|timestamp|data_criacao|hora_criacao|client_ts)$/i;
+    function norm(v) { if (Array.isArray(v)) return v.map(norm); if (v && typeof v === 'object') { var r = {}; Object.keys(v).sort().forEach(function (k) { if (!fora.test(k)) r[k] = norm(v[k]); }); return r; } return v; }
+    var t = JSON.stringify(norm(o)), h = 5381; for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+    return h.toString(36) + t.length.toString(36);
+  }
   // chave no envio da criação
   var f0 = window.fetch;
   window.fetch = function (input, init) {
@@ -84004,7 +84011,9 @@ window.__perTxt = function (p) {
     var path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
     if (met !== 'POST' || path !== '/api/ofs' || !modal()) return f0.apply(this, arguments);
     if (!S.key) novaChave();
-    var k = S.key + (window.__OF_RAPIDA_FORCAR_DUPLICATA === true ? '-dup' + Date.now().toString(36) : '');
+    // a chave inclui o CONTEÚDO da OF: dados diferentes = OF nova, sempre (só o mesmo envio repetido é reaproveitado)
+    var dig = ''; try { dig = digest(init && init.body); } catch (_) { dig = Date.now().toString(36); }
+    var k = S.key + '-' + dig + (window.__OF_RAPIDA_FORCAR_DUPLICATA === true ? '-dup' + Date.now().toString(36) : '');
     init = Object.assign({}, init || {});
     try { var h = new Headers(init.headers || {}); h.set('X-OF-Idem', k); init.headers = h; } catch (_) {}
     var p = f0.call(this, input, init);
