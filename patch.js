@@ -84013,7 +84013,10 @@ window.__perTxt = function (p) {
     if (!S.key) novaChave();
     // a chave inclui o CONTEÚDO da OF: dados diferentes = OF nova, sempre (só o mesmo envio repetido é reaproveitado)
     var dig = ''; try { dig = digest(init && init.body); } catch (_) { dig = Date.now().toString(36); }
+    S.envio = (S.envio || 0) + 1;
     var k = S.key + '-' + dig + (window.__OF_RAPIDA_FORCAR_DUPLICATA === true ? '-dup' + Date.now().toString(36) : '');
+    // itens adicionais (+ Mais itens) são OFs próprias enviadas logo depois da principal: nunca são reaproveitadas
+    if (S.envio > 1) k += '-item' + S.envio + '-' + Date.now().toString(36);
     init = Object.assign({}, init || {});
     try { var h = new Headers(init.headers || {}); h.set('X-OF-Idem', k); init.headers = h; } catch (_) {}
     var p = f0.call(this, input, init);
@@ -84021,7 +84024,7 @@ window.__perTxt = function (p) {
       if (!r || !r.ok) return;
       S.salvou = true;
       if (r.headers && r.headers.get('X-OF-Idem-Replay')) {
-        r.clone().json().then(function (j) { var d = (j && j.data) || {}; var n = d.numero || d.of || ''; try { window.toast('ℹ️ Esta OF já estava salva' + (n ? ' (#' + n + ')' : '') + ' — não foi criada de novo.', '#0ea5e9', 6000); } catch (_) {} }).catch(function () {});
+        r.clone().json().then(function (j) { var d = (j && j.data) || {}; var n = d.numero || d.of || ''; try { window.toast('ℹ️ Esta OF já tinha sido salva' + (n ? ' (#' + n + ')' : '') + ' — nada foi duplicado.', '#0ea5e9', 6000); } catch (_) {} }).catch(function () {});
         log({ ev: 'replay', k: k });
       }
     }, function () {});
@@ -84086,7 +84089,7 @@ window.__perTxt = function (p) {
         if (o === 'teclado') { try { window.toast('Para salvar a OF clique no botão ⚡ Salvar OF.', '#0ea5e9', 3500); } catch (_) {} return { ok: false, __bloqueado: true }; }
         return pergunta().then(function (sim) { if (!sim) return { ok: false, __bloqueado: true }; window.__dsOfrPermitir = Date.now(); return g.apply(self, args); });
       }
-      window.__dsOfrPermitir = 0;
+      window.__dsOfrPermitir = 0; S.envio = 0;
       if (window.__dsOfrTesteSemSalvar) { log({ ev: 'teste-ok' }); return { ok: true, __teste: true }; }
       // trava única: um salvamento por vez (antes ela era desfeita a cada segundo pelo dispatcher)
       if (window.__P1_OF_SALVANDO__ && Date.now() - (S.travaTs || 0) < 60000) { try { window.toast('⏳ Já salvando esta OF... aguarde.', 'rgba(245,158,11,.95)', 2500); } catch (_) {} return { ok: false, error: 'ja_salvando', __busy: true }; }
