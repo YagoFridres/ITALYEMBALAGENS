@@ -83683,9 +83683,9 @@ window.__perTxt = function (p) {
     var cores = (r.top_cores || []).slice(0, 5), tams = (r.top_tamanhos || []).slice(0, 5);
     var top = function (l, k) { return l.length ? '<ol>' + l.map(function (x) { return '<li><span>' + esc(x[k]) + '</span><b>' + int(x.total_ofs) + '</b></li>'; }).join('') + '</ol>' : '<em>—</em>'; };
     return '<div class="dps-cards">'
-      + '<div class="dps-card"><span>Passagens no mês</span><b>' + int(a.total_ofs) + '</b><small>' + varChip(pct(a.total_ofs, b.total_ofs)) + ' vs mês anterior (' + int(b.total_ofs) + ')</small></div>'
-      + '<div class="dps-card"><span>Caixas produzidas</span><b>' + int(cx) + '</b><small>' + varChip(pct(cx, b.caixas_produzidas)) + ' vs mês anterior</small></div>'
-      + '<div class="dps-card"><span>Valor de produção</span><b class="ds-fin-oculto">' + rs(val) + '</b><small>' + varChip(pct(val, b.valor_total_producao)) + ' vs mês anterior</small></div>'
+      + '<div class="dps-card"><span>Passagens no mês</span><b>' + int(a.total_ofs) + '</b><small>' + varChip(pct(a.total_ofs, b.total_ofs)) + ' ' + cmpTxt() + ' (' + int(b.total_ofs) + ')</small></div>'
+      + '<div class="dps-card"><span>Caixas produzidas</span><b>' + int(cx) + '</b><small>' + varChip(pct(cx, b.caixas_produzidas)) + ' ' + cmpTxt() + '</small></div>'
+      + '<div class="dps-card"><span>Valor de produção</span><b class="ds-fin-oculto">' + rs(val) + '</b><small>' + varChip(pct(val, b.valor_total_producao)) + ' ' + cmpTxt() + '</small></div>'
       + '<div class="dps-card dps-tops"><div><span>Cores mais usadas</span>' + top(cores, 'cor') + '</div><div><span>Tamanhos mais usados</span>' + top(tams, 'tamanho') + '</div></div>'
       + '</div>';
   }
