@@ -83651,7 +83651,11 @@ window.__perTxt = function (p) {
     var chave = S.mes; if (!forcar && S.chave === chave && (S.res || S.carregando)) return;
     S.chave = chave; S.carregando = true; S.erro = ''; S.res = null; S.lista = null; S.limite = 150; pintar();
     var q1 = get('/api/maquinas/relatorio-mensal?mes=' + (+S.mes.slice(5, 7)) + '&ano=' + S.mes.slice(0, 4) + '&data_inicio=' + f.ini + '&data_fim=' + f.fim + '&anterior_data_inicio=' + fa.ini + '&anterior_data_fim=' + fa.fim);
-    var q2 = get('/api/passagens/historico?limit=6000&offset=0&data_inicio=' + f.ini + '&data_fim=' + f.fim);
+    // lista rápida; se o mês é antigo (antes da tabela de passagens existir) usa o histórico completo
+    var q2 = get('/api/passagens/periodo?ini=' + f.ini + '&fim=' + f.fim).then(function (j) {
+      if (j && Array.isArray(j.passagens) && j.passagens.length) return j;
+      return get('/api/passagens/historico?limit=6000&offset=0&data_inicio=' + f.ini + '&data_fim=' + f.fim);
+    }).catch(function () { return get('/api/passagens/historico?limit=6000&offset=0&data_inicio=' + f.ini + '&data_fim=' + f.fim); });
     q1.then(function (r1) { if (S.chave !== chave || S.res) return; S.res = r1 || {}; S.carregando = false; pintar(); }).catch(function () {});
     Promise.all([q1, q2]).then(function (r) {
       if (S.chave !== chave) return;

@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261123113943';
-const SW_RUNTIME_VERSION = '20261123113943';
+const PATCH_RUNTIME_VERSION = '20261123114135';
+const SW_RUNTIME_VERSION = '20261123114135';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -14991,7 +14991,51 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   };
 }
 
-app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
+// 23/11: lista RÁPIDA das passagens de um período (tabela passagens_maquina + dados da OF), sem OFs canceladas.
+// Usada pela tela nova de Passagens. Para meses antigos (antes da tabela existir) a tela cai no /historico.
+app.get('/api/passagens/periodo', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const ini = String(req.query.ini || '').slice(0, 10), fim = String(req.query.fim || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini) || !/^\d{4}-\d{2}-\d{2}$/.test(fim)) return res.status(400).json({ ok: false, error: 'Período inválido' });
+    const fimMais = new Date(fim + 'T12:00:00Z'); fimMais.setUTCDate(fimMais.getUTCDate() + 1);
+    const de = ini + 'T00:00:00-03:00', ate = fimMais.toISOString().slice(0, 10) + 'T00:00:00-03:00';
+    let rows = [];
+    for (let off = 0; off < 30000; off += 1000) {
+      const { data, error } = await supabase.from('passagens_maquina').select('*').gte('hora_passagem', de).lt('hora_passagem', ate).order('hora_passagem', { ascending: false }).range(off, off + 999);
+      if (error) throw error;
+      rows = rows.concat(data || []);
+      if (!data || data.length < 1000) break;
+    }
+    const ids = Array.from(new Set(rows.map((r) => String(r.of_id || '')).filter((x) => /^[0-9a-f-]{36}$/i.test(x))));
+    const ofs = {};
+    for (let i = 0; i < ids.length; i += 300) {
+      const { data } = await supabase.from('ofs').select('id,of,numero,status,deleted_at,cliNome,clinome,cliente_nome,descricao,qtd,qtd_pedida,qtd_produzida,valor_total,valor_venda,valor_unitario,cores_impressao,dim_comprimento,dim_largura,empresa_id,emp_id').in('id', ids.slice(i, i + 300));
+      (data || []).forEach((o) => { ofs[String(o.id)] = o; });
+    }
+    const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const out = [];
+    rows.forEach((r) => {
+      const o = ofs[String(r.of_id || '')] || null;
+      if (o && /cancel/i.test(String(o.status || ''))) return;
+      const qtd = num(r.quantidade != null ? r.quantidade : (o ? (num(o.qtd_produzida) || num(o.qtd) || num(o.qtd_pedida)) : 0));
+      let val = o ? (num(o.valor_total) || num(o.valor_venda)) : 0;
+      if (!val && o) val = num(o.valor_unitario) * qtd;
+      out.push({
+        id: r.id, of_id: r.of_id, of_numero: String(r.of_numero || (o && (o.numero || o.of)) || ''),
+        cliente_nome: String((o && (o.cliNome || o.clinome || o.cliente_nome)) || r.cliente || r.cliente_nome || ''),
+        produto: String((o && o.descricao) || r.produto || ''),
+        quantidade: qtd, valor_total: val,
+        maquina: String(r.maquina || r.maquina_nome || ''), operador: String(r.operador || r.operador_nome || r.usuario || ''),
+        hora_passagem: r.hora_passagem, data_passagem: String(r.data_passagem || r.hora_passagem || '').slice(0, 10),
+        status_of: o ? o.status : '', cores_impressao: o ? o.cores_impressao : null
+      });
+    });
+    return res.json({ ok: true, total: out.length, passagens: out });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+});
+
+app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
   try { 
     const { cliente, maquina, data_inicio, data_fim, mes, ano, meses } = req.query; 
     // #region debug-point C:passagens-historico-entry
