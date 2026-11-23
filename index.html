@@ -4,7 +4,7 @@
 <head>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261119174054'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261123083234'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
 function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
 function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
@@ -1719,7 +1719,7 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
 </head>
 <body data-device="desktop">
 
-<div id="device-screen" class="show">
+<div id="device-screen">
   <div class="dev-shell">
     <div class="dev-logo-wrap">
       <div class="dev-logo-main">PCP / ERP PRO</div>
@@ -2360,12 +2360,29 @@ function enableMobileMode(){
 }
 
 function escolherDispositivo(tipo){
-  aplicarDispositivo(tipo);
+  // 23/11: nunca pode travar nesta tela — mesmo que algo dê erro, ela fecha e segue para o login/sistema
+  try{ aplicarDispositivo(tipo); }catch(e){ try{ localStorage.setItem('erp_device', String(tipo||'desktop')); }catch(_){} }
   const ds=document.getElementById('device-screen');
   const ls=document.getElementById('login-screen');
-  if(ds) ds.classList.remove('show');
-  if(ls && !CURRENT_USER) ls.style.display='flex';
+  if(ds){ ds.classList.remove('show'); ds.style.display='none'; }
+  try{ if(ls && !CURRENT_USER) ls.style.display='flex'; }catch(e){ if(ls) ls.style.display='flex'; }
+  setTimeout(function(){ try{ window.__dsGarantirTela && window.__dsGarantirTela(); }catch(_){} }, 600);
 }
+// 23/11: depois de sair da escolha de dispositivo, sempre tem que aparecer o login OU o sistema — nunca tela vazia
+window.__dsGarantirTela = function(){
+  try{
+    const ds=document.getElementById('device-screen'), ls=document.getElementById('login-screen');
+    if(ds && ds.classList.contains('show')) return;
+    const loginVis = ls && getComputedStyle(ls).display !== 'none';
+    const pagVis = Array.prototype.some.call(document.querySelectorAll('.page'), function(p){ return p.offsetParent !== null && p.getBoundingClientRect().height > 40; });
+    if(!loginVis && !pagVis){
+      let user=null; try{ user=JSON.parse(localStorage.getItem('auth_user')||'null'); }catch(_){}
+      if(!user || !window.CURRENT_USER){ if(ls) ls.style.display='flex'; }
+      else if(!sessionStorage.getItem('ds_garantir_reload')){ sessionStorage.setItem('ds_garantir_reload','1'); location.reload(); }
+      else if(ls){ ls.style.display='flex'; }
+    }
+  }catch(e){}
+};
 
 function applyMobileAccessRules(){ return; }
 
@@ -33663,8 +33680,8 @@ function aplicarDispositivo(device){
 function trocarDispositivo(){
   const ds=document.getElementById('device-screen');
   const ls=document.getElementById('login-screen');
-  closeMobMenu();
-  if(ds) ds.classList.add('show');
+  try{ closeMobMenu(); }catch(e){}
+  if(ds){ ds.style.display=''; ds.classList.add('show'); }
   if(ls) ls.style.display='none';
 }
 function toggleMobMenu(){
@@ -33793,14 +33810,17 @@ function initDevice(){
   const saved=(function(){try{return localStorage.getItem('erp_device');}catch(e){return null;}})();
   const ds=document.getElementById('device-screen');
   const ls=document.getElementById('login-screen');
-  if(saved){
-    aplicarDispositivo(saved);
-    if(ds) ds.classList.remove('show');
-    if(ls && !CURRENT_USER) ls.style.display='flex';
-  }else{
-    if(ds) ds.classList.add('show');
-    if(ls) ls.style.display='none';
+  // 23/11: não pergunta mais o dispositivo — escolhe sozinho pelo tamanho da tela (dá para trocar em "Alterar dispositivo")
+  let dev = saved;
+  if(!dev){
+    const w = Math.min(window.innerWidth||0, (screen && screen.width) || 99999);
+    const touch = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||'');
+    dev = (w < 768 || (touch && w < 820)) ? 'mobile' : ((touch && w < 1100) ? 'tablet' : 'desktop');
+    try{ localStorage.setItem('erp_device', dev); }catch(e){}
   }
+  try{ aplicarDispositivo(dev); }catch(e){}
+  if(ds){ ds.classList.remove('show'); }
+  try{ if(ls && !CURRENT_USER) ls.style.display='flex'; }catch(e){ if(ls) ls.style.display='flex'; }
   try{ applyMobileAccessRules(); }catch(e){}
   if(!window._mabBound){
     window._mabBound=1;
@@ -33974,7 +33994,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261119174054';
+      const swVersion = '20261123083234';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61461,7 +61481,7 @@ try{
 <div id="ds-boot" role="status"><div class="rd"></div><b>Carregando o sistema…</b><small id="ds-boot-msg">Só um instante.</small><button type="button" id="ds-boot-btn" hidden onclick="location.reload()">🔄 Tentar de novo</button></div>
 <script>
 (function(){
-  var SRC='/patch.js?v=20261119174054', tent=1, fim=false, erroJs='';
+  var SRC='/patch.js?v=20261123083234', tent=1, fim=false, erroJs='';
   var html=document.documentElement;
   function msg(t,botao){var m=document.getElementById('ds-boot-msg');if(m)m.textContent=t;var b=document.getElementById('ds-boot-btn');if(b)b.hidden=!botao;}
   function ok(){return !!(window.__DS_PATCH_FIM||html.getAttribute('data-ds')==='3');}
@@ -61485,7 +61505,7 @@ try{
   setTimeout(function(){if(!fim)msg('A internet está lenta, ainda carregando…',true);},40000);
 })();
 </script>
-<script src="/patch.js?v=20261119174054" onerror="window.__dsBootErroRede=true;window.__dsBootFalhou&&window.__dsBootFalhou()"></script>
+<script src="/patch.js?v=20261123083234" onerror="window.__dsBootErroRede=true;window.__dsBootFalhou&&window.__dsBootFalhou()"></script>
 <script>window.__dsBootConferir&&window.__dsBootConferir();</script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
