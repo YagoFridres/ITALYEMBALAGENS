@@ -32724,7 +32724,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         window.__salvarOfRapida_final_fn__ = finalFn;
         window.salvarOfRapida = finalFn;
         window.__salvarOfRapida_final_definida__ = true;
-      } else if (window.__salvarOfRapida_final_fn__ && window.salvarOfRapida !== window.__salvarOfRapida_final_fn__) {
+      } else if (window.__salvarOfRapida_final_fn__ && window.salvarOfRapida !== window.__salvarOfRapida_final_fn__ && !(window.salvarOfRapida && window.salvarOfRapida.__dsGate)) {
+        // 23/11: a trava/portão do salvar (__dsGate) envolve o dispatcher — não pode ser desfeita a cada segundo
         window.salvarOfRapida = window.__salvarOfRapida_final_fn__;
       }
       return true;
@@ -84065,6 +84066,8 @@ window.__perTxt = function (p) {
   function instalar() {
     var fn = window.salvarOfRapida;
     if (typeof fn !== 'function' || fn.__dsGate) return;
+    // sempre por cima do dispatcher oficial (não de travas antigas que esperam/atrasam)
+    if (window.__salvarOfRapida_final_fn__ && typeof window.__salvarOfRapida_final_fn__ === 'function') fn = window.__salvarOfRapida_final_fn__;
     var g = function () {
       var o = origem(), self = this, args = arguments;
       if (o !== 'ok') {
@@ -84075,7 +84078,14 @@ window.__perTxt = function (p) {
       }
       window.__dsOfrPermitir = 0;
       if (window.__dsOfrTesteSemSalvar) { log({ ev: 'teste-ok' }); return { ok: true, __teste: true }; }
-      return fn.apply(this, arguments);
+      // trava única: um salvamento por vez (antes ela era desfeita a cada segundo pelo dispatcher)
+      if (window.__P1_OF_SALVANDO__ && Date.now() - (S.travaTs || 0) < 60000) { try { window.toast('⏳ Já salvando esta OF... aguarde.', 'rgba(245,158,11,.95)', 2500); } catch (_) {} return { ok: false, error: 'ja_salvando', __busy: true }; }
+      window.__P1_OF_SALVANDO__ = true; S.travaTs = Date.now();
+      var bt = document.getElementById('btn-salvar-of-rapida'); try { if (bt) bt.disabled = true; } catch (_) {}
+      function liberar() { window.__P1_OF_SALVANDO__ = false; try { if (bt) bt.disabled = false; } catch (_) {} }
+      var ret; try { ret = fn.apply(this, arguments); } catch (e) { liberar(); throw e; }
+      if (ret && typeof ret.then === 'function') return ret.then(function (v) { liberar(); return v; }, function (e) { liberar(); throw e; });
+      liberar(); return ret;
     };
     try { Object.keys(fn).forEach(function (k) { g[k] = fn[k]; }); } catch (_) {}
     g._original = fn; g.__dsGate = true; g.__p1OfTravaUnica = true; g.__patchClienteFallback = fn.__patchClienteFallback || true;
