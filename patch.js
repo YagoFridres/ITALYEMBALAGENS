@@ -83890,6 +83890,9 @@ window.__perTxt = function (p) {
     if (pg.offsetParent === null && !pg.classList.contains('active')) return;
     if (!raiz || !pg.contains(raiz)) { raiz = null; pintar(); }
     if (!S.chave) carregar(false);
+    // a tela antiga às vezes força aparecer (estilo direto no elemento): some de vez
+    ['hist-passagens-resultado', 'hist-relatorio-mensal-shell', 'hist-filtros'].forEach(function (id) { var el = document.getElementById(id); if (el && el.style.display !== 'none') { el.style.setProperty('display', 'none', 'important'); if (id === 'hist-passagens-resultado') el.innerHTML = ''; } });
+    Array.prototype.forEach.call(pg.children, function (c) { if (c !== raiz && c.style.display !== 'none') c.style.setProperty('display', 'none', 'important'); });
   }
   if (typeof window.__dsAoMudar === 'function') { try { var v = function () { vigiar(); }; v.__dsImediato = true; window.__dsAoMudar(v); } catch (_) {} }
   setInterval(vigiar, 800);
