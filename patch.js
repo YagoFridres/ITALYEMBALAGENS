@@ -74130,7 +74130,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 (function () {
   if (window.__dsFinSenha) return; window.__dsFinSenha = true;
   var HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'; // sha-256 da senha
-  var PAGINAS = { orcamentos: 1, comissoes: 1, 'central-custos': 1, relatorios: 1 };
+  var PAGINAS = { orcamentos: 1, comissoes: 1, 'central-custos': 1, relatorios: 1, 'toneladas-vendidas': 1 }; // 23/11: Toneladas também é do Financeiro
   var GRUPO = 'ng-ds-gestao';
   function liberado() { try { return sessionStorage.getItem('ds_fin_ok') === '1'; } catch (_) { return false; } }
   function marcar() { try { document.documentElement.toggleAttribute('data-ds-fin-ok', liberado()); } catch (_) {} }
@@ -74141,6 +74141,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   var aberto = null;
   function pedir(motivo) {
     if (liberado()) return Promise.resolve(true);
+    // 23/11: se a janela da senha sumiu sem resposta, não pode ficar travado (antes nada mais abria)
+    if (aberto && !document.getElementById('ds-fin-senha')) aberto = null;
     if (aberto) return aberto;
     aberto = new Promise(function (ok) {
       var fundo = document.createElement('div'); fundo.id = 'ds-fin-senha';
@@ -83933,6 +83935,25 @@ window.__perTxt = function (p) {
     + '.dps-p{grid-template-columns:auto auto 1fr;row-gap:3px}.dps-p .dps-cli{grid-column:1/-1;order:5}.dps-p .dps-mq{text-align:right}.dps-p .dps-q,.dps-p .dps-v{order:6;text-align:left!important}.dps-p .dps-q:before,.dps-p .dps-v:before{content:attr(data-l) ": ";color:var(--text2);font-weight:600;font-size:12px}}'
     + '@media(max-width:420px){.dps-cards{grid-template-columns:1fr}.dps-tops{flex-direction:column!important}}';
   (document.head || document.documentElement).appendChild(st);
+})();
+
+// 23/11: depois de abrir uma área, a "página atual" do sistema sempre fica certa (algumas áreas não atualizavam,
+// e aí partes do sistema achavam que ainda estava na área anterior)
+(function __dsPaginaAtualCerta() {
+  if (window.__dsPaginaAtualCerta) return; window.__dsPaginaAtualCerta = true;
+  function corrigir(pid) {
+    try {
+      var el = document.getElementById('page-' + pid);
+      if (el && el.offsetParent !== null && window._PAGE_ATUAL !== pid) window._PAGE_ATUAL = pid;
+    } catch (_) {}
+  }
+  function instalar() {
+    var g = window.go; if (typeof g !== 'function' || g.__dsPa) return;
+    var w = function (pid) { var r = g.apply(this, arguments); var p = String(pid || ''); setTimeout(function () { corrigir(p); }, 60); setTimeout(function () { corrigir(p); }, 600); return r; };
+    for (var k in g) { try { w[k] = g[k]; } catch (_) {} }
+    w.__dsPa = true; window.go = w;
+  }
+  instalar(); setInterval(instalar, 2000);
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
