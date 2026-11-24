@@ -80149,7 +80149,7 @@ window.__perTxt = function (p) {
     + '.dsrs-op{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--border,#1e293b);font-size:13px;color:var(--text2,#94a3b8)}.dsrs-op label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--text,#e2e8f0);font-weight:600}.dsrs-op input{width:18px;height:18px}'
     + '.dsrs-bd{overflow:auto;padding:12px 18px 20px}'
     + '.dsrs-t{table-layout:fixed}.dsrs-t .c-dia{width:11%}.dsrs-t .c-cli{width:33%}.dsrs-t .c-mod{width:7%}.dsrs-t .c-ped{width:11%}.dsrs-t .c-ent{width:8%}.dsrs-t .c-entr{width:10%}.dsrs-t .c-cid{width:20%}.dsrs-t td.ped{text-align:center}.dsrs-t td,.dsrs-t th{font-weight:800!important}.dsrs-t td.dia{vertical-align:middle;text-align:center;font-size:1.02em}.dsrs-t td.dia span{display:block;font-size:.85em;opacity:.8}.dsrs-t td.n,.dsrs-t td.ent{text-align:center}.dsrs-t tr.ini td{border-top:3px solid #1e3a8a!important}'
-    + '.dsrs-t td{word-wrap:break-word}'
+    + '.dsrs-t td{word-wrap:break-word}.dsrs-t .tipo{color:#38bdf8;white-space:nowrap}body.light .dsrs-t .tipo,[data-theme="light"] .dsrs-t .tipo{color:#0369a1}'
     + '.dsrs-t{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:14px}.dsrs-t th,.dsrs-t td{border:1px solid var(--border,#334155);padding:7px 9px;text-align:left;vertical-align:top}'
     + '.dsrs-t th{background:#1e3a8a;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.03em}'
     + '.dsrs-t td.dia{font-weight:800;white-space:nowrap}.dsrs-t td.n{text-align:center;font-weight:800}.dsrs-t td.ofs{font-size:12px;color:var(--text2,#94a3b8)}'
@@ -80170,17 +80170,17 @@ window.__perTxt = function (p) {
       var p = plano(o), ent = p.ent || String(o.data_entrega || o.ent || '').slice(0, 10), ab = true;
       if (ent && ent < hoje) return; // atrasadas ficam fora
       var d = ent; if (!d || d < ini || d > fim) return; // 09/11: vale a DATA DE ENTREGA da OF (segunda a sexta), igual à planilha
-      var cid = p.cidade || '', k = norm(cliOf(o)) + '|' + norm(cid);
+      var cid = p.cidade || '', tipo = String(o.tipo_caixa || '').trim().toUpperCase(), k = norm(cliOf(o)) + '|' + norm(cid) + '|' + norm(tipo);
       var dd = dias[d] || (dias[d] = {}), g = dd[k];
-      if (!g) g = dd[k] = { cli: cliOf(o), cid: cid, pos: posNoDia(cid, d), ofs: [], ents: [], atras: false, fora: !p.noRoteiro };
+      if (!g) g = dd[k] = { cli: cliOf(o), cid: cid, tipo: tipo, pos: posNoDia(cid, d), ofs: [], ents: [], atras: false, fora: !p.noRoteiro };
       g.ofs.push(numOf(o)); (g.ids || (g.ids = [])).push(String(o.id)); if (ent && g.ents.indexOf(ent) < 0) g.ents.push(ent); if (ab && ent && ent < hoje) g.atras = true;
     });
     return Object.keys(dias).sort().map(function (d) {
       var gs = Object.keys(dias[d]).map(function (k) { return dias[d][k]; });
-      gs.sort(function (a, b) { return a.pos - b.pos || norm(a.cid).localeCompare(norm(b.cid)) || norm(a.cli).localeCompare(norm(b.cli)); });
+      gs.sort(function (a, b) { return a.pos - b.pos || norm(a.cid).localeCompare(norm(b.cid)) || norm(a.cli).localeCompare(norm(b.cli)) || (a.tipo ? 0 : 1) - (b.tipo ? 0 : 1) || norm(a.tipo).localeCompare(norm(b.tipo)); });
       gs.forEach(function (g) { g.ents.sort(); g.ofs.sort(function (a, b) { return (Number(a) || 0) - (Number(b) || 0); }); });
       // 24/11: cliente com mais de um nº de pedido → uma linha por pedido, cada uma com a sua quantidade de OFs
-      var sep = []; gs.forEach(function (g) { porPedido(g).forEach(function (x) { sep.push(x); }); });
+      var sep = [], vistos = {}; gs.forEach(function (g) { porPedido(g).forEach(function (x) { var kc = norm(x.cli) + '|' + norm(x.cid); x.cont = !!vistos[kc]; vistos[kc] = 1; sep.push(x); }); });
       return { dia: d, grupos: sep };
     });
   }
@@ -80194,7 +80194,7 @@ window.__perTxt = function (p) {
           ? '<td class="dia' + (i === 0 ? '' : ' cont') + '">' + (i === 0 ? esc(DIAS[w].replace('-Feira', '')) + ' <span>' + br(D.dia).slice(0, 5) + '</span>' : '') + '</td>'   // impressão: sem rowspan (não empurra o dia inteiro para a próxima folha)
           : (i === 0 ? '<td class="dia" rowspan="' + D.grupos.length + '">' + esc(DIAS[w]) + '<span>' + br(D.dia).slice(0, 5) + '</span></td>' : '');
         return '<tr' + (i === 0 ? ' class="ini"' : '') + '>' + celDia
-          + '<td>' + esc(g.cli) + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
+          + '<td>' + esc(g.cli) + (g.tipo ? ' <span class="tipo">(' + esc(g.tipo) + ')</span>' : '') + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
           + '<td class="ent">' + (g.ents.length ? g.ents.map(function (e) { return br(e).slice(0, 5); }).join('<br>') : '—') + '</td><td class="entr"></td>'
           + '<td>' + esc(g.cid || '—') + '</td></tr>';
       }).join('');
@@ -80214,7 +80214,7 @@ window.__perTxt = function (p) {
     var m = {}, ordem = [];
     (g.ids || []).forEach(function (id, i) {
       var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(), k = chavePed(p);
-      var x = m[k]; if (!x) { x = m[k] = { cli: g.cli, cid: g.cid, pos: g.pos, ofs: [], ids: [], ents: [], atras: g.atras, fora: g.fora, ped: p }; ordem.push(k); }
+      var x = m[k]; if (!x) { x = m[k] = { cli: g.cli, cid: g.cid, tipo: g.tipo, pos: g.pos, ofs: [], ids: [], ents: [], atras: g.atras, fora: g.fora, ped: p }; ordem.push(k); }
       x.ids.push(id); x.ofs.push(g.ofs0 ? g.ofs0[i] : null);
     });
     if (ordem.length <= 1) return [g];
@@ -80226,7 +80226,7 @@ window.__perTxt = function (p) {
       x.ofs = x.ids.map(function (id) { var o = byId[id]; return o ? numOf(o) : ''; });
       x.ids.forEach(function (id) { var o = byId[id]; if (!o) return; var e = (plano(o).ent || String(o.data_entrega || o.ent || '').slice(0, 10)); if (e && x.ents.indexOf(e) < 0) x.ents.push(e); });
       x.ents.sort(); if (!x.ents.length) x.ents = g.ents.slice();
-      x.cont = j > 0; return x;
+      return x;
     });
   }
   function pedidosDe(g) { if (g.ped != null) return g.ped ? [g.ped] : []; var v = [], ks = {}; (g.ids || []).forEach(function (id) { var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); if (!p) return; var k = p.toUpperCase().replace(/[\s.]/g, ''); if (ks[k]) return; ks[k] = 1; v.push(p); }); return v; }
@@ -80271,7 +80271,7 @@ window.__perTxt = function (p) {
     var linhas = '<tr><th>DIA DA SEMANA</th><th style="width:420px">CLIENTE</th><th>MODELOS</th><th>Nº PEDIDO</th><th>DATA PREVISTA</th><th style="width:120px">DATA DE ENTREGA</th><th>CIDADE</th></tr>';
     dados.forEach(function (D) {
       var w = new Date(D.dia + 'T12:00:00').getDay();
-      D.grupos.forEach(function (g, i) { n++; linhas += '<tr><td style="font-weight:bold">' + (i === 0 ? esc(DIAS[w]) + ' ' + br(D.dia).slice(0, 5) : '') + '</td><td>' + esc(g.cli) + '</td><td>' + g.ofs.length + '</td><td>' + esc(pedidosDe(g).join(', ')) + '</td><td>' + g.ents.map(br).join(' / ') + '</td><td></td><td>' + esc(g.cid) + '</td></tr>'; });
+      D.grupos.forEach(function (g, i) { n++; linhas += '<tr><td style="font-weight:bold">' + (i === 0 ? esc(DIAS[w]) + ' ' + br(D.dia).slice(0, 5) : '') + '</td><td>' + esc(g.cli) + (g.tipo ? ' (' + esc(g.tipo) + ')' : '') + '</td><td>' + g.ofs.length + '</td><td>' + esc(pedidosDe(g).join(', ')) + '</td><td>' + g.ents.map(br).join(' / ') + '</td><td></td><td>' + esc(g.cid) + '</td></tr>'; });
       linhas += '<tr><td></td></tr>';
     });
     var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>th{background:#1e3a8a;color:#fff;font-weight:bold}td,th{border:.5pt solid #999;font-weight:bold}</style></head><body><table>' + linhas + '</table></body></html>';
@@ -80285,7 +80285,7 @@ window.__perTxt = function (p) {
     ov.innerHTML = '<div class="dsrs-m" role="dialog" aria-modal="true"><div class="dsrs-hd"><h2>📋 Pedidos da semana</h2>'
       + '<div class="dsrs-sem"><button type="button" data-s="-1" aria-label="Semana anterior">‹</button><b></b><button type="button" data-s="1" aria-label="Próxima semana">›</button><button type="button" data-s="0">Esta semana</button></div>'
       + '<button type="button" class="az" data-imp>🖨 Imprimir</button><button type="button" class="vd" data-xls>⬇ Excel</button><button type="button" class="x" data-x>✕ Fechar</button></div>'
-      + '<div class="dsrs-op"><span>Segunda a sexta pela <b>data de entrega</b> da OF · só OFs em aberto e no prazo (sem concluídas e sem atrasadas) · Modelos = quantidade de OFs do cliente no dia · dentro do dia, na ordem das cidades do roteiro</span></div>'
+      + '<div class="dsrs-op"><span>Segunda a sexta pela <b>data de entrega</b> da OF · só OFs em aberto e no prazo (sem concluídas e sem atrasadas) · Modelos = quantidade de OFs do cliente no dia, separada por tipo de caixa e nº de pedido · dentro do dia, na ordem das cidades do roteiro</span></div>'
       + '<div class="dsrs-bd"><div class="dsrs-vz">Carregando…</div></div></div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function (e) {
@@ -84126,6 +84126,7 @@ window.__perTxt = function (p) {
         return pergunta().then(function (sim) { if (!sim) return { ok: false, __bloqueado: true }; window.__dsOfrPermitir = Date.now(); return g.apply(self, args); });
       }
       window.__dsOfrPermitir = 0; S.envio = 0;
+      try { if (typeof window.dsOfrTipoOk === 'function' && !window.dsOfrTipoOk()) return { ok: false, __semTipo: true }; } catch (_) {}
       if (window.__dsOfrTesteSemSalvar) { log({ ev: 'teste-ok' }); return { ok: true, __teste: true }; }
       // trava única: um salvamento por vez (antes ela era desfeita a cada segundo pelo dispatcher)
       if (window.__P1_OF_SALVANDO__ && Date.now() - (S.travaTs || 0) < 60000) { try { window.toast('⏳ Já salvando esta OF... aguarde.', 'rgba(245,158,11,.95)', 2500); } catch (_) {} return { ok: false, error: 'ja_salvando', __busy: true }; }
@@ -84265,6 +84266,63 @@ window.__perTxt = function (p) {
     if (!b) return; e.preventDefault(); e.stopPropagation();
     abrir(String(b.getAttribute('data-ccpx-versoes') || '').trim());
   }, true);
+})();
+
+/* ===== 24/11: OF Rápida — Tipo de caixa é o 1º campo (obrigatório para criar) e vai junto com a OF ===== */
+(function () {
+  if (window.__dsOfrTipo) return; window.__dsOfrTipo = true;
+  var TIPOS = null, TP = null;
+  function carregar() { if (TIPOS) return Promise.resolve(TIPOS); if (TP) return TP; TP = window.apiFetch('/api/tipos_caixa').then(function (r) { return r.json(); }).then(function (j) { TIPOS = ((j && j.data) || j || []).filter(function (t) { return t && (t.nome || t.tipo_caixa) && t.ativo !== false; }).map(function (t) { return { id: String(t.id || ''), nome: String(t.nome || t.tipo_caixa).trim() }; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }); return TIPOS; }).catch(function () { TP = null; return []; }); return TP; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function editId() { try { return typeof window.__getOfRapidaEditingId === 'function' ? window.__getOfRapidaEditingId() : null; } catch (_) { return null; } }
+  function ofPorId(id) { var l = [].concat(window.OFs || [], window.OFS_ARQUIVO || []); for (var i = 0; i < l.length; i++) if (l[i] && String(l[i].id) === String(id)) return l[i]; return null; }
+  function sel() { return document.getElementById('of-r-tipo'); }
+  window.dsOfrTipoAtual = function () { var s = sel(); if (!s || !s.value) return null; var o = s.options[s.selectedIndex]; return { id: o.getAttribute('data-id') || '', nome: s.value }; };
+  function montar() {
+    var cli = document.getElementById('of-r-cliente'); if (!cli || sel()) return;
+    var bloco = cli.parentElement; if (!bloco || !bloco.parentElement) return;
+    var d = document.createElement('div'); d.id = 'of-r-tipo-wrap';
+    d.innerHTML = '<label for="of-r-tipo" style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Tipo de caixa *</label>'
+      + '<select id="of-r-tipo" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit;cursor:pointer"><option value="">Carregando tipos…</option></select>';
+    bloco.parentElement.insertBefore(d, bloco);
+    carregar().then(function (l) {
+      var s = sel(); if (!s) return;
+      var atual = ''; var eid = editId(); if (eid) { var o = ofPorId(eid); if (o) atual = String(o.tipo_caixa || '').trim(); }
+      s.innerHTML = '<option value="">— Escolha o tipo de caixa —</option>' + l.map(function (t) { return '<option value="' + esc(t.nome) + '" data-id="' + esc(t.id) + '"' + (atual && atual.toUpperCase() === t.nome.toUpperCase() ? ' selected' : '') + '>' + esc(t.nome) + '</option>'; }).join('');
+      if (atual && !s.value) { s.insertAdjacentHTML('beforeend', '<option value="' + esc(atual) + '" selected>' + esc(atual) + '</option>'); }
+      if (!eid) { try { s.focus(); } catch (_) {} }
+    });
+    sel().addEventListener('change', function () { this.style.borderColor = this.value ? 'rgba(255,255,255,0.1)' : '#ef4444'; });
+  }
+  setInterval(function () { var m = document.getElementById('modal-of-rapida'); if (m && m.offsetParent !== null) montar(); }, 250);
+  // obrigatório para criar OF nova (na edição de OF antiga sem tipo, não trava)
+  window.dsOfrTipoOk = function () {
+    var s = sel(); if (!s) return true;
+    if (s.value || editId()) return true;
+    s.style.borderColor = '#ef4444'; try { s.focus(); s.scrollIntoView({ block: 'center' }); } catch (_) {}
+    try { window.toast('Escolha o TIPO DE CAIXA da OF (primeiro campo).', '#ef4444', 4000); } catch (_) {}
+    return false;
+  };
+  // vai junto no envio (criação e edição) feito pela OF Rápida
+  function colocar(init) {
+    var t = window.dsOfrTipoAtual(); if (!t || !init || init.body == null) return init;
+    try {
+      var str = typeof init.body === 'string', b = str ? JSON.parse(init.body) : init.body;
+      if (!b || typeof b !== 'object' || Array.isArray(b)) return init;
+      b.tipo_caixa = t.nome; if (/^[0-9a-f-]{36}$/i.test(t.id)) b.tipo_caixa_id = t.id; else delete b.tipo_caixa_id;
+      return Object.assign({}, init, { body: str ? JSON.stringify(b) : b });
+    } catch (_) { return init; }
+  }
+  var f0 = window.fetch;
+  window.fetch = function (input, init) {
+    try {
+      var url = String(input && input.url || input || ''), met = String((init && init.method) || 'GET').toUpperCase();
+      var path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+      var m = document.getElementById('modal-of-rapida');
+      if (m && m.offsetParent !== null && window.__P1_OF_SALVANDO__ && ((met === 'POST' && path === '/api/ofs') || ((met === 'PUT' || met === 'PATCH') && /^\/api\/ofs\/[^/]+$/.test(path)))) init = colocar(init);
+    } catch (_) {}
+    return f0.call(this, input, init);
+  };
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
