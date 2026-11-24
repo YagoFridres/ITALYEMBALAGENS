@@ -80175,7 +80175,7 @@ window.__perTxt = function (p) {
       var p = plano(o), ent = p.ent || String(o.data_entrega || o.ent || '').slice(0, 10), ab = true;
       if (ent && ent < hoje) return; // atrasadas ficam fora
       var d = ent; if (!d || d < ini || d > fim) return; // 09/11: vale a DATA DE ENTREGA da OF (segunda a sexta), igual à planilha
-      var cid = p.cidade || '', tipo = String(o.tipo_caixa || '').trim().toUpperCase(), k = norm(cliOf(o)) + '|' + norm(cid) + '|' + norm(tipo);
+      var cid = p.cidade || '', tipo = String((typeof window.dsTipoEstimado === 'function' ? window.dsTipoEstimado(o) : o.tipo_caixa) || '').trim().toUpperCase(), k = norm(cliOf(o)) + '|' + norm(cid) + '|' + norm(tipo);
       var dd = dias[d] || (dias[d] = {}), g = dd[k];
       if (!g) g = dd[k] = { cli: cliOf(o), cid: cid, tipo: tipo, pos: posNoDia(cid, d), ofs: [], ents: [], atras: false, fora: !p.noRoteiro };
       g.ofs.push(numOf(o)); (g.ids || (g.ids = [])).push(String(o.id)); if (ent && g.ents.indexOf(ent) < 0) g.ents.push(ent); if (ab && ent && ent < hoje) g.atras = true;
@@ -80199,7 +80199,7 @@ window.__perTxt = function (p) {
           ? '<td class="dia' + (i === 0 ? '' : ' cont') + '">' + (i === 0 ? esc(DIAS[w].replace('-Feira', '')) + ' <span>' + br(D.dia).slice(0, 5) + '</span>' : '') + '</td>'   // impressão: sem rowspan (não empurra o dia inteiro para a próxima folha)
           : (i === 0 ? '<td class="dia" rowspan="' + D.grupos.length + '">' + esc(DIAS[w]) + '<span>' + br(D.dia).slice(0, 5) + '</span></td>' : '');
         return '<tr' + (i === 0 ? ' class="ini"' : '') + '>' + celDia
-          + '<td>' + esc(g.cli) + (g.tipo ? ' <span class="tipo">(' + esc(g.tipo) + ')</span>' : (imp ? '' : ' <button type="button" class="dsrs-tp" data-ids="' + esc((g.ids || []).join(',')) + '" title="Definir o tipo de caixa destas OFs">＋ tipo</button>')) + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
+          + '<td>' + esc(g.cli) + (g.tipo ? ' <span class="tipo">(' + esc(g.tipo) + ')</span>' : '') + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
           + '<td class="ent">' + (g.ents.length ? g.ents.map(function (e) { return br(e).slice(0, 5); }).join('<br>') : '—') + '</td><td class="entr"></td>'
           + '<td>' + esc(g.cid || '—') + '</td></tr>';
       }).join('');
@@ -84352,16 +84352,17 @@ window.__perTxt = function (p) {
   var AUTO = { prod: null, manual: false };
   function autoTipo() {
     var s = sel(), pr = document.getElementById('of-r-produto'); if (!s || !pr || !TIPOS) return;
-    var v = String(pr.value || '');
-    if (v === AUTO.prod) return; AUTO.prod = v;
+    var v = String(pr.value || ''), chave = v + '|' + String((document.getElementById('of-r-cliente') || {}).value || '');
+    if (chave === AUTO.prod) return; AUTO.prod = chave;
     if (AUTO.manual && s.value) return; // a pessoa escolheu na mão: não troca
-    var t = tipoDoProduto(v, (document.getElementById('of-r-cliente') || {}).value);
+    var cliV = (document.getElementById('of-r-cliente') || {}).value;
+    var t = tipoDoProduto(v, cliV) || (typeof window.dsTipoEstimado === 'function' ? window.dsTipoEstimado(null, v, cliV) : '');
     if (!t) { if (s.dataset.auto === '1') { s.value = ''; s.dataset.auto = ''; var h0 = document.getElementById('of-r-tipo-auto'); if (h0) h0.remove(); } return; }
     var op = Array.prototype.filter.call(s.options, function (o) { return nz(o.value) === nz(t); })[0];
     if (!op) return;
     s.value = op.value; s.dataset.auto = '1'; s.style.borderColor = '#22c55e';
     var h = document.getElementById('of-r-tipo-auto'); if (!h) { h = document.createElement('div'); h.id = 'of-r-tipo-auto'; h.style.cssText = 'font-size:11px;color:#22c55e;margin-top:4px;font-weight:700'; s.parentElement.appendChild(h); }
-    h.textContent = '✓ Preenchido pelo produto (já usado antes como ' + op.value + ') — pode trocar se precisar';
+    h.textContent = '✓ Preenchido pelo produto (' + op.value + ') — pode trocar se precisar';
   }
   document.addEventListener('change', function (e) { if (e.target && e.target.id === 'of-r-tipo' && e.isTrusted) { AUTO.manual = !!e.target.value; e.target.dataset.auto = ''; var h = document.getElementById('of-r-tipo-auto'); if (h) h.remove(); } }, true);
   var abertoAntes = false;
@@ -84393,6 +84394,46 @@ window.__perTxt = function (p) {
       if (m && m.offsetParent !== null && window.__P1_OF_SALVANDO__ && ((met === 'POST' && path === '/api/ofs') || ((met === 'PUT' || met === 'PATCH') && /^\/api\/ofs\/[^/]+$/.test(path)))) init = colocar(init);
     } catch (_) {}
     return f0.call(this, input, init);
+  };
+})();
+
+/* ===== 24/11: tipo de caixa estimado da OF (para OFs lançadas sem tipo): histórico do produto/cliente + palavras do nome ===== */
+(function () {
+  if (window.__dsTipoEstimado) return; window.__dsTipoEstimado = true;
+  function nz(v) { return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function desc(o) { return o.descricao || o.produto || o.prodDesc || ''; }
+  function cli(o) { return o.clinome || o.cliente_nome || o.cliente || ''; }
+  // "assinatura" do nome: sem números, frações, CARGA nn, CX, Nº, pontuação
+  function assin(s) { return nz(s).replace(/CARGA\s*\d+/g, ' ').replace(/\d+\s*\/\s*\d+/g, ' ').replace(/\bN\s*[º°ª]+|\bN\b|\bNO\b/g, ' ').replace(/[º°ª]/g, ' ').replace(/\d+([.,]\d+)?\s*[X×]\s*\d+([.,]\d+)?/g, ' ').replace(/\d+/g, ' ').replace(/\b(CX|CAIXA)\b/g, ' ').replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  var IX = null, IXK = '';
+  function indice() {
+    var l = [].concat(window.OFs || [], window.OFS_ARQUIVO || []);
+    var k = l.length + ':' + (l[0] && l[0].id) + ':' + l.filter(function (o) { return o && o.tipo_caixa; }).length;
+    if (IX && IXK === k) return IX;
+    var ex = {}, exCli = {}, sig = {}, porCli = {};
+    l.slice().sort(function (a, b) { return String(a.created_at || '').localeCompare(String(b.created_at || '')); }).forEach(function (o) {
+      if (!o || !o.tipo_caixa) return;
+      var t = String(o.tipo_caixa).trim(), d = nz(desc(o)), c = nz(cli(o)), s = assin(desc(o));
+      ex[d] = t; exCli[c + '|' + d] = t; // o mais recente fica
+      if (s) { var q = (sig[c + '|' + s] = sig[c + '|' + s] || []); q.push(t); if (q.length > 25) q.shift(); }
+      var pc = (porCli[c] = porCli[c] || {}); pc[t] = (pc[t] || 0) + 1;
+    });
+    IX = { ex: ex, exCli: exCli, sig: sig, porCli: porCli }; IXK = k; return IX;
+  }
+  var REGRAS = [[/\bTIRAS?\b|\bCINTAS?\b/, 'TIRAS/CINTAS'], [/\bPIZZA\b/, 'PIZZA'], [/\bSALGADOS?\b/, 'SALGADO'], [/TAMPA E FUNDO/, 'TAMPA E FUNDO'], [/\bCAIXAO\b/, 'CAIXÃO'], [/\bENVOLTORIA\b/, 'ENVOLTÓRIA'], [/\bBOTINHA\b/, 'BOTINHA'], [/\b8 TAMPAS\b/, '8 TAMPAS'], [/\b4 TAMPAS\b/, '4 TAMPAS'], [/\b5 PAINEL\b/, '5 PAINEL'], [/CORTE E VINCO|CORTE VINCO/, 'CORTE VINCO']];
+  function maisFreq(arr) { var m = {}, best = '', n = 0; arr.forEach(function (t) { m[t] = (m[t] || 0) + 1; if (m[t] >= n) { n = m[t]; best = t; } }); return best; }
+  window.dsTipoEstimado = function (o, prodOpc, cliOpc) {
+    try {
+      if (o && o.tipo_caixa) return String(o.tipo_caixa).trim();
+      var X = indice(), dRaw = prodOpc != null ? prodOpc : desc(o || {}), d = nz(dRaw), c = nz(cliOpc != null ? cliOpc : cli(o || {}));
+      if (!d) return '';
+      if (X.exCli[c + '|' + d]) return X.exCli[c + '|' + d];
+      if (X.ex[d]) return X.ex[d];
+      var s = assin(dRaw); if (s && X.sig[c + '|' + s]) return maisFreq(X.sig[c + '|' + s].slice(-10));
+      for (var i = 0; i < REGRAS.length; i++) if (REGRAS[i][0].test(d)) return REGRAS[i][1];
+      var pc = X.porCli[c]; if (pc) { var ks = Object.keys(pc); if (ks.length === 1) return ks[0]; }
+      return '';
+    } catch (_) { return ''; }
   };
 })();
 
