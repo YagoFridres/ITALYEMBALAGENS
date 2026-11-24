@@ -80179,7 +80179,9 @@ window.__perTxt = function (p) {
       var gs = Object.keys(dias[d]).map(function (k) { return dias[d][k]; });
       gs.sort(function (a, b) { return a.pos - b.pos || norm(a.cid).localeCompare(norm(b.cid)) || norm(a.cli).localeCompare(norm(b.cli)); });
       gs.forEach(function (g) { g.ents.sort(); g.ofs.sort(function (a, b) { return (Number(a) || 0) - (Number(b) || 0); }); });
-      return { dia: d, grupos: gs };
+      // 24/11: cliente com mais de um nº de pedido → uma linha por pedido, cada uma com a sua quantidade de OFs
+      var sep = []; gs.forEach(function (g) { porPedido(g).forEach(function (x) { sep.push(x); }); });
+      return { dia: d, grupos: sep };
     });
   }
   function rotSemana() { return br(E.semana).slice(0, 5) + ' a ' + br(soma(E.semana, 4)); }
@@ -80207,8 +80209,28 @@ window.__perTxt = function (p) {
       var m = {}; ((j && j.data) || []).forEach(function (x) { m[String(x.id)] = String(x.num_pedido || '').trim(); }); PED = m; PED_OK = true; if (ov) render();
     }).catch(function () {});
   }
-  function pedidosDe(g) { var v = [], ks = {}; (g.ids || []).forEach(function (id) { var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); if (!p) return; var k = p.toUpperCase().replace(/[\s.]/g, ''); if (ks[k]) return; ks[k] = 1; v.push(p); }); return v; }
-  function resumo(dados) { var c = 0, m = 0; dados.forEach(function (D) { c += D.grupos.length; D.grupos.forEach(function (g) { m += g.ofs.length; }); }); return { c: c, m: m }; }
+  function chavePed(p) { return String(p || '').toUpperCase().replace(/[\s.]/g, ''); }
+  function porPedido(g) {
+    var m = {}, ordem = [];
+    (g.ids || []).forEach(function (id, i) {
+      var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(), k = chavePed(p);
+      var x = m[k]; if (!x) { x = m[k] = { cli: g.cli, cid: g.cid, pos: g.pos, ofs: [], ids: [], ents: [], atras: g.atras, fora: g.fora, ped: p }; ordem.push(k); }
+      x.ids.push(id); x.ofs.push(g.ofs0 ? g.ofs0[i] : null);
+    });
+    if (ordem.length <= 1) return [g];
+    // números/datas de entrega de cada OF, pelo id
+    var lst = ofs(), byId = {}; lst.forEach(function (o) { byId[String(o.id)] = o; });
+    ordem.sort(function (a, b) { if (!a) return 1; if (!b) return -1; return a.localeCompare(b, 'pt-BR', { numeric: true }); });
+    return ordem.map(function (k, j) {
+      var x = m[k];
+      x.ofs = x.ids.map(function (id) { var o = byId[id]; return o ? numOf(o) : ''; });
+      x.ids.forEach(function (id) { var o = byId[id]; if (!o) return; var e = (plano(o).ent || String(o.data_entrega || o.ent || '').slice(0, 10)); if (e && x.ents.indexOf(e) < 0) x.ents.push(e); });
+      x.ents.sort(); if (!x.ents.length) x.ents = g.ents.slice();
+      x.cont = j > 0; return x;
+    });
+  }
+  function pedidosDe(g) { if (g.ped != null) return g.ped ? [g.ped] : []; var v = [], ks = {}; (g.ids || []).forEach(function (id) { var p = String(PED[id] || '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); if (!p) return; var k = p.toUpperCase().replace(/[\s.]/g, ''); if (ks[k]) return; ks[k] = 1; v.push(p); }); return v; }
+  function resumo(dados) { var c = 0, m = 0; dados.forEach(function (D) { D.grupos.forEach(function (g) { if (!g.cont) c++; m += g.ofs.length; }); }); return { c: c, m: m }; }
   var ov = null;
   function render() {
     if (!ov) return;
