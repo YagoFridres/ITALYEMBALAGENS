@@ -84335,7 +84335,37 @@ window.__perTxt = function (p) {
     if (gr && gr.parentElement && w.nextElementSibling !== gr) { gr.parentElement.insertBefore(w, gr); }
     if (gr) w.style.margin = '0 0 4px';
   }
-  setInterval(function () { var m = document.getElementById('modal-of-rapida'); if (m && m.offsetParent !== null) { montar(); posicionar(); } }, 250);
+  // 24/11: produto que já teve tipo informado → o tipo vem sozinho ao puxar o nome do produto (a pessoa ainda pode trocar)
+  function nz(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function tipoDoProduto(prod, cli) {
+    var P = nz(prod); if (!P) return '';
+    var C = nz(cli), melhor = null, melhorCli = null;
+    [].concat(window.OFs || [], window.OFS_ARQUIVO || []).forEach(function (o) {
+      if (!o || !o.tipo_caixa) return;
+      if (nz(o.descricao || o.produto || o.prodDesc) !== P) return;
+      var t = String(o.created_at || o.updated_at || '');
+      if (!melhor || t > melhor.t) melhor = { t: t, tipo: String(o.tipo_caixa).trim() };
+      if (C && nz(o.clinome || o.cliente_nome || o.cliente) === C && (!melhorCli || t > melhorCli.t)) melhorCli = { t: t, tipo: String(o.tipo_caixa).trim() };
+    });
+    return (melhorCli || melhor || {}).tipo || '';
+  }
+  var AUTO = { prod: null, manual: false };
+  function autoTipo() {
+    var s = sel(), pr = document.getElementById('of-r-produto'); if (!s || !pr || !TIPOS) return;
+    var v = String(pr.value || '');
+    if (v === AUTO.prod) return; AUTO.prod = v;
+    if (AUTO.manual && s.value) return; // a pessoa escolheu na mão: não troca
+    var t = tipoDoProduto(v, (document.getElementById('of-r-cliente') || {}).value);
+    if (!t) { if (s.dataset.auto === '1') { s.value = ''; s.dataset.auto = ''; var h0 = document.getElementById('of-r-tipo-auto'); if (h0) h0.remove(); } return; }
+    var op = Array.prototype.filter.call(s.options, function (o) { return nz(o.value) === nz(t); })[0];
+    if (!op) return;
+    s.value = op.value; s.dataset.auto = '1'; s.style.borderColor = '#22c55e';
+    var h = document.getElementById('of-r-tipo-auto'); if (!h) { h = document.createElement('div'); h.id = 'of-r-tipo-auto'; h.style.cssText = 'font-size:11px;color:#22c55e;margin-top:4px;font-weight:700'; s.parentElement.appendChild(h); }
+    h.textContent = '✓ Preenchido pelo produto (já usado antes como ' + op.value + ') — pode trocar se precisar';
+  }
+  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'of-r-tipo' && e.isTrusted) { AUTO.manual = !!e.target.value; e.target.dataset.auto = ''; var h = document.getElementById('of-r-tipo-auto'); if (h) h.remove(); } }, true);
+  var abertoAntes = false;
+  setInterval(function () { var m = document.getElementById('modal-of-rapida'); var vis = !!(m && m.offsetParent !== null); if (vis && !abertoAntes) { AUTO.prod = null; AUTO.manual = !!editId(); } abertoAntes = vis; if (vis) { montar(); posicionar(); autoTipo(); } }, 250);
   // obrigatório para criar OF nova (na edição de OF antiga sem tipo, não trava)
   window.dsOfrTipoOk = function () {
     var s = sel(); if (!s) return true;
