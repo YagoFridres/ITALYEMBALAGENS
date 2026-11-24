@@ -80149,6 +80149,11 @@ window.__perTxt = function (p) {
     + '.dsrs-op{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--border,#1e293b);font-size:13px;color:var(--text2,#94a3b8)}.dsrs-op label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--text,#e2e8f0);font-weight:600}.dsrs-op input{width:18px;height:18px}'
     + '.dsrs-bd{overflow:auto;padding:12px 18px 20px}'
     + '.dsrs-t{table-layout:fixed}.dsrs-t .c-dia{width:11%}.dsrs-t .c-cli{width:33%}.dsrs-t .c-mod{width:7%}.dsrs-t .c-ped{width:11%}.dsrs-t .c-ent{width:8%}.dsrs-t .c-entr{width:10%}.dsrs-t .c-cid{width:20%}.dsrs-t td.ped{text-align:center}.dsrs-t td,.dsrs-t th{font-weight:800!important}.dsrs-t td.dia{vertical-align:middle;text-align:center;font-size:1.02em}.dsrs-t td.dia span{display:block;font-size:.85em;opacity:.8}.dsrs-t td.n,.dsrs-t td.ent{text-align:center}.dsrs-t tr.ini td{border-top:3px solid #1e3a8a!important}'
+    + '.dsrs-m button.dsrs-tp{min-height:24px;padding:0 8px;font-size:11px;border-radius:999px;border:1px dashed #38bdf8;background:transparent;color:#38bdf8;margin-left:6px;vertical-align:middle}'
+    + '.dsrs-tpm{position:fixed;inset:0;z-index:100160;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:16px}.dsrs-tpm>div{background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:14px;width:min(620px,100%);max-height:88vh;display:flex;flex-direction:column}'
+    + '.dsrs-tpm h3{margin:0;padding:14px 16px;border-bottom:1px solid var(--border,#334155);font-size:16px}.dsrs-tpm .bd{overflow:auto;padding:12px 16px;display:grid;gap:8px}.dsrs-tpm .ln{display:grid;grid-template-columns:1fr 190px;gap:8px;align-items:center;font-size:13px}.dsrs-tpm .ln.todas{padding-bottom:8px;border-bottom:1px solid var(--border,#334155);font-weight:800}'
+    + '.dsrs-tpm select{height:38px;border-radius:9px;border:1px solid var(--border,#334155);background:var(--s2,#1e293b);color:inherit;padding:0 8px;font:inherit}.dsrs-tpm .ft{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border,#334155)}.dsrs-tpm .ft button{min-height:40px;border-radius:10px;padding:0 16px;font:inherit;font-weight:800;cursor:pointer;border:1px solid var(--border,#334155);background:transparent;color:inherit}.dsrs-tpm .ft .ok{background:#2563eb;border-color:#1d4ed8;color:#fff}'
+    + '@media (max-width:600px){.dsrs-tpm .ln{grid-template-columns:1fr}}'
     + '.dsrs-t td{word-wrap:break-word}.dsrs-t .tipo{color:#38bdf8;white-space:nowrap}body.light .dsrs-t .tipo,[data-theme="light"] .dsrs-t .tipo{color:#0369a1}'
     + '.dsrs-t{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:14px}.dsrs-t th,.dsrs-t td{border:1px solid var(--border,#334155);padding:7px 9px;text-align:left;vertical-align:top}'
     + '.dsrs-t th{background:#1e3a8a;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.03em}'
@@ -80194,7 +80199,7 @@ window.__perTxt = function (p) {
           ? '<td class="dia' + (i === 0 ? '' : ' cont') + '">' + (i === 0 ? esc(DIAS[w].replace('-Feira', '')) + ' <span>' + br(D.dia).slice(0, 5) + '</span>' : '') + '</td>'   // impressão: sem rowspan (não empurra o dia inteiro para a próxima folha)
           : (i === 0 ? '<td class="dia" rowspan="' + D.grupos.length + '">' + esc(DIAS[w]) + '<span>' + br(D.dia).slice(0, 5) + '</span></td>' : '');
         return '<tr' + (i === 0 ? ' class="ini"' : '') + '>' + celDia
-          + '<td>' + esc(g.cli) + (g.tipo ? ' <span class="tipo">(' + esc(g.tipo) + ')</span>' : '') + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
+          + '<td>' + esc(g.cli) + (g.tipo ? ' <span class="tipo">(' + esc(g.tipo) + ')</span>' : (imp ? '' : ' <button type="button" class="dsrs-tp" data-ids="' + esc((g.ids || []).join(',')) + '" title="Definir o tipo de caixa destas OFs">＋ tipo</button>')) + '</td><td class="n">' + g.ofs.length + '</td><td class="ped">' + esc(pedidosDe(g).join(', ') || '') + '</td>'
           + '<td class="ent">' + (g.ents.length ? g.ents.map(function (e) { return br(e).slice(0, 5); }).join('<br>') : '—') + '</td><td class="entr"></td>'
           + '<td>' + esc(g.cid || '—') + '</td></tr>';
       }).join('');
@@ -80278,6 +80283,35 @@ window.__perTxt = function (p) {
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' }));
     a.download = 'Pedidos da semana ' + E.semana + '.xls'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
+  // 24/11: definir o tipo de caixa das OFs de uma linha (OFs antigas, lançadas sem tipo)
+  var TIPOS_C = null;
+  function tiposCaixa() { if (TIPOS_C) return Promise.resolve(TIPOS_C); return window.apiFetch('/api/tipos_caixa').then(function (r) { return r.json(); }).then(function (j) { TIPOS_C = ((j && j.data) || j || []).filter(function (t) { return t && (t.nome || t.tipo_caixa) && t.ativo !== false; }).map(function (t) { return { id: String(t.id || ''), nome: String(t.nome || t.tipo_caixa).trim() }; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }); return TIPOS_C; }); }
+  function definirTipo(ids) {
+    var by = {}; ofs().forEach(function (o) { by[String(o.id)] = o; });
+    var lst = ids.map(function (id) { return by[id]; }).filter(Boolean);
+    if (!lst.length) return;
+    tiposCaixa().then(function (tipos) {
+      var opts = '<option value="">—</option>' + tipos.map(function (t) { return '<option value="' + esc(t.nome) + '" data-id="' + esc(t.id) + '">' + esc(t.nome) + '</option>'; }).join('');
+      var m = document.createElement('div'); m.className = 'dsrs-tpm'; m.setAttribute('data-ds-sem-resp', '1');
+      m.innerHTML = '<div role="dialog" aria-modal="true"><h3>Tipo de caixa — ' + esc(cliOf(lst[0])) + ' (' + lst.length + ' OF' + (lst.length > 1 ? 's' : '') + ')</h3><div class="bd">'
+        + (lst.length > 1 ? '<label class="ln todas"><span>Mesmo tipo para todas</span><select data-todas>' + opts + '</select></label>' : '')
+        + lst.map(function (o) { return '<label class="ln"><span>OF <b>' + esc(numOf(o)) + '</b> — ' + esc(String(o.descricao || o.produto || o.prodDesc || '').slice(0, 60)) + '</span><select data-of="' + esc(o.id) + '">' + opts + '</select></label>'; }).join('')
+        + '</div><div class="ft"><button type="button" data-x>Cancelar</button><button type="button" class="ok" data-ok>Salvar tipos</button></div></div>';
+      document.body.appendChild(m);
+      var td = m.querySelector('[data-todas]'); if (td) td.addEventListener('change', function () { m.querySelectorAll('[data-of]').forEach(function (s) { s.value = td.value; }); });
+      m.addEventListener('click', function (e) {
+        if (e.target === m || e.target.closest('[data-x]')) return m.remove();
+        var ok = e.target.closest('[data-ok]'); if (!ok) return;
+        var muda = []; m.querySelectorAll('[data-of]').forEach(function (s) { if (s.value) { var op = s.options[s.selectedIndex]; muda.push({ id: s.getAttribute('data-of'), nome: s.value, tid: op.getAttribute('data-id') || '' }); } });
+        if (!muda.length) { try { window.toast('Escolha o tipo de pelo menos uma OF', '#ef4444'); } catch (_) {} return; }
+        ok.disabled = true; ok.textContent = 'Salvando…';
+        Promise.all(muda.map(function (x) { var b = { tipo_caixa: x.nome }; if (/^[0-9a-f-]{36}$/i.test(x.tid)) b.tipo_caixa_id = x.tid; return window.apiFetch('/api/ofs/' + encodeURIComponent(x.id), { method: 'PATCH', body: b }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); var o = by[x.id]; if (o) { o.tipo_caixa = x.nome; if (b.tipo_caixa_id) o.tipo_caixa_id = b.tipo_caixa_id; } }); }))
+          .then(function () { m.remove(); try { window.toast('✅ Tipo de caixa salvo em ' + muda.length + ' OF(s)', '#10b981'); } catch (_) {} render(); })
+          .catch(function (er) { ok.disabled = false; ok.textContent = 'Salvar tipos'; try { window.toast('Não deu para salvar: ' + (er.message || er), '#ef4444'); } catch (_) {} render(); });
+      });
+    });
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.dsrs-tp'); if (!b) return; e.preventDefault(); e.stopPropagation(); definirTipo(String(b.getAttribute('data-ids') || '').split(',').filter(Boolean)); }, true);
   function abrir() {
     if (ov) return;
     ov = document.createElement('div'); ov.className = 'dsrs-ov';
