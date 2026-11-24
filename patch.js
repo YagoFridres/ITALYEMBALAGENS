@@ -84456,7 +84456,7 @@ window.__perTxt = function (p) {
     var txt = (emails.length
       ? 'Esta compra Nº <b>' + esc(num) + '</b> ' + (envio ? 'está sendo enviada' : 'foi enviada') + ' para o' + (emails.length > 1 ? 's' : '') + ' e-mail' + (emails.length > 1 ? 's' : '') + ' <b>' + esc(juntar(emails)) + '</b>. '
       : '')
-      + 'Somente deve ser considerada a compra de número <b>' + esc(num) + '</b>.';
+      + 'Somente deve ser considerada uma compra de número <b>' + esc(num) + '</b>.';
     return '<div class="ds-cmp-rodape" style="margin:14px 0 0;padding:9px 12px;border:1.5px solid #1e3a8a;border-radius:8px;background:#eff6ff;color:#0f172a;font:12px/1.45 Arial,Helvetica,sans-serif;text-align:center;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact">' + txt + '</div>';
   }
   function instalar() {
