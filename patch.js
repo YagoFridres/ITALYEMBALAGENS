@@ -77069,7 +77069,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ov.querySelector('[data-addbtn]').onclick = adicionar;
     ov.querySelector('[data-ver]').onclick = async function () {
       var b = this; b.disabled = true; b.textContent = 'Gerando…';
-      try { var b64 = await gerarPdf(await o.htmlFn(), o.pdfOpts); var bin = atob(b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); var w = window.open(url, '_blank'); if (!w) { var a = document.createElement('a'); a.href = url; a.download = o.arquivo; a.click(); } }
+      try { var b64 = await gerarPdf(await (function () { window.__dsCmpEmailsEnvio = o.conta === 'compras' ? para.slice() : null; try { return o.htmlFn(); } finally { window.__dsCmpEmailsEnvio = null; } })(), o.pdfOpts); var bin = atob(b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); var w = window.open(url, '_blank'); if (!w) { var a = document.createElement('a'); a.href = url; a.download = o.arquivo; a.click(); } }
       catch (e) { msg(ov, String(e && e.message || e)); }
       b.disabled = false; b.textContent = 'Ver PDF';
     };
@@ -77080,7 +77080,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!para.length) return msg(ov, 'Escolha pelo menos um destinatário.');
       bt.disabled = true; bt.textContent = 'Gerando PDF…';
       try {
-        var b64 = await gerarPdf(await o.htmlFn(), o.pdfOpts);
+        var b64 = await gerarPdf(await (function () { window.__dsCmpEmailsEnvio = o.conta === 'compras' ? para.slice() : null; try { return o.htmlFn(); } finally { window.__dsCmpEmailsEnvio = null; } })(), o.pdfOpts);
         bt.textContent = 'Enviando…';
         var resEnv = await o.enviar({ para: para, assunto: ov.querySelector('[data-assunto]').value, mensagem: ov.querySelector('[data-msg]').value, pdf_base64: b64, nome_arquivo: o.arquivo, copia_para_mim: ov.querySelector('[data-copia]').checked });
         var dEnv = (resEnv && (resEnv.data || resEnv)) || {};
@@ -84435,6 +84435,44 @@ window.__perTxt = function (p) {
       return '';
     } catch (_) { return ''; }
   };
+})();
+
+/* ===== 24/11: Compra de papelão — mensagem no rodapé da impressão/PDF: para quais e-mails foi enviada e que só vale este nº ===== */
+(function () {
+  if (window.__dsCmpRodapeEmail) return; window.__dsCmpRodapeEmail = true;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function emailsDoHistorico(c) {
+    var h = c && c.status_historico; if (typeof h === 'string') { try { h = JSON.parse(h); } catch (_) { h = []; } }
+    var v = []; (Array.isArray(h) ? h : []).forEach(function (x) { if (!x || !x.email) return; String(x.nota || '').replace(/^.*?para\s+/i, '').split(/[,;\s]+/).forEach(function (e) { e = e.trim().toLowerCase(); if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) && v.indexOf(e) < 0) v.push(e); }); });
+    return v;
+  }
+  function juntar(l) { return l.length <= 1 ? (l[0] || '') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]; }
+  function rodape(payload, compra) {
+    var c = Object.assign({}, compra || {}, payload || {});
+    var num = ''; try { num = window._compraPapelaoNumeroLabel(c.numero_compra || (compra && compra.numero_compra) || ''); } catch (_) { num = String(c.numero_compra || ''); }
+    if (!num) return '';
+    var envio = Array.isArray(window.__dsCmpEmailsEnvio) ? window.__dsCmpEmailsEnvio : null;
+    var emails = envio && envio.length ? envio : emailsDoHistorico(compra && compra.status_historico ? compra : c);
+    var txt = (emails.length
+      ? 'Esta compra Nº <b>' + esc(num) + '</b> ' + (envio ? 'está sendo enviada' : 'foi enviada') + ' para o' + (emails.length > 1 ? 's' : '') + ' e-mail' + (emails.length > 1 ? 's' : '') + ' <b>' + esc(juntar(emails)) + '</b>. '
+      : '')
+      + 'Somente deve ser considerada a compra de número <b>' + esc(num) + '</b>.';
+    return '<div class="ds-cmp-rodape" style="margin:14px 0 0;padding:9px 12px;border:1.5px solid #1e3a8a;border-radius:8px;background:#eff6ff;color:#0f172a;font:12px/1.45 Arial,Helvetica,sans-serif;text-align:center;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact">' + txt + '</div>';
+  }
+  function instalar() {
+    var f = window._compraPapelaoBuildCompraPrintHtmlFromPayload;
+    if (typeof f !== 'function' || f.__dsRodape) return;
+    var g = function (payload, compra) {
+      var html = f.apply(this, arguments);
+      try {
+        var r = rodape(payload, compra); if (!r || typeof html !== 'string') return html;
+        var i = html.lastIndexOf('<script>window.onload'); if (i < 0) i = html.lastIndexOf('</body>');
+        return i >= 0 ? html.slice(0, i) + r + html.slice(i) : html + r;
+      } catch (_) { return html; }
+    };
+    g.__dsRodape = true; window._compraPapelaoBuildCompraPrintHtmlFromPayload = g;
+  }
+  instalar(); setInterval(instalar, 2000);
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
