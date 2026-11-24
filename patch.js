@@ -84294,7 +84294,14 @@ window.__perTxt = function (p) {
     });
     sel().addEventListener('change', function () { this.style.borderColor = this.value ? 'rgba(255,255,255,0.1)' : '#ef4444'; });
   }
-  setInterval(function () { var m = document.getElementById('modal-of-rapida'); if (m && m.offsetParent !== null) montar(); }, 250);
+  function posicionar() {
+    // sempre o PRIMEIRO campo: no topo da tela (antes da grade de 2 colunas, quando ela existe)
+    var w = document.getElementById('of-r-tipo-wrap'); if (!w) return;
+    var gr = document.querySelector('#modal-of-rapida .ds-ofr-grade');
+    if (gr && gr.parentElement && w.nextElementSibling !== gr) { gr.parentElement.insertBefore(w, gr); }
+    if (gr) w.style.margin = '0 0 4px';
+  }
+  setInterval(function () { var m = document.getElementById('modal-of-rapida'); if (m && m.offsetParent !== null) { montar(); posicionar(); } }, 250);
   // obrigatório para criar OF nova (na edição de OF antiga sem tipo, não trava)
   window.dsOfrTipoOk = function () {
     var s = sel(); if (!s) return true;
