@@ -2,9 +2,10 @@
 <html lang="pt-BR">
 <!-- VERSAO TESTE 001 - APAGAR DEPOIS -->
 <head>
+<style id="ds-boot-css0">html:not(.ds-pronto) body>*:not(#ds-boot){visibility:hidden!important}html:not(.ds-pronto),html:not(.ds-pronto) body{background:#0E0F11}html[data-theme="light"]:not(.ds-pronto),html[data-theme="light"]:not(.ds-pronto) body{background:#F7F7F8}#ds-boot{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#0E0F11;color:#ECEDEE;font-family:Arial,Helvetica,sans-serif;text-align:center;padding:20px}html[data-theme="light"] #ds-boot{background:#F7F7F8;color:#18181B}html.ds-pronto #ds-boot{display:none!important}#ds-boot .rd{width:38px;height:38px;border:4px solid rgba(62,123,250,.25);border-top-color:#3E7BFA;border-radius:50%;animation:dsgira .9s linear infinite}@keyframes dsgira{to{transform:rotate(360deg)}}#ds-boot b{font-size:18px}#ds-boot small{font-size:13.5px;opacity:.75;max-width:460px}#ds-boot button{min-height:46px;padding:0 22px;border:0;border-radius:10px;background:#2563EB;color:#fff;font-size:15px;font-weight:700;cursor:pointer}@media (min-width:769px){body:not([data-device="mobile"]) #mobile-bottom-nav{display:none!important}}</style>
 <script>/* 09/11/2026: vigia de versão — o app (principalmente no celular, que fica aberto em segundo plano por dias) nunca fica numa versão antiga */
 (function(){try{
-var V=('/patch.js?v=20261125101300'.split('=')[1]||'');window.__DS_VERSAO=V;
+var V=('/patch.js?v=20261125101537'.split('=')[1]||'');window.__DS_VERSAO=V;
 var ult=0,banner=null;
 function visivel(e){try{if(!e||!e.getClientRects().length)return false;var cs=getComputedStyle(e);return cs.display!=='none'&&cs.visibility!=='hidden';}catch(x){return false;}}
 function editando(){try{var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
@@ -1718,6 +1719,7 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
 </style>
 </head>
 <body data-device="desktop">
+<div id="ds-boot" role="status"><div class="rd"></div><b>Carregando o sistema…</b><small id="ds-boot-msg">Só um instante.</small><button type="button" id="ds-boot-btn" hidden onclick="location.reload()">🔄 Tentar de novo</button></div>
 
 <div id="device-screen">
   <div class="dev-shell">
@@ -33994,7 +33996,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20261125101300';
+      const swVersion = '20261125101537';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -61478,14 +61480,13 @@ try{
 
 <!-- 16/11: carregamento seguro — a tela antiga (base) nunca aparece; se o arquivo do sistema falhar, tenta de novo sozinho -->
 <style id="ds-boot-css">html:not(.ds-pronto) body>*:not(#ds-boot){visibility:hidden!important}#ds-boot{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#0E0F11;color:#ECEDEE;font-family:Arial,Helvetica,sans-serif;text-align:center;padding:20px}html[data-theme="light"] #ds-boot{background:#F7F7F8;color:#18181B}html.ds-pronto #ds-boot{display:none!important}#ds-boot .rd{width:38px;height:38px;border:4px solid rgba(62,123,250,.25);border-top-color:#3E7BFA;border-radius:50%;animation:dsgira .9s linear infinite}@keyframes dsgira{to{transform:rotate(360deg)}}#ds-boot b{font-size:18px}#ds-boot small{font-size:13.5px;opacity:.75;max-width:460px}#ds-boot button{min-height:46px;padding:0 22px;border:0;border-radius:10px;background:#2563EB;color:#fff;font-size:15px;font-weight:700;cursor:pointer}</style>
-<div id="ds-boot" role="status"><div class="rd"></div><b>Carregando o sistema…</b><small id="ds-boot-msg">Só um instante.</small><button type="button" id="ds-boot-btn" hidden onclick="location.reload()">🔄 Tentar de novo</button></div>
 <script>
 (function(){
-  var SRC='/patch.js?v=20261125101300', tent=1, fim=false, erroJs='';
+  var SRC='/patch.js?v=20261125101537', tent=1, fim=false, erroJs='';
   var html=document.documentElement;
   function msg(t,botao){var m=document.getElementById('ds-boot-msg');if(m)m.textContent=t;var b=document.getElementById('ds-boot-btn');if(b)b.hidden=!botao;}
   function ok(){return !!(window.__DS_PATCH_FIM||html.getAttribute('data-ds')==='3');}
-  function pronto(){if(fim)return;fim=true;html.classList.add('ds-pronto');}
+  function pronto(){if(fim)return;fim=true;var f=function(){html.classList.add('ds-pronto');};try{requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(f,150);});});}catch(_){f();}setTimeout(f,1200);}
   window.addEventListener('error',function(e){try{if(String(e&&e.filename||'').indexOf('/patch.js')>=0&&!erroJs)erroJs=String(e.message||'erro')+' (linha '+(e.lineno||'?')+')';}catch(_){}});
   // se o arquivo não chegou (internet caiu/lenta), tenta de novo sozinho
   function recarregar(){
@@ -61505,7 +61506,7 @@ try{
   setTimeout(function(){if(!fim)msg('A internet está lenta, ainda carregando…',true);},40000);
 })();
 </script>
-<script src="/patch.js?v=20261125101300" onerror="window.__dsBootErroRede=true;window.__dsBootFalhou&&window.__dsBootFalhou()"></script>
+<script src="/patch.js?v=20261125101537" onerror="window.__dsBootErroRede=true;window.__dsBootFalhou&&window.__dsBootFalhou()"></script>
 <script>window.__dsBootConferir&&window.__dsBootConferir();</script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
