@@ -84571,5 +84571,38 @@ window.__perTxt = function (p) {
   };
 })();
 
+/* ===== 25/11: celular — a barra de baixo some enquanto há uma janela aberta ou o teclado está aberto (ela tampava os botões do fim das janelas) ===== */
+(function () {
+  if (window.__dsBarraSome) return; window.__dsBarraSome = true;
+  var st = document.createElement('style'); st.id = 'ds-barra-some-css';
+  st.textContent = 'html.ds-sem-barra #mobile-bottom-nav{display:none!important}';
+  document.head.appendChild(st);
+  var SEL = '[role="dialog"],[aria-modal="true"],.modal-overlay,.modal.open,.modal.show,.modal.active,[id^="modal-"],[class*="-ov"],[class*="overlay"],.dsef-ov,#mob-more-drawer';
+  function janelaAberta() {
+    var l = document.querySelectorAll(SEL), W = window.innerWidth, H = window.innerHeight;
+    for (var i = 0; i < l.length; i++) {
+      var e = l[i]; if (e.id === 'mobile-bottom-nav' || e.id === 'ds-boot') continue;
+      if (e.closest && e.closest('#mobile-bottom-nav')) continue;
+      var r = e.getBoundingClientRect(); if (r.width < W * 0.6 || r.height < H * 0.4) continue;
+      var cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue;
+      if (cs.position !== 'fixed' && cs.position !== 'absolute') continue;
+      return true;
+    }
+    return false;
+  }
+  function teclado() {
+    try { var vv = window.visualViewport; if (!vv) return false; var a = document.activeElement; var digitando = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); return digitando && vv.height < window.innerHeight * 0.8; } catch (_) { return false; }
+  }
+  var ult = null;
+  function conferir() {
+    if (window.innerWidth > 768 && document.body.getAttribute('data-device') !== 'mobile') { if (ult !== false) { document.documentElement.classList.remove('ds-sem-barra'); ult = false; } return; }
+    var some = janelaAberta() || teclado();
+    if (some !== ult) { document.documentElement.classList.toggle('ds-sem-barra', some); ult = some; }
+  }
+  setInterval(conferir, 400);
+  ['focusin', 'focusout', 'click'].forEach(function (t) { document.addEventListener(t, function () { setTimeout(conferir, 60); }, true); });
+  try { if (window.visualViewport) window.visualViewport.addEventListener('resize', conferir); } catch (_) {}
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
