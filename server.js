@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261125083123';
-const SW_RUNTIME_VERSION = '20261125083123';
+const PATCH_RUNTIME_VERSION = '20261125083521';
+const SW_RUNTIME_VERSION = '20261125083521';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -28286,6 +28286,40 @@ async function verificarEstoqueMinimo(req, canonChapa) {
   } catch (_) {}
 }
 
+// 25/11: trava contra lançamento repetido de chapas — o MESMO pedido (mesmo usuário, mesma rota, mesmo conteúdo)
+// que chegar de novo em até 20 s não lança outra vez: recebe a resposta do primeiro (reenvio do navegador, clique duplo, rede lenta)
+const _chapaDedupe = new Map();
+function _chapaDedupeMw(req, res, next) {
+  try {
+    if ((req.body && (req.body.permitir_repetido === true)) ) return next();
+    const quem = String(req.get('authorization') || req.get('x-auth-token') || req.ip || '').slice(-64);
+    const k = crypto.createHash('sha1').update(quem + '|' + req.method + '|' + req.path + '|' + JSON.stringify(req.body || {})).digest('hex');
+    const agora = Date.now();
+    for (const [kk, v] of _chapaDedupe) if (agora - v.ts > 60000) _chapaDedupe.delete(kk);
+    const ex = _chapaDedupe.get(k);
+    if (ex && agora - ex.ts < 20000) {
+      try { console.warn('[CHAPA-DEDUPE] repetido bloqueado', req.path, 'depois de', agora - ex.ts, 'ms'); } catch (_) {}
+      const responder = () => { setNoCache(res); res.set('X-Repetido', '1'); if (ex.body) return res.status(ex.status || 200).json(Object.assign({}, ex.body, { repetido_ignorado: true })); return res.status(409).json({ ok: false, repetido_ignorado: true, error: 'Este lançamento já foi feito agora há pouco (não foi lançado de novo).' }); };
+      if (ex.body || !ex.p) return responder();
+      return Promise.race([ex.p, new Promise((r) => setTimeout(r, 25000))]).then(responder, responder);
+    }
+    const reg = { ts: agora, body: null, status: 200, p: null };
+    reg.p = new Promise((ok) => { reg.fim = ok; });
+    _chapaDedupe.set(k, reg);
+    const json0 = res.json.bind(res);
+    res.json = function (b) {
+      try {
+        if (res.statusCode >= 200 && res.statusCode < 300 && !(b && b.ok === false)) { reg.body = b; reg.status = res.statusCode; }
+        else if (_chapaDedupe.get(k) === reg) _chapaDedupe.delete(k); // erro: pode tentar de novo
+      } catch (_) {}
+      try { reg.fim(); } catch (_) {}
+      return json0(b);
+    };
+    // conexão caiu antes da resposta: o pedido CONTINUA sendo processado — a chave fica, para o reenvio do navegador não lançar de novo
+  } catch (_) {}
+  next();
+}
+app.post(['/api/chapas_estoque/:id/movimento', '/api/chapas/saida-lote', '/api/chapas/entrada-lote', '/api/chapas_estoque_movimentos/:id/editar', '/api/chapas_estoque_movimentos/:id/desfazer', '/api/chapas_estoque'], _chapaDedupeMw);
 app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};

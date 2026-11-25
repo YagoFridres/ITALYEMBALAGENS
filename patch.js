@@ -71988,6 +71988,63 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') fecharMenu(); });
 
   // 23/11: cancelar uma ou várias OFs — inclusive CONCLUÍDAS — com confirmação mostrando o que vai ser cancelado
+  // 25/11: descancelar — a OF volta a ficar ativa (com confirmação e escolha de como ela volta)
+  function descancelarOFs(lst, depois) {
+    lst = (lst || []).filter(Boolean); if (!lst.length) return;
+    function palpite(o) { if (o.data_conclusao || o.concluida_em || o.dt_conclusao || o.data_concluida) return 'Concluída'; var p = o.passagens || o.maquinas_passadas || o.passou_maquinas; if ((Array.isArray(p) && p.length) || o.em_producao === true) return 'Em produção'; return 'Em aberto'; }
+    var pad = palpite(lst[0]);
+    var ov = document.createElement('div'); ov.className = 'dsc-cf-ov';
+    ov.innerHTML = '<div class="dsc-cf" role="dialog" aria-modal="true"><h3>Descancelar ' + (lst.length === 1 ? 'a OF #' + esc(lst[0].of || lst[0].numero) : lst.length + ' OFs') + '?</h3>'
+      + '<div class="dsc-cf-l">' + lst.map(function (o) { return '<div><b>#' + esc(o.of || o.numero) + '</b> · ' + esc(o.cliNome || o.cliente_nome || o.clinome || '') + ' · <small>' + esc(o.produto || o.descricao || '') + '</small></div>'; }).join('') + '</div>'
+      + '<p style="margin:8px 0;font-size:13px;opacity:.85">A OF volta para a lista principal, para a produção e para os relatórios.</p>'
+      + '<label class="dsc-cf-mot">Voltar como<select data-st style="width:100%;margin-top:4px;min-height:40px;border-radius:10px;padding:0 10px;font:inherit;background:var(--s2,#1e293b);color:inherit;border:1px solid var(--border,#334155)">'
+      + ['Em aberto', 'Em produção', 'Concluída'].map(function (x) { return '<option' + (x === pad ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>'
+      + '<div class="dsc-cf-f"><button type="button" class="dsc-btn dsc-btn-sec" data-cf="0">Voltar</button><button type="button" class="dsc-btn" data-cf="1" style="background:#16a34a;border-color:#15803d;color:#fff">Sim, descancelar</button></div></div>';
+    function fechar() { ov.remove(); document.removeEventListener('keydown', tec, true); }
+    function tec(e) { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } }
+    document.addEventListener('keydown', tec, true);
+    // procura no histórico como ela estava antes de cancelar
+    try {
+      window.api('GET', '/historico_acoes?tipo_acao=cancelar_of&limit=500').then(function (r) {
+        var l = Array.isArray(r) ? r : (r && r.data) || [], n0 = String(lst[0].of || lst[0].numero);
+        var h = l.filter(function (x) { return new RegExp('OF #' + n0 + ' cancelada').test(String(x.descricao || '')); }).sort(function (a, b) { return String(b.data_hora || '').localeCompare(String(a.data_hora || '')); })[0];
+        var m = h && String(h.descricao).match(/\[antes: ([^\]]+)\]/), sel = ov.querySelector('[data-st]');
+        var st = m ? m[1] : (h && /estava conclu/i.test(h.descricao) ? 'Concluída' : '');
+        if (st && sel) { if (/conclu/i.test(st)) sel.value = 'Concluída'; else if (/produ/i.test(st)) sel.value = 'Em produção'; else sel.value = 'Em aberto'; }
+      }).catch(function () {});
+    } catch (_) {}
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) return fechar();
+      var b = e.target.closest('[data-cf]'); if (!b) return;
+      if (b.getAttribute('data-cf') === '0') return fechar();
+      if (b.disabled) return; b.disabled = true; b.textContent = 'Descancelando…';
+      var st = ov.querySelector('[data-st]').value;
+      var usu = ''; try { usu = (window.CURRENT_USER && window.CURRENT_USER.nome) || ''; } catch (_) {}
+      var ok = 0, erros = [], seq = Promise.resolve();
+      lst.forEach(function (o) {
+        seq = seq.then(function () {
+          var n = o.of || o.numero;
+          return window.api('PATCH', '/ofs/' + encodeURIComponent(o.id), { status: st, deleted_at: null }).then(function (r) {
+            if (r && r.error) throw new Error(r.error);
+            o.status = st; o.deleted_at = null; o._cancelado = false; ok++;
+            try { CANC.lista = CANC.lista.filter(function (x) { return String(x.id) !== String(o.id); }); } catch (_) {}
+            return window.api('POST', '/historico_acoes', { tipo_acao: 'descancelar_of', descricao: 'OF #' + n + ' descancelada (voltou como ' + st + ')', usuario: usu || 'sistema' }).catch(function () {});
+          }).catch(function (er) { erros.push('#' + n + ': ' + (er && er.message || er)); });
+        });
+      });
+      seq.then(function () {
+        fechar();
+        if (ok) toastMsg(ok === 1 ? 'OF descancelada ✓ (' + st + ')' : ok + ' OFs descanceladas ✓', 'var(--green)');
+        if (erros.length) toastMsg('Não deu para descancelar: ' + erros.join(' · '), 'var(--red)');
+        try { carregarCanc(true); } catch (_) {}
+        try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {}
+        render(); if (typeof depois === 'function') depois();
+      });
+    });
+    document.body.appendChild(ov);
+    setTimeout(function () { var c = ov.querySelector('[data-cf="0"]'); if (c) c.focus(); }, 30);
+  }
+  window.dsDescancelarOFs = descancelarOFs;
   function cancelarOFsLista(lst, depois) {
     lst = (lst || []).filter(Boolean); if (!lst.length) return;
     var nConc = lst.filter(function (o) { return stNorm(o) === 'concluida'; }).length;
@@ -72009,17 +72066,17 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var usu = ''; try { usu = (window.CURRENT_USER && window.CURRENT_USER.nome) || ''; } catch (_) {}
       var ok = 0, erros = [];
       var seq = Promise.resolve();
+      lst.forEach(function (o) { o.__stAntes = o.status; });
       lst.forEach(function (o) {
         seq = seq.then(function () {
           var t = new Date().toISOString(); var n = o.of || o.numero;
           return window.api('PATCH', '/ofs/' + encodeURIComponent(o.id), { status: 'Cancelada', deleted_at: t }).then(function (r) {
             if (r && r.error) throw new Error(r.error);
             o.status = 'Cancelada'; o.deleted_at = t; ok++;
-            return window.api('POST', '/historico_acoes', { tipo_acao: 'cancelar_of', descricao: 'OF #' + n + ' cancelada' + (/conclu/i.test(String(o.__stAntes || '')) ? ' (estava concluída)' : '') + (mot ? ' — ' + mot : ''), usuario: usu || 'sistema' }).catch(function () {});
+            return window.api('POST', '/historico_acoes', { tipo_acao: 'cancelar_of', descricao: 'OF #' + n + ' cancelada' + (/conclu/i.test(String(o.__stAntes || '')) ? ' (estava concluída)' : '') + (o.__stAntes ? ' [antes: ' + o.__stAntes + ']' : '') + (mot ? ' — ' + mot : ''), usuario: usu || 'sistema' }).catch(function () {});
           }).catch(function (er) { erros.push('#' + n + ': ' + (er && er.message || er)); });
         });
       });
-      lst.forEach(function (o) { o.__stAntes = o.status; });
       seq.then(function () {
         fechar();
         if (ok) toastMsg(ok === 1 ? 'OF cancelada ✓' : ok + ' OFs canceladas ✓', 'var(--green)');
@@ -72089,12 +72146,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (a === 'menu' && n) {
           var of = acharOF(n), urg = of && (sim(of.urg) || sim(of.urgente)), fech = of && /concluida|cancelada/.test(stNorm(of));
           // OF concluída ou cancelada: só o que faz sentido (alterar, clonar, imprimir)
-          var conc = of && /concluida/.test(stNorm(of));
-          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]].concat(conc ? ['-', ['reabrir', 'Desfazer conclusão', IC.cancelar, 'dsc-m-perigo'], ['cancelarConc', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']] : [])
+          var conc = of && /concluida/.test(stNorm(of)), canc = of && /cancelada/.test(stNorm(of));
+          abrirMenu(b, fech ? [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir]].concat(conc ? ['-', ['reabrir', 'Desfazer conclusão', IC.cancelar, 'dsc-m-perigo'], ['cancelarConc', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']] : []).concat(canc ? ['-', ['descancelar', '↩️ Descancelar OF', IC.avancar]] : [])
             : [['#Geral'], ['d:alterar', 'Alterar OF', IC.editar], ['d:concluir', 'Concluir', IC.avancar], ['d:clonar', 'Clonar', IC.copia], ['d:ofvisual', 'Gerar OF visual', IC.imprimir], ['imprimir', 'Imprimir OF', IC.imprimir],
             ['#Produção / máquina'], ['d:passoumaq', 'Passou pela máquina', IC.avancar], ['urgente', urg ? 'Remover urgência' : 'Marcar como urgente', IC.fogo], ['d:papelcompra', 'Papel/chapa comprado', IC.vazio], ['d:movermaq', 'Mover de máquina', IC.avancar], ['d:alterardata', 'Alterar data', IC.editar], ['d:movermaqdata', 'Mover máquina + data', IC.avancar],
             ['#Ordem / prioridade'], ['d:priorizar', 'Mover para cima (priorizar)', IC.cima], ['d:adiar', 'Mover para baixo (adiar)', IC.baixo],
-            '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { if (k === 'cancelarConc') { cancelarOFsLista([of]); return; } if (k === 'reabrir') { if (typeof window.dsReabrirOF === 'function') window.dsReabrirOF(of, function () { try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} }); return; } acao(k, n); });
+            '-', ['d:cancelar', 'Cancelar OF', IC.cancelar, 'dsc-m-perigo']], function (k) { if (k === 'descancelar') { descancelarOFs([of]); return; } if (k === 'cancelarConc') { cancelarOFsLista([of]); return; } if (k === 'reabrir') { if (typeof window.dsReabrirOF === 'function') window.dsReabrirOF(of, function () { try { if (typeof window.carregarOFs === 'function') window.carregarOFs({ forcar: true }).then(render); } catch (_) {} }); return; } acao(k, n); });
           return;
         }
         if (a === 'maisHead') {
@@ -77833,7 +77890,7 @@ window.__perTxt = function (p) {
       +   '<div class="dsch-f s3"><div class="dsch-mini"><button type="button" data-foto>📷 Adicionar foto</button><button type="button" data-qr>🔳 QR Code</button></div></div>'
       + '</div></section>';
     var ov = abrirOv('', '', edit ? '✎' : '＋', edit ? 'Editar chapa' : 'Nova chapa', edit ? 'Altere o que precisar e salve.' : 'Cadastre a chapa em 4 passos rápidos. Campos com <b style="color:#f87171">*</b> são obrigatórios.', corpo,
-      '<span class="dsch-dica">Enter avança para o próximo campo</span><button type="button" class="dsch-bt" data-x>Cancelar</button><button type="button" class="dsch-bt ok" data-salvar>' + (edit ? '✓ Salvar alterações' : '＋ Criar chapa') + '</button>');
+      '<span class="dsch-dica">Enter avança para o próximo campo — para gravar, clique no botão</span><button type="button" class="dsch-bt" data-x>Cancelar</button><button type="button" class="dsch-bt ok" data-salvar>' + (edit ? '✓ Salvar alterações' : '＋ Criar chapa') + '</button>');
     atual = ov;
     // ---- cor da linha (campo oculto #chapa-cor-linha é lido pelo salvamento original) ----
     (function () {
@@ -77990,7 +78047,7 @@ window.__perTxt = function (p) {
     ov.querySelector('[data-qr]').onclick = function () { try { window.abrirModalQRCodeEstoque('chapa', lerOrig('chapa-edit-id'), lerOrig('chapa-nome')); } catch (_) { alert('Salve a chapa primeiro para gerar o QR Code.'); } };
     // Enter avança
     var ordem = Array.prototype.slice.call(ov.querySelectorAll('input.dsch-in,select.dsch-in'));
-    ordem.forEach(function (el, i) { el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && el.tagName !== 'TEXTAREA') { e.preventDefault(); var prox = ordem.slice(i + 1).find(function (x) { return x.offsetParent; }); if (prox) prox.focus(); else ov.querySelector('[data-salvar]').click(); } }); });
+    ordem.forEach(function (el, i) { el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && el.tagName !== 'TEXTAREA') { e.preventDefault(); var prox = ordem.slice(i + 1).find(function (x) { return x.offsetParent; }); if (prox) prox.focus(); else { try { ov.querySelector('[data-salvar]').focus(); } catch (_) {} } } }); }); // 25/11: Enter nunca salva sozinho
     function atualizar() {
       var q = Math.max(0, Math.trunc(num($('dsch-quantidade').value))), vu = num($('dsch-valor-unitario').value);
       var tot = q * vu;
@@ -78009,7 +78066,20 @@ window.__perTxt = function (p) {
       var falta = [];
       if (!catSel.value || norm(catIn.value).trim() !== norm(catSel.value)) { catIn.classList.add('erro'); falta.push('Categoria (escolha ou crie na lista)'); }
       [['dsch-nome', 'Nome / uso'], ['dsch-nomenclatura', 'Nomenclatura'], ['dsch-tamanho', 'Tamanho'], ['dsch-fornecedor', 'Fornecedor'], ['dsch-quantidade', 'Quantidade']].forEach(function (p) { var el = $(p[0]); if (!String(el.value || '').trim()) { el.classList.add('erro'); falta.push(p[1]); } });
-      if (falta.length) { var pr = $(falta.length ? ['dsch-nome', 'dsch-nomenclatura', 'dsch-tamanho', 'dsch-fornecedor', 'dsch-quantidade'].find(function (i) { return $(i).classList.contains('erro'); }) : ''); if (pr) pr.focus(); try { window.toast('Preencha: ' + falta.join(', '), 'var(--red)'); } catch (_) { alert('Preencha: ' + falta.join(', ')); } return; }
+      // 25/11: tamanho no formato LARGURAxCOMPRIMENTO e empresa escolhida
+      var tamEl = $('dsch-tamanho'), tamV = String(tamEl.value || '').trim().toUpperCase().replace(/\s+/g, '').replace(/[×*]/g, 'X');
+      if (tamV && !/^\d+([.,]\d+)?X\d+([.,]\d+)?$/.test(tamV)) { tamEl.classList.add('erro'); falta.push('Tamanho no formato 1240X980'); }
+      else if (tamV && tamEl.value !== tamV) { tamEl.value = tamV; tamEl.dispatchEvent(new Event('input')); }
+      if (!ov.querySelector('[data-emp] button.on')) falta.push('Empresa / CNPJ');
+      if (falta.length) { var pr = $(['dsch-nome', 'dsch-nomenclatura', 'dsch-tamanho', 'dsch-fornecedor', 'dsch-quantidade'].find(function (i) { return $(i).classList.contains('erro'); }) || ''); if (pr) pr.focus(); try { window.toast('Preencha: ' + falta.join(', '), 'var(--red)'); } catch (_) { alert('Preencha: ' + falta.join(', ')); } return; }
+      if (!edit) {
+        // cadastro NOVO: zera qualquer chapa que tenha ficado "aberta" de um Alterar anterior (senão gravava por cima dela)
+        try { CHAPA_ATUAL_ID = ''; } catch (_) {}
+        try { window.CHAPA_ATUAL_ID = ''; } catch (_) {}
+        try { setOrig('chapa-edit-id', ''); var hId = $('chapa-edit-id'); if (hId) hId.value = ''; } catch (_) {}
+        try { window.__estoqueModalChapaEditId = ''; window.__estoqueModalChapaMode = 'create'; } catch (_) {}
+        try { mo.setAttribute('data-modal-mode', 'create'); mo.removeAttribute('data-modal-edit-id'); } catch (_) {}
+      }
       // garante tudo copiado
       Array.prototype.forEach.call(ov.querySelectorAll('[data-orig]'), function (el) { el.dispatchEvent(new Event('input')); });
       lembrarNomenclatura($('dsch-nomenclatura').value, $('dsch-fornecedor').value, $('dsch-gramatura') && $('dsch-gramatura').value);
@@ -84473,6 +84543,32 @@ window.__perTxt = function (p) {
     g.__dsRodape = true; window._compraPapelaoBuildCompraPrintHtmlFromPayload = g;
   }
   instalar(); setInterval(instalar, 2000);
+})();
+
+/* ===== 25/11: chapa nova igual a uma que já existe — aviso claro (Enter não confirma; o padrão é voltar e corrigir) ===== */
+(function () {
+  if (window.dsChapaConfirmarSomar) return;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  window.dsChapaConfirmarSomar = function (r, qAdd, payload) {
+    return new Promise(function (res) {
+      var ex = (r && r.existente) || {};
+      var ov = document.createElement('div'); ov.setAttribute('data-ds-sem-resp', '1');
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100400;background:rgba(2,6,23,.62);display:flex;align-items:center;justify-content:center;padding:16px';
+      var lin = function (rot, v) { return '<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid rgba(148,163,184,.2)"><span style="opacity:.75">' + rot + '</span><b>' + esc(v || '—') + '</b></div>'; };
+      ov.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--s1,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.45);font-family:inherit">'
+        + '<div style="font-size:17px;font-weight:800;margin-bottom:6px">⚠️ Essa chapa já está cadastrada</div>'
+        + '<div style="font-size:13.5px;opacity:.85;margin-bottom:10px">Já existe uma chapa com o <b>mesmo fornecedor, nomenclatura e tamanho</b>. A chapa nova <b>não foi criada</b>.</div>'
+        + '<div style="font-size:13px">' + lin('Nome / uso', ex.nome_uso || ex.nome) + lin('Fornecedor', ex.fornecedor) + lin('Nomenclatura', ex.nomenclatura) + lin('Tamanho', ex.tamanho) + lin('Categoria', ex.categoria) + lin('Saldo atual', ex.quantidade_atual != null ? ex.quantidade_atual : ex.quantidade) + '</div>'
+        + '<div style="font-size:13px;opacity:.8;margin-top:10px">Se for essa mesma chapa, você pode <b>somar ' + esc(qAdd) + ' un.</b> no saldo dela. Se for outra chapa, volte e corrija os dados.</div>'
+        + '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" data-r="0" style="flex:2;min-width:160px;padding:12px;border-radius:10px;border:none;background:#0ea5e9;color:#fff;font-weight:800;cursor:pointer;font-family:inherit">Voltar e corrigir</button>'
+        + '<button type="button" data-r="1" style="flex:1;min-width:150px;padding:12px;border-radius:10px;border:1px solid #f59e0b;background:transparent;color:#f59e0b;font-weight:800;cursor:pointer;font-family:inherit">Somar ' + esc(qAdd) + ' un. nela</button></div></div>';
+      function fim(v) { ov.remove(); document.removeEventListener('keydown', k, true); res(v); }
+      function k(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fim(false); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-r]'); if (b) { if (b.getAttribute('data-r') === '1' && !(e.isTrusted && e.detail > 0)) return; fim(b.getAttribute('data-r') === '1'); } });
+      document.addEventListener('keydown', k, true); document.body.appendChild(ov);
+      setTimeout(function () { try { ov.querySelector('[data-r="0"]').focus(); } catch (_) {} }, 30);
+    });
+  };
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
