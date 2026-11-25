@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261125101201';
-const SW_RUNTIME_VERSION = '20261125101201';
+const PATCH_RUNTIME_VERSION = '20261125101300';
+const SW_RUNTIME_VERSION = '20261125101300';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -6024,7 +6024,12 @@ async function buscarTodasOFsPaginadas(montarQuery) {
   while (true) {
     let query = montarQuery();
     const { data, error, count } = await query.range(from, from + pageSize - 1);
-    if (error) throw error;
+    if (error) {
+      // 25/11: total múltiplo exato do tamanho da página → a página seguinte vem "fora do intervalo" (HTTP 416): é só o fim da lista
+      const m = String(error?.message || error?.details || error?.code || '').toLowerCase();
+      if (from > 0 && /range not satisfiable|pgrst103|416|offset|out of range|invalid range/.test(m)) break;
+      throw error;
+    }
     const lote = Array.isArray(data) ? data : [];
     if (from === 0 && Number.isFinite(Number(count))) countExact = Number(count);
     if (!lote.length) break;
@@ -6155,7 +6160,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     function _isRangeOutOfBounds(e) {
       if (!e) return false;
       var m = String(e?.message || e?.details || e?.hint || e || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-      if (/invalid range|out of range|range exceeds|range start|must be less than or equal|cannot exceed|offset exceeds|greater than the maximum/.test(m)) return true;
+      if (/invalid range|out of range|range exceeds|range start|must be less than or equal|cannot exceed|offset exceeds|greater than the maximum|range not satisfiable|pgrst103/.test(m)) return true;
       return false;
     }
     try {
@@ -6404,12 +6409,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     try { console.error('[GET /api/ofs] ERRO CATCH FINAL. Message=', e?.message || ''); } catch (_) {}
     try { console.error('[GET /api/ofs] stack final:', (e?.stack || '').slice(0, 4000)); } catch (_) {}
     try { console.error('[GET /api/ofs] req.query:', JSON.stringify(req.query || {})); } catch (_) {}
-    _logSupabaseErr('[GET /api/ofs] catch-final FULL', e, { offset, limit, shouldFetchAll });
-    var _errRange = _isRangeOutOfBounds(e);
-    if (_errRange && !shouldFetchAll) {
+    // 25/11: o catch não pode usar variáveis de dentro do try (davam ReferenceError e o pedido ficava SEM resposta)
+    var _q = req.query || {};
+    var _off = parseInt(String(_q.offset || ''), 10) || 0, _lim = parseInt(String(_q.limit || ''), 10) || 0;
+    var _errRange = /range not satisfiable|pgrst103|invalid range|out of range|offset exceeds/i.test(String(e?.message || e?.details || e?.code || ''));
+    if (_errRange) {
       try { console.warn('[GET /api/ofs] catch-final PGRST103/HTTP416 → 200 lista vazia (normal: offset maior que count).'); } catch (_) {}
-      var _safeRes = { ok: true, data: [], total: Number(count || fetched?.count || 0), offset: Number(offset) || 0, limit: Number(limit) || 0, hasMore: false, aviso: 'range_offset_excedeu_total' };
-      return res.json(_safeRes);
+      return res.json({ ok: true, data: [], total: 0, offset: _off, limit: _lim, hasMore: false, aviso: 'range_offset_excedeu_total' });
     }
     var _status = 500;
     var _aviso = 'falha_ao_carregar_pagina';
@@ -6419,7 +6425,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       ok: false,
       error: (e && e.message) || 'Falha ao carregar página. Tente novamente.',
       aviso: _aviso,
-      pagina_para_tentar_de_novo: { offset: Number(offset) || 0, limit: Number(limit) || 0 },
+      pagina_para_tentar_de_novo: { offset: _off, limit: _lim },
       diagnostico: {
         err_message: String(e?.message || '').slice(0, 800),
         err_code: String(e?.code || e?.pg_code || ''),
@@ -6429,10 +6435,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         front_aviso_usuario: 'lista_possivelmente_incompleta_recente'
       },
       data: [], ofs: [],
-      total: Number(count || fetched?.count || 0) || 0,
-      offset: Number(offset) || 0,
-      limit: Number(limit) || 0,
-      hasMore: !!(fetched?.count > 0 && offset < (fetched?.count || 0))
+      total: 0,
+      offset: _off,
+      limit: _lim,
+      hasMore: false
     });
   }
 });
