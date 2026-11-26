@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261126105358';
-const SW_RUNTIME_VERSION = '20261126105358';
+const PATCH_RUNTIME_VERSION = '20261126112843';
+const SW_RUNTIME_VERSION = '20261126112843';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27455,7 +27455,25 @@ app.get('/api/chapas_estoque/totais', authMiddleware, async (req, res) => {
     });
     const r2 = (v) => Math.round(v * 100) / 100, r3 = (v) => Math.round(v * 1000) / 1000;
     ['chapas', 'retalhos'].forEach((k) => { tot[k].valor = r2(tot[k].valor); tot[k].toneladas = r3(tot[k].toneladas); });
+    // 26/11: última entrada e última saída (ignora as desfeitas) — o card mostra quando o estoque mudou
+    let ultima_entrada = null, ultima_saida = null;
+    try {
+      const { data: mv } = await supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(300);
+      const porId = new Map(linhas.map((c) => [String(c.id), c]));
+      const resumo = (m) => {
+        const c = porId.get(String(m.chapa_id || '')) || {};
+        return { em: m.created_at, usuario: m.usuario || m.usuario_nome || m.responsavel || null, quantidade: Math.abs(n(m.delta)) || n(m.quantidade) || null,
+          chapa: [c.nomenclatura, c.tamanho].filter(Boolean).join(' · ') || m.chapa_label || null, fornecedor: c.fornecedor || m.fornecedor || null };
+      };
+      (mv || []).forEach((m) => {
+        if (m.reverted || m.reverted_at || /^revers/i.test(String(m.origem || ''))) return;
+        const tp = String(m.tipo || '').toLowerCase();
+        if (!ultima_entrada && /entrada/.test(tp)) ultima_entrada = resumo(m);
+        if (!ultima_saida && /saida|saída|baixa/.test(tp)) ultima_saida = resumo(m);
+      });
+    } catch (_) {}
     return ok(res, {
+      ultima_entrada, ultima_saida,
       calculado_em: new Date().toISOString(),
       chapas: tot.chapas, retalhos: tot.retalhos,
       por_fornecedor: Object.values(porForn).map((x) => ({ ...x, valor: r2(x.valor), toneladas: r3(x.toneladas) })).sort((a, b) => b.valor - a.valor),
