@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261126104959';
-const SW_RUNTIME_VERSION = '20261126104959';
+const PATCH_RUNTIME_VERSION = '20261126105226';
+const SW_RUNTIME_VERSION = '20261126105226';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27424,6 +27424,45 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   }
 });
 
+// 26/11: valor do estoque calculado no servidor — o MESMO número para todos os usuários (sem filtro de empresa)
+app.get('/api/chapas_estoque/totais', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const linhas = [];
+    for (let de = 0; de < 20000; de += 1000) {
+      const { data, error } = await supabase.from('chapas_estoque_v2').select('*').range(de, de + 999);
+      if (error) throw error;
+      (data || []).forEach((r) => linhas.push(r));
+      if (!data || data.length < 1000) break;
+    }
+    const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+    const qtdDe = (c) => Math.max(0, Math.trunc(n(c.quantidade_atual != null ? c.quantidade_atual : (c.quantidade != null ? c.quantidade : c.qtd))));
+    const tonDe = (c) => { const t = n(c.toneladas_atual != null ? c.toneladas_atual : c.toneladas); if (t > 0) return t; const kg = n(c.peso_kg_unidade); return kg > 0 ? (qtdDe(c) * kg) / 1000 : 0; };
+    const ret = (c) => /^retalho/i.test(String(c.categoria || '').trim());
+    const tot = { chapas: { itens: 0, quantidade: 0, valor: 0, toneladas: 0 }, retalhos: { itens: 0, quantidade: 0, valor: 0, toneladas: 0 } };
+    const porForn = {}; const porEmpresa = {};
+    linhas.forEach((c) => {
+      if (c.deleted_at) return;
+      const g = ret(c) ? tot.retalhos : tot.chapas;
+      const q = qtdDe(c), v = q * n(c.valor_unitario), t = tonDe(c);
+      g.itens += 1; g.quantidade += q; g.valor += v; g.toneladas += t;
+      if (!ret(c)) {
+        const f = String(c.fornecedor || 'SEM FORNECEDOR').trim().toUpperCase() || 'SEM FORNECEDOR';
+        const x = porForn[f] = porForn[f] || { fornecedor: f, itens: 0, valor: 0, toneladas: 0 }; x.itens++; x.valor += v; x.toneladas += t;
+        const e = String(c.qual_cnpj || c.empresa_vinculada || '—').trim().toUpperCase() || '—';
+        const y = porEmpresa[e] = porEmpresa[e] || { empresa: e, itens: 0, valor: 0 }; y.itens++; y.valor += v;
+      }
+    });
+    const r2 = (v) => Math.round(v * 100) / 100, r3 = (v) => Math.round(v * 1000) / 1000;
+    ['chapas', 'retalhos'].forEach((k) => { tot[k].valor = r2(tot[k].valor); tot[k].toneladas = r3(tot[k].toneladas); });
+    return ok(res, {
+      calculado_em: new Date().toISOString(),
+      chapas: tot.chapas, retalhos: tot.retalhos,
+      por_fornecedor: Object.values(porForn).map((x) => ({ ...x, valor: r2(x.valor), toneladas: r3(x.toneladas) })).sort((a, b) => b.valor - a.valor),
+      por_empresa: Object.values(porEmpresa).map((x) => ({ ...x, valor: r2(x.valor) })).sort((a, b) => b.valor - a.valor),
+    });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
 app.get('/api/chapas_estoque/:id', authMiddleware, async (req, res, next) => {
   try {
     const id = String(req.params.id || '').trim();

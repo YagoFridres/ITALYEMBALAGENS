@@ -46760,7 +46760,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _estoqueAtualEmpId() {
-    try { return String(window.EMP_FILTRO || '').trim(); } catch (_) { return ''; }
+    // 26/11: o estoque de chapas é um só — todos os usuários veem tudo, seja qual for a empresa selecionada
+    return '';
   }
 
   function _estoqueChapasFetchState() {
@@ -46832,7 +46833,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var state = _estoqueChapasFetchState();
     var cacheKey = String(empId || '__all__');
     var now = Date.now();
-    if (state.key === cacheKey && Array.isArray(state.cache) && state.cache.length && (now - Number(state.cacheAt || 0)) < 20000) {
+    if (state.key === cacheKey && Array.isArray(state.cache) && state.cache.length && (now - Number(state.cacheAt || 0)) < 4000) {
       return state.cache.slice(0, requested);
     }
     if (state.key === cacheKey && state.inFlight) {
@@ -84850,6 +84851,41 @@ window.__perTxt = function (p) {
   }
   setInterval(ordenar, 400);
   if (typeof window.__dsAoMudar === 'function') { try { window.__dsAoMudar(ordenar); } catch (_) {} }
+})();
+
+/* ===== 26/11: Estoque de Chapas — valor total vem do servidor: o MESMO para todos os usuários, com hora da atualização ===== */
+(function () {
+  if (window.__dsEstTotais) return; window.__dsEstTotais = true;
+  var ULT = null, BUSCANDO = null;
+  function money(v) { try { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } catch (_) { return 'R$ ' + v; } }
+  function ton(v) { try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t'; } catch (_) { return v + ' t'; } }
+  function hora(iso) { try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } catch (_) { return ''; } }
+  function buscar() {
+    if (BUSCANDO) return BUSCANDO;
+    BUSCANDO = window.apiFetch('/api/chapas_estoque/totais?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) { ULT = (j && j.data) || j; return ULT; }).finally(function () { setTimeout(function () { BUSCANDO = null; }, 1500); });
+    return BUSCANDO;
+  }
+  function card(pg, re) { var l = pg.querySelectorAll('.estoque-wire-cards .pep-card'); for (var i = 0; i < l.length; i++) { var lb = l[i].querySelector('.pep-card-label'); if (lb && re.test(lb.textContent)) return l[i]; } return null; }
+  function aplicar() {
+    var pg = document.getElementById('page-estoque'); if (!pg || pg.offsetParent === null) return;
+    var cv = card(pg, /valor (total do estoque|dos retalhos)/i); if (!cv || cv.getAttribute('data-ds-tot') === 'ok') return;
+    cv.setAttribute('data-ds-tot', 'busca');
+    buscar().then(function (t) {
+      if (!t || !t.chapas) return;
+      var abaRet = String(window.__estoqueWireAba || '') === 'retalhos';
+      var filtro = !!(window.__estoqueWireCat || window.__estoqueWireForn);
+      var g = abaRet ? t.retalhos : t.chapas;
+      var val = cv.querySelector('.pep-card-val'), sub = cv.querySelector('.pep-card-sub');
+      if (!filtro) {
+        if (val) val.textContent = money(g.valor);
+        if (sub) sub.textContent = 'Igual para todos · atualizado às ' + hora(t.calculado_em);
+        var ct = card(pg, /toneladas em estoque/i); if (ct && ct.querySelector('.pep-card-val')) ct.querySelector('.pep-card-val').textContent = ton(g.toneladas);
+      } else if (sub) sub.textContent = 'Valor do filtro · estoque total: ' + money(g.valor);
+      cv.setAttribute('data-ds-tot', 'ok');
+    }).catch(function () { cv.setAttribute('data-ds-tot', ''); });
+  }
+  setInterval(aplicar, 500);
+  window.dsEstoqueTotais = function () { return buscar(); };
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
