@@ -75068,7 +75068,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '@media (max-width:860px){.dsf-hacts .dsf-novo{padding:0 10px;font-size:13px}}'
       + '.dsf-trocar,.dsf-trocasel{min-height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;font-weight:700;cursor:pointer}.dsf-trocasel{max-width:220px}.dsf-trocar:hover,.dsf-trocasel:hover{border-color:var(--accent)}'
       + 'html[data-theme="light"] .dsf-trocar,html[data-theme="light"] .dsf-trocasel{background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}'
-      + '.dsf-mail2>header{flex-wrap:wrap;gap:10px}.dsf-mail2 .dsf-hacts{flex-wrap:wrap}'
+      + '.dsf-mail2>header{flex-wrap:wrap;gap:10px}.dsf-mail2 .dsf-hacts{flex-wrap:nowrap;margin-left:auto}'
       + '@media (max-width:860px){.dsf-trocasel{display:none}.dsf-trocar{padding:0 10px;font-size:13px}}'
       + '.dsf-ml>li.dsf-env{padding:0}.dsf-ver{font-size:12px;color:var(--accent);margin-top:5px;font-weight:700}'
       + '.dsf-ml>li.dsf-rec{padding:0}.dsf-recbt{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);font:inherit;padding:10px 12px;cursor:pointer;border-radius:10px}.dsf-recbt:hover{background:var(--s3)}.dsf-anx{font-size:12px;color:var(--accent);margin-top:4px}'
@@ -84955,7 +84955,7 @@ window.__perTxt = function (p) {
     var e = t.ultima_entrada, s = t.ultima_saida, c = t.ultimo_checklist;
     function lin(cls, ico, rot, m, extra) { return '<span class="ds-et ' + cls + '"><b>' + ico + ' ' + rot + ':</b> ' + (m ? escH(quando(m.em)) + (m.usuario ? ' · ' + escH(m.usuario) : '') + (extra ? ' · ' + escH(extra) : '') : '—') + '</span>'; }
     return lin('e', '📥', 'Última entrada', e) + lin('s', '📤', 'Última saída', s)
-      + lin('c', '📋', 'Checklist de recebimento', c, c ? [c.fornecedor, c.nota_fiscal ? 'NF ' + c.nota_fiscal : ''].filter(Boolean).join(' ') : '');
+      + lin('c', '📋', 'Checklist de recebimento', c, c ? [c.fornecedor, c.nota_fiscal ? 'NF ' + String(c.nota_fiscal).replace(/[^\d.\/-]/g, '') : ''].filter(Boolean).join(' ') : '');
   }
   (function () {
     var st = document.createElement('style'); st.id = 'ds-est-tot-css';
