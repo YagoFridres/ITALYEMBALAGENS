@@ -84865,7 +84865,8 @@ window.__perTxt = function (p) {
     BUSCANDO = window.apiFetch('/api/chapas_estoque/totais?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) { ULT = (j && j.data) || j; return ULT; }).finally(function () { setTimeout(function () { BUSCANDO = null; }, 1500); });
     return BUSCANDO;
   }
-  function card(pg, re) { var l = pg.querySelectorAll('.estoque-wire-cards .pep-card'); for (var i = 0; i < l.length; i++) { var lb = l[i].querySelector('.pep-card-label'); if (lb && re.test(lb.textContent)) return l[i]; } return null; }
+  function card(pg, re) { var box = pg.querySelector('.estoque-wire-cards'); if (!box) return null; var l = box.children; for (var i = 0; i < l.length; i++) { var lb = l[i].querySelector('.pep-card-label') || l[i].children[0]; if (lb && re.test(lb.textContent)) return l[i]; } return null; }
+  function partes(c) { return { val: c.querySelector('.pep-card-val') || c.children[1], sub: c.querySelector('.pep-card-sub') || c.children[2] }; }
   function aplicar() {
     var pg = document.getElementById('page-estoque'); if (!pg || pg.offsetParent === null) return;
     var cv = card(pg, /valor (total do estoque|dos retalhos)/i); if (!cv || cv.getAttribute('data-ds-tot') === 'ok') return;
@@ -84875,11 +84876,10 @@ window.__perTxt = function (p) {
       var abaRet = String(window.__estoqueWireAba || '') === 'retalhos';
       var filtro = !!(window.__estoqueWireCat || window.__estoqueWireForn);
       var g = abaRet ? t.retalhos : t.chapas;
-      var val = cv.querySelector('.pep-card-val'), sub = cv.querySelector('.pep-card-sub');
+      var pp = partes(cv), val = pp.val, sub = pp.sub;
       if (!filtro) {
         if (val) val.textContent = money(g.valor);
         if (sub) sub.textContent = 'Igual para todos · atualizado às ' + hora(t.calculado_em);
-        var ct = card(pg, /toneladas em estoque/i); if (ct && ct.querySelector('.pep-card-val')) ct.querySelector('.pep-card-val').textContent = ton(g.toneladas);
       } else if (sub) sub.textContent = 'Valor do filtro · estoque total: ' + money(g.valor);
       cv.setAttribute('data-ds-tot', 'ok');
     }).catch(function () { cv.setAttribute('data-ds-tot', ''); });
