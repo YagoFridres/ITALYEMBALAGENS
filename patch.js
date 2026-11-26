@@ -82801,8 +82801,8 @@ window.__perTxt = function (p) {
         + '<td data-l="Hora" class="dmv-hora" title="' + esc(dataHora(m.created_at)) + '">' + esc(horaMin(m.created_at)) + '</td><td data-l="Tipo">' + tag + '</td>'
         + '<td data-l="Chapa" class="dmv-ch"><div><small class="dmv-fn"><span class="dmv-dot"></span>' + esc(f || '—') + '</small><b>' + (ehRetalho(chapaDe(m)) ? '<span class="dmv-tag ret">✂️ Retalho</span> ' : '') + esc(m.chapa_label || '—') + '</b></div></td>'
         + '<td data-l="Qtd" class="n ' + (ent ? 'ent' : 'sai') + ' dmv-q"><b>' + (ent ? '+' : '−') + num(qtdMov(m)) + '</b></td>'
-        + '<td data-l="Saldo" class="n dmv-saldo">' + (m.qtd_anterior != null ? '<span>' + num(m.qtd_anterior) + '</span> → <b>' + num(m.qtd_nova) + '</b>' : '—') + '</td>'
-        + '<td data-l="Valor" class="n dmv-vl">' + rs(valorMov(m)) + '<small>' + ton(tonMov(m)) + '</small></td><td data-l="NF">' + esc(nfMov(m) || '—') + '</td>'
+        + '<td data-l="Saldo" class="n dmv-saldo"><span class="dmv-cx">' + (m.qtd_anterior != null ? '<span>' + num(m.qtd_anterior) + '</span> → <b>' + num(m.qtd_nova) + '</b>' : '—') + '</span></td>'
+        + '<td data-l="Valor" class="n dmv-vl"><span class="dmv-cx">' + rs(valorMov(m)) + '<small>' + ton(tonMov(m)) + '</small></span></td><td data-l="NF">' + esc(nfMov(m) || '—') + '</td>'
         + '<td data-l="Quem lançou" class="dmv-quem">' + esc(m.usuario || '—') + '</td>'
         + '<td data-l="" class="c dmv-acs">' + (!m.reverted && (k === 'entrada' || k === 'saida') ? '<button type="button" class="dmv-ic" data-dmv-edit="' + esc(m.id) + '" title="Editar: corrigir chapa, quantidade, valor ou NF" aria-label="Editar">✏️<span>Editar</span></button>' : '') + (podeDesfazer ? '<button type="button" class="dmv-ic dmv-ic-del" data-dmv-desf="' + esc(m.id) + '" title="Desfazer este lançamento (o saldo volta)" aria-label="Desfazer">↶<span>Desfazer</span></button>' : '') + '</td></tr>';
     }).join('') || '<tr><td colspan="9" class="dmv-vazio">Nada encontrado' + (S.q || S.forn ? ' com esse filtro' : ' neste mês') + '.</td></tr>';
