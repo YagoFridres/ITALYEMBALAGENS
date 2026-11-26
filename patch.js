@@ -65103,7 +65103,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           + '    <div class="pep-card"><div class="pep-card-label">Fornecedor em Destaque</div><div class="pep-card-val">' + escHtml(fornTop) + '</div><div class="pep-card-sub">Maior volume financeiro no conjunto</div></div>'
           + (comprasComErro > 0 ? ('    <div class="pep-card" style="background:rgba(234,179,8,.12)"><div class="pep-card-label">⚠ Itens pulados no render</div><div class="pep-card-val" style="color:#fbbf24">' + escHtml(String(comprasComErro)) + '</div><div class="pep-card-sub">Com dados incompletos; restante da tabela carregou normalmente.</div></div>') : '')
           + '  </div>'
-          + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões ' + (typeof patchBadgeHtml === 'function' ? patchBadgeHtml(Array.isArray(st && st.pins) ? st.pins.length : 0) : '') + '</button><button type="button" class="pep-btn" id="cmpx-btn-relatorios" onclick="window.dsRelatoriosCompra && window.dsRelatoriosCompra()">📑 Relatórios de Compra</button><button type="button" class="pep-btn" id="cmpx-btn-estoque" onclick="window.go && window.go(\'estoque\')">🧱 Estoque de Chapas</button></div></div>'
+          + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões ' + (typeof patchBadgeHtml === 'function' ? patchBadgeHtml(Array.isArray(st && st.pins) ? st.pins.length : 0) : '') + '</button><button type="button" class="pep-btn" id="cmpx-btn-relatorios" onclick="window.dsRelatoriosCompra && window.dsRelatoriosCompra()">📑 Relatórios de Compra</button><button type="button" class="pep-btn" id="cmpx-btn-emails" onclick="window.dsCmpEmailsForn && window.dsCmpEmailsForn()">📧 E-mails dos fornecedores</button><button type="button" class="pep-btn" id="cmpx-btn-estoque" onclick="window.go && window.go(\'estoque\')">🧱 Estoque de Chapas</button></div></div>'
           + '  <div class="pep-panel cmpx-filter-panel">'
           + '    <div class="cmpx-filter-row"><input class="pep-input" id="cmpx-busca" type="text" placeholder="Buscar por fornecedor, pedido, número da compra, pasta, PO ou observação..." value="' + escAttr(st && st.busca || '') + '"><button type="button" class="pep-btn primary" id="cmpx-btn-buscar">Buscar</button></div>'
           + '    <div class="cmpx-folder-strip">' + filtersHtml + '</div>'
@@ -74790,7 +74790,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '<div class="dsf-abas"><button type="button" data-aba="env" class="on">Enviados <span>' + env.length + '</span></button><button type="button" data-aba="rec">Respostas recebidas <span class="dsf-nrec">…</span></button></div>'
       + '<div class="dsf-aba" data-p="env">' + (env.length ? '<ul class="dsf-ml">' + env.map(function (e) {
           var emp = { 'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens', 'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste', 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'Oestepack' }[e.emp_id] || '';
-          return '<li><div class="dsf-ml1"><b>' + esc(e.compra || 'Compra') + (emp ? ' · ' + esc(emp) : '') + '</b><span>' + esc(dataHora(e.em)) + '</span></div><div class="dsf-ml2">Para: ' + esc(e.para || '—') + '</div>' + (e.por ? '<div class="dsf-ml3">Enviado por ' + esc(e.por) + '</div>' : '') + '</li>';
+          return '<li class="dsf-env" data-ei="' + env.indexOf(e) + '"><button type="button" class="dsf-recbt" data-env="' + env.indexOf(e) + '"><div class="dsf-ml1"><b>' + esc(e.compra || 'Compra') + (emp ? ' · ' + esc(emp) : '') + '</b><span>' + esc(dataHora(e.em)) + '</span></div><div class="dsf-ml2">Para: ' + esc(e.para || '—') + '</div>' + (e.por ? '<div class="dsf-ml3">Enviado por ' + esc(e.por) + '</div>' : '') + '<div class="dsf-ver">👁 Clique para ver o e-mail enviado</div></button><div class="dsf-corpo" hidden></div></li>';
         }).join('') + '</ul>' : '<div class="dsf-vazio">Nenhum e-mail de compra enviado para este fornecedor pelo sistema.</div>') + '</div>'
       + '<div class="dsf-aba" data-p="rec" hidden><div class="dsf-vazio">Buscando na caixa de entrada do comercial@…</div></div>'
       + '<footer><button type="button" data-x="fechar">Fechar</button></footer></div>';
@@ -74809,6 +74809,38 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           }).join('') + '</ul>' : '<div class="dsf-vazio">Nenhuma resposta deste fornecedor na caixa de entrada.</div>');
       }).catch(function (er) { ov.querySelector('.dsf-nrec').textContent = '!'; recP.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui ler a caixa de entrada: ' + esc(er.message) + ' <button type="button" data-rec="atualizar">Tentar de novo</button></div>'; });
     }
+    var ENVP = null;
+    function enviadosImap() { if (!ENVP) ENVP = req('GET', '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/enviados').then(function (d) { return (d && d.mensagens) || []; }); return ENVP; }
+    function casar(e, l) {
+      var t = new Date(e.em).getTime(), num = String(e.compra || '').match(/\d+/), melhor = null, dist = 1e15;
+      var pr = String(e.para || '').toLowerCase().split(/[,;\s]+/).filter(Boolean);
+      l.forEach(function (m) {
+        var tm = new Date(m.data).getTime(); if (isNaN(tm)) return; var d = Math.abs(tm - t);
+        var dest = String((m.para || '') + ',' + (m.cc || '')).toLowerCase();
+        var okDest = !pr.length || pr.some(function (x) { return dest.indexOf(x) >= 0; });
+        var okNum = num && new RegExp('\\b0*' + Number(num[0]) + '\\b').test(String(m.assunto || '') + ' ' + String(m.previa || ''));
+        if (okDest && (d < 30 * 60000 || (okNum && d < 3 * 86400000)) && d < dist) { melhor = m; dist = d; }
+      });
+      return melhor;
+    }
+    function mostrarMsg(corpo, uid, pasta) {
+      corpo.innerHTML = '<div class="dsf-vazio">Abrindo o e-mail…</div>';
+      return req('GET', '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + uid + (pasta ? '?pasta=' + pasta : '')).then(function (m) {
+        corpo.innerHTML = '<div class="dsf-cab">' + (m.assunto ? '<b>Assunto: ' + esc(m.assunto) + '</b><br>' : '') + 'De: ' + esc(m.de) + (m.para ? '<br>Para: ' + esc(m.para) : '') + (m.cc ? '<br>Cc: ' + esc(m.cc) : '') + '<br>Data: ' + esc(dataHora(m.data)) + '</div>'
+          + '<pre class="dsf-txt">' + esc(m.texto || '(e-mail sem texto)') + '</pre>'
+          + (m.anexos && m.anexos.length ? '<div class="dsf-anxs">' + m.anexos.map(function (a) { return '<button type="button" data-anexo="' + a.i + '" data-uid="' + m.uid + '" data-pasta="' + (pasta || '') + '" data-nome="' + esc(a.nome) + '">⬇ ' + esc(a.nome) + ' <small>' + kb(a.tamanho) + '</small></button>'; }).join('') + '</div>' : '');
+      }).catch(function (er) { corpo.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui abrir: ' + esc(er.message) + '</div>'; });
+    }
+    function abrirEnv(i) {
+      var li = ov.querySelector('.dsf-env[data-ei="' + i + '"]'), corpo = li.querySelector('.dsf-corpo');
+      if (!corpo.hidden) { corpo.hidden = true; return; }
+      corpo.hidden = false; corpo.innerHTML = '<div class="dsf-vazio">Procurando o e-mail na pasta de enviados…</div>';
+      enviadosImap().then(function (l) {
+        var m = casar(env[i], l);
+        if (!m) { corpo.innerHTML = '<div class="dsf-vazio">Não achei a cópia deste e-mail na pasta de enviados da conta (envios antigos podem não ter cópia).</div>'; return; }
+        return mostrarMsg(corpo, m.uid, 'enviados');
+      }).catch(function (er) { corpo.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui ler a pasta de enviados: ' + esc(er.message) + '</div>'; });
+    }
     function abrirMsg(i) {
       var li = recP.querySelector('.dsf-rec[data-i="' + i + '"]'), corpo = li.querySelector('.dsf-corpo');
       if (!corpo.hidden) { corpo.hidden = true; return; }
@@ -74822,7 +74854,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     function baixar(btn) {
       var nome = btn.getAttribute('data-nome'), t0 = btn.innerHTML; btn.disabled = true; btn.textContent = 'Baixando…';
       var h = {}; try { h.Authorization = 'Bearer ' + (localStorage.getItem('token') || ''); } catch (_) {}
-      fetch((window.API_BASE || '') + '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + btn.getAttribute('data-uid') + '/anexo/' + btn.getAttribute('data-anexo'), { headers: h })
+      fetch((window.API_BASE || '') + '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + btn.getAttribute('data-uid') + '/anexo/' + btn.getAttribute('data-anexo') + (btn.getAttribute('data-pasta') ? '?pasta=' + btn.getAttribute('data-pasta') : ''), { headers: h })
         .then(function (r) { if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); }); return r.blob(); })
         .then(function (b) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = nome || 'anexo'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 4000); })
         .catch(function (er) { try { window.toast('Erro ao baixar: ' + er.message, 'var(--red)'); } catch (_) {} })
@@ -74832,11 +74864,23 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (e.target === ov || e.target.closest('[data-x="fechar"]')) { ov.remove(); return; }
       var ab = e.target.closest('[data-aba]'); if (ab) { var k = ab.getAttribute('data-aba'); ov.querySelectorAll('[data-aba]').forEach(function (x) { x.classList.toggle('on', x === ab); }); ov.querySelectorAll('[data-p]').forEach(function (x) { x.hidden = x.getAttribute('data-p') !== k; }); if (k === 'rec' && !carregado) abaRec(false); return; }
       if (e.target.closest('[data-rec="atualizar"]')) { abaRec(true); return; }
+      var be = e.target.closest('[data-env]'); if (be) { abrirEnv(Number(be.getAttribute('data-env'))); return; }
       var bt = e.target.closest('[data-abrir]'); if (bt) { abrirMsg(Number(bt.getAttribute('data-abrir'))); return; }
       var an = e.target.closest('[data-anexo]'); if (an) baixar(an);
     });
     abaRec(false); // já busca as respostas em segundo plano (o número aparece na aba)
   }
+  // 26/11: abrir os e-mails de um fornecedor de qualquer tela (ex.: Compra de Papelão)
+  window.dsFornEmails = function (nomeOuId) {
+    var alvo = norm(nomeOuId);
+    return Promise.all([carregar(), E.emails ? Promise.resolve() : resumoCompras()]).then(function () {
+      var f = FORN.filter(function (x) { return String(x.id) === String(nomeOuId) || norm(x.nome) === alvo; })[0];
+      if (!f) { try { window.toast('Fornecedor "' + nomeOuId + '" não encontrado no cadastro de fornecedores.', 'var(--red)'); } catch (_) {} return; }
+      try { if (typeof css === 'function') css(); } catch (_) {}
+      janelaEmails(f);
+    });
+  };
+  window.dsFornLista = function () { return carregar().then(function (l) { return l; }); };
   function confirmar(msg) {
     return new Promise(function (ok) {
       var ov = document.createElement('div'); ov.className = 'dsf-ov';
@@ -74893,6 +74937,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dsf-btn-mail{height:36px;border-radius:9px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:600;font-size:13px;cursor:pointer}.dsf-btn-mail:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}'
       + '.dsf-modal.dsf-mail{width:min(860px,100%)!important;max-width:100%!important}.dsf-abas{display:flex;gap:6px;margin:4px 0 12px;border-bottom:1px solid var(--border)}.dsf-abas button{border:0;background:transparent;color:var(--text2);font:inherit;font-weight:600;padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.dsf-abas button.on{color:var(--accent);border-bottom-color:var(--accent)}.dsf-abas span{background:var(--s3);color:var(--text);border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}'
       + '.dsf-ml{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.dsf-ml>li{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--s2)}.dsf-ml1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.dsf-ml1 b{font-size:14px;overflow-wrap:anywhere}.dsf-ml1 span{font-size:12px;color:var(--text2);white-space:nowrap}.dsf-ml2{font-size:12.5px;color:var(--text2);margin-top:3px;overflow-wrap:anywhere}.dsf-ml3{font-size:12.5px;color:var(--text3);margin-top:3px;overflow-wrap:anywhere}'
+      + '.dsf-ml>li.dsf-env{padding:0}.dsf-ver{font-size:12px;color:var(--accent);margin-top:5px;font-weight:700}'
       + '.dsf-ml>li.dsf-rec{padding:0}.dsf-recbt{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);font:inherit;padding:10px 12px;cursor:pointer;border-radius:10px}.dsf-recbt:hover{background:var(--s3)}.dsf-anx{font-size:12px;color:var(--accent);margin-top:4px}'
       + '.dsf-corpo{border-top:1px solid var(--border);padding:10px 12px}.dsf-cab{font-size:12.5px;color:var(--text2);margin-bottom:8px;overflow-wrap:anywhere}.dsf-txt{white-space:pre-wrap;font:13px/1.5 inherit;font-family:inherit;margin:0;max-height:50vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text)}'
       + '.dsf-anxs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.dsf-anxs button{border:1px solid var(--b2);background:var(--surface);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px;cursor:pointer}.dsf-anxs small{color:var(--text3)}'
@@ -83903,6 +83948,10 @@ window.__perTxt = function (p) {
           + '<span data-l="Passagens"><b>' + int(x.total_ofs) + '</b></span><span data-l="Caixas">' + int(x.caixas_produzidas) + '</span><span data-l="Valor" class="ds-fin-oculto">' + rs(x.valor_total_producao) + '</span><span data-l="vs mês anterior">' + varChip(x.variacao_ofs_pct) + '</span></button>';
       }).join('') + '</div></section>';
   }
+  // 26/11: cor do dia (separação bem nítida entre os dias) e cor fixa de cada máquina
+  var COR_DIA = ['#64748b', '#3b82f6', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#ca8a04'];
+  var COR_MAQ = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#dc2626', '#4f46e5', '#059669', '#c026d3', '#0d9488'];
+  function corMaq(m) { var k = norm(m), h = 0; for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; var nn = (k.match(/\d+/) || [])[0]; if (nn && /IMP/.test(k)) return COR_MAQ[(Number(nn) - 1 + 12) % 12]; return COR_MAQ[h % COR_MAQ.length]; }
   function htmlLista() {
     if (!S.lista) return '<section class="dps-box"><div class="dps-bh"><h3>O que passou</h3><span class="dps-sub">carregando a lista…</span></div><div class="dps-skel"></div></section>';
     var maqs = ((S.res || {}).rows || []).map(function (x) { return x.maquina; });
@@ -83914,9 +83963,10 @@ window.__perTxt = function (p) {
     var linhas = dias.map(function (d) {
       var dt = new Date(d + 'T12:00:00'), lb = isNaN(dt) ? 'Sem data' : DSEM[dt.getDay()] + ', ' + d.slice(8, 10) + '/' + d.slice(5, 7);
       var cx = porDia[d].reduce(function (s, p) { return s + pQtd(p); }, 0);
-      return '<div class="dps-dia"><b>' + esc(lb) + '</b><span>' + porDia[d].length + ' passagem(ns) · ' + int(cx) + ' caixas</span></div>'
+      var cd = isNaN(dt) ? '#64748b' : COR_DIA[dt.getDay()];
+      return '<div class="dps-dia" style="--dc:' + cd + '"><b>' + esc(lb) + '</b><span>' + porDia[d].length + ' passagem(ns) · ' + int(cx) + ' caixas</span></div>'
         + porDia[d].map(function (p) {
-          return '<div class="dps-p"><span class="dps-h">' + esc(p.__q.hora || '—') + '</span><span class="dps-of">#' + esc(pOF(p)) + '</span><span class="dps-cli"><b>' + esc(pCli(p) || '—') + '</b><small>' + esc(pProd(p)) + '</small></span><span class="dps-mq">' + esc(pMaq(p)) + '</span><span class="dps-q" data-l="Caixas">' + int(pQtd(p)) + '</span><span class="dps-v ds-fin-oculto" data-l="Valor">' + rs(pVal(p)) + '</span></div>';
+          return '<div class="dps-p" style="--dc:' + (isNaN(dt) ? '#64748b' : COR_DIA[dt.getDay()]) + '"><span class="dps-h">' + esc(p.__q.hora || '—') + '</span><span class="dps-of">#' + esc(pOF(p)) + '</span><span class="dps-cli"><b>' + esc(pCli(p) || '—') + '</b><small>' + esc(pProd(p)) + '</small></span><span class="dps-mq"><i class="dps-mqc" style="--mc:' + corMaq(pMaq(p)) + '">' + esc(pMaq(p)) + '</i></span><span class="dps-q" data-l="Caixas">' + int(pQtd(p)) + '</span><span class="dps-v ds-fin-oculto" data-l="Valor">' + rs(pVal(p)) + '</span></div>';
         }).join('');
     }).join('');
     return '<section class="dps-box"><div class="dps-bh"><h3>O que passou</h3><span class="dps-sub">' + int(l.length) + ' passagem(ns) · ' + int(totCx) + ' caixas · <span class="ds-fin-oculto">' + rs(totV) + '</span></span></div>'
@@ -84043,7 +84093,12 @@ window.__perTxt = function (p) {
   if (typeof window.__dsAoMudar === 'function') { try { var v = function () { vigiar(); }; v.__dsImediato = true; window.__dsAoMudar(v); } catch (_) {} }
   setInterval(vigiar, 800);
   var st = document.createElement('style'); st.id = 'dps-css';
-  st.textContent = '#page-historico-passagens>:not(#dps-root){display:none!important}body:has(#dps-root) #hist-passagens-resultado,body:has(#dps-root) #hist-relatorio-mensal-shell,body:has(#dps-root) #hist-filtros{display:none!important}'
+  st.textContent = '.dps-dia{background:color-mix(in srgb,var(--dc,#64748b) 16%,transparent)!important;border-left:6px solid var(--dc,#64748b)!important;border-bottom:2px solid var(--dc,#64748b)!important;border-radius:8px 8px 0 0;margin-top:14px!important;padding:10px 12px 8px!important}'
+    + '.dps-dia b{color:var(--dc,#64748b);font-size:14.5px;text-transform:capitalize}.dps-dia span{color:var(--text)!important;opacity:.8}'
+    + 'html[data-theme="light"] .dps-dia b{filter:brightness(.8)}'
+    + '.dps-p{border-left:6px solid color-mix(in srgb,var(--dc,#64748b) 55%,transparent)}'
+    + '.dps-mqc{font-style:normal;display:inline-block;padding:3px 10px;border-radius:999px;font-weight:800;font-size:12.5px;white-space:nowrap;background:color-mix(in srgb,var(--mc) 20%,transparent);border:1px solid var(--mc);color:var(--text)}'
+    + '#page-historico-passagens>:not(#dps-root){display:none!important}body:has(#dps-root) #hist-passagens-resultado,body:has(#dps-root) #hist-relatorio-mensal-shell,body:has(#dps-root) #hist-filtros{display:none!important}'
     + '.dps-card[data-dps-card]{cursor:pointer;transition:border-color .15s,transform .15s}.dps-card[data-dps-card]:hover{border-color:var(--accent,#3b82f6);transform:translateY(-1px)}'
     + '.dpm-ov{position:fixed;inset:0;z-index:100500;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:16px}'
     + '.dpm{width:min(860px,100%);max-height:90vh;display:flex;flex-direction:column;background:var(--surface,#16181d);color:var(--text,#e5e7eb);border:1px solid var(--border,#334155);border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5)}'
@@ -84602,6 +84657,52 @@ window.__perTxt = function (p) {
   setInterval(conferir, 400);
   ['focusin', 'focusout', 'click'].forEach(function (t) { document.addEventListener(t, function () { setTimeout(conferir, 60); }, true); });
   try { if (window.visualViewport) window.visualViewport.addEventListener('resize', conferir); } catch (_) {}
+})();
+
+/* ===== 26/11: só UMA tela aberta por vez — ao abrir uma tela nova (área do sistema novo), a anterior é desmarcada
+ * (antes a tela de Passagens, por exemplo, ficava aberta em cima e a nova aparecia espremida lá embaixo) ===== */
+(function () {
+  if (window.__dsUmaPagina) return; window.__dsUmaPagina = true;
+  function conferir() {
+    try {
+      var pid = String(window._PAGE_ATUAL || '').replace(/^page-/, ''); if (!pid) return;
+      var host = document.getElementById('patch-page-host');
+      var propria = document.getElementById('page-' + pid);
+      var hostAberto = host && host.style.display !== 'none' && host.getClientRects().length > 0;
+      if (!propria && hostAberto) {
+        // a tela atual é desenhada no host: nenhuma outra pode ficar aberta
+        Array.prototype.forEach.call(document.querySelectorAll('.page.active'), function (p) { if (p !== host) { p.classList.remove('active'); p.style.display = 'none'; } });
+      } else if (propria && host && host !== propria && hostAberto && propria.classList.contains('active')) {
+        host.style.display = 'none';
+      }
+    } catch (_) {}
+  }
+  if (typeof window.__dsAoMudar === 'function') { try { var f = function () { conferir(); }; f.__dsImediato = true; window.__dsAoMudar(f); } catch (_) {} }
+  setInterval(conferir, 300);
+})();
+
+/* ===== 26/11: Compra de Papelão — botão "E-mails dos fornecedores": escolhe o fornecedor e abre enviados + recebidos ===== */
+(function () {
+  if (window.dsCmpEmailsForn) return;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  window.dsCmpEmailsForn = function () {
+    if (typeof window.dsFornLista !== 'function' || typeof window.dsFornEmails !== 'function') { try { window.toast('Abra a área de Fornecedores uma vez e tente de novo.', 'var(--red)'); } catch (_) {} return; }
+    var ov = document.createElement('div'); ov.className = 'dsf-ov'; ov.setAttribute('data-ds-sem-resp', '1');
+    ov.innerHTML = '<div class="dsf-modal" role="dialog" aria-modal="true" style="width:min(520px,100%)"><header><h2>📧 E-mails dos fornecedores</h2><button type="button" class="dsf-x" data-x aria-label="Fechar">✕</button></header>'
+      + '<p style="margin:0 0 10px;font-size:13px;color:var(--text2)">Escolha o fornecedor para ver os e-mails <b>enviados</b> (com o pedido em PDF) e as <b>respostas recebidas</b>.</p><div class="dsf-ml" data-l><div class="dsf-vazio">Carregando…</div></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov || e.target.closest('[data-x]')) return ov.remove();
+      var b = e.target.closest('[data-f]'); if (!b) return;
+      ov.remove(); window.dsFornEmails(b.getAttribute('data-f'));
+    });
+    window.dsFornLista().then(function (l) {
+      var pap = l.filter(function (f) { return f.ativo !== false && !/divers/i.test(String(f.tipo || '')); }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+      ov.querySelector('[data-l]').innerHTML = pap.length ? pap.map(function (f) {
+        return '<button type="button" data-f="' + esc(f.id) + '" style="display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:48px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--s2);color:var(--text);font:inherit;font-weight:700;cursor:pointer;text-align:left"><span>' + esc(f.nome) + '<small style="display:block;font-weight:400;color:var(--text2);font-size:12px">' + esc(String(f.email || 'sem e-mail cadastrado').split(/[,;]/).join(', ')) + '</small></span><span style="color:var(--accent)">Ver ›</span></button>';
+      }).join('') : '<div class="dsf-vazio">Nenhum fornecedor de papelão cadastrado.</div>';
+    });
+  };
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */

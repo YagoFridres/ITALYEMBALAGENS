@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261125102454';
-const SW_RUNTIME_VERSION = '20261125102454';
+const PATCH_RUNTIME_VERSION = '20261126090817';
+const SW_RUNTIME_VERSION = '20261126090817';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -31284,16 +31284,30 @@ function _imapLeitor(c) {
   };
 }
 const _imapQ = (x) => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
-async function _imapConectar() {
+async function _imapConectar(pasta) {
   const c = _emailCmpLer('compras');
   if (!c || !c.user || !c.pass) { const e = new Error('O e-mail de compras ainda não foi configurado.'); e.status = 400; throw e; }
   const im = _imapLeitor(c);
   await im.abrir();
   const r = await im.cmd('LOGIN ' + _imapQ(c.user) + ' ' + _imapQ(c.pass));
   if (!r.ok) { im.fechar(); const e = new Error('O servidor de e-mail recusou o login.'); e.status = 502; throw e; }
-  const s = await im.cmd('EXAMINE "INBOX"'); // EXAMINE = somente leitura (não marca nada como lido)
-  if (!s.ok) { im.fechar(); throw new Error('Não consegui abrir a caixa de entrada.'); }
+  im.conta = String(c.user || '').toLowerCase();
+  if (pasta === null) return im; // quem chamou escolhe a pasta
+  const s = await im.cmd('EXAMINE ' + _imapQ(pasta || 'INBOX')); // EXAMINE = somente leitura (não marca nada como lido)
+  if (!s.ok) { im.fechar(); throw new Error('Não consegui abrir a pasta de e-mail.'); }
   return im;
+}
+// 26/11: pasta de enviados da conta (o envio guarda uma cópia nela)
+async function _imapPastaEnviados(im) {
+  try {
+    const r = await im.cmd('LIST "" "*"');
+    const nomes = (r.resp || []).map((x) => { const m = x.texto.match(/^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (.+)$/i); if (!m) return null; let n = m[2].trim(); if (/^".*"$/.test(n)) n = n.slice(1, -1).replace(/\\"/g, '"'); return { flags: m[1], nome: n }; }).filter(Boolean);
+    const porFlag = nomes.find((x) => /\\Sent/i.test(x.flags));
+    if (porFlag) return porFlag.nome;
+    const pref = ['INBOX.Sent', 'Sent', 'INBOX.Enviados', 'Enviados', 'Itens Enviados', 'INBOX.Itens Enviados', 'Sent Items', 'Sent Messages'];
+    for (const p of pref) { const a = nomes.find((x) => x.nome.toLowerCase() === p.toLowerCase()); if (a) return a.nome; }
+    const qualquer = nomes.find((x) => /sent|enviad/i.test(x.nome)); return qualquer ? qualquer.nome : null;
+  } catch (_) { return null; }
 }
 // ---- MIME simples ----
 function _mimeHeaderDecode(s) {
@@ -31406,10 +31420,58 @@ app.get('/api/fornecedores-emails/:id/recebidos', authMiddleware, async (req, re
   } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
   finally { try { im && im.fechar(); } catch (_) {} }
 });
+// 26/11: e-mails que ENVIAMOS ao fornecedor (pasta Enviados da conta), com texto e anexos
+const _FORN_CACHE_ENV = new Map();
+app.get('/api/fornecedores-emails/:id/enviados', authMiddleware, async (req, res) => {
+  let im = null;
+  try {
+    const ctx = await _fornBuscar(req, res); if (!ctx) return;
+    const cache = _FORN_CACHE_ENV.get(ctx.f.id);
+    if (cache && Date.now() - cache.t < 120000 && !req.query.atualizar) return ok(res, cache.v);
+    im = await _imapConectar(null);
+    const pasta = await _imapPastaEnviados(im);
+    if (!pasta) return ok(res, { fornecedor: ctx.f.nome, sem_pasta: true, mensagens: [] });
+    const s0 = await im.cmd('EXAMINE ' + _imapQ(pasta)); if (!s0.ok) throw new Error('Não consegui abrir a pasta de enviados.');
+    const desde = new Date(Date.now() - 365 * 86400000); const MESES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const sinceTxt = desde.getUTCDate() + '-' + MESES[desde.getUTCMonth()] + '-' + desde.getUTCFullYear();
+    const termos = ctx.alvos.ems.map((e) => 'TO ' + _imapQ(e)).concat(ctx.alvos.dominios.map((d) => 'TO ' + _imapQ('@' + d)));
+    let crit = termos[termos.length - 1]; for (let i = termos.length - 2; i >= 0; i--) crit = 'OR ' + termos[i] + ' ' + crit;
+    const s = await im.cmd('UID SEARCH SINCE ' + sinceTxt + ' ' + crit);
+    const uids = _imapUidsDaBusca(s).sort((a, b) => b - a).slice(0, 40);
+    const mensagens = [];
+    if (uids.length) {
+      const r = await im.cmd('UID FETCH ' + uids.join(',') + ' (UID RFC822.SIZE BODY.PEEK[HEADER] BODY.PEEK[TEXT]<0.6000>)');
+      (r.resp || []).forEach((x) => {
+        const mu = x.texto.match(/UID (\d+)/i); if (!mu || !x.literais.length) return;
+        const p = _mimeParse(Buffer.concat([x.literais[0], Buffer.from('\r\n'), x.literais[1] || Buffer.alloc(0)]));
+        const c = p.cab || {};
+        const para = _mimeHeaderDecode(c.to || ''), cc = _mimeHeaderDecode(c.cc || '');
+        const destinos = (para + ',' + cc).split(',').map(_emailEndereco).filter(Boolean);
+        if (!destinos.some((d) => _fornCasa(d, ctx.alvos))) return;
+        const texto = p.texto || _htmlParaTexto(p.html);
+        const temAnexo = /multipart\/mixed/i.test(String(c['content-type'] || '')) || /filename=/i.test(x.literais[1] ? x.literais[1].toString('latin1').slice(0, 6000) : '');
+        mensagens.push({ uid: Number(mu[1]), pasta: 'enviados', para, cc, assunto: _mimeHeaderDecode(c.subject || '(sem assunto)'), data: (() => { const d = new Date(c.date || ''); return isNaN(d) ? null : d.toISOString(); })(), previa: String(texto || '').replace(/\s+/g, ' ').slice(0, 220), tem_anexo: temAnexo });
+      });
+    }
+    mensagens.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+    const v = { fornecedor: ctx.f.nome, pasta, mensagens };
+    _FORN_CACHE_ENV.set(ctx.f.id, { t: Date.now(), v });
+    return ok(res, v);
+  } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
+  finally { try { im && im.fechar(); } catch (_) {} }
+});
 async function _fornMensagemCompleta(req, res) {
   const ctx = await _fornBuscar(req, res); if (!ctx) return null;
   const uid = Math.trunc(Number(req.params.uid)); if (!(uid > 0)) { res.status(400).json({ ok: false, error: 'mensagem inválida' }); return null; }
-  const im = await _imapConectar();
+  // 26/11: ?pasta=enviados abre um e-mail que NÓS enviamos ao fornecedor (pasta Enviados da conta)
+  const enviado = String(req.query.pasta || '') === 'enviados';
+  let im;
+  if (enviado) {
+    im = await _imapConectar(null);
+    const pasta = await _imapPastaEnviados(im);
+    if (!pasta) { im.fechar(); res.status(404).json({ ok: false, error: 'Pasta de enviados não encontrada na conta de e-mail' }); return null; }
+    const s = await im.cmd('EXAMINE ' + _imapQ(pasta)); if (!s.ok) { im.fechar(); res.status(500).json({ ok: false, error: 'Não consegui abrir a pasta de enviados' }); return null; }
+  } else im = await _imapConectar();
   try {
     const r = await im.cmd('UID FETCH ' + uid + ' (UID RFC822.SIZE)');
     const ms = (r.resp || []).map((x) => x.texto.match(/RFC822\.SIZE (\d+)/i)).find(Boolean);
@@ -31420,8 +31482,11 @@ async function _fornMensagemCompleta(req, res) {
     if (!lit) { res.status(404).json({ ok: false, error: 'E-mail não encontrado' }); return null; }
     const p = _mimeParse(lit.literais[0]);
     const de = _mimeHeaderDecode(p.cab && p.cab.from || '');
-    // só deixa abrir e-mail que veio desse fornecedor
-    if (!_fornCasa(_emailEndereco(de), ctx.alvos)) { res.status(403).json({ ok: false, error: 'Esse e-mail não é deste fornecedor' }); return null; }
+    // só deixa abrir e-mail que veio desse fornecedor — ou, nos enviados, que foi PARA ele
+    const destinos = (_mimeHeaderDecode((p.cab && p.cab.to) || '') + ',' + _mimeHeaderDecode((p.cab && p.cab.cc) || '')).split(',').map(_emailEndereco).filter(Boolean);
+    const okDe = _fornCasa(_emailEndereco(de), ctx.alvos);
+    const okPara = enviado && destinos.some((d) => _fornCasa(d, ctx.alvos));
+    if (!okDe && !okPara) { res.status(403).json({ ok: false, error: 'Esse e-mail não é deste fornecedor' }); return null; }
     return { p, de };
   } finally { im.fechar(); }
 }
