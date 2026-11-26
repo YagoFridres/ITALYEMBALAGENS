@@ -74786,13 +74786,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function janelaEmails(f) {
     var env = (E.emails || {})[norm(f.nome)] || [];
     var ov = document.createElement('div'); ov.className = 'dsf-ov';
-    ov.innerHTML = '<div class="dsf-modal dsf-mail" role="dialog" aria-modal="true"><header><h2>E-mails — ' + esc(f.nome) + '</h2><button type="button" class="dsf-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+    ov.innerHTML = '<div class="dsf-modal dsf-mail dsf-mail2" role="dialog" aria-modal="true"><header><h2>📧 E-mails — ' + esc(f.nome) + '</h2><button type="button" class="dsf-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+      + '<div class="dsf-dupla"><div class="dsf-col">'
       + '<div class="dsf-abas"><button type="button" data-aba="env" class="on">Enviados <span>' + env.length + '</span></button><button type="button" data-aba="rec">Respostas recebidas <span class="dsf-nrec">…</span></button></div>'
       + '<div class="dsf-aba" data-p="env">' + (env.length ? '<ul class="dsf-ml">' + env.map(function (e) {
           var emp = { 'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens', 'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste', 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a': 'Oestepack' }[e.emp_id] || '';
           return '<li class="dsf-env" data-ei="' + env.indexOf(e) + '"><button type="button" class="dsf-recbt" data-env="' + env.indexOf(e) + '"><div class="dsf-ml1"><b>' + esc(e.compra || 'Compra') + (emp ? ' · ' + esc(emp) : '') + '</b><span>' + esc(dataHora(e.em)) + '</span></div><div class="dsf-ml2">Para: ' + esc(e.para || '—') + '</div>' + (e.por ? '<div class="dsf-ml3">Enviado por ' + esc(e.por) + '</div>' : '') + '<div class="dsf-ver">👁 Clique para ver o e-mail enviado</div></button><div class="dsf-corpo" hidden></div></li>';
         }).join('') + '</ul>' : '<div class="dsf-vazio">Nenhum e-mail de compra enviado para este fornecedor pelo sistema.</div>') + '</div>'
       + '<div class="dsf-aba" data-p="rec" hidden><div class="dsf-vazio">Buscando na caixa de entrada do comercial@…</div></div>'
+      + '</div><section class="dsf-leitor" aria-live="polite"><div class="dsf-leitor-vazio">📨<b>Clique num e-mail da lista</b><span>Ele abre aqui, com o texto completo e os anexos.</span></div></section></div>'
       + '<footer><button type="button" data-x="fechar">Fechar</button></footer></div>';
     document.body.appendChild(ov);
     var recP = ov.querySelector('[data-p="rec"]'), carregado = false, MSGS = [];
@@ -74823,26 +74825,37 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       });
       return melhor;
     }
+    var leitor = ov.querySelector('.dsf-leitor');
+    function selecionar(li, tipo) {
+      ov.querySelectorAll('.dsf-ml>li.sel').forEach(function (x) { x.classList.remove('sel'); }); if (li) li.classList.add('sel');
+      ov.querySelector('.dsf-dupla').classList.add('lendo');
+      leitor.setAttribute('data-tipo', tipo); try { leitor.scrollTop = 0; } catch (_) {}
+    }
+    function voltarHtml(tipo) { return '<div class="dsf-ltopo"><button type="button" class="dsf-voltar" data-voltar>← Voltar à lista</button><span class="dsf-ltag ' + tipo + '">' + (tipo === 'env' ? '📤 Enviado' : '📥 Recebido') + '</span></div>'; }
     function mostrarMsg(corpo, uid, pasta) {
-      corpo.innerHTML = '<div class="dsf-vazio">Abrindo o e-mail…</div>';
+      var tipo = pasta === 'enviados' ? 'env' : 'rec';
+      corpo.innerHTML = voltarHtml(tipo) + '<div class="dsf-vazio">Abrindo o e-mail…</div>';
       return req('GET', '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + uid + (pasta ? '?pasta=' + pasta : '')).then(function (m) {
-        corpo.innerHTML = '<div class="dsf-cab">' + (m.assunto ? '<b>Assunto: ' + esc(m.assunto) + '</b><br>' : '') + 'De: ' + esc(m.de) + (m.para ? '<br>Para: ' + esc(m.para) : '') + (m.cc ? '<br>Cc: ' + esc(m.cc) : '') + '<br>Data: ' + esc(dataHora(m.data)) + '</div>'
+        corpo.innerHTML = voltarHtml(tipo) + '<h3 class="dsf-lass">' + esc(m.assunto || '(sem assunto)') + '</h3>'
+          + '<dl class="dsf-lcab"><dt>De</dt><dd>' + esc(m.de) + '</dd>' + (m.para ? '<dt>Para</dt><dd>' + esc(m.para) + '</dd>' : '') + (m.cc ? '<dt>Cc</dt><dd>' + esc(m.cc) + '</dd>' : '') + '<dt>Data</dt><dd>' + esc(dataHora(m.data)) + '</dd></dl>'
           + '<pre class="dsf-txt">' + esc(m.texto || '(e-mail sem texto)') + '</pre>'
           + (m.anexos && m.anexos.length ? '<div class="dsf-anxs">' + m.anexos.map(function (a) { return '<button type="button" data-anexo="' + a.i + '" data-uid="' + m.uid + '" data-pasta="' + (pasta || '') + '" data-nome="' + esc(a.nome) + '">⬇ ' + esc(a.nome) + ' <small>' + kb(a.tamanho) + '</small></button>'; }).join('') + '</div>' : '');
-      }).catch(function (er) { corpo.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui abrir: ' + esc(er.message) + '</div>'; });
+      }).catch(function (er) { corpo.innerHTML = voltarHtml(tipo) + '<div class="dsf-vazio dsf-erro">Não consegui abrir: ' + esc(er.message) + '</div>'; });
     }
     function abrirEnv(i) {
-      var li = ov.querySelector('.dsf-env[data-ei="' + i + '"]'), corpo = li.querySelector('.dsf-corpo');
-      if (!corpo.hidden) { corpo.hidden = true; return; }
-      corpo.hidden = false; corpo.innerHTML = '<div class="dsf-vazio">Procurando o e-mail na pasta de enviados…</div>';
+      var li = ov.querySelector('.dsf-env[data-ei="' + i + '"]'), corpo = leitor;
+      selecionar(li, 'env');
+      corpo.innerHTML = voltarHtml('env') + '<div class="dsf-vazio">Procurando o e-mail na pasta de enviados…</div>';
       enviadosImap().then(function (l) {
         var m = casar(env[i], l);
-        if (!m) { corpo.innerHTML = '<div class="dsf-vazio">Não achei a cópia deste e-mail na pasta de enviados da conta (envios antigos podem não ter cópia).</div>'; return; }
+        if (!m) { corpo.innerHTML = voltarHtml('env') + '<div class="dsf-vazio">Não achei a cópia deste e-mail na pasta de enviados da conta (envios antigos podem não ter cópia).</div>'; return; }
         return mostrarMsg(corpo, m.uid, 'enviados');
-      }).catch(function (er) { corpo.innerHTML = '<div class="dsf-vazio dsf-erro">Não consegui ler a pasta de enviados: ' + esc(er.message) + '</div>'; });
+      }).catch(function (er) { corpo.innerHTML = voltarHtml('env') + '<div class="dsf-vazio dsf-erro">Não consegui ler a pasta de enviados: ' + esc(er.message) + '</div>'; });
     }
     function abrirMsg(i) {
-      var li = recP.querySelector('.dsf-rec[data-i="' + i + '"]'), corpo = li.querySelector('.dsf-corpo');
+      var li = recP.querySelector('.dsf-rec[data-i="' + i + '"]');
+      selecionar(li, 'rec'); return mostrarMsg(leitor, MSGS[i].uid, '');
+      var corpo = li.querySelector('.dsf-corpo');
       if (!corpo.hidden) { corpo.hidden = true; return; }
       corpo.hidden = false; corpo.innerHTML = '<div class="dsf-vazio">Abrindo o e-mail…</div>';
       req('GET', '/api/fornecedores-emails/' + encodeURIComponent(f.id) + '/mensagem/' + MSGS[i].uid).then(function (m) {
@@ -74864,6 +74877,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (e.target === ov || e.target.closest('[data-x="fechar"]')) { ov.remove(); return; }
       var ab = e.target.closest('[data-aba]'); if (ab) { var k = ab.getAttribute('data-aba'); ov.querySelectorAll('[data-aba]').forEach(function (x) { x.classList.toggle('on', x === ab); }); ov.querySelectorAll('[data-p]').forEach(function (x) { x.hidden = x.getAttribute('data-p') !== k; }); if (k === 'rec' && !carregado) abaRec(false); return; }
       if (e.target.closest('[data-rec="atualizar"]')) { abaRec(true); return; }
+      if (e.target.closest('[data-voltar]')) { ov.querySelector('.dsf-dupla').classList.remove('lendo'); return; }
       var be = e.target.closest('[data-env]'); if (be) { abrirEnv(Number(be.getAttribute('data-env'))); return; }
       var bt = e.target.closest('[data-abrir]'); if (bt) { abrirMsg(Number(bt.getAttribute('data-abrir'))); return; }
       var an = e.target.closest('[data-anexo]'); if (an) baixar(an);
@@ -74937,6 +74951,30 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '.dsf-btn-mail{height:36px;border-radius:9px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-weight:600;font-size:13px;cursor:pointer}.dsf-btn-mail:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}'
       + '.dsf-modal.dsf-mail{width:min(860px,100%)!important;max-width:100%!important}.dsf-abas{display:flex;gap:6px;margin:4px 0 12px;border-bottom:1px solid var(--border)}.dsf-abas button{border:0;background:transparent;color:var(--text2);font:inherit;font-weight:600;padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.dsf-abas button.on{color:var(--accent);border-bottom-color:var(--accent)}.dsf-abas span{background:var(--s3);color:var(--text);border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}'
       + '.dsf-ml{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.dsf-ml>li{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--s2)}.dsf-ml1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.dsf-ml1 b{font-size:14px;overflow-wrap:anywhere}.dsf-ml1 span{font-size:12px;color:var(--text2);white-space:nowrap}.dsf-ml2{font-size:12.5px;color:var(--text2);margin-top:3px;overflow-wrap:anywhere}.dsf-ml3{font-size:12.5px;color:var(--text3);margin-top:3px;overflow-wrap:anywhere}'
+      + '.dsf-modal.dsf-mail2{width:min(1560px,97vw)!important;max-width:97vw!important;height:93vh;max-height:93vh!important;display:flex;flex-direction:column;overflow:hidden!important;padding:18px 20px!important}'
+      + '.dsf-mail2>header h2{font-size:21px!important}.dsf-mail2>footer{margin-top:12px;display:flex;justify-content:flex-end}.dsf-mail2>footer button{min-height:42px;padding:0 20px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;font-weight:700;cursor:pointer}'
+      + '.dsf-dupla{flex:1;min-height:0;display:grid;grid-template-columns:minmax(340px,440px) minmax(0,1fr);gap:16px}'
+      + '.dsf-col{display:flex;flex-direction:column;min-height:0}.dsf-col>.dsf-aba{flex:1;overflow:auto;padding-right:4px}'
+      + '.dsf-mail2 .dsf-ml>li{transition:border-color .12s,background .12s}.dsf-mail2 .dsf-ml>li:hover{border-color:var(--accent)}'
+      + '.dsf-mail2 .dsf-ml>li.sel{border:2px solid var(--accent)!important;background:color-mix(in srgb,var(--accent) 12%,var(--s2))!important}'
+      + '.dsf-mail2 .dsf-corpo{display:none!important}'
+      + '.dsf-leitor{min-height:0;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:20px 24px;background:var(--surface)}'
+      + '.dsf-leitor-vazio{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text2);text-align:center;font-size:40px}.dsf-leitor-vazio b{font-size:17px;color:var(--text)}.dsf-leitor-vazio span{font-size:14px}'
+      + '.dsf-ltopo{display:flex;align-items:center;gap:10px;margin-bottom:12px}.dsf-voltar{display:none;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;font-weight:700;cursor:pointer}'
+      + '.dsf-ltag{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px}.dsf-ltag.env{background:color-mix(in srgb,#0ea5e9 18%,transparent);color:#0284c7;border:1px solid #0ea5e9}.dsf-ltag.rec{background:color-mix(in srgb,#16a34a 18%,transparent);color:#15803d;border:1px solid #16a34a}'
+      + '.dsf-lass{margin:0 0 12px;font-size:21px;line-height:1.3;color:var(--text)}'
+      + '.dsf-lcab{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0 0 16px;padding:12px 14px;border-radius:10px;background:var(--s2);font-size:14px}.dsf-lcab dt{font-weight:800;color:var(--text2)}.dsf-lcab dd{margin:0;color:var(--text);overflow-wrap:anywhere}'
+      + '.dsf-leitor .dsf-txt{font:15px/1.6 inherit;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text);background:transparent;border:0;padding:0;margin:0 0 16px}'
+      + '.dsf-leitor .dsf-anxs button{min-height:44px;padding:0 16px;font-size:14px;font-weight:700}'
+      + 'html[data-theme="light"] .dsf-mail2{background:#ffffff!important;color:#0f172a!important;border-color:#cbd5e1!important}'
+      + 'html[data-theme="light"] .dsf-mail2 .dsf-ml>li{background:#f8fafc!important;border-color:#cbd5e1!important;color:#0f172a}'
+      + 'html[data-theme="light"] .dsf-mail2 .dsf-ml>li.sel{background:#e0f2fe!important;border-color:#0284c7!important}'
+      + 'html[data-theme="light"] .dsf-mail2 .dsf-ml1 b,html[data-theme="light"] .dsf-mail2 .dsf-ml2{color:#0f172a!important}html[data-theme="light"] .dsf-mail2 .dsf-ml1 span,html[data-theme="light"] .dsf-mail2 .dsf-ml3{color:#475569!important}'
+      + 'html[data-theme="light"] .dsf-mail2 .dsf-ver{color:#0369a1!important}html[data-theme="light"] .dsf-mail2 .dsf-abas button{color:#334155}html[data-theme="light"] .dsf-mail2 .dsf-abas button.on{color:#0369a1}'
+      + 'html[data-theme="light"] .dsf-leitor{background:#ffffff!important;border-color:#cbd5e1!important}html[data-theme="light"] .dsf-lcab{background:#f1f5f9!important}html[data-theme="light"] .dsf-lcab dt{color:#475569!important}html[data-theme="light"] .dsf-lcab dd,html[data-theme="light"] .dsf-lass,html[data-theme="light"] .dsf-leitor .dsf-txt{color:#0f172a!important}'
+      + 'html[data-theme="light"] .dsf-leitor-vazio b{color:#0f172a}html[data-theme="light"] .dsf-leitor-vazio{color:#475569}html[data-theme="light"] .dsf-mail2 .dsf-anxs button{background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}'
+      + 'html[data-theme="light"] .dsf-mail2 .dsf-vazio,html[data-theme="light"] .dsf-mail2 .dsf-recinfo{color:#475569!important}html[data-theme="light"] .dsf-voltar,html[data-theme="light"] .dsf-mail2>footer button{background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}'
+      + '@media (max-width:860px){.dsf-ov:has(.dsf-mail2){padding:0!important}.dsf-modal.dsf-mail2{width:100vw!important;max-width:100vw!important;height:100%;max-height:100%!important;border-radius:0!important;padding:14px!important}.dsf-dupla{grid-template-columns:1fr}.dsf-dupla .dsf-leitor{display:none}.dsf-dupla.lendo .dsf-leitor{display:block}.dsf-dupla.lendo .dsf-col{display:none}.dsf-voltar{display:inline-flex;align-items:center}.dsf-leitor{padding:14px}}'
       + '.dsf-ml>li.dsf-env{padding:0}.dsf-ver{font-size:12px;color:var(--accent);margin-top:5px;font-weight:700}'
       + '.dsf-ml>li.dsf-rec{padding:0}.dsf-recbt{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);font:inherit;padding:10px 12px;cursor:pointer;border-radius:10px}.dsf-recbt:hover{background:var(--s3)}.dsf-anx{font-size:12px;color:var(--accent);margin-top:4px}'
       + '.dsf-corpo{border-top:1px solid var(--border);padding:10px 12px}.dsf-cab{font-size:12.5px;color:var(--text2);margin-bottom:8px;overflow-wrap:anywhere}.dsf-txt{white-space:pre-wrap;font:13px/1.5 inherit;font-family:inherit;margin:0;max-height:50vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text)}'
