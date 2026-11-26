@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261126093053';
-const SW_RUNTIME_VERSION = '20261126093053';
+const PATCH_RUNTIME_VERSION = '20261126093328';
+const SW_RUNTIME_VERSION = '20261126093328';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -31419,45 +31419,6 @@ app.get('/api/fornecedores-emails/:id/recebidos', authMiddleware, async (req, re
     return ok(res, v);
   } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
   finally { try { im && im.fechar(); } catch (_) {} }
-});
-// 26/11: escrever e enviar um e-mail livre (para o fornecedor ou qualquer e-mail), pela conta de compras
-app.post('/api/fornecedores-emails/enviar', authMiddleware, async (req, res) => {
-  try {
-    if (!_fornPodeEmails(req)) return res.status(403).json({ ok: false, error: 'Sem permissão para enviar e-mails de compras.' });
-    const b = req.body || {};
-    const c = _emailCmpLer('compras'); const t = _emailCmpTransport(c);
-    if (!t) return res.status(400).json({ ok: false, error: 'O e-mail de envio ainda não foi configurado.' });
-    const para = _emailLista(b.para), cc = _emailLista(b.cc);
-    if (!para.length) return res.status(400).json({ ok: false, error: 'Coloque pelo menos um destinatário.' });
-    const ruins = para.concat(cc).filter((e) => !_EMAIL_RE.test(e));
-    if (ruins.length) return res.status(400).json({ ok: false, error: 'E-mail inválido: ' + ruins.join(', ') });
-    if (para.length + cc.length > 10) return res.status(400).json({ ok: false, error: 'Máximo de 10 destinatários.' });
-    const assunto = String(b.assunto || '').trim().slice(0, 200);
-    const msg = String(b.mensagem || '').slice(0, 20000);
-    if (!assunto) return res.status(400).json({ ok: false, error: 'Escreva o assunto.' });
-    if (!msg.trim()) return res.status(400).json({ ok: false, error: 'Escreva a mensagem.' });
-    const anexos = []; let total = 0;
-    for (const a of (Array.isArray(b.anexos) ? b.anexos : []).slice(0, 8)) {
-      const dados = Buffer.from(String(a && a.base64 || '').replace(/^data:[^;]+;base64,/, ''), 'base64');
-      if (!dados.length) continue; total += dados.length;
-      const nome = (String(a.nome || 'anexo').replace(/[\r\n"\\/]+/g, '').trim() || 'anexo').slice(0, 120);
-      anexos.push({ filename: nome, content: dados, contentType: /^[\w.+-]+\/[\w.+-]+$/.test(String(a.tipo || '')) ? a.tipo : 'application/octet-stream' });
-    }
-    if (total > 15 * 1024 * 1024) return res.status(400).json({ ok: false, error: 'Anexos grandes demais (máximo 15 MB no total).' });
-    const htmlMsg = msg.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch])).replace(/\n/g, '<br>');
-    const opts = { from: { name: c.nome || 'Italy Embalagens', address: c.user }, replyTo: c.user, to: para, cc: cc.length ? cc : undefined, subject: assunto, text: msg,
-      html: '<div style="font-family:Arial,sans-serif;font-size:14px;color:#0f172a">' + htmlMsg + '</div>', attachments: anexos, date: new Date() };
-    const MailComposer = require('nodemailer/lib/mail-composer');
-    const mc = new MailComposer(opts).compile(); const idMsg = mc.messageId();
-    const raw = await new Promise((ok2, no) => mc.build((e, m) => (e ? no(e) : ok2(m))));
-    try { await t.sendMail({ envelope: { from: c.user, to: [...new Set(para.concat(cc))] }, raw }); }
-    catch (e) { return res.status(500).json({ ok: false, error: 'Falha ao enviar: ' + String(e && (e.response || e.message) || e).slice(0, 300) }); }
-    let enviados = { ok: false };
-    try { enviados = await _imapGuardarEnviado(c, raw); } catch (e) { enviados = { ok: false, erro: String(e && e.message || e) }; }
-    try { _FORN_CACHE_ENV.clear(); } catch (_) {}
-    try { console.log('[FORN-EMAIL] enviado por=' + String(req.usuario?.nome || '') + ' para=' + para.length + ' cc=' + cc.length + ' anexos=' + anexos.length); } catch (_) {}
-    return ok(res, { enviado: true, para, cc, id_mensagem: idMsg || null, salvo_em_enviados: !!enviados.ok });
-  } catch (e) { return res.status(e.status || 500).json({ ok: false, error: String(e.message || e) }); }
 });
 // 26/11: escrever, responder e encaminhar e-mail pela janela de e-mails do fornecedor (conta de compras)
 async function _imapAnexosDe(pasta, uid) {
