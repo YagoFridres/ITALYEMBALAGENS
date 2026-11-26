@@ -74786,7 +74786,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function janelaEmails(f) {
     var env = (E.emails || {})[norm(f.nome)] || [];
     var ov = document.createElement('div'); ov.className = 'dsf-ov';
-    ov.innerHTML = '<div class="dsf-modal dsf-mail dsf-mail2" role="dialog" aria-modal="true"><header><h2>📧 E-mails — ' + esc(f.nome) + '</h2><button type="button" class="dsf-x" data-x="fechar" aria-label="Fechar">✕</button></header>'
+    ov.innerHTML = '<div class="dsf-modal dsf-mail dsf-mail2" role="dialog" aria-modal="true"><header><h2>📧 E-mails — ' + esc(f.nome) + '</h2><div class="dsf-hacts"><button type="button" class="dsf-novo" data-novo>✉️ Novo e-mail</button><button type="button" class="dsf-x" data-x="fechar" aria-label="Fechar">✕</button></div></header>'
       + '<div class="dsf-dupla"><div class="dsf-col">'
       + '<div class="dsf-abas"><button type="button" data-aba="env" class="on">Enviados <span>' + env.length + '</span></button><button type="button" data-aba="rec">Respostas recebidas <span class="dsf-nrec">…</span></button></div>'
       + '<div class="dsf-aba" data-p="env">' + (env.length ? '<ul class="dsf-ml">' + env.map(function (e) {
@@ -74839,9 +74839,73 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         corpo.innerHTML = voltarHtml(tipo) + '<h3 class="dsf-lass">' + esc(m.assunto || '(sem assunto)') + '</h3>'
           + '<dl class="dsf-lcab"><dt>De</dt><dd>' + esc(m.de) + '</dd>' + (m.para ? '<dt>Para</dt><dd>' + esc(m.para) + '</dd>' : '') + (m.cc ? '<dt>Cc</dt><dd>' + esc(m.cc) + '</dd>' : '') + '<dt>Data</dt><dd>' + esc(dataHora(m.data)) + '</dd></dl>'
           + '<pre class="dsf-txt">' + esc(m.texto || '(e-mail sem texto)') + '</pre>'
-          + (m.anexos && m.anexos.length ? '<div class="dsf-anxs">' + m.anexos.map(function (a) { return '<button type="button" data-anexo="' + a.i + '" data-uid="' + m.uid + '" data-pasta="' + (pasta || '') + '" data-nome="' + esc(a.nome) + '">⬇ ' + esc(a.nome) + ' <small>' + kb(a.tamanho) + '</small></button>'; }).join('') + '</div>' : '');
+          + (m.anexos && m.anexos.length ? '<div class="dsf-anxs">' + m.anexos.map(function (a) { return '<button type="button" data-anexo="' + a.i + '" data-uid="' + m.uid + '" data-pasta="' + (pasta || '') + '" data-nome="' + esc(a.nome) + '">⬇ ' + esc(a.nome) + ' <small>' + kb(a.tamanho) + '</small></button>'; }).join('') + '</div>' : '')
+          + '<div class="dsf-lacoes"><button type="button" data-comp="responder">↩ Responder</button><button type="button" data-comp="todos">↩↩ Responder a todos</button><button type="button" data-comp="encaminhar">↪ Encaminhar</button></div>';
+        ATUAL = { m: m, pasta: pasta || '' };
       }).catch(function (er) { corpo.innerHTML = voltarHtml(tipo) + '<div class="dsf-vazio dsf-erro">Não consegui abrir: ' + esc(er.message) + '</div>'; });
     }
+    var ATUAL = null;
+    function soEmails(txt) { return String(txt || '').split(',').map(function (x) { var mm = x.match(/<([^>]+)>/); return (mm ? mm[1] : x).trim(); }).filter(function (x) { return /@/.test(x); }); }
+    function citar(m) { return '\n\n\n---- Em ' + dataHora(m.data) + ', ' + (m.de || '') + ' escreveu:\n' + String(m.texto || '').split('\n').map(function (l) { return '> ' + l; }).join('\n'); }
+    function compor(modo) {
+      var m = ATUAL && ATUAL.m, conta = ''; try { conta = String((E.contaCompras || '')).toLowerCase(); } catch (_) {}
+      var para = [], cc = [], assunto = '', texto = '', anexosOrig = [];
+      if (modo === 'novo' || !m) { para = emailsDe(f); }
+      else if (modo === 'encaminhar') { assunto = /^(enc|fwd?):/i.test(m.assunto || '') ? m.assunto : 'Enc: ' + (m.assunto || ''); texto = '\n\n\n---- Mensagem encaminhada ----\nDe: ' + (m.de || '') + '\nData: ' + dataHora(m.data) + '\nAssunto: ' + (m.assunto || '') + '\nPara: ' + (m.para || '') + '\n\n' + (m.texto || ''); anexosOrig = m.anexos || []; }
+      else {
+        var enviado = ATUAL.pasta === 'enviados';
+        para = enviado ? soEmails(m.para) : soEmails(m.reply_to || m.de);
+        if (modo === 'todos') { var meus = soEmails(m.de).concat(conta ? [conta] : []); cc = soEmails((enviado ? '' : m.para) + ',' + (m.cc || '')).filter(function (x) { return para.indexOf(x) < 0 && x.toLowerCase() !== conta && !/@italyembalagens\.com\.br$/i.test(x) && !(enviado && meus.indexOf(x) >= 0); }); }
+        assunto = /^(re|res):/i.test(m.assunto || '') ? m.assunto : 'Re: ' + (m.assunto || ''); texto = citar(m);
+      }
+      var sug = []; FORN.forEach(function (x) { emailsDe(x).forEach(function (em) { if (sug.indexOf(em) < 0) sug.push(em); }); });
+      ov.querySelector('.dsf-dupla').classList.add('lendo');
+      leitor.setAttribute('data-tipo', 'novo');
+      leitor.innerHTML = '<div class="dsf-ltopo"><button type="button" class="dsf-voltar" data-voltar>← Voltar à lista</button><span class="dsf-ltag novo">' + ({ novo: '✉️ Novo e-mail', responder: '↩ Responder', todos: '↩↩ Responder a todos', encaminhar: '↪ Encaminhar' }[modo] || '✉️ Novo e-mail') + '</span></div>'
+        + '<form class="dsf-comp" autocomplete="off"><datalist id="dsf-sug-em">' + sug.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>'
+        + '<label>Para <small>(separe por vírgula)</small><input name="para" list="dsf-sug-em" value="' + esc(para.join(', ')) + '" placeholder="email@fornecedor.com.br" required></label>'
+        + '<label>Cc <small>(opcional)</small><input name="cc" list="dsf-sug-em" value="' + esc(cc.join(', ')) + '"></label>'
+        + '<label>Assunto<input name="assunto" value="' + esc(assunto) + '" required></label>'
+        + '<label>Mensagem<textarea name="mensagem" rows="14" required>' + esc(texto) + '</textarea></label>'
+        + (anexosOrig.length ? '<fieldset class="dsf-canx"><legend>Anexos do e-mail original (vão junto)</legend>' + anexosOrig.map(function (a) { return '<label class="dsf-chk"><input type="checkbox" name="orig" value="' + a.i + '" checked> 📎 ' + esc(a.nome) + ' <small>' + kb(a.tamanho) + '</small></label>'; }).join('') + '</fieldset>' : '')
+        + '<label class="dsf-file">📎 Anexar arquivos do computador <small>(até 20 MB no total)</small><input type="file" name="arquivos" multiple></label><div class="dsf-flist"></div>'
+        + '<div class="dsf-cacoes"><button type="button" data-cancelar>Cancelar</button><button type="submit" class="dsf-enviar">📤 Enviar e-mail</button></div></form>';
+      var fm = leitor.querySelector('form');
+      var arq = fm.querySelector('[name="arquivos"]');
+      arq.addEventListener('change', function () { fm.querySelector('.dsf-flist').innerHTML = Array.prototype.map.call(arq.files, function (x) { return '<span>📎 ' + esc(x.name) + ' <small>' + kb(x.size) + '</small></span>'; }).join(''); });
+      fm.querySelector('[data-cancelar]').addEventListener('click', function () { if (ATUAL) mostrarMsg(leitor, ATUAL.m.uid, ATUAL.pasta); else { leitor.innerHTML = '<div class="dsf-leitor-vazio">📨<b>Clique num e-mail da lista</b><span>Ele abre aqui, com o texto completo e os anexos.</span></div>'; ov.querySelector('.dsf-dupla').classList.remove('lendo'); } });
+      fm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var bt = fm.querySelector('.dsf-enviar'); if (bt.disabled) return;
+        var lerArq = Array.prototype.map.call(arq.files, function (x) { return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok({ nome: x.name, tipo: x.type, base64: String(r.result || '') }); }; r.onerror = function () { no(new Error('não consegui ler ' + x.name)); }; r.readAsDataURL(x); }); });
+        var tam = Array.prototype.reduce.call(arq.files, function (t, x) { return t + x.size; }, 0);
+        if (tam > 20 * 1024 * 1024) { toast('Os arquivos passam de 20 MB.', 'var(--red)'); return; }
+        bt.disabled = true; bt.textContent = 'Enviando…';
+        Promise.all(lerArq).then(function (anx) {
+          var b = { para: fm.para.value, cc: fm.cc.value, assunto: fm.assunto.value, mensagem: fm.mensagem.value, anexos: anx };
+          if ((modo === 'responder' || modo === 'todos') && m && m.message_id) { b.in_reply_to = m.message_id; b.references = m.references || ''; }
+          if (modo === 'encaminhar' && m) b.encaminhar = { uid: m.uid, pasta: ATUAL.pasta === 'enviados' ? 'enviados' : 'inbox', anexos: Array.prototype.map.call(fm.querySelectorAll('[name="orig"]:checked'), function (c) { return Number(c.value); }) };
+          return req('POST', '/api/fornecedores-emails/enviar', b);
+        }).then(function (r) {
+          toast('✅ E-mail enviado para ' + (r.para || []).concat(r.cc || []).join(', '));
+          ENVP = null; outrosEnviados();
+          leitor.innerHTML = '<div class="dsf-leitor-vazio">✅<b>E-mail enviado</b><span>Para: ' + esc((r.para || []).concat(r.cc || []).join(', ')) + (r.anexos ? ' · ' + r.anexos + ' anexo(s)' : '') + '</span><span>Ele fica na aba Enviados (em "Outros e-mails enviados").</span></div>';
+        }).catch(function (er) { bt.disabled = false; bt.textContent = '📤 Enviar e-mail'; toast('Não foi enviado: ' + er.message, 'var(--red)'); });
+      });
+      setTimeout(function () { try { (para.length ? fm.querySelector(modo === 'novo' ? '[name="assunto"]' : '[name="mensagem"]') : fm.querySelector('[name="para"]')).focus(); if (modo !== 'novo') { fm.mensagem.setSelectionRange(0, 0); fm.mensagem.scrollTop = 0; } } catch (_) {} }, 40);
+    }
+    // e-mails enviados ao fornecedor que não são de compras (escritos aqui, respostas, encaminhados)
+    function outrosEnviados() {
+      var envP = ov.querySelector('[data-p="env"]'); if (!envP) return;
+      enviadosImap().then(function (l) {
+        var usados = env.map(function (e) { var mm = casar(e, l); return mm && mm.uid; });
+        var outros = l.filter(function (mm) { return usados.indexOf(mm.uid) < 0; });
+        var box = envP.querySelector('.dsf-outros'); if (!box) { box = document.createElement('div'); box.className = 'dsf-outros'; envP.appendChild(box); }
+        OUTROS = outros;
+        box.innerHTML = outros.length ? '<h4>Outros e-mails enviados</h4><ul class="dsf-ml">' + outros.map(function (mm, k) { return '<li class="dsf-env dsf-out" data-ok="' + k + '"><button type="button" class="dsf-recbt" data-out="' + k + '"><div class="dsf-ml1"><b>' + esc(mm.assunto || '(sem assunto)') + '</b><span>' + esc(dataHora(mm.data)) + '</span></div><div class="dsf-ml2">Para: ' + esc(mm.para || '') + '</div><div class="dsf-ml3">' + esc(mm.previa || '') + '</div></button></li>'; }).join('') + '</ul>' : '';
+      }).catch(function () {});
+    }
+    var OUTROS = [];
     function abrirEnv(i) {
       var li = ov.querySelector('.dsf-env[data-ei="' + i + '"]'), corpo = leitor;
       selecionar(li, 'env');
@@ -74878,11 +74942,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var ab = e.target.closest('[data-aba]'); if (ab) { var k = ab.getAttribute('data-aba'); ov.querySelectorAll('[data-aba]').forEach(function (x) { x.classList.toggle('on', x === ab); }); ov.querySelectorAll('[data-p]').forEach(function (x) { x.hidden = x.getAttribute('data-p') !== k; }); if (k === 'rec' && !carregado) abaRec(false); return; }
       if (e.target.closest('[data-rec="atualizar"]')) { abaRec(true); return; }
       if (e.target.closest('[data-voltar]')) { ov.querySelector('.dsf-dupla').classList.remove('lendo'); return; }
+      if (e.target.closest('[data-novo]')) { ATUAL = null; ov.querySelectorAll('.dsf-ml>li.sel').forEach(function (x) { x.classList.remove('sel'); }); compor('novo'); return; }
+      var cp = e.target.closest('[data-comp]'); if (cp) { compor(cp.getAttribute('data-comp')); return; }
+      var bo = e.target.closest('[data-out]'); if (bo) { var k = Number(bo.getAttribute('data-out')); selecionar(bo.parentElement, 'env'); mostrarMsg(leitor, OUTROS[k].uid, 'enviados'); return; }
       var be = e.target.closest('[data-env]'); if (be) { abrirEnv(Number(be.getAttribute('data-env'))); return; }
       var bt = e.target.closest('[data-abrir]'); if (bt) { abrirMsg(Number(bt.getAttribute('data-abrir'))); return; }
       var an = e.target.closest('[data-anexo]'); if (an) baixar(an);
     });
     abaRec(false); // já busca as respostas em segundo plano (o número aparece na aba)
+    outrosEnviados();
   }
   // 26/11: abrir os e-mails de um fornecedor de qualquer tela (ex.: Compra de Papelão)
   window.dsFornEmails = function (nomeOuId) {
@@ -74975,6 +75043,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + 'html[data-theme="light"] .dsf-leitor-vazio b{color:#0f172a}html[data-theme="light"] .dsf-leitor-vazio{color:#475569}html[data-theme="light"] .dsf-mail2 .dsf-anxs button{background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}'
       + 'html[data-theme="light"] .dsf-mail2 .dsf-vazio,html[data-theme="light"] .dsf-mail2 .dsf-recinfo{color:#475569!important}html[data-theme="light"] .dsf-voltar,html[data-theme="light"] .dsf-mail2>footer button{background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}'
       + '@media (max-width:860px){.dsf-ov:has(.dsf-mail2){padding:0!important}.dsf-modal.dsf-mail2{width:100vw!important;max-width:100vw!important;height:100%;max-height:100%!important;border-radius:0!important;padding:14px!important}.dsf-dupla{grid-template-columns:1fr}.dsf-dupla .dsf-leitor{display:none}.dsf-dupla.lendo .dsf-leitor{display:block}.dsf-dupla.lendo .dsf-col{display:none}.dsf-voltar{display:inline-flex;align-items:center}.dsf-leitor{padding:14px}}'
+      + '.dsf-hacts{display:flex;align-items:center;gap:10px}.dsf-novo{min-height:42px;padding:0 16px;border-radius:10px;border:0;background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(2,132,199,.35)}'
+      + '.dsf-lacoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}.dsf-lacoes button{min-height:42px;padding:0 16px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--text);font:inherit;font-weight:800;cursor:pointer}'
+      + '.dsf-ltag.novo{background:color-mix(in srgb,#8b5cf6 18%,transparent);color:#7c3aed;border:1px solid #8b5cf6}'
+      + '.dsf-comp{display:flex;flex-direction:column;gap:12px}.dsf-comp>label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:800;color:var(--text2)}.dsf-comp small{font-weight:400}'
+      + '.dsf-comp input:not([type=checkbox]):not([type=file]),.dsf-comp textarea{width:100%;box-sizing:border-box;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;font-size:14.5px;font-weight:400}.dsf-comp textarea{min-height:260px;resize:vertical;line-height:1.5}'
+      + '.dsf-canx{border:1px solid var(--border);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}.dsf-canx legend{font-size:12.5px;font-weight:800;color:var(--text2)}.dsf-chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text)}'
+      + '.dsf-file{border:1px dashed var(--border);border-radius:10px;padding:10px 12px;cursor:pointer}.dsf-flist{display:flex;flex-wrap:wrap;gap:6px;font-size:13px}.dsf-flist span{background:var(--s2);border-radius:8px;padding:4px 8px}'
+      + '.dsf-cacoes{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.dsf-cacoes button{min-height:46px;padding:0 20px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font:inherit;font-weight:800;cursor:pointer}.dsf-cacoes .dsf-enviar{background:linear-gradient(135deg,#16a34a,#15803d);border-color:#15803d;color:#fff}'
+      + '.dsf-outros h4{margin:16px 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}'
+      + 'html[data-theme="light"] .dsf-comp>label,html[data-theme="light"] .dsf-canx legend{color:#334155!important}html[data-theme="light"] .dsf-comp input:not([type=checkbox]):not([type=file]),html[data-theme="light"] .dsf-comp textarea{background:#fff!important;color:#0f172a!important;border-color:#94a3b8!important}'
+      + 'html[data-theme="light"] .dsf-lacoes button{color:#0f172a!important;background:#e0f2fe!important;border-color:#0284c7!important}html[data-theme="light"] .dsf-cacoes button:not(.dsf-enviar){background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}html[data-theme="light"] .dsf-chk{color:#0f172a}html[data-theme="light"] .dsf-flist span{background:#f1f5f9}'
+      + '@media (max-width:860px){.dsf-hacts .dsf-novo{padding:0 10px;font-size:13px}}'
       + '.dsf-ml>li.dsf-env{padding:0}.dsf-ver{font-size:12px;color:var(--accent);margin-top:5px;font-weight:700}'
       + '.dsf-ml>li.dsf-rec{padding:0}.dsf-recbt{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);font:inherit;padding:10px 12px;cursor:pointer;border-radius:10px}.dsf-recbt:hover{background:var(--s3)}.dsf-anx{font-size:12px;color:var(--accent);margin-top:4px}'
       + '.dsf-corpo{border-top:1px solid var(--border);padding:10px 12px}.dsf-cab{font-size:12.5px;color:var(--text2);margin-bottom:8px;overflow-wrap:anywhere}.dsf-txt{white-space:pre-wrap;font:13px/1.5 inherit;font-family:inherit;margin:0;max-height:50vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text)}'
