@@ -83250,11 +83250,11 @@ window.__perTxt = function (p) {
     + '#dmv-wrap{display:grid;gap:14px}.dmv-cards{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.dmv-card.d{border-left:4px solid #3b82f6}.dmv-card b{font-size:28px;line-height:1.1}'
     + '.dmv-fh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.dmv-fh h3{margin:0!important}.dmv-fh h3 small{font-weight:500;font-size:12.5px;color:var(--text2);margin-left:8px}'
     + '.dmv-lk{background:none;border:0;padding:4px 2px;color:var(--accent,#3b82f6);font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px;width:auto!important;min-height:0}'
-    + '.dmv-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}'
+    + '.dmv-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}'
     + 'button.dmv-ft{display:grid;gap:6px;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--border,#334155);border-left:5px solid var(--fc);background:var(--s2,#1e293b);color:var(--text);font:inherit;cursor:pointer;width:auto!important;min-height:0;transition:border-color .12s,background .12s}'
     + 'button.dmv-ft:hover{background:color-mix(in srgb,var(--fc) 10%,var(--s2,#1e293b))}button.dmv-ft.on{outline:2px solid var(--fc);background:color-mix(in srgb,var(--fc) 14%,var(--s2,#1e293b))}'
     + '.dmv-ft-n{font-weight:800;font-size:15px;display:flex;align-items:center}.dmv-ft-n em{font-style:normal;font-size:11.5px;color:var(--fc);margin-left:6px}'
-    + '.dmv-ft-l{display:flex;gap:14px;flex-wrap:wrap}.dmv-ft-l i{font-style:normal;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}.dmv-ft-l .ent{color:#16a34a}.dmv-ft-l .sai{color:#dc2626}.dmv-ft-l .dif{margin-left:auto;color:var(--text)}'
+    + '.dmv-ft-l{display:flex;gap:12px;flex-wrap:nowrap;align-items:baseline}.dmv-ft-l i{font-style:normal;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}.dmv-ft-l .ent{color:#16a34a}.dmv-ft-l .sai{color:#dc2626}.dmv-ft-l .dif{margin-left:auto;color:var(--text)}'
     + 'button.dmv-ft small{font-size:12px;color:var(--text2)}'
     + '.dmv-lh-dir{display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap}'
     + '.dmv-tl tr.dmv-dia td{background:var(--s2,#1e293b);font-weight:800;font-size:13.5px;padding:8px 12px;border-bottom:1px solid var(--border,#334155);position:static}.dmv-tl tr.dmv-dia td span{float:right;font-weight:600;font-size:12.5px;color:var(--text2)}.dmv-tl tr.dmv-dia{box-shadow:none!important}.dmv-tl tr.dmv-dia:hover td{background:var(--s2,#1e293b)}'
@@ -84949,14 +84949,24 @@ window.__perTxt = function (p) {
       return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + h;
     } catch (_) { return '—'; }
   }
+  function escH(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  /* 26/11: entrada em verde, saída em vermelho e o último lançamento do Checklist de Recebimento — com hora e quem fez */
   function textoMov(t) {
-    var e = t.ultima_entrada, s = t.ultima_saida;
-    if (!e && !s) return 'Sem entradas ou saídas registradas';
-    return 'Última entrada: ' + (e ? quando(e.em) : '—') + ' · Última saída: ' + (s ? quando(s.em) : '—');
+    var e = t.ultima_entrada, s = t.ultima_saida, c = t.ultimo_checklist;
+    function lin(cls, ico, rot, m, extra) { return '<span class="ds-et ' + cls + '"><b>' + ico + ' ' + rot + ':</b> ' + (m ? escH(quando(m.em)) + (m.usuario ? ' · ' + escH(m.usuario) : '') + (extra ? ' · ' + escH(extra) : '') : '—') + '</span>'; }
+    return lin('e', '📥', 'Última entrada', e) + lin('s', '📤', 'Última saída', s)
+      + lin('c', '📋', 'Checklist de recebimento', c, c ? [c.fornecedor, c.nota_fiscal ? 'NF ' + c.nota_fiscal : ''].filter(Boolean).join(' ') : '');
   }
+  (function () {
+    var st = document.createElement('style'); st.id = 'ds-est-tot-css';
+    st.textContent = '.ds-et{display:block;font-size:12.5px;line-height:1.45;white-space:normal}.ds-et b{font-weight:800}.ds-et.e{color:#22c55e}.ds-et.s{color:#ef4444}.ds-et.c{color:#38bdf8}'
+      + 'html[data-theme="light"] .ds-et.e,body.light .ds-et.e{color:#15803d}html[data-theme="light"] .ds-et.s,body.light .ds-et.s{color:#b91c1c}html[data-theme="light"] .ds-et.c,body.light .ds-et.c{color:#0369a1}';
+    (document.head || document.documentElement).appendChild(st);
+  })();
   function dica(t) {
     function l(n, m) { return m ? n + ': ' + new Date(m.em).toLocaleString('pt-BR') + (m.chapa ? ' — ' + m.chapa : '') + (m.quantidade ? ' (' + m.quantidade + ' un)' : '') + (m.usuario ? ' por ' + m.usuario : '') : n + ': —'; }
-    return l('Última entrada', t.ultima_entrada) + '\n' + l('Última saída', t.ultima_saida);
+    var c = t.ultimo_checklist;
+    return l('Última entrada', t.ultima_entrada) + '\n' + l('Última saída', t.ultima_saida) + '\n' + (c ? 'Checklist de recebimento: ' + new Date(c.em).toLocaleString('pt-BR') + (c.fornecedor ? ' — ' + c.fornecedor : '') + (c.nota_fiscal ? ' NF ' + c.nota_fiscal : '') + (c.produto ? ' · ' + c.produto : '') + (c.usuario ? ' por ' + c.usuario : '') : 'Checklist de recebimento: —');
   }
   function card(pg, re) { var box = pg.querySelector('.estoque-wire-cards'); if (!box) return null; var l = box.children; for (var i = 0; i < l.length; i++) { var lb = l[i].querySelector('.pep-card-label') || l[i].children[0]; if (lb && re.test(lb.textContent)) return l[i]; } return null; }
   function partes(c) { return { val: c.querySelector('.pep-card-val') || c.children[1], sub: c.querySelector('.pep-card-sub') || c.children[2] }; }
@@ -84970,9 +84980,9 @@ window.__perTxt = function (p) {
       var filtro = !!(window.__estoqueWireCat || window.__estoqueWireForn);
       var g = abaRet ? t.retalhos : t.chapas;
       var pp = partes(cv), val = pp.val, sub = pp.sub;
-      var txtSub = filtro ? ('Valor do filtro · estoque total: ' + money(g.valor)) : textoMov(t);
+      var htmlSub = filtro ? escH('Valor do filtro · estoque total: ' + money(g.valor)) : textoMov(t);
       if (!filtro && val && val.textContent !== money(g.valor)) val.textContent = money(g.valor);
-      if (sub && sub.textContent !== txtSub) { sub.textContent = txtSub; sub.title = dica(t); }
+      if (sub && (sub.getAttribute('data-ds-h') !== htmlSub || sub.textContent !== sub.getAttribute('data-ds-t'))) { sub.innerHTML = htmlSub; sub.setAttribute('data-ds-h', htmlSub); sub.setAttribute('data-ds-t', sub.textContent); sub.title = dica(t); }
     }).catch(function () {});
   }
   setInterval(aplicar, 1000);

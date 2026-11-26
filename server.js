@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261126112843';
-const SW_RUNTIME_VERSION = '20261126112843';
+const PATCH_RUNTIME_VERSION = '20261126113129';
+const SW_RUNTIME_VERSION = '20261126113129';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -27472,8 +27472,19 @@ app.get('/api/chapas_estoque/totais', authMiddleware, async (req, res) => {
         if (!ultima_saida && /saida|saída|baixa/.test(tp)) ultima_saida = resumo(m);
       });
     } catch (_) {}
+    // 26/11: último lançamento no Checklist de Recebimento (created_at sem fuso = UTC)
+    let ultimo_checklist = null;
+    try {
+      const { data: ck } = await supabase.from('recebimento_insumos').select('*').order('created_at', { ascending: false }).limit(1);
+      const c = (ck || [])[0];
+      if (c) {
+        const em = String(c.created_at || '');
+        ultimo_checklist = { em: /[zZ]|[+-]\d\d:?\d\d$/.test(em) ? em : (em ? em + 'Z' : null), usuario: c.responsavel || null, fornecedor: c.fornecedor || null,
+          nota_fiscal: c.nota_fiscal || null, produto: c.produto || c.tamanho_chapa || null, quantidade: c.quantidade || null };
+      }
+    } catch (_) {}
     return ok(res, {
-      ultima_entrada, ultima_saida,
+      ultima_entrada, ultima_saida, ultimo_checklist,
       calculado_em: new Date().toISOString(),
       chapas: tot.chapas, retalhos: tot.retalhos,
       por_fornecedor: Object.values(porForn).map((x) => ({ ...x, valor: r2(x.valor), toneladas: r3(x.toneladas) })).sort((a, b) => b.valor - a.valor),
