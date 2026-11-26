@@ -83266,6 +83266,8 @@ window.__perTxt = function (p) {
     + '.dmv-tl tbody tr:not(.dmv-dia):hover button.dmv-ic span{display:inline}'
     + '[data-theme="light"] button.dmv-ft,body.light button.dmv-ft{background:#f8fafc}[data-theme="light"] .dmv-tl tr.dmv-dia td,body.light .dmv-tl tr.dmv-dia td{background:#eef2f7;color:#0f172a}'
     + '@media (max-width:760px){.dmv-tl tr.dmv-dia{border:0!important;padding:0!important;margin:10px 0 6px!important}.dmv-tl tr.dmv-dia td{display:block;border-radius:10px;text-align:left}.dmv-tl tr.dmv-dia td::before{content:none}'
+    + 'html body .dmv-tl tr.dmv-dia td::before{content:none!important;display:none!important}html body .dmv-tl tr.dmv-dia td{display:block!important;font-size:14px}html body .dmv-tl tr.dmv-dia td span{display:block;float:none;margin-top:2px}'
+    + 'html body .dmv-tl tr:not(.dmv-dia) td{justify-content:flex-end!important;align-items:center;gap:6px!important}html body .dmv-tl tr:not(.dmv-dia) td::before{margin-right:auto}.dmv-tl td.dmv-vl small{display:inline;margin-left:6px}'
     + '.dmv-ch{min-width:0}.dmv-ch>div{text-align:right}.dmv-ch .dmv-fn{justify-content:flex-end}button.dmv-ic span{display:inline}.dmv-lh-dir{margin-left:0;width:100%;justify-content:space-between}.dmv-ft-l i{font-size:15px}.dmv-fh h3 small{display:block;margin:2px 0 0}}';
   var st = document.createElement('style'); st.id = 'dmv-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
 })();
