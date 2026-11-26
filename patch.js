@@ -82802,7 +82802,7 @@ window.__perTxt = function (p) {
         + '<td data-l="Chapa" class="dmv-ch"><div><small class="dmv-fn"><span class="dmv-dot"></span>' + esc(f || '—') + '</small><b>' + (ehRetalho(chapaDe(m)) ? '<span class="dmv-tag ret">✂️ Retalho</span> ' : '') + esc(m.chapa_label || '—') + '</b></div></td>'
         + '<td data-l="Qtd" class="n ' + (ent ? 'ent' : 'sai') + ' dmv-q"><b>' + (ent ? '+' : '−') + num(qtdMov(m)) + '</b></td>'
         + '<td data-l="Saldo" class="n dmv-saldo"><span class="dmv-cx">' + (m.qtd_anterior != null ? '<span>' + num(m.qtd_anterior) + '</span> → <b>' + num(m.qtd_nova) + '</b>' : '—') + '</span></td>'
-        + '<td data-l="Valor" class="n dmv-vl"><span class="dmv-cx">' + rs(valorMov(m)) + '<small>' + ton(tonMov(m)) + '</small></span></td><td data-l="NF">' + esc(nfMov(m) || '—') + '</td>'
+        + '<td data-l="Valor" class="n dmv-vl"><span class="dmv-cx">' + rs(valorMov(m)) + ' <small><i class="dmv-sep">· </i>' + ton(tonMov(m)) + '</small></span></td><td data-l="NF">' + esc(nfMov(m) || '—') + '</td>'
         + '<td data-l="Quem lançou" class="dmv-quem">' + esc(m.usuario || '—') + '</td>'
         + '<td data-l="" class="c dmv-acs">' + (!m.reverted && (k === 'entrada' || k === 'saida') ? '<button type="button" class="dmv-ic" data-dmv-edit="' + esc(m.id) + '" title="Editar: corrigir chapa, quantidade, valor ou NF" aria-label="Editar">✏️<span>Editar</span></button>' : '') + (podeDesfazer ? '<button type="button" class="dmv-ic dmv-ic-del" data-dmv-desf="' + esc(m.id) + '" title="Desfazer este lançamento (o saldo volta)" aria-label="Desfazer">↶<span>Desfazer</span></button>' : '') + '</td></tr>';
     }).join('') || '<tr><td colspan="9" class="dmv-vazio">Nada encontrado' + (S.q || S.forn ? ' com esse filtro' : ' neste mês') + '.</td></tr>';
@@ -83260,14 +83260,14 @@ window.__perTxt = function (p) {
     + '.dmv-tl tr.dmv-dia td{background:var(--s2,#1e293b);font-weight:800;font-size:13.5px;padding:8px 12px;border-bottom:1px solid var(--border,#334155);position:static}.dmv-tl tr.dmv-dia td span{float:right;font-weight:600;font-size:12.5px;color:var(--text2)}.dmv-tl tr.dmv-dia{box-shadow:none!important}.dmv-tl tr.dmv-dia:hover td{background:var(--s2,#1e293b)}'
     + '.dmv-hora{font-weight:700;font-variant-numeric:tabular-nums;color:var(--text2);white-space:nowrap}'
     + '.dmv-ch{min-width:220px}.dmv-ch .dmv-fn{display:flex;align-items:center;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--text2);margin-bottom:2px}.dmv-ch .dmv-fn .dmv-dot{width:8px;height:8px;margin-right:5px}'
-    + '.dmv-q b{font-size:15px}.dmv-vl small{display:block;font-size:11.5px;color:var(--text2)}.dmv-quem{font-size:12.5px;color:var(--text2)}'
+    + '.dmv-q b{font-size:15px}.dmv-vl small{display:block;font-size:11.5px;color:var(--text2)}.dmv-sep{display:none;font-style:normal}.dmv-quem{font-size:12.5px;color:var(--text2)}'
     + 'button.dmv-ic{display:inline-flex;align-items:center;justify-content:center;gap:4px;width:auto!important;min-width:34px;height:34px;min-height:34px;padding:0 9px;border-radius:9px;border:1px solid var(--border,#334155);background:transparent;color:var(--text);font:inherit;font-size:14px;cursor:pointer}button.dmv-ic span{font-size:12.5px;font-weight:700;display:none}'
     + 'button.dmv-ic:hover{background:var(--s2,#1e293b)}button.dmv-ic-del{color:#dc2626;border-color:color-mix(in srgb,#dc2626 45%,transparent)}button.dmv-ic+button.dmv-ic{margin-left:4px}'
     + '.dmv-tl tbody tr:not(.dmv-dia):hover button.dmv-ic span{display:inline}'
     + '[data-theme="light"] button.dmv-ft,body.light button.dmv-ft{background:#f8fafc}[data-theme="light"] .dmv-tl tr.dmv-dia td,body.light .dmv-tl tr.dmv-dia td{background:#eef2f7;color:#0f172a}'
     + '@media (max-width:760px){.dmv-tl tr.dmv-dia{border:0!important;padding:0!important;margin:10px 0 6px!important}.dmv-tl tr.dmv-dia td{display:block;border-radius:10px;text-align:left}.dmv-tl tr.dmv-dia td::before{content:none}'
     + 'html body .dmv-tl tr.dmv-dia td::before{content:none!important;display:none!important}html body .dmv-tl tr.dmv-dia td{display:block!important;font-size:14px}html body .dmv-tl tr.dmv-dia td span{display:block;float:none;margin-top:2px}'
-    + 'html body .dmv-tl tr:not(.dmv-dia) td{justify-content:flex-end!important;align-items:center;gap:6px!important}html body .dmv-tl tr:not(.dmv-dia) td::before{margin-right:auto}.dmv-tl td.dmv-vl small{display:inline;margin-left:6px}'
+    + 'html body .dmv-tl tr:not(.dmv-dia) td{justify-content:flex-end!important;align-items:center;gap:6px!important}html body .dmv-tl tr:not(.dmv-dia) td::before{margin-right:auto}.dmv-tl td.dmv-vl small{display:inline;margin-left:6px}html body .dmv-tl i.dmv-sep{display:inline!important}'
     + '.dmv-ch{min-width:0}.dmv-ch>div{text-align:right}.dmv-ch .dmv-fn{justify-content:flex-end}button.dmv-ic span{display:inline}.dmv-lh-dir{margin-left:0;width:100%;justify-content:space-between}.dmv-ft-l i{font-size:15px}.dmv-fh h3 small{display:block;margin:2px 0 0}}';
   var st = document.createElement('style'); st.id = 'dmv-css'; st.textContent = css; (document.head || document.documentElement).appendChild(st);
 })();
