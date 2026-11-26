@@ -84705,5 +84705,34 @@ window.__perTxt = function (p) {
   };
 })();
 
+/* ===== 26/11: Compra de Papelão — botões do topo mais destacados e na ordem pedida:
+ * Nova Compra · E-mails dos fornecedores · Repor estoque · Nova Pasta · Estoque de Chapas · Relatórios · Sugestões ===== */
+(function () {
+  if (window.__dsCmpxBotoes) return; window.__dsCmpxBotoes = true;
+  var ORDEM = ['cmpx-btn-nova', 'cmpx-btn-emails', 'drp-btn', 'cmpx-btn-pasta', 'cmpx-btn-estoque', 'cmpx-btn-relatorios', 'cmpx-btn-sugestoes'];
+  var st = document.createElement('style'); st.id = 'ds-cmpx-botoes-css';
+  st.textContent = '.cmpx-actions{display:flex!important;flex-wrap:wrap!important;gap:10px!important;align-items:stretch!important}'
+    + '.cmpx-actions>.pep-btn{min-height:48px!important;padding:0 18px!important;border-radius:12px!important;font-size:14.5px!important;font-weight:800!important;color:#fff!important;border:1px solid transparent!important;box-shadow:0 6px 16px rgba(0,0,0,.25)!important;transition:transform .12s,filter .12s!important}'
+    + '.cmpx-actions>.pep-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}'
+    + '#cmpx-btn-nova{background:linear-gradient(135deg,#3b82f6,#2563eb)!important}'
+    + '#cmpx-btn-emails{background:linear-gradient(135deg,#0ea5e9,#0284c7)!important}'
+    + '#drp-btn{background:linear-gradient(135deg,#ef4444,#dc2626)!important}'
+    + '#cmpx-btn-pasta{background:linear-gradient(135deg,#8b5cf6,#7c3aed)!important}'
+    + '#cmpx-btn-estoque{background:linear-gradient(135deg,#f97316,#ea580c)!important}'
+    + '#cmpx-btn-relatorios{background:linear-gradient(135deg,#14b8a6,#0d9488)!important}'
+    + '#cmpx-btn-sugestoes{background:linear-gradient(135deg,#eab308,#ca8a04)!important;color:#111827!important}'
+    + '@media (max-width:700px){.cmpx-actions>.pep-btn{flex:1 1 calc(50% - 10px)!important;justify-content:center!important}#cmpx-btn-nova{flex-basis:100%!important}}';
+  document.head.appendChild(st);
+  function ordenar() {
+    var box = document.querySelector('.cmpx-actions'); if (!box) return;
+    var atual = Array.prototype.map.call(box.children, function (e) { return e.id; }).filter(function (id) { return ORDEM.indexOf(id) >= 0; });
+    var certo = ORDEM.filter(function (id) { return document.getElementById(id) && box.contains(document.getElementById(id)); });
+    if (atual.join('|') === certo.join('|')) return;
+    certo.forEach(function (id) { box.appendChild(document.getElementById(id)); });
+  }
+  setInterval(ordenar, 400);
+  if (typeof window.__dsAoMudar === 'function') { try { window.__dsAoMudar(ordenar); } catch (_) {} }
+})();
+
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */
 window.__DS_PATCH_FIM = true;
