@@ -85131,9 +85131,10 @@ window.__perTxt = function (p) {
     run: async function () {
       var r = A().range();
       var l = lista(await A().fetch('/api/chapas_estoque_movimentos?de=' + r.data_inicio + '&ate=' + r.data_fim + '&limit=5000'))
-        .filter(function (m) { return !m.reverted && !m.reverted_at && !/^revers/i.test(String(m.origem || '')) && /entrada|saida|saída/i.test(String(m.tipo || '')) && !/cadastro/i.test(String(m.origem || '')); });
-      function ent(m) { return Number(m.delta) > 0; }
-      function q(m) { return Math.abs(Number(m.delta) || Number(m.quantidade) || 0); }
+        /* mesma regra da tela Entradas e Saídas: fora cadastros iniciais, ajustes, desfeitos e reversões */
+        .filter(function (m) { return m && m.chapa_id && !m.reverted && !/^(entrada_inicial|reversao_movimento|ajuste_edicao|ajuste|ajuste_movimento)$/.test(String(m.origem || '')); });
+      function ent(m) { return String(m.tipo) !== 'saida'; }
+      function q(m) { return Math.abs(Math.trunc(Number(m.delta || 0))) || Math.trunc(Number(m.quantidade || 0)) || 0; }
       function v(m) { var t = Math.abs(Number(m.valor_total) || 0); return t || q(m) * (Number(m.valor_unitario) || 0); }
       var por = agrupar(l, function (m) { return String(m.fornecedor || '—').toUpperCase(); });
       var E = l.filter(ent), S = l.filter(function (m) { return !ent(m); });
