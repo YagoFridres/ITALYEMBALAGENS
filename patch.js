@@ -4624,6 +4624,11 @@ try {
       run: rrReportCustos
     });
     try { console.log('[RELATORIO-CUSTOS] card adicionado ao rrDefs'); } catch (_) {}
+    // 27/11: relatórios novos (módulo __dsRelExtras no fim do arquivo) + ferramentas para eles
+    try {
+      window.__rrApi = { range: rrCurrentRange, print: rrOpenPrint, fetch: rrFetchJson, list: rrList, num: rrFmtNum, money: rrFmtMoney, date: rrFmtDate, dt: rrFmtDateTime, esc: rrEsc, empresaQS: rrEmpresaQueryParts };
+      (window.__dsRelExtras || []).forEach(function (d) { if (d && d.id && !rrDefs.some(function (x) { return x.id === d.id; })) rrDefs.push(d); });
+    } catch (_) {}
   }
 
   function rrDefsSignature() {
@@ -4733,6 +4738,38 @@ try {
     };
   }
 
+  var RR_GRUPOS = [
+    ['vendas', '💰 Vendas e Faturamento'], ['clientes', '👥 Clientes'], ['producao', '🏭 Produção e OFs'], ['perdas', '⚠️ Perdas e Qualidade'],
+    ['estoque', '📦 Estoque'], ['compras', '🛒 Compras de Papelão e Recebimento'], ['cadastros', '🗂 Cadastros'], ['outros', '📄 Outros']
+  ];
+  var RR_CAT = {
+    'clientes-mais-compraram': 'vendas', 'clientes-menos-compraram': 'vendas', 'vendas-por-empresa': 'vendas', 'comparativo-mensal': 'vendas', 'evolucao-vendas': 'vendas',
+    'vendas-por-ramo': 'vendas', 'vendas-por-cidade-estado': 'vendas', 'projecao-vendas': 'vendas', 'resumo-anual': 'vendas', 'ofs-entradas-mes': 'vendas', 'pizzas-salgados': 'vendas',
+    'comissoes': 'vendas', 'controle-vendas-vendedor': 'vendas', 'toneladas-vendidas': 'vendas', 'custo-por-of': 'vendas', 'lucratividade-por-maquina': 'vendas',
+    'clientes-sem-comprar-vendedor': 'clientes', 'ficha-tecnica-cliente': 'clientes', 'clientes-inativos': 'clientes',
+    'ofs-em-aberto': 'producao', 'passagens': 'producao', 'maquinas-periodo': 'producao', 'tipos-caixa-rel': 'producao', 'cores-tamanhos-rel': 'producao',
+    'maiores-tamanhos-vendidos': 'producao', 'amostras-do-mes': 'producao', 'facas-mais-utilizadas': 'producao', 'gramaturas-ranking': 'producao', 'relatorio-sergio': 'producao',
+    'caixas-perdidas': 'perdas', 'maior-perda-tipo-caixa': 'perdas', 'maior-perda-cliente': 'perdas', 'perdas-altas': 'perdas', 'perdas-operador': 'perdas',
+    'estoque-chapas': 'estoque', 'entradas': 'estoque', 'saidas': 'estoque', 'chapas-abaixo-200': 'estoque',
+    'papelao-checklist-recebimento': 'compras', 'papelao-por-fornecedor': 'compras', 'papelao-resumo-mes': 'compras',
+    'gramaturas-sistema': 'cadastros'
+  };
+  function rrCardHtml(def) {
+    return ''
+      + '<div class="rr-card" data-rr-search="' + rrEsc(((def.label || '') + ' ' + (def.desc || '')).toLowerCase()) + '">'
+      + '  <div class="rr-card-top"><div class="rr-icon">' + rrEsc(def.icon || '🖨') + '</div>' + (def.novo ? '<span class="rr-novo">Novo</span>' : '') + '</div>'
+      + '  <div><div class="rr-label">' + rrEsc(def.label || 'Relatório') + '</div><div class="rr-desc">' + rrEsc(def.desc || '') + '</div></div>'
+      + '  <button type="button" class="rr-btn" data-rr-open="' + rrEsc(def.id || '') + '">Abrir Relatório</button>'
+      + '</div>';
+  }
+  function rrGruposHtml() {
+    var por = {};
+    rrDefs.forEach(function (d) { var c = d.cat || RR_CAT[d.id] || 'outros'; (por[c] = por[c] || []).push(d); });
+    return RR_GRUPOS.filter(function (g) { return por[g[0]] && por[g[0]].length; }).map(function (g) {
+      return '<section class="rr-grupo" data-rr-grupo="' + g[0] + '"><h3 class="rr-grupo-tit">' + rrEsc(g[1]) + ' <small>' + por[g[0]].length + '</small></h3><div class="rr-grid">' + por[g[0]].map(rrCardHtml).join('') + '</div></section>';
+    }).join('');
+  }
+
   function rrRenderPage() {
     rrEnsureCustosCard();
     try { window.rrReportCustos = rrReportCustos; } catch (_) {}
@@ -4754,16 +4791,8 @@ try {
       +       rrPeriodHtml(ref)
       + '    <div class="rr-search-row"><input id="rr-search-relatorios" class="rr-search-input" type="text" placeholder="Buscar relatório..." value="' + rrEsc(String(window.__rrBuscaRelatorios || '')) + '"></div>'
       + '  </div>'
-      + '  <div class="rr-grid">'
-      + rrDefs.map(function(def) {
-          return ''
-            + '<div class="rr-card" data-rr-search="' + rrEsc(((def.label || '') + ' ' + (def.desc || '')).toLowerCase()) + '">'
-            + '  <div class="rr-card-top"><div class="rr-icon">' + rrEsc(def.icon || '🖨') + '</div></div>'
-            + '  <div><div class="rr-label">' + rrEsc(def.label || 'Relatório') + '</div><div class="rr-desc">' + rrEsc(def.desc || '') + '</div></div>'
-            + '  <button type="button" class="rr-btn" data-rr-open="' + rrEsc(def.id || '') + '">Abrir Relatório</button>'
-            + '</div>';
-        }).join('')
-      + '  </div>'
+      /* 27/11: relatórios separados por assunto, para achar mais fácil */
+      + rrGruposHtml()
       + '</div>';
     Array.prototype.slice.call(host.querySelectorAll('[data-rr-open]')).forEach(function(btn) {
       btn.onclick = function() {
@@ -4782,6 +4811,11 @@ try {
         Array.prototype.slice.call(host.querySelectorAll('.rr-card')).forEach(function(card) {
           var hay = norm(card.getAttribute('data-rr-search') || card.textContent || '');
           card.style.display = (!q || hay.indexOf(q) >= 0) ? '' : 'none';
+        });
+        // 27/11: some o título do grupo quando nenhum relatório dele bate com a busca
+        Array.prototype.slice.call(host.querySelectorAll('.rr-grupo')).forEach(function(g) {
+          var algum = Array.prototype.slice.call(g.querySelectorAll('.rr-card')).some(function(c) { return c.style.display !== 'none'; });
+          g.style.display = algum ? '' : 'none';
         });
       };
       inp.addEventListener('input', apply);
@@ -85004,6 +85038,315 @@ window.__perTxt = function (p) {
     }
   } catch (_) {}
   window.dsEstoqueTotais = function () { return buscar(true); };
+})();
+
+/* ===== 27/11: __dsRelExtras — relatórios novos na Central de Relatórios (usam os dados que o sistema já tem) ===== */
+(function () {
+  if (window.__dsRelExtrasOk) return; window.__dsRelExtrasOk = true;
+  function A() { return window.__rrApi; }
+  function esc(s) { return A().esc(String(s == null ? '' : s)); }
+  function n0(v) { return A().num(Number(v) || 0, 0); }
+  function rs(v) { return A().money(Number(v) || 0); }
+  function dt(v) { return v ? A().date(v) : '—'; }
+  function lista(j) { if (Array.isArray(j)) return j; return (j && (j.data || j.rows || j.items)) || []; }
+  function noPeriodo(v, r) { var d = String(v || '').slice(0, 10); return !!d && d >= r.data_inicio && d <= r.data_fim; }
+  /* datas sem fuso vindas do banco estão em UTC: converte para o dia local */
+  function diaLocal(v) {
+    var s = String(v || ''); if (!s) return '';
+    if (s.length <= 10) return s;
+    var d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : s + 'Z'); if (isNaN(d)) return s.slice(0, 10);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function soma(arr, f) { return arr.reduce(function (s, x) { return s + (Number(f(x)) || 0); }, 0); }
+  function agrupar(arr, chave) { var m = new Map(); arr.forEach(function (x) { var k = chave(x) || '—'; if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; }
+  function hoje() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function imprimir(cfg) { return A().print(cfg); }
+  var _ofsCache = null;
+  async function ofs(status) {
+    if (!status && _ofsCache && Date.now() - _ofsCache.t < 60000) return _ofsCache.l;
+    var l = lista(await A().fetch('/api/ofs?todas_empresas=1&limit=10000' + (status ? '&status=' + encodeURIComponent(status) : '')));
+    if (!status) _ofsCache = { t: Date.now(), l: l };
+    return l;
+  }
+  function ofNum(o) { return String(o.of || o.numero || o.of_num || '—'); }
+  function ofCli(o) { return String(o.cliente_nome || o.clinome || o.cliNome || '—'); }
+  function ofVend(o) { return String(o.vendNome || o.vendedor || '—'); }
+  function ofQtd(o) { return Number(o.qtd || o.qtd_pedida || o.quantidade || 0) || 0; }
+  function ofValor(o) { var v = Number(o.valor_total || o.total || 0) || 0; if (!v) v = (Number(o.valor_unitario || o.preco || 0) || 0) * ofQtd(o); return v; }
+  function ofEntrega(o) { return String(o.data_entrega || o.ent || '').slice(0, 10); }
+  function ehAberta(o) { return /aberto|aberta|produ/i.test(String(o.status || '')); }
+
+  var X = [];
+
+  /* ---------- Compras e recebimento ---------- */
+  X.push({ id: 'x-checklist-lancado', cat: 'compras', novo: true, icon: '📋', label: 'Checklist de Recebimento (conferências lançadas)',
+    desc: 'Tudo o que foi conferido na tela Checklist de Recebimento no período: fornecedor, NF, produto, quantidade, placa e quem recebeu.',
+    run: async function () {
+      var r = A().range();
+      var l = lista(await A().fetch('/api/recebimento_insumos')).filter(function (x) { return noPeriodo(x.data_recebimento || diaLocal(x.created_at), r); })
+        .sort(function (a, b) { return String(b.data_recebimento || b.created_at).localeCompare(String(a.data_recebimento || a.created_at)); });
+      var por = agrupar(l, function (x) { return String(x.fornecedor || '').toUpperCase(); });
+      var dev = l.filter(function (x) { return x.devolucao === true || /^(sim|s|true)$/i.test(String(x.devolucao || '')); });
+      return imprimir({ title: 'Checklist de Recebimento — conferências lançadas', periodo: r.titulo,
+        cards: [{ label: 'Conferências', value: n0(l.length), sub: 'Lançadas no período' }, { label: 'Fornecedores', value: n0(por.size) },
+          { label: 'Quantidade recebida', value: n0(soma(l, function (x) { return x.quantidade; })), sub: 'Somando todos os itens' }, { label: 'Devoluções', value: n0(dev.length) }],
+        summaryTitle: 'Por fornecedor', summaryHeaders: ['Fornecedor', 'Conferências', 'Notas fiscais', 'Quantidade'],
+        summaryRows: Array.from(por.entries()).sort(function (a, b) { return b[1].length - a[1].length; }).map(function (e) {
+          var nfs = new Set(e[1].map(function (x) { return String(x.nota_fiscal || '').trim(); }).filter(Boolean));
+          return [esc(e[0]), esc(n0(e[1].length)), esc(n0(nfs.size)), esc(n0(soma(e[1], function (x) { return x.quantidade; })))];
+        }),
+        detailTitle: 'Conferências', detailHeaders: ['Data', 'Hora', 'Fornecedor', 'NF', 'Produto / chapa', 'Qtd', 'Ordem de compra', 'Placa', 'Recebido por', 'Devolução'],
+        detailRows: l.map(function (x) {
+          var h = ''; try { var d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(String(x.created_at)) ? x.created_at : x.created_at + 'Z'); if (!isNaN(d)) h = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) {}
+          return [esc(dt(x.data_recebimento || diaLocal(x.created_at))), esc(h || '—'), esc(x.fornecedor || '—'), esc(x.nota_fiscal || '—'), esc(x.produto || x.tamanho_chapa || '—'), esc(n0(x.quantidade)),
+            esc(x.ordem_compra || '—'), esc(x.placa_veiculo || '—'), esc(x.responsavel || '—'), esc(x.devolucao === true ? 'Sim' : (x.devolucao ? String(x.devolucao) : 'Não'))];
+        }), emptySummaryCols: 4, emptyDetailCols: 10 });
+    } });
+
+  X.push({ id: 'x-preco-papelao', cat: 'compras', novo: true, icon: '💲', label: 'Preço Pago no Papelão',
+    desc: 'Quanto foi pago por chapa e por m² em cada fornecedor e em cada chapa nas compras do período — para comparar preços.',
+    run: async function () {
+      var r = A().range();
+      var j = await A().fetch('/api/compras-chapas/relatorios/checklist-recebimento?' + A().empresaQS().concat(['data_inicio=' + r.data_inicio, 'data_fim=' + r.data_fim]).join('&'));
+      var itens = [];
+      lista(j.rows ? j.rows : j).forEach(function (c) { (c.itens || []).forEach(function (it) { itens.push({ forn: String(c.fornecedor || '—').toUpperCase(), compra: c.numero_compra, data: c.data_compra, desc: it.descricao, qtd: Number(it.quantidade) || 0, area: Number(it.area_m2) || 0, valor: Number(it.valor_total) || 0 }); }); });
+      var porF = agrupar(itens, function (x) { return x.forn; });
+      var porI = agrupar(itens, function (x) { return x.forn + ' · ' + String(x.desc || 'Item'); });
+      function lin(nome, arr) { var q = soma(arr, function (x) { return x.qtd; }), a = soma(arr, function (x) { return x.area; }), v = soma(arr, function (x) { return x.valor; });
+        return [esc(nome), esc(n0(q)), esc(A().num(a, 2) + ' m²'), esc(rs(v)), esc(q ? rs(v / q) : '—'), esc(a ? 'R$ ' + A().num(v / a, 4) : '—')]; }
+      return imprimir({ title: 'Preço Pago no Papelão', periodo: r.titulo,
+        cards: [{ label: 'Compras', value: n0(new Set(itens.map(function (x) { return x.compra; })).size) }, { label: 'Chapas compradas', value: n0(soma(itens, function (x) { return x.qtd; })) },
+          { label: 'Valor comprado', value: rs(soma(itens, function (x) { return x.valor; })) },
+          { label: 'R$ médio por m²', value: (function () { var a = soma(itens, function (x) { return x.area; }); return a ? 'R$ ' + A().num(soma(itens, function (x) { return x.valor; }) / a, 4) : '—'; })() }],
+        summaryTitle: 'Por fornecedor', summaryHeaders: ['Fornecedor', 'Chapas', 'Área', 'Valor', 'R$ por chapa', 'R$ por m²'],
+        summaryRows: Array.from(porF.entries()).sort(function (a, b) { return soma(b[1], function (x) { return x.valor; }) - soma(a[1], function (x) { return x.valor; }); }).map(function (e) { return lin(e[0], e[1]); }),
+        detailTitle: 'Por chapa', detailHeaders: ['Fornecedor · chapa', 'Chapas', 'Área', 'Valor', 'R$ por chapa', 'R$ por m²'],
+        detailRows: Array.from(porI.entries()).sort(function (a, b) { return a[0].localeCompare(b[0], 'pt-BR'); }).map(function (e) { return lin(e[0], e[1]); }),
+        emptySummaryCols: 6, emptyDetailCols: 6 });
+    } });
+
+  /* ---------- Estoque ---------- */
+  X.push({ id: 'x-mov-forn', cat: 'estoque', novo: true, icon: '🔄', label: 'Entradas e Saídas por Fornecedor',
+    desc: 'Quanto entrou e saiu de chapa de cada fornecedor no período (quantidade e R$), com a lista de lançamentos. Não conta os desfeitos.',
+    run: async function () {
+      var r = A().range();
+      var l = lista(await A().fetch('/api/chapas_estoque_movimentos?de=' + r.data_inicio + '&ate=' + r.data_fim + '&limit=5000'))
+        .filter(function (m) { return !m.reverted && !m.reverted_at && !/^revers/i.test(String(m.origem || '')) && /entrada|saida|saída/i.test(String(m.tipo || '')) && !/cadastro/i.test(String(m.origem || '')); });
+      function ent(m) { return Number(m.delta) > 0; }
+      function q(m) { return Math.abs(Number(m.delta) || Number(m.quantidade) || 0); }
+      function v(m) { var t = Math.abs(Number(m.valor_total) || 0); return t || q(m) * (Number(m.valor_unitario) || 0); }
+      var por = agrupar(l, function (m) { return String(m.fornecedor || '—').toUpperCase(); });
+      var E = l.filter(ent), S = l.filter(function (m) { return !ent(m); });
+      return imprimir({ title: 'Entradas e Saídas por Fornecedor', periodo: r.titulo,
+        cards: [{ label: 'Entrou', value: n0(soma(E, q)) + ' chapas', sub: rs(soma(E, v)) }, { label: 'Saiu', value: n0(soma(S, q)) + ' chapas', sub: rs(soma(S, v)) },
+          { label: 'Diferença', value: n0(soma(E, q) - soma(S, q)) + ' chapas' }, { label: 'Lançamentos', value: n0(l.length) }],
+        summaryTitle: 'Por fornecedor', summaryHeaders: ['Fornecedor', 'Entrou (un)', 'Entrou (R$)', 'Saiu (un)', 'Saiu (R$)', 'Diferença (un)'],
+        summaryRows: Array.from(por.entries()).sort(function (a, b) { return a[0].localeCompare(b[0], 'pt-BR'); }).map(function (e) {
+          var ee = e[1].filter(ent), ss = e[1].filter(function (m) { return !ent(m); });
+          return [esc(e[0]), esc(n0(soma(ee, q))), esc(rs(soma(ee, v))), esc(n0(soma(ss, q))), esc(rs(soma(ss, v))), esc(n0(soma(ee, q) - soma(ss, q)))];
+        }),
+        detailTitle: 'Lançamentos', detailHeaders: ['Data', 'Tipo', 'Fornecedor', 'Chapa', 'Qtd', 'Valor', 'NF', 'Quem lançou'],
+        detailRows: l.sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); }).map(function (m) {
+          return [esc(A().dt(m.created_at)), esc(ent(m) ? 'Entrada' : 'Saída'), esc(m.fornecedor || '—'), esc(m.chapa_label || '—'), esc((ent(m) ? '+' : '−') + n0(q(m))), esc(rs(v(m))), esc(m.nf || '—'), esc(m.usuario || '—')];
+        }), emptySummaryCols: 6, emptyDetailCols: 8 });
+    } });
+
+  X.push({ id: 'x-retalhos', cat: 'estoque', novo: true, icon: '✂️', label: 'Retalhos em Estoque',
+    desc: 'Lista dos retalhos guardados, com tamanho, gramatura, quantidade e fornecedor.',
+    run: async function () {
+      var l = lista(await A().fetch('/api/chapas_estoque?limit=5000')).filter(function (c) { return /^retalho/i.test(String(c.categoria || '')) && !c.deleted_at; })
+        .sort(function (a, b) { return (Number(b.quantidade || b.qtd) || 0) - (Number(a.quantidade || a.qtd) || 0); });
+      var por = agrupar(l, function (c) { return String(c.fornecedor || c.forn || '—').toUpperCase(); });
+      function q(c) { return Number(c.quantidade != null ? c.quantidade : c.qtd) || 0; }
+      return imprimir({ title: 'Retalhos em Estoque', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Tipos de retalho', value: n0(l.length) }, { label: 'Peças em estoque', value: n0(soma(l, q)) }, { label: 'Zerados', value: n0(l.filter(function (c) { return q(c) <= 0; }).length) }],
+        summaryTitle: 'Por fornecedor', summaryHeaders: ['Fornecedor', 'Tipos', 'Peças'],
+        summaryRows: Array.from(por.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length)), esc(n0(soma(e[1], q)))]; }),
+        detailTitle: 'Retalhos', detailHeaders: ['Fornecedor', 'Nomenclatura', 'Tamanho', 'Gramatura', 'Nome', 'Quantidade', 'Observação'],
+        detailRows: l.map(function (c) { return [esc(c.fornecedor || '—'), esc(c.nomenclatura || '—'), esc(c.tamanho || '—'), esc(c.gramatura || '—'), esc(c.nome || c.nome_uso || '—'), esc(n0(q(c))), esc(c.observacao || '')]; }),
+        emptySummaryCols: 3, emptyDetailCols: 7 });
+    } });
+
+  X.push({ id: 'x-cliches', cat: 'estoque', novo: true, icon: '🖋️', label: 'Estoque de Clichês',
+    desc: 'Clichês cadastrados com quantidade, estoque mínimo, valor e onde estão guardados. Destaca os que estão abaixo do mínimo.',
+    run: async function () {
+      var l = lista(await A().fetch('/api/cliches')).filter(function (c) { return c.ativo !== false; });
+      function q(c) { return Number(c.quantidade_atual) || 0; }
+      var baixo = l.filter(function (c) { return Number(c.estoque_minimo) > 0 && q(c) < Number(c.estoque_minimo); });
+      return imprimir({ title: 'Estoque de Clichês', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Clichês', value: n0(l.length) }, { label: 'Abaixo do mínimo', value: n0(baixo.length) }, { label: 'Valor total', value: rs(soma(l, function (c) { return c.valor_total || (Number(c.valor_unitario || c.valor) || 0) * q(c); })) }],
+        summaryTitle: 'Abaixo do estoque mínimo', summaryHeaders: ['Código', 'Nome', 'Quantidade', 'Mínimo'],
+        summaryRows: baixo.map(function (c) { return [esc(c.codigo || '—'), esc(c.nome || '—'), esc(n0(q(c))), esc(n0(c.estoque_minimo))]; }),
+        detailTitle: 'Todos os clichês', detailHeaders: ['Código', 'Nome', 'Medidas', 'Clientes', 'Máquinas', 'Quantidade', 'Mínimo', 'Valor', 'Local', 'Status'],
+        detailRows: l.map(function (c) { return [esc(c.codigo || '—'), esc(c.nome || '—'), esc(c.medidas || c.medida_produto || '—'), esc([].concat(c.clientes || []).map(function (x) { return x && (x.nome || x) ; }).join(', ') || '—'), esc([].concat(c.maquinas || []).map(function (x) { return x && (x.nome || x); }).join(', ') || '—'), esc(n0(q(c))), esc(n0(c.estoque_minimo)), esc(rs(c.valor_total || c.valor_unitario || c.valor)), esc(c.local_armazenamento || c.localizacao || '—'), esc(c.status || '—')]; }),
+        emptySummaryCols: 4, emptyDetailCols: 10 });
+    } });
+
+  /* ---------- Produção e OFs ---------- */
+  X.push({ id: 'x-ofs-atrasadas', cat: 'producao', novo: true, icon: '⏰', label: 'OFs Atrasadas',
+    desc: 'OFs em aberto com a data de entrega já vencida, com quantos dias de atraso, cliente, vendedor e valor.',
+    run: async function () {
+      var hj = hoje();
+      var l = (await ofs('Em aberto')).concat(await ofs('Aberta')).filter(function (o) { return ehAberta(o) && !o.deleted_at && ofEntrega(o) && ofEntrega(o) < hj; });
+      function atraso(o) { return Math.round((new Date(hj + 'T12:00:00') - new Date(ofEntrega(o) + 'T12:00:00')) / 86400000); }
+      l.sort(function (a, b) { return atraso(b) - atraso(a); });
+      var porV = agrupar(l, ofVend);
+      return imprimir({ title: 'OFs Atrasadas', periodo: 'Posição de ' + A().date(hj),
+        cards: [{ label: 'OFs atrasadas', value: n0(l.length) }, { label: 'Valor parado', value: rs(soma(l, ofValor)) }, { label: 'Caixas', value: n0(soma(l, ofQtd)) },
+          { label: 'Maior atraso', value: l.length ? n0(atraso(l[0])) + ' dias' : '—' }],
+        summaryTitle: 'Por vendedor', summaryHeaders: ['Vendedor', 'OFs', 'Valor'],
+        summaryRows: Array.from(porV.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length)), esc(rs(soma(e[1], ofValor)))]; }),
+        detailTitle: 'OFs', detailHeaders: ['OF', 'Cliente', 'Produto', 'Qtd', 'Valor', 'Entrega', 'Dias de atraso', 'Vendedor'],
+        detailRows: l.map(function (o) { return [esc(ofNum(o)), esc(ofCli(o)), esc(o.descricao || '—'), esc(n0(ofQtd(o))), esc(rs(ofValor(o))), esc(dt(ofEntrega(o))), esc(n0(atraso(o))), esc(ofVend(o))]; }),
+        emptySummaryCols: 3, emptyDetailCols: 8 });
+    } });
+
+  X.push({ id: 'x-entregas-previstas', cat: 'producao', novo: true, icon: '🚚', label: 'Entregas Previstas no Período',
+    desc: 'OFs em aberto com entrega marcada dentro do período escolhido, agrupadas por dia de entrega.',
+    run: async function () {
+      var r = A().range();
+      var l = (await ofs('Em aberto')).concat(await ofs('Aberta')).filter(function (o) { return ehAberta(o) && !o.deleted_at && noPeriodo(ofEntrega(o), r); })
+        .sort(function (a, b) { return ofEntrega(a).localeCompare(ofEntrega(b)); });
+      var porD = agrupar(l, ofEntrega);
+      return imprimir({ title: 'Entregas Previstas', periodo: r.titulo,
+        cards: [{ label: 'OFs a entregar', value: n0(l.length) }, { label: 'Valor', value: rs(soma(l, ofValor)) }, { label: 'Caixas', value: n0(soma(l, ofQtd)) }],
+        summaryTitle: 'Por dia de entrega', summaryHeaders: ['Dia', 'OFs', 'Caixas', 'Valor'],
+        summaryRows: Array.from(porD.entries()).map(function (e) { return [esc(dt(e[0])), esc(n0(e[1].length)), esc(n0(soma(e[1], ofQtd))), esc(rs(soma(e[1], ofValor)))]; }),
+        detailTitle: 'OFs', detailHeaders: ['Entrega', 'OF', 'Cliente', 'Produto', 'Qtd', 'Valor', 'Vendedor'],
+        detailRows: l.map(function (o) { return [esc(dt(ofEntrega(o))), esc(ofNum(o)), esc(ofCli(o)), esc(o.descricao || '—'), esc(n0(ofQtd(o))), esc(rs(ofValor(o))), esc(ofVend(o))]; }),
+        emptySummaryCols: 4, emptyDetailCols: 7 });
+    } });
+
+  X.push({ id: 'x-ofs-canceladas', cat: 'producao', novo: true, icon: '🚫', label: 'OFs Canceladas',
+    desc: 'OFs canceladas que foram criadas ou alteradas no período, com cliente, valor e observação.',
+    run: async function () {
+      var r = A().range();
+      var l = (await ofs('Cancelada')).filter(function (o) { return noPeriodo(diaLocal(o.updated_at || o.created_at), r) || noPeriodo(diaLocal(o.created_at), r); })
+        .sort(function (a, b) { return String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)); });
+      var porC = agrupar(l, ofCli);
+      return imprimir({ title: 'OFs Canceladas', periodo: r.titulo,
+        cards: [{ label: 'OFs canceladas', value: n0(l.length) }, { label: 'Valor', value: rs(soma(l, ofValor)) }, { label: 'Clientes', value: n0(porC.size) }],
+        summaryTitle: 'Por cliente', summaryHeaders: ['Cliente', 'OFs', 'Valor'],
+        summaryRows: Array.from(porC.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length)), esc(rs(soma(e[1], ofValor)))]; }),
+        detailTitle: 'OFs', detailHeaders: ['OF', 'Criada em', 'Cancelada/alterada em', 'Cliente', 'Produto', 'Qtd', 'Valor', 'Vendedor', 'Observação'],
+        detailRows: l.map(function (o) { return [esc(ofNum(o)), esc(dt(diaLocal(o.created_at))), esc(dt(diaLocal(o.updated_at))), esc(ofCli(o)), esc(o.descricao || '—'), esc(n0(ofQtd(o))), esc(rs(ofValor(o))), esc(ofVend(o)), esc(o.obs || '')]; }),
+        emptySummaryCols: 3, emptyDetailCols: 9 });
+    } });
+
+  /* ---------- Perdas e qualidade ---------- */
+  X.push({ id: 'x-inconformidades', cat: 'perdas', novo: true, icon: '🛑', label: 'Inconformidades',
+    desc: 'Inconformidades registradas no período: OF, cliente, máquina, operador, caixas perdidas, valor e se já foi resolvida.',
+    run: async function () {
+      var r = A().range();
+      var l = lista(await A().fetch('/api/inconformidades')).filter(function (x) { return noPeriodo(diaLocal(x.created_at), r); });
+      function cx(x) { return Number(x.caixas_perdidas || x.qtd_perdida) || 0; }
+      function vl(x) { return Number(x.valor_perdido || x.vl_total) || 0; }
+      var porSt = agrupar(l, function (x) { return String(x.status || 'Aberta'); });
+      return imprimir({ title: 'Inconformidades', periodo: r.titulo,
+        cards: [{ label: 'Inconformidades', value: n0(l.length) }, { label: 'Caixas perdidas', value: n0(soma(l, cx)) }, { label: 'Valor perdido', value: rs(soma(l, vl)) }],
+        summaryTitle: 'Por situação', summaryHeaders: ['Situação', 'Quantidade', 'Valor'],
+        summaryRows: Array.from(porSt.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length)), esc(rs(soma(e[1], vl)))]; }),
+        detailTitle: 'Inconformidades', detailHeaders: ['Data', 'OF', 'Cliente', 'Produto', 'Máquina', 'Operador', 'Caixas', 'Valor', 'Motivo', 'Situação', 'Resolução'],
+        detailRows: l.map(function (x) { return [esc(dt(diaLocal(x.created_at))), esc(x.of_numero || '—'), esc(x.cliente_nome || x.cliente || '—'), esc(x.produto || '—'), esc(x.maquina || '—'), esc(x.operador_display || x.operador_nome || x.operador || '—'), esc(n0(cx(x))), esc(rs(vl(x))), esc(x.motivo || x.descricao || x.obs || '—'), esc(x.status || '—'), esc(x.obs_resolucao || '')]; }),
+        emptySummaryCols: 3, emptyDetailCols: 11 });
+    } });
+
+  /* ---------- Clientes ---------- */
+  X.push({ id: 'x-clientes-cadastro', cat: 'clientes', novo: true, icon: '📇', label: 'Lista de Clientes por Vendedor',
+    desc: 'Todos os clientes ativos com telefone, cidade e vendedor — separados por vendedor, para ligar ou visitar.',
+    run: async function () {
+      var cl = lista(await A().fetch('/api/clientes?limit=20000')).filter(function (c) { return c.ativo !== false && !/teste/i.test(String(c.nome || '')); });
+      var vend = {}; try { lista(await A().fetch('/api/vendedores')).forEach(function (v) { vend[String(v.id)] = v.nome; }); } catch (_) {}
+      function vn(c) { return vend[String(c.vendedor_id)] || c.rep || 'Sem vendedor'; }
+      cl.sort(function (a, b) { return vn(a).localeCompare(vn(b), 'pt-BR') || String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+      var porV = agrupar(cl, vn);
+      return imprimir({ title: 'Lista de Clientes por Vendedor', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Clientes ativos', value: n0(cl.length) }, { label: 'Vendedores', value: n0(porV.size) }],
+        summaryTitle: 'Por vendedor', summaryHeaders: ['Vendedor', 'Clientes'],
+        summaryRows: Array.from(porV.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length))]; }),
+        detailTitle: 'Clientes', detailHeaders: ['Vendedor', 'Cliente', 'Telefone', 'Cidade', 'UF', 'Ramo'],
+        detailRows: cl.map(function (c) { return [esc(vn(c)), esc(c.nome || c.rs || '—'), esc(c.telefone || c.tel || '—'), esc(c.cidade || '—'), esc(c.uf || '—'), esc(c.ramo || '—')]; }),
+        emptySummaryCols: 2, emptyDetailCols: 6 });
+    } });
+
+  /* ---------- Cadastros ---------- */
+  X.push({ id: 'x-fornecedores', cat: 'cadastros', novo: true, icon: '🏭', label: 'Fornecedores Cadastrados',
+    desc: 'Fornecedores com CNPJ, telefone, e-mails, contato e cidade.',
+    run: async function () {
+      var l = lista(await A().fetch('/api/fornecedores')).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+      return imprimir({ title: 'Fornecedores Cadastrados', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Fornecedores', value: n0(l.length) }, { label: 'Ativos', value: n0(l.filter(function (f) { return f.ativo !== false; }).length) }],
+        summaryTitle: 'Fornecedores', summaryHeaders: ['Nome', 'Razão social', 'CNPJ', 'Telefone', 'E-mail(s)', 'Contato', 'Cidade/UF', 'Situação'],
+        summaryRows: l.map(function (f) { return [esc(f.nome || '—'), esc(f.razao_social || '—'), esc(f.cnpj || '—'), esc(f.telefone || f.tel || '—'), esc(f.email || '—'), esc(f.contato || '—'), esc([f.cidade, f.estado || f.uf].filter(Boolean).join('/') || '—'), esc(f.ativo === false ? 'Inativo' : 'Ativo')]; }),
+        emptySummaryCols: 8, hideDetails: true });
+    } });
+
+  X.push({ id: 'x-produtos', cat: 'cadastros', novo: true, icon: '🏷️', label: 'Produtos Cadastrados',
+    desc: 'Produtos com medidas, cliente, tipo de caixa, máquina e valor unitário.',
+    run: async function () {
+      var l = lista(await A().fetch('/api/produtos-cadastro')).filter(function (p) { return p.ativo !== false; })
+        .sort(function (a, b) { return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR') || String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+      function tipo(p) { try { return (typeof window.dsTipoEstimado === 'function' && window.dsTipoEstimado({ descricao: p.nome, produto: p.nome, cliente_nome: p.cliente_nome }, p)) || '—'; } catch (_) { return '—'; } }
+      return imprimir({ title: 'Produtos Cadastrados', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Produtos', value: n0(l.length) }, { label: 'Clientes', value: n0(new Set(l.map(function (p) { return p.cliente_nome; }).filter(Boolean)).size) }],
+        summaryTitle: 'Produtos', summaryHeaders: ['Cliente', 'Produto', 'Medidas (C×L×A)', 'Tipo de caixa', 'Máquina', 'Cores', 'Valor unit.'],
+        summaryRows: l.map(function (p) { return [esc(p.cliente_nome || '—'), esc(p.nome || '—'), esc([p.comprimento, p.largura, p.altura].filter(function (x) { return x != null && x !== ''; }).join(' × ') || '—'), esc(tipo(p)), esc(p.maquina || '—'), esc(Array.isArray(p.cores) ? p.cores.map(function (c) { return c && (c.nome || c); }).join(', ') : (p.cores || '—')), esc(p.valor_unitario ? rs(p.valor_unitario) : '—')]; }),
+        emptySummaryCols: 7, hideDetails: true });
+    } });
+
+  X.push({ id: 'x-roteiro', cat: 'cadastros', novo: true, icon: '🗺️', label: 'Roteiro de Entrega',
+    desc: 'Cidades atendidas em cada dia da semana, na ordem do roteiro.',
+    run: async function () {
+      var l = lista(await A().fetch('/api/roteiro_entrega')).filter(function (x) { return x.ativo !== false; });
+      var dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+      function dn(x) { var d = x.dia_semana; if (typeof d === 'number' || /^\d$/.test(String(d))) return dias[Number(d)] || String(d); return String(d || '—'); }
+      function ord(x) { var i = dias.indexOf(dn(x).toLowerCase().replace('-feira', '')); return i < 0 ? 9 : (i === 0 ? 7 : i); }
+      l.sort(function (a, b) { return ord(a) - ord(b) || (Number(a.ordem) || 0) - (Number(b.ordem) || 0); });
+      var porD = agrupar(l, dn);
+      return imprimir({ title: 'Roteiro de Entrega', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Cidades', value: n0(l.length) }, { label: 'Dias com rota', value: n0(porD.size) }],
+        summaryTitle: 'Por dia da semana', summaryHeaders: ['Dia', 'Cidades'],
+        summaryRows: Array.from(porD.entries()).map(function (e) { return [esc(e[0]), esc(e[1].map(function (x) { return x.cidade; }).join(', '))]; }),
+        detailTitle: 'Roteiro', detailHeaders: ['Dia', 'Ordem', 'Cidade', 'Observação'],
+        detailRows: l.map(function (x) { return [esc(dn(x)), esc(x.ordem != null ? x.ordem : '—'), esc(x.cidade || '—'), esc(x.observacao || '')]; }),
+        emptySummaryCols: 2, emptyDetailCols: 4 });
+    } });
+
+  X.push({ id: 'x-operadores', cat: 'cadastros', novo: true, icon: '👷', label: 'Operadores e Máquinas',
+    desc: 'Operadores cadastrados com função, empresa e máquina principal.',
+    run: async function () {
+      var l = lista(await A().fetch('/api/operadores')).filter(function (o) { return o.ativo !== false; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+      var porM = agrupar(l, function (o) { return o.maq_principal || 'Sem máquina principal'; });
+      return imprimir({ title: 'Operadores e Máquinas', periodo: 'Posição de ' + A().date(hoje()),
+        cards: [{ label: 'Operadores ativos', value: n0(l.length) }],
+        summaryTitle: 'Por máquina principal', summaryHeaders: ['Máquina', 'Operadores'],
+        summaryRows: Array.from(porM.entries()).map(function (e) { return [esc(e[0]), esc(e[1].map(function (o) { return o.nome; }).join(', '))]; }),
+        detailTitle: 'Operadores', detailHeaders: ['Nome', 'Função', 'Empresa', 'Máquina principal'],
+        detailRows: l.map(function (o) { return [esc(o.nome || '—'), esc(o.funcao || '—'), esc(o.empresa || '—'), esc(o.maq_principal || '—')]; }),
+        emptySummaryCols: 2, emptyDetailCols: 4 });
+    } });
+
+  window.__dsRelExtras = X;
+
+  /* estilos dos grupos + garantia de rolagem da Central de Relatórios */
+  try {
+    var st = document.createElement('style'); st.id = 'ds-rel-extras-css';
+    st.textContent = '#patch-relatorios-central .rr-grupo{display:grid;gap:10px}#patch-relatorios-central .rr-grupo-tit{margin:6px 2px 0;font-size:17px;font-weight:900;color:var(--text,#f8fafc);display:flex;align-items:center;gap:8px}'
+      + '#patch-relatorios-central .rr-grupo-tit small{font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;background:rgba(59,130,246,.16);color:#93c5fd}'
+      + '#patch-relatorios-central .rr-card-top{display:flex;justify-content:space-between;align-items:flex-start}#patch-relatorios-central .rr-novo{font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(34,197,94,.16);color:#4ade80;border:1px solid rgba(34,197,94,.35)}'
+      + 'html[data-theme="light"] #patch-relatorios-central .rr-grupo-tit,body.light #patch-relatorios-central .rr-grupo-tit{color:#0f172a}html[data-theme="light"] #patch-relatorios-central .rr-novo{color:#15803d}'
+      + '#patch-page-host{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (_) {}
+  /* se a área ficar mais alta que a tela (zoom/tamanho de fonte), limita a altura para a rolagem alcançar o fim */
+  setInterval(function () {
+    try {
+      var h = document.getElementById('patch-page-host');
+      if (!h || !document.getElementById('patch-relatorios-central') || h.offsetParent === null) return;
+      var rc = h.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+      if (rc.bottom > window.innerHeight + 2) h.style.maxHeight = Math.max(200, Math.floor((window.innerHeight - rc.top) / z)) + 'px';
+    } catch (_) {}
+  }, 1000);
 })();
 
 /* 16/11: marca que o arquivo do sistema carregou até o fim (o carregamento seguro do index.html espera isto) */

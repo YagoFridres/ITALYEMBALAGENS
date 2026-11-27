@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261126114044';
-const SW_RUNTIME_VERSION = '20261126114044';
+const PATCH_RUNTIME_VERSION = '20261127104003';
+const SW_RUNTIME_VERSION = '20261127104003';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30737,7 +30737,7 @@ app.get('/api/compras-chapas/relatorios/fornecedor', authMiddleware, async (req,
     const dataInicio = _comprasChapasStr(req.query?.data_inicio);
     const dataFim = _comprasChapasStr(req.query?.data_fim);
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
-    const compras = await _comprasChapasFetchNested({ empId });
+    const compras = await _comprasChapasFetchNested({ empId: (req.query?.emp_id || req.query?.empId) ? empId : '' }); // 27/11: relatórios somam as 3 empresas
     const filtradas = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
     const grouped = {};
     filtradas.forEach((compra) => {
@@ -30780,7 +30780,7 @@ app.get('/api/compras-chapas/relatorios/resumo', authMiddleware, async (req, res
     const dataInicio = _comprasChapasStr(req.query?.data_inicio);
     const dataFim = _comprasChapasStr(req.query?.data_fim);
     if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
-    const compras = await _comprasChapasFetchNested({ empId });
+    const compras = await _comprasChapasFetchNested({ empId: (req.query?.emp_id || req.query?.empId) ? empId : '' }); // 27/11: as 3 empresas
     const filtradas = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
     const resumo = filtradas.reduce((acc, compra) => {
       acc.total_compras += 1;
@@ -30816,7 +30816,7 @@ app.get('/api/compras-chapas/relatorios/checklist-recebimento', authMiddleware, 
       const single = await _comprasChapasLoadById(compraId);
       compras = single ? [single] : [];
     } else {
-      compras = await _comprasChapasFetchNested({ empId });
+      compras = await _comprasChapasFetchNested({ empId: (req.query?.emp_id || req.query?.empId) ? empId : '' }); // 27/11: as 3 empresas
       compras = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
     }
 
