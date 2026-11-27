@@ -1332,8 +1332,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20261127104336';
-const SW_RUNTIME_VERSION = '20261127104336';
+const PATCH_RUNTIME_VERSION = '20261127105138';
+const SW_RUNTIME_VERSION = '20261127105138';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -30830,6 +30830,10 @@ app.get('/api/compras-chapas/relatorios/checklist-recebimento', authMiddleware, 
         data_recebimento: String(c?.data_recebimento || c?.recebido_em || '').slice(0, 10) || null,
         nota_fiscal: _comprasChapasStr(c?.nota_fiscal || c?.nf || c?.numero_nf) || null,
         status_recebimento: _comprasChapasStr(c?.status_recebimento || c?.status) || 'Pendente',
+        status_compra: _comprasChapasStr(c?.status) || null, // 27/11: pedido_feito / a_caminho / concluida / cancelada
+        previsao_chegada: c?.previsao_chegada || null,
+        data_chegada: c?.data_chegada || null,
+        emp_id: c?.emp_id || null,
         valor_total: Number(Number(c?.valor_total || (Array.isArray(c?.itens) ? c.itens.reduce((s, it) => s + (_comprasChapasNum(it?.valor_total) || 0), 0) : 0) || 0).toFixed(2)),
         itens: (Array.isArray(c?.itens) ? c.itens : []).map((it, idx) => ({
           seq: idx + 1,

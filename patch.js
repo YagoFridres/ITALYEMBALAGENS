@@ -4763,6 +4763,18 @@ try {
       + '  <button type="button" class="rr-btn" data-rr-open="' + rrEsc(def.id || '') + '">Abrir Relatório</button>'
       + '</div>';
   }
+  /* 27/11: menu por assunto — clica e aparecem só os relatórios daquele assunto (lembra a última escolha) */
+  function rrCatSel() {
+    if (window.__rrCatSel) return window.__rrCatSel;
+    try { return localStorage.getItem('rr_cat_sel') || 'todos'; } catch (_) { return 'todos'; }
+  }
+  function rrMenuHtml() {
+    var por = {}; rrDefs.forEach(function (d) { var c = d.cat || RR_CAT[d.id] || 'outros'; por[c] = (por[c] || 0) + 1; });
+    var sel = rrCatSel(); if (sel !== 'todos' && !por[sel]) sel = 'todos';
+    var bt = function (id, rot, n) { return '<button type="button" class="rr-mn' + (sel === id ? ' on' : '') + '" data-rr-cat="' + id + '">' + rrEsc(rot) + ' <small>' + n + '</small></button>'; };
+    return '<nav class="rr-menu" aria-label="Assuntos dos relatórios">' + bt('todos', '📚 Todos', rrDefs.length)
+      + RR_GRUPOS.filter(function (g) { return por[g[0]]; }).map(function (g) { return bt(g[0], g[1].replace(' e Faturamento', '').replace(' de Papelão e Recebimento', '').replace(' e OFs', '').replace(' e Qualidade', ''), por[g[0]]); }).join('') + '</nav>';
+  }
   function rrGruposHtml() {
     var por = {};
     rrDefs.forEach(function (d) { var c = d.cat || RR_CAT[d.id] || 'outros'; (por[c] = por[c] || []).push(d); });
@@ -4793,6 +4805,7 @@ try {
       + '    <div class="rr-search-row"><input id="rr-search-relatorios" class="rr-search-input" type="text" placeholder="Buscar relatório..." value="' + rrEsc(String(window.__rrBuscaRelatorios || '')) + '"></div>'
       + '  </div>'
       /* 27/11: relatórios separados por assunto, para achar mais fácil */
+      + rrMenuHtml()
       + rrGruposHtml()
       + '</div>';
     Array.prototype.slice.call(host.querySelectorAll('[data-rr-open]')).forEach(function(btn) {
@@ -4813,13 +4826,25 @@ try {
           var hay = norm(card.getAttribute('data-rr-search') || card.textContent || '');
           card.style.display = (!q || hay.indexOf(q) >= 0) ? '' : 'none';
         });
-        // 27/11: some o título do grupo quando nenhum relatório dele bate com a busca
+        // 27/11: some o título do grupo quando nenhum relatório dele bate com a busca; respeita o assunto escolhido no menu (a busca procura em todos)
+        var cat = q ? 'todos' : rrCatSel();
+        if (cat !== 'todos' && !host.querySelector('.rr-grupo[data-rr-grupo="' + cat + '"]')) cat = 'todos';
+        Array.prototype.slice.call(host.querySelectorAll('.rr-mn')).forEach(function(b) { b.classList.toggle('on', b.getAttribute('data-rr-cat') === cat); });
         Array.prototype.slice.call(host.querySelectorAll('.rr-grupo')).forEach(function(g) {
           var algum = Array.prototype.slice.call(g.querySelectorAll('.rr-card')).some(function(c) { return c.style.display !== 'none'; });
-          g.style.display = algum ? '' : 'none';
+          g.style.display = algum && (cat === 'todos' || g.getAttribute('data-rr-grupo') === cat) ? '' : 'none';
         });
       };
       inp.addEventListener('input', apply);
+      Array.prototype.slice.call(host.querySelectorAll('[data-rr-cat]')).forEach(function(b) {
+        b.onclick = function() {
+          var c = b.getAttribute('data-rr-cat') || 'todos';
+          window.__rrCatSel = c; try { localStorage.setItem('rr_cat_sel', c); } catch (_) {}
+          if (inp.value) { inp.value = ''; try { window.__rrBuscaRelatorios = ''; } catch (_) {} }
+          apply();
+          try { var hh = document.getElementById('patch-page-host'); var mn = host.querySelector('.rr-menu'); if (hh && mn && hh.scrollTop > mn.offsetTop) hh.scrollTop = mn.offsetTop; } catch (_) {}
+        };
+      });
       apply();
     })();
     try { host.setAttribute('data-rr-defs-sig', defsSig); } catch (_) {}
@@ -85062,11 +85087,12 @@ window.__perTxt = function (p) {
   function agrupar(arr, chave) { var m = new Map(); arr.forEach(function (x) { var k = chave(x) || '—'; if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; }
   function hoje() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function imprimir(cfg) { return A().print(cfg); }
-  var _ofsCache = null;
+  var _ofsCache = {};
   async function ofs(status) {
-    if (!status && _ofsCache && Date.now() - _ofsCache.t < 60000) return _ofsCache.l;
+    var k = status || '*', c = _ofsCache[k];
+    if (c && Date.now() - c.t < 120000) return c.l;
     var l = lista(await A().fetch('/api/ofs?todas_empresas=1&limit=10000' + (status ? '&status=' + encodeURIComponent(status) : '')));
-    if (!status) _ofsCache = { t: Date.now(), l: l };
+    _ofsCache[k] = { t: Date.now(), l: l };
     return l;
   }
   function ofNum(o) { return String(o.of || o.numero || o.of_num || '—'); }
@@ -85328,6 +85354,166 @@ window.__perTxt = function (p) {
         emptySummaryCols: 2, emptyDetailCols: 4 });
     } });
 
+  /* ===== 27/11 (2ª leva): vendas, clientes, pontualidade, cobertura do estoque, chapas paradas, lançamentos por usuário ===== */
+  function empSel() { var p = (A().empresaQS() || []).join('&'); var m = p.match(/emp_id=([^&]+)/); return m ? decodeURIComponent(m[1]) : ''; }
+  function daEmpresa(o) { var e = empSel(); return !e || String(o.emp_id || o.empresa_id || o.empId || '') === e; }
+  function dataVenda(o) { return diaLocal(o.data_faturamento || o.data_conclusao || o.dia || o.created_at); }
+  function ehTeste(o) { return /teste/i.test(ofCli(o)); }
+  async function vendidas() { return (await ofs('Concluído')).filter(function (o) { return !o.deleted_at && !ehTeste(o) && daEmpresa(o); }); }
+  function cliKey(o) { return String(o.cli_id || o.cliId || o.cliente_id || ofCli(o)).toUpperCase(); }
+  function pct(a, b) { return b ? A().num(a * 100 / b, 1) + '%' : '—'; }
+
+  X.push({ id: 'x-ranking-vendedores', cat: 'vendas', novo: true, icon: '🥇', label: 'Ranking de Vendedores',
+    desc: 'Valor vendido, OFs, clientes atendidos, ticket médio e clientes novos de cada vendedor no período.',
+    run: async function () {
+      var r = A().range(), todas = await vendidas();
+      var prim = {}; todas.forEach(function (o) { var k = cliKey(o), d = dataVenda(o); if (d && (!prim[k] || d < prim[k])) prim[k] = d; });
+      var l = todas.filter(function (o) { return noPeriodo(dataVenda(o), r); });
+      var por = agrupar(l, ofVend), tot = soma(l, ofValor);
+      var linhas = Array.from(por.entries()).map(function (e) {
+        var cl = new Set(e[1].map(cliKey)), novos = Array.from(cl).filter(function (k) { return noPeriodo(prim[k], r); }).length, v = soma(e[1], ofValor);
+        return { nome: e[0], v: v, ofs: e[1].length, cl: cl.size, novos: novos, cx: soma(e[1], ofQtd) };
+      }).sort(function (a, b) { return b.v - a.v; });
+      return imprimir({ title: 'Ranking de Vendedores', periodo: r.titulo,
+        cards: [{ label: 'Vendido', value: rs(tot) }, { label: 'OFs concluídas', value: n0(l.length) }, { label: 'Vendedores', value: n0(linhas.length) }],
+        summaryTitle: 'Ranking', summaryHeaders: ['#', 'Vendedor', 'Vendido', '% do total', 'OFs', 'Clientes atendidos', 'Clientes novos', 'Ticket médio', 'Caixas'],
+        summaryRows: linhas.map(function (x, i) { return [esc(i + 1 + 'º'), esc(x.nome), esc(rs(x.v)), esc(pct(x.v, tot)), esc(n0(x.ofs)), esc(n0(x.cl)), esc(n0(x.novos)), esc(rs(x.ofs ? x.v / x.ofs : 0)), esc(n0(x.cx))]; }),
+        emptySummaryCols: 9, hideDetails: true });
+    } });
+
+  X.push({ id: 'x-produtos-vendidos', cat: 'vendas', novo: true, icon: '🏷️', label: 'Produtos Mais Vendidos',
+    desc: 'Os produtos que mais venderam no período, por valor e por quantidade de caixas, com quantos clientes compraram cada um.',
+    run: async function () {
+      var r = A().range(), l = (await vendidas()).filter(function (o) { return noPeriodo(dataVenda(o), r); });
+      var por = agrupar(l, function (o) { return String(o.descricao || 'Sem descrição').trim().toUpperCase(); }), tot = soma(l, ofValor);
+      var linhas = Array.from(por.entries()).map(function (e) { return { p: e[0], v: soma(e[1], ofValor), cx: soma(e[1], ofQtd), ofs: e[1].length, cl: new Set(e[1].map(cliKey)).size, cli1: ofCli(e[1][0]) }; }).sort(function (a, b) { return b.v - a.v; });
+      return imprimir({ title: 'Produtos Mais Vendidos', periodo: r.titulo,
+        cards: [{ label: 'Produtos diferentes', value: n0(linhas.length) }, { label: 'Vendido', value: rs(tot) }, { label: 'Caixas', value: n0(soma(l, ofQtd)) }],
+        summaryTitle: 'Por valor vendido', summaryHeaders: ['#', 'Produto', 'Vendido', '% do total', 'Caixas', 'OFs', 'Clientes', 'Preço médio por caixa'],
+        summaryRows: linhas.map(function (x, i) { return [esc(i + 1 + 'º'), esc(x.p + (x.cl === 1 ? ' — ' + x.cli1 : '')), esc(rs(x.v)), esc(pct(x.v, tot)), esc(n0(x.cx)), esc(n0(x.ofs)), esc(n0(x.cl)), esc(x.cx ? 'R$ ' + A().num(x.v / x.cx, 2) : '—')]; }),
+        emptySummaryCols: 8, hideDetails: true });
+    } });
+
+  X.push({ id: 'x-curva-abc', cat: 'clientes', novo: true, icon: '🔠', label: 'Curva ABC de Clientes',
+    desc: 'Separa os clientes em A (fazem 80% do faturamento), B (os próximos 15%) e C (últimos 5%) no período.',
+    run: async function () {
+      var r = A().range(), l = (await vendidas()).filter(function (o) { return noPeriodo(dataVenda(o), r); });
+      var por = agrupar(l, cliKey), tot = soma(l, ofValor), acc = 0;
+      var linhas = Array.from(por.values()).map(function (arr) { return { nome: ofCli(arr[0]), v: soma(arr, ofValor), ofs: arr.length, vend: ofVend(arr[0]) }; }).sort(function (a, b) { return b.v - a.v; })
+        .map(function (x) { acc += x.v; x.acc = tot ? acc / tot : 0; x.cls = x.acc - (tot ? x.v / tot : 0) < 0.8 ? 'A' : (x.acc - (tot ? x.v / tot : 0) < 0.95 ? 'B' : 'C'); return x; });
+      function cnt(c) { return linhas.filter(function (x) { return x.cls === c; }); }
+      return imprimir({ title: 'Curva ABC de Clientes', periodo: r.titulo,
+        cards: ['A', 'B', 'C'].map(function (c) { var a = cnt(c); return { label: 'Classe ' + c, value: n0(a.length) + ' clientes', sub: rs(soma(a, function (x) { return x.v; })) + ' · ' + pct(soma(a, function (x) { return x.v; }), tot) }; }),
+        summaryTitle: 'Resumo', summaryHeaders: ['Classe', 'Clientes', '% dos clientes', 'Faturamento', '% do faturamento'],
+        summaryRows: ['A', 'B', 'C'].map(function (c) { var a = cnt(c), v = soma(a, function (x) { return x.v; }); return [esc(c), esc(n0(a.length)), esc(pct(a.length, linhas.length)), esc(rs(v)), esc(pct(v, tot))]; }),
+        detailTitle: 'Clientes', detailHeaders: ['#', 'Classe', 'Cliente', 'Vendedor', 'Faturamento', '% do total', '% acumulado', 'OFs'],
+        detailRows: linhas.map(function (x, i) { return [esc(i + 1), esc(x.cls), esc(x.nome), esc(x.vend), esc(rs(x.v)), esc(pct(x.v, tot)), esc(A().num(x.acc * 100, 1) + '%'), esc(n0(x.ofs))]; }),
+        emptySummaryCols: 5, emptyDetailCols: 8 });
+    } });
+
+  X.push({ id: 'x-clientes-novos', cat: 'clientes', novo: true, icon: '🆕', label: 'Clientes Novos no Período',
+    desc: 'Clientes que fizeram a primeira compra (primeira OF concluída) dentro do período, com vendedor e valor.',
+    run: async function () {
+      var r = A().range(), todas = await vendidas(), por = agrupar(todas, cliKey), novos = [];
+      por.forEach(function (arr) {
+        arr.sort(function (a, b) { return dataVenda(a).localeCompare(dataVenda(b)); });
+        if (noPeriodo(dataVenda(arr[0]), r)) { var noP = arr.filter(function (o) { return noPeriodo(dataVenda(o), r); }); novos.push({ nome: ofCli(arr[0]), vend: ofVend(arr[0]), d: dataVenda(arr[0]), v: soma(noP, ofValor), ofs: noP.length, prod: arr[0].descricao || '—' }); }
+      });
+      novos.sort(function (a, b) { return a.d.localeCompare(b.d); });
+      var porV = agrupar(novos, function (x) { return x.vend; });
+      return imprimir({ title: 'Clientes Novos no Período', periodo: r.titulo,
+        cards: [{ label: 'Clientes novos', value: n0(novos.length) }, { label: 'Vendido para eles', value: rs(soma(novos, function (x) { return x.v; })) }],
+        summaryTitle: 'Por vendedor', summaryHeaders: ['Vendedor', 'Clientes novos', 'Vendido'],
+        summaryRows: Array.from(porV.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length)), esc(rs(soma(e[1], function (x) { return x.v; })))]; }),
+        detailTitle: 'Clientes', detailHeaders: ['1ª compra', 'Cliente', 'Vendedor', 'Primeiro produto', 'OFs no período', 'Vendido no período'],
+        detailRows: novos.map(function (x) { return [esc(dt(x.d)), esc(x.nome), esc(x.vend), esc(x.prod), esc(n0(x.ofs)), esc(rs(x.v))]; }),
+        emptySummaryCols: 3, emptyDetailCols: 6 });
+    } });
+
+  X.push({ id: 'x-pontualidade', cat: 'producao', novo: true, icon: '⏱️', label: 'Pontualidade das Entregas',
+    desc: 'OFs concluídas no período: quantas ficaram prontas até a data de entrega e quantas atrasaram, e quantos dias levam da criação até a conclusão.',
+    run: async function () {
+      var r = A().range();
+      var l = (await vendidas()).filter(function (o) { return noPeriodo(diaLocal(o.data_conclusao || o.dia), r) && ofEntrega(o); });
+      function conc(o) { return diaLocal(o.data_conclusao || o.dia); }
+      function dias(a, b) { return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+      function atr(o) { return dias(ofEntrega(o), conc(o)); }
+      function lead(o) { return Math.max(0, dias(diaLocal(o.created_at), conc(o))); }
+      var noPrazo = l.filter(function (o) { return atr(o) <= 0; }), atras = l.filter(function (o) { return atr(o) > 0; });
+      var porV = agrupar(l, ofVend);
+      return imprimir({ title: 'Pontualidade das Entregas', periodo: r.titulo,
+        cards: [{ label: 'No prazo', value: n0(noPrazo.length), sub: pct(noPrazo.length, l.length) }, { label: 'Atrasadas', value: n0(atras.length), sub: pct(atras.length, l.length) },
+          { label: 'Atraso médio', value: atras.length ? A().num(soma(atras, atr) / atras.length, 1) + ' dias' : '—' }, { label: 'Da criação à conclusão', value: l.length ? A().num(soma(l, lead) / l.length, 1) + ' dias' : '—', sub: 'média' }],
+        summaryTitle: 'Por vendedor', summaryHeaders: ['Vendedor', 'OFs', 'No prazo', 'Atrasadas', '% no prazo', 'Dias até concluir (média)'],
+        summaryRows: Array.from(porV.entries()).map(function (e) { var np = e[1].filter(function (o) { return atr(o) <= 0; }).length; return [esc(e[0]), esc(n0(e[1].length)), esc(n0(np)), esc(n0(e[1].length - np)), esc(pct(np, e[1].length)), esc(A().num(soma(e[1], lead) / e[1].length, 1))]; }),
+        detailTitle: 'OFs que atrasaram', detailHeaders: ['OF', 'Cliente', 'Produto', 'Entrega prevista', 'Concluída em', 'Dias de atraso', 'Vendedor'],
+        detailRows: atras.sort(function (a, b) { return atr(b) - atr(a); }).map(function (o) { return [esc(ofNum(o)), esc(ofCli(o)), esc(o.descricao || '—'), esc(dt(ofEntrega(o))), esc(dt(conc(o))), esc(n0(atr(o))), esc(ofVend(o))]; }),
+        emptySummaryCols: 6, emptyDetailCols: 7 });
+    } });
+
+  function isoMenos(dias) { var d = new Date(); d.setDate(d.getDate() - dias); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  async function saidasDesde(dias) {
+    return lista(await A().fetch('/api/chapas_estoque_movimentos?de=' + isoMenos(dias) + '&ate=' + hoje() + '&limit=5000'))
+      .filter(function (m) { return m && m.chapa_id && !m.reverted && String(m.tipo) === 'saida' && !/^(entrada_inicial|reversao_movimento|ajuste_edicao|ajuste|ajuste_movimento)$/.test(String(m.origem || '')); });
+  }
+  async function chapasInteiras() { return lista(await A().fetch('/api/chapas_estoque?limit=5000')).filter(function (c) { return !c.deleted_at && !/^retalho/i.test(String(c.categoria || '')); }); }
+  function qChapa(c) { return Number(c.quantidade != null ? c.quantidade : c.qtd) || 0; }
+  function nomeChapa(c) { return [c.fornecedor, c.nomenclatura, c.tamanho, c.nome].filter(Boolean).join(' · '); }
+
+  X.push({ id: 'x-cobertura', cat: 'estoque', novo: true, icon: '📆', label: 'Cobertura do Estoque (quando vai acabar)',
+    desc: 'Pela média de saída dos últimos 90 dias, para quantos dias cada chapa ainda dá — mostra primeiro as que vão acabar antes.',
+    run: async function () {
+      var sai = await saidasDesde(90), ch = await chapasInteiras(), usoP = {};
+      sai.forEach(function (m) { usoP[m.chapa_id] = (usoP[m.chapa_id] || 0) + (Math.abs(Math.trunc(Number(m.delta || 0))) || Number(m.quantidade) || 0); });
+      var l = ch.filter(function (c) { return usoP[c.id] > 0; }).map(function (c) { var md = usoP[c.id] / 90; return { c: c, md: md, dias: md ? qChapa(c) / md : Infinity }; })
+        .sort(function (a, b) { return a.dias - b.dias; });
+      var c15 = l.filter(function (x) { return x.dias < 15; }), c30 = l.filter(function (x) { return x.dias >= 15 && x.dias < 30; });
+      function fim(x) { if (!isFinite(x.dias)) return '—'; var d = new Date(); d.setDate(d.getDate() + Math.floor(x.dias)); return d.toLocaleDateString('pt-BR'); }
+      return imprimir({ title: 'Cobertura do Estoque', periodo: 'Média de saída dos últimos 90 dias · posição de ' + A().date(hoje()),
+        cards: [{ label: 'Acabam em menos de 15 dias', value: n0(c15.length) }, { label: 'Entre 15 e 30 dias', value: n0(c30.length) }, { label: 'Chapas com saída', value: n0(l.length) }],
+        summaryTitle: 'Comprar logo (menos de 15 dias)', summaryHeaders: ['Chapa', 'Saldo', 'Saída por dia', 'Dá para', 'Acaba por volta de'],
+        summaryRows: c15.map(function (x) { return [esc(nomeChapa(x.c)), esc(n0(qChapa(x.c))), esc(A().num(x.md, 1)), esc(A().num(x.dias, 0) + ' dias'), esc(fim(x))]; }),
+        detailTitle: 'Todas as chapas com saída', detailHeaders: ['Chapa', 'Saldo', 'Saiu em 90 dias', 'Saída por dia', 'Dá para', 'Acaba por volta de'],
+        detailRows: l.map(function (x) { return [esc(nomeChapa(x.c)), esc(n0(qChapa(x.c))), esc(n0(usoP[x.c.id])), esc(A().num(x.md, 1)), esc(A().num(x.dias, 0) + ' dias'), esc(fim(x))]; }),
+        emptySummaryCols: 5, emptyDetailCols: 6 });
+    } });
+
+  X.push({ id: 'x-chapas-paradas', cat: 'estoque', novo: true, icon: '🧊', label: 'Chapas Paradas no Estoque',
+    desc: 'Chapas com saldo que não tiveram nenhuma saída nos últimos 60 dias — dinheiro parado no estoque.',
+    run: async function () {
+      var sai = await saidasDesde(60), ch = await chapasInteiras(), mov = {};
+      sai.forEach(function (m) { mov[m.chapa_id] = true; });
+      var l = ch.filter(function (c) { return qChapa(c) > 0 && !mov[c.id]; });
+      function val(c) { return qChapa(c) * (Number(c.valor_unitario != null ? c.valor_unitario : c.val) || 0); }
+      l.sort(function (a, b) { return val(b) - val(a); });
+      var porF = agrupar(l, function (c) { return String(c.fornecedor || '—').toUpperCase(); });
+      return imprimir({ title: 'Chapas Paradas no Estoque', periodo: 'Sem saída nos últimos 60 dias · posição de ' + A().date(hoje()),
+        cards: [{ label: 'Chapas paradas', value: n0(l.length) }, { label: 'Unidades', value: n0(soma(l, qChapa)) }, { label: 'Valor parado', value: rs(soma(l, val)) }],
+        summaryTitle: 'Por fornecedor', summaryHeaders: ['Fornecedor', 'Chapas', 'Unidades', 'Valor parado'],
+        summaryRows: Array.from(porF.entries()).map(function (e) { return [esc(e[0]), esc(n0(e[1].length)), esc(n0(soma(e[1], qChapa))), esc(rs(soma(e[1], val)))]; }),
+        detailTitle: 'Chapas', detailHeaders: ['Chapa', 'Categoria', 'Saldo', 'Valor unit.', 'Valor parado', 'Entrou em'],
+        detailRows: l.map(function (c) { return [esc(nomeChapa(c)), esc(c.categoria || '—'), esc(n0(qChapa(c))), esc(rs(c.valor_unitario != null ? c.valor_unitario : c.val)), esc(rs(val(c))), esc(dt(c.data_entrada))]; }),
+        emptySummaryCols: 4, emptyDetailCols: 6 });
+    } });
+
+  X.push({ id: 'x-lancamentos-usuario', cat: 'estoque', novo: true, icon: '🧑‍💻', label: 'Lançamentos por Usuário',
+    desc: 'Quem lançou entradas, saídas, desfez lançamentos e fez conferências no Checklist de Recebimento no período.',
+    run: async function () {
+      var r = A().range();
+      var mv = lista(await A().fetch('/api/chapas_estoque_movimentos?de=' + r.data_inicio + '&ate=' + r.data_fim + '&limit=5000')).filter(function (m) { return m && m.chapa_id && !/^reversao_movimento$/.test(String(m.origem || '')); });
+      var ck = lista(await A().fetch('/api/recebimento_insumos')).filter(function (x) { return noPeriodo(x.data_recebimento || diaLocal(x.created_at), r); });
+      var U = {};
+      function u(n) { n = String(n || 'Sem nome').trim() || 'Sem nome'; return U[n] = U[n] || { nome: n, ent: 0, sai: 0, aj: 0, desf: 0, ck: 0 }; }
+      mv.forEach(function (m) { var x = u(m.usuario), o = String(m.origem || ''); if (m.reverted) x.desf++; else if (/ajuste|entrada_inicial/.test(o)) x.aj++; else if (String(m.tipo) === 'saida') x.sai++; else x.ent++; });
+      ck.forEach(function (c) { u(c.responsavel).ck++; });
+      var l = Object.keys(U).map(function (k) { return U[k]; }).sort(function (a, b) { return (b.ent + b.sai + b.ck) - (a.ent + a.sai + a.ck); });
+      return imprimir({ title: 'Lançamentos por Usuário', periodo: r.titulo,
+        cards: [{ label: 'Usuários', value: n0(l.length) }, { label: 'Lançamentos de estoque', value: n0(mv.length) }, { label: 'Conferências', value: n0(ck.length) }],
+        summaryTitle: 'Por usuário', summaryHeaders: ['Usuário', 'Entradas', 'Saídas', 'Cadastros/ajustes', 'Lançamentos que foram desfeitos', 'Conferências (checklist)'],
+        summaryRows: l.map(function (x) { return [esc(x.nome), esc(n0(x.ent)), esc(n0(x.sai)), esc(n0(x.aj)), esc(n0(x.desf)), esc(n0(x.ck))]; }),
+        emptySummaryCols: 6, hideDetails: true });
+    } });
+
   window.__dsRelExtras = X;
 
   /* estilos dos grupos + garantia de rolagem da Central de Relatórios */
@@ -85337,7 +85523,14 @@ window.__perTxt = function (p) {
       + '#patch-relatorios-central .rr-grupo-tit small{font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;background:rgba(59,130,246,.16);color:#93c5fd}'
       + '#patch-relatorios-central .rr-card-top{display:flex;justify-content:space-between;align-items:flex-start}#patch-relatorios-central .rr-novo{font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(34,197,94,.16);color:#4ade80;border:1px solid rgba(34,197,94,.35)}'
       + 'html[data-theme="light"] #patch-relatorios-central .rr-grupo-tit,body.light #patch-relatorios-central .rr-grupo-tit{color:#0f172a}html[data-theme="light"] #patch-relatorios-central .rr-novo{color:#15803d}'
-      + '#patch-page-host{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}';
+      + '#patch-page-host{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}'
+      /* menu por assunto (fica preso no topo ao rolar) */
+      + '#patch-relatorios-central .rr-menu{position:sticky;top:-20px;z-index:5;display:flex;gap:8px;flex-wrap:wrap;padding:10px;margin:0 -4px;border-radius:14px;background:var(--bg,#0b1220);border:1px solid rgba(148,163,184,.16);box-shadow:0 8px 20px rgba(0,0,0,.25)}'
+      + '#patch-relatorios-central .rr-mn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid rgba(148,163,184,.25);background:rgba(255,255,255,.04);color:var(--text,#e2e8f0);font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;width:auto}'
+      + '#patch-relatorios-central .rr-mn small{font-size:11.5px;font-weight:800;padding:1px 7px;border-radius:999px;background:rgba(148,163,184,.18)}'
+      + '#patch-relatorios-central .rr-mn:hover{border-color:#3b82f6}#patch-relatorios-central .rr-mn.on{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb;color:#fff}#patch-relatorios-central .rr-mn.on small{background:rgba(255,255,255,.25)}'
+      + 'html[data-theme="light"] #patch-relatorios-central .rr-menu,body.light #patch-relatorios-central .rr-menu{background:#fff;border-color:#cbd5e1;box-shadow:0 6px 16px rgba(15,23,42,.08)}html[data-theme="light"] #patch-relatorios-central .rr-mn:not(.on){background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}'
+      + '@media (max-width:760px){#patch-relatorios-central .rr-menu{flex-wrap:nowrap;overflow-x:auto;top:-12px}#patch-relatorios-central .rr-mn{flex:0 0 auto}}';
     (document.head || document.documentElement).appendChild(st);
   } catch (_) {}
   /* se a área ficar mais alta que a tela (zoom/tamanho de fonte), limita a altura para a rolagem alcançar o fim */
