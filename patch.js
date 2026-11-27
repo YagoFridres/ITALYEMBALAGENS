@@ -3977,7 +3977,8 @@ try {
     { id: 'perdas-operador', label: 'Perdas por Operador', icon: '⚠️', desc: 'Ranking de produção, caixas perdidas e valor por operador. Inclui canceladas com perda.', run: rrOpenPerdasOperadorModal },
     { id: 'facas-mais-utilizadas', label: 'Facas Mais Utilizadas', icon: '🔪', desc: 'Ranking de uso de facas no período selecionado com detalhamento por máquina.', run: rrOpenFacasMaisUtilizadasModal },
     { id: 'resumo-anual', label: 'Resumo Anual', icon: '📅', desc: 'Totais consolidados do ano selecionado com detalhamento mês a mês (Janeiro a Dezembro). Usa data faturamento > conclusão > dia > criação.', run: rrOpenResumoAnualModal },
-    { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
+    // 27/11: o Relatório Sérgio foi trocado pelo Relatório da semana (o mesmo do botão azul da Central de OFs)
+    { id: 'relatorio-semana', label: 'Relatório da Semana (Pedidos)', icon: '📋', desc: 'O que vai sair em cada dia da semana, separado por cliente, tipo de caixa e nº do pedido — o mesmo do botão da Central de OFs.', run: function() { if (typeof window.dsRelatorioSemana === 'function') return window.dsRelatorioSemana(); alert('Relatório da semana ainda carregando, tente de novo em instantes.'); } }
   ];
 
   function rrOpenAmostrasMesModal() {
@@ -4748,7 +4749,7 @@ try {
     'comissoes': 'vendas', 'controle-vendas-vendedor': 'vendas', 'toneladas-vendidas': 'vendas', 'custo-por-of': 'vendas', 'lucratividade-por-maquina': 'vendas',
     'clientes-sem-comprar-vendedor': 'clientes', 'ficha-tecnica-cliente': 'clientes', 'clientes-inativos': 'clientes',
     'ofs-em-aberto': 'producao', 'passagens': 'producao', 'maquinas-periodo': 'producao', 'tipos-caixa-rel': 'producao', 'cores-tamanhos-rel': 'producao',
-    'maiores-tamanhos-vendidos': 'producao', 'amostras-do-mes': 'producao', 'facas-mais-utilizadas': 'producao', 'gramaturas-ranking': 'producao', 'relatorio-sergio': 'producao',
+    'maiores-tamanhos-vendidos': 'producao', 'amostras-do-mes': 'producao', 'facas-mais-utilizadas': 'producao', 'gramaturas-ranking': 'producao', 'relatorio-semana': 'producao',
     'caixas-perdidas': 'perdas', 'maior-perda-tipo-caixa': 'perdas', 'maior-perda-cliente': 'perdas', 'perdas-altas': 'perdas', 'perdas-operador': 'perdas',
     'estoque-chapas': 'estoque', 'entradas': 'estoque', 'saidas': 'estoque', 'chapas-abaixo-200': 'estoque',
     'papelao-checklist-recebimento': 'compras', 'papelao-por-fornecedor': 'compras', 'papelao-resumo-mes': 'compras',
